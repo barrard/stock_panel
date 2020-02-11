@@ -1,38 +1,62 @@
-.App {
-  text-align: center;
-}
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
+@keyframes upTick {
+  0% {
+      box-shadow: 0px 0px 0px 0px rgba(207, 195, 195, 0.15);
+  }
+  25% {
+      box-shadow: 0px 0px 5px 0px green;
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
+  }
+
+  100% {
+      box-shadow: 0px 0px 0px 0px rgba(207, 195, 195, 0.15);
   }
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+@keyframes downTick {
+  0% {
+      box-shadow: 0px 0px 0px 0px rgba(207, 195, 195, 0.15);
+        }
+  25% {
+
+      box-shadow: 0px 0px 5px 0px red;
+
+  }
+
+  100% {
+box-shadow: 0px 0px 0px 0px rgba(207, 195, 195, 0.15);
+  }
 }
 
-.App-link {
-  color: #61dafb;
+.upTick {
+  animation-duration: 1.5s;
+
+  animation-name: upTick;
+}
+.downTick {
+  animation-duration: 1.5s;
+
+  animation-name: downTick;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.quoteBox{
+  border: 1px solid black;
+  padding:1em;
+  margin:1em;
+}
+
+
+.svgChart{
+  border: 1px solid black;
+}
+
+
+.not-available{
+  font-style: italic;
+  text-decoration: underline;
+}
+
+.line{
+  fill:none;
+  stroke: black;
 }
