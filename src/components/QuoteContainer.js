@@ -123,10 +123,8 @@ function QuoteContainer({ data }) {
         />
         <CandleStickChart
           tickSize={tickSize}
-          localMinMax={allMinMaxValues}
-          data={PRICE_VOL_LIST[symbol]}
-          width={300}
-          height={250}
+          width={1000}
+          height={450}
         />
         <TotalVolume TotalVol={TotalVol} />
       </Container>

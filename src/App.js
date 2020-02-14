@@ -20,7 +20,7 @@ localStorage.setItem("filterList",   defaultFilterList  );
 
 function App() {
   const [commodities_quotes, setCommodities_quotes] = useState({});
-  const [playPause, setPlayPause] = useState(true);
+  const [playPause, setPlayPause] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
   const [timerStarted, setTimerStarted] = useState(false);
 

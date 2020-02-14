@@ -60,3 +60,15 @@ box-shadow: 0px 0px 0px 0px rgba(207, 195, 195, 0.15);
   fill:none;
   stroke: black;
 }
+
+.slopeLine{
+  fill:none;
+  stroke: magenta;
+  stroke-width: 3px;
+  pointer-events:none;
+}
+
+g.tick{
+  pointer-events:none;
+
+}

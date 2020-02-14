@@ -1,32 +1,38 @@
-import React, { useState,  } from "react";
-import { useParams } from 'react-router-dom'
-
-import AskSizeAndPrice from "./QuoteComponents/AskSizeAndPrice.js";
-import BidSizeAndPrice from "./QuoteComponents/BidSizeAndPrice.js";
-
-import QuoteSymbol from "./QuoteComponents/QuoteSymbol.js";
-import QuotePrice from "./QuoteComponents/QuotePrice.js";
-import LastVolume from "./QuoteComponents/LastVol.js";
-import AvgVol from "./QuoteComponents/AvgVol.js";
-import TotalVolume from "./QuoteComponents/TotalVolume.js";
-
-import HorizontalHistogram from "../components/charts/HorizontalHistogram.js";
-import TickChart from "../components/charts/TickChart.js";
-
-import styled from "styled-components";
-
-import diff from "./extrema.js";
-
-function ChartAnalysis({ data, match }) {
-    let {sym} = useParams()
+import React, { useRef, useEffect, useCallback } from "react";
+import styled from 'styled-components'
+import CandleStickChart from "./charts/CandleStickChart.js";
 
 
-return (
-    <div>
-        Chart analysis {sym}
-    </div>
-)
+function ChartAnalysis({ data, width, height }) {
+
+
+  return (
+      <Div>
+          
+          {/* <CandleStickChart
+      width={1000}
+      height={450}
+      timeframe={'intraday'}
+      />
+
+<CandleStickChart
+      width={1000}
+      height={450}
+      timeframe={'daily'}
+      /> */}
+
+<CandleStickChart
+      width={1000}
+      height={450}
+      timeframe={'weekly'}
+      />
+      </Div>
+  )
 }
 
-
 export default ChartAnalysis
+
+
+const Div = styled.div`
+    margin-top:20px;
+`
