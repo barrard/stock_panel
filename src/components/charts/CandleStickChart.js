@@ -1,9 +1,10 @@
 import React, { useRef, useEffect, useState } from "react";
 import { axisBottom, axisRight } from "d3-axis";
 
+import { zoom } from "d3-zoom";
 import { scaleLinear, scaleTime } from "d3-scale";
 import { extent, max, min } from "d3-array";
-import { select } from "d3-selection";
+import { select, event, mouse } from "d3-selection";
 import diff from "../extrema.js";
 
 const margin = {
@@ -16,7 +17,9 @@ const margin = {
 function CandleStickChart({ width, height, timeframe }) {
   const chartRef = useRef();
   const [initChart, setInitChart] = useState(false);
-  const [OHLCdata, setOHLCdata] = useState([])
+  const [OHLCdata, setOHLCdata] = useState({
+    all:[], partial:[], zoomState:1
+  })
 
   const innerWidth = width - (margin.left + margin.right);
 
@@ -35,6 +38,37 @@ function CandleStickChart({ width, height, timeframe }) {
 
   let priceAxis = axisRight(priceScale).ticks(8).tickSize(-innerWidth);
 
+
+
+  useEffect(() => {
+    console.log('load')
+    //66.8.204.49
+    fetch(`http://localhost:45678/back_data/${timeframe}/${timeframe}-ES.json`).then(async res => {
+      let json = await res.json()
+      console.log(json)
+      json.results.forEach(r => r.timestamp = new Date(r.timestamp).getTime())
+      //add any missing data with forward fill
+      json.results = forwardFill(json.results)
+      setOHLCdata({
+
+        all:json.results,
+        partial:json.results
+      })
+      setupChart()
+    })
+
+  }, [])
+
+  
+  useEffect(() => {
+    // console.log('draw candle')
+    // console.log({ OHLCdata })
+
+    draw();
+  });
+
+
+
   const setupChart = () => {
     if (!chartRef.current) return;
     console.log({ OHLCdata })
@@ -44,10 +78,6 @@ function CandleStickChart({ width, height, timeframe }) {
 
     dropShadow(svg)
 
-    let chartWindow = svg
-      .append("g")
-      .attr("class", "chartWindow")
-      .attr("transform", `translate(${margin.left},${margin.top})`);
 
     //append timeAxis group
     svg
@@ -62,21 +92,89 @@ function CandleStickChart({ width, height, timeframe }) {
       .attr("transform", `translate(${width - margin.right}, ${margin.top})`)
       .call(priceAxis);
 
+      let chartWindow = svg
+      .append("g")
+      .attr("class", "chartWindow")
+      .attr("transform", `translate(${margin.left},${margin.top})`)
+
+      const d3zoom = zoom()
+      .scaleExtent([1, 40])
+      .on("zoom", zoomed);
+
+
+      function zoomed() {
+        let kScale = event.transform.k
+        // console.log({OHLCdata})
+        setOHLCdata(prevData=>{
+          let candleZoom = parseInt(prevData.partial.length*.05)||1
+          console.log(candleZoom)
+          let {zoomState} = prevData
+          // console.log({prevData})
+          // console.log(prevData.partial.length)
+          let data = prevData.partial;
+// console.log(event)
+          if(event && event.sourceEvent && event.sourceEvent.type){
+            if( event && event.sourceEvent && event.sourceEvent.type == 'wheel'){
+              if(kScale > zoomState){
+  
+                data = prevData.partial.slice(candleZoom, prevData.partial.length -candleZoom)
+              }else{
+                let first = prevData.partial[0]
+                let last = prevData.partial[prevData.partial.length-1]
+                console.log({first, last})
+                if(!first || !last )return //fail safe?
+                let firstIndex = prevData.all.findIndex(d=>d.timestamp === first.timestamp)
+                let lastIndex = prevData.all.findIndex(d=>d.timestamp === last.timestamp)
+                // console.log({firstIndex, lastIndex})
+                let newFirstData = prevData.all.slice( firstIndex - candleZoom, firstIndex)
+                let newLastData = prevData.all.slice( lastIndex, lastIndex+candleZoom)
+                // data = prevData.partial.slice(candleZoom, prevData.partial.length -candleZoom)
+                data = [...newFirstData, ...prevData.partial, ...newLastData]
+              }
+            }else if(event.sourceEvent.type == 'mousemove'){
+              let x = event.transform.x
+              let y = event.transform.y
+              console.log({x, y})
+            
+            }
+          }
+
+          // console.log({candleZoom, data})
+          
+          return ({
+            ...prevData,
+            partial:data,
+            zoomState:kScale
+          })
+        })
+        // chartWindow.attr("transform", event.transform);
+        // select('.priceAxis').call(priceAxis.scale(event.transform.rescaleX(priceScale)));
+        // select('.timeAxis').call(timeAxis.scale(event.transform.rescaleY(timeScale)));
+      }
+      svg.call(d3zoom)
+      svg.on('mousedown', clicked)
+
+      function clicked(){
+        console.log(mouse)
+      }
+    
+
+
     setInitChart(true);
   };
-
-  const timestamps = OHLCdata.map(d => d.timestamp)
-  const highs = OHLCdata.map(d => d.high)
-  const lows = OHLCdata.map(d => d.low)
-  const closes = OHLCdata.map(d => d.close)
-  const opens = OHLCdata.map(d => d.open)
+  console.log(OHLCdata)
+  if(!OHLCdata) OHLCdata.all=[]
+  const timestamps = OHLCdata.all.map(d => d.timestamp)
+  const highs = OHLCdata.all.map(d => d.high)
+  const lows = OHLCdata.all.map(d => d.low)
+  const closes = OHLCdata.all.map(d => d.close)
+  const opens = OHLCdata.all.map(d => d.open)
   const minMaxValues = {
     minValues: [],
     maxValues: []
   }
 
   const addHighLowMarkers = () => {
-console.log(highs)
     appendMinmaxMarkers(highs, 'high', 'green', 'red', 5, true, true)
     appendMinmaxMarkers(lows, 'low', 'green', 'red', 10, true, true)
     appendMinmaxMarkers(opens, 'open', 'green', 'red', 10, true, true)
@@ -108,21 +206,22 @@ console.log(highs)
   }
 
   const draw = () => {
-    if (!OHLCdata.length) return;
+    if (!OHLCdata.partial.length) return;
 
-    let priceMax = max(OHLCdata, d => d.high)
-    let priceMin = min(OHLCdata, d => d.low)
-    console.log({
-      priceMax,
-      priceMin
-    })
+    let priceMax = max(OHLCdata.partial, d => d.high)
+    let priceMin = min(OHLCdata.partial, d => d.low)
+    // console.log({
+    //   priceMax,
+    //   priceMin
+    // })
 
-    let [timeMin, timeMax] = extent(OHLCdata.map(({ timestamp }) => timestamp));
+    let [timeMin, timeMax] = extent(OHLCdata.partial.map(({ timestamp }) => timestamp));
     const priceRange = priceMax - priceMin;
-
-    timeScale.domain([timeMin, timeMax]);
+    let timeframe = OHLCdata.partial[1].timestamp - OHLCdata.partial[0].timestamp  
+      //  This helps the bars at the ends line up with the edge of the chart
+    timeScale.domain([timeMin-(timeframe/2), timeMax+(timeframe/2)]);
     candleHeightScale.domain([0, priceRange])
-    priceScale.domain([priceMin - 1, priceMax + 1]);
+    priceScale.domain([priceMin, priceMax]);
 
     // get the SVG element
     let svg = select(chartRef.current);
@@ -130,13 +229,13 @@ console.log(highs)
     svg.select(".timeAxis").call(timeAxis);
     svg.select(".priceAxis").call(priceAxis);
     let chartWindow = svg.select(".chartWindow");
-    let candleWidth = innerWidth / OHLCdata.length
+    let candleWidth = innerWidth / OHLCdata.partial.length
     let candleStrokeWidth = candleWidth / 10
-    let halfWidth = candleWidth/2
+    let halfWidth = candleWidth / 2
 
 
     // addWicks()
-    let candleWicks = chartWindow.selectAll("line").data(OHLCdata);
+    let candleWicks = chartWindow.selectAll("line").data(OHLCdata.partial);
     candleWicks.exit().remove();
     candleWicks
       .enter()
@@ -144,21 +243,18 @@ console.log(highs)
       .merge(candleWicks)
       //   .on("mouseover", bubblyEvent)
       //   .on("mousemove", bubblyEvent)
-      .attr("x1", (d) => timeScale(d.timestamp) )
-      .attr("x2", d => timeScale(d.timestamp) )
-      .attr("y1", (d) =>  priceScale(d.low))
+      .attr("x1", (d) => timeScale(d.timestamp))
+      .attr("x2", d => timeScale(d.timestamp))
+      .attr("y1", (d) => priceScale(d.low))
       .attr("y2", d => priceScale(d.high))
-  
+
       .attr('stroke', 'black')
       .attr('stroke-width', candleStrokeWidth)
-      .on('mouseover', ({open, high, close, low, tradingDay}) => console.log({open, high, close, low, tradingDay}))
-
-
-
+      .on('mouseover', ({ open, high, close, low, tradingDay }) => console.log({ open, high, close, low, tradingDay }))
 
 
     /* CANDLES STICKS */
-    let candleSticks = chartWindow.selectAll("rect").data(OHLCdata);
+    let candleSticks = chartWindow.selectAll("rect").data(OHLCdata.partial);
     candleSticks.exit().remove();
     candleSticks
       .enter()
@@ -176,32 +272,14 @@ console.log(highs)
       .attr("width", (candleWidth))
       .attr("fill", d => candleFillAccessor(d))
       .attr('stroke', 'black')
-      .attr('stroke-width', candleStrokeWidth/2)
-      .on('mouseover', ({open, high, close, low, tradingDay}) => console.log({open, high, close, low, tradingDay}))
+      .attr('stroke-width', candleStrokeWidth / 2)
+      .on('mouseover', ({ open, high, close, low, tradingDay }) => console.log({ open, high, close, low, tradingDay }))
+      .attr('class', 'candleStick')
 
 
     addHighLowMarkers()
   };
-  useEffect(() => {
-    console.log('load')
-    //66.8.204.49
-    fetch(`http://localhost:45678/back_data/${timeframe}/${timeframe}-ES.json`).then(async res => {
-      let json = await res.json()
-      console.log(json)
-      json.results.forEach(r => r.timestamp = new Date(r.timestamp).getTime())
-      //add any missing data with forward fill
-      json.results = forwardFill(json.results)
-      setOHLCdata(json.results.slice(-70, -50))
-      setupChart()
-    })
 
-  }, [])
-  useEffect(() => {
-    console.log('draw candle')
-    console.log({ OHLCdata })
-
-    draw();
-  });
 
   function appendMarker(markers, color, r, classAttr) {
     markers.exit().remove();
@@ -209,7 +287,7 @@ console.log(highs)
       .enter()
       .append("circle")
       .merge(markers)
-      .attr("cx", d => timeScale(d.x) )
+      .attr("cx", d => timeScale(d.x))
       .attr("cy", d => priceScale(d.y))
       .attr("r", r)
       .attr("fill", color)
@@ -230,7 +308,7 @@ console.log(highs)
     console.log(cx)
     if (!LineObj[cx]) {
       LineObj[cx] = chartWindow.append('line')
-      .attr('class', 'slopeLine')
+        .attr('class', 'slopeLine')
     }
     LineObj[cx]
       .style('opacity', 1)
@@ -257,10 +335,10 @@ console.log(highs)
 
 
   function startRotation(line, index, valuesArray) {
-    console.log({valuesArray, line})
+    console.log({ valuesArray, line })
     let currentVal = valuesArray[index]
     let nextVal = valuesArray[index + 1]
-
+    if(!nextVal || !currentVal) return console.log('No next val')
     let x1 = timeScale(currentVal.x)
     let x2 = timeScale(nextVal.x)
     let y1 = priceScale(currentVal.y)
@@ -276,6 +354,7 @@ console.log(highs)
   function removeLine() {
     let cx = select(this).attr('cx')
     console.log('leave')
+    if(!LineObj[cx]) return //fail safe?
     LineObj[cx].style('opacity', 0)
     // clearInterval(timerObj[cx])
 
@@ -292,6 +371,10 @@ console.log(highs)
 }
 
 export default CandleStickChart;
+
+
+
+
 
 
 
@@ -335,46 +418,46 @@ function xIntercept(a, m) {
 
 
 
-function dropShadow(svg){
+function dropShadow(svg) {
 
   // filters go in defs element
-var defs = svg.append("defs");
+  var defs = svg.append("defs");
 
-// create filter with id #drop-shadow
-// height=130% so that the shadow is not clipped
-var filter = defs.append("filter")
+  // create filter with id #drop-shadow
+  // height=130% so that the shadow is not clipped
+  var filter = defs.append("filter")
     .attr("id", "drop-shadow")
     .attr("height", "130%");
 
-// SourceAlpha refers to opacity of graphic that this filter will be applied to
-// convolve that with a Gaussian with standard deviation 3 and store result
-// in blur
-filter.append("feGaussianBlur")
+  // SourceAlpha refers to opacity of graphic that this filter will be applied to
+  // convolve that with a Gaussian with standard deviation 3 and store result
+  // in blur
+  filter.append("feGaussianBlur")
     .attr("in", "SourceAlpha")
     .attr("stdDeviation", 3)
 
-// translate output of Gaussian blur to the right and downwards with 2px
-// store result in offsetBlur
-filter.append("feOffset")
+  // translate output of Gaussian blur to the right and downwards with 2px
+  // store result in offsetBlur
+  filter.append("feOffset")
     .attr("dx", 2)
     .attr("dy", 2)
     .attr("result", "offsetBlur");
 
-// Control opacity of shadow filter
-var feTransfer = filter.append("feComponentTransfer");
+  // Control opacity of shadow filter
+  var feTransfer = filter.append("feComponentTransfer");
 
-feTransfer.append("feFuncA")
-	.attr("type", "linear")
-	.attr("slope", 0.2)
+  feTransfer.append("feFuncA")
+    .attr("type", "linear")
+    .attr("slope", 0.2)
 
-// overlay original SourceGraphic over translated blurred opacity by using
-// feMerge filter. Order of specifying inputs is important!
-var feMerge = filter.append("feMerge");
+  // overlay original SourceGraphic over translated blurred opacity by using
+  // feMerge filter. Order of specifying inputs is important!
+  var feMerge = filter.append("feMerge");
 
 
-feMerge.append("feMergeNode")
+  feMerge.append("feMergeNode")
     .attr("in", "offsetBlur")
-feMerge.append("feMergeNode")
+  feMerge.append("feMergeNode")
     .attr("in", "SourceGraphic");
 
 
@@ -382,76 +465,85 @@ feMerge.append("feMergeNode")
 }
 
 
-function forwardFill(data){
+function forwardFill(data) {
   //find the time line
+  // console.log({data})
   let timeframe = determineTimeFrame(data)
   data = fillMissingData(data, timeframe)
-  console.log('================================')
-  data = fillMissingData(data, timeframe)
+  // console.log('================================')
+  // data = fillMissingData(data, timeframe)
+  // console.log({data})
   return data
-  
+
 }
 
-function fillMissingData(data, timeframe){
-  let missingDataObj={}
-  data.forEach((d, i)=>{
-  
-    if(i === data.length - 1) return
-    let diff = data[i+1].timestamp - d.timestamp 
+function fillMissingData(data, timeframe) {
+  let missingDataObj = {}
+  data.forEach((d, i) => {
+    
+    if (i === data.length - 1) return
+    let diff = data[i + 1].timestamp - d.timestamp
     let today = new Date(d.timestamp)
-      let tomorrow = new Date(data[i+1].timestamp)
+    let tomorrow = new Date(data[i + 1].timestamp)
     // console.log({diff, timeframe})
-    if((Math.round(diff/timeframe))!=1){
-      // console.log({diff:Math.round(diff/timeframe), today, tomorrow, i, timeframe})
+    // console.log({i, diff:Math.round(diff / timeframe), today, tomorrow})
+    if ((Math.round(diff / timeframe)) != 1) {
+      // console.log({ diff: Math.round(diff / timeframe), today, tomorrow, i, timeframe })
       let lastClose = d.close
-        let blankDay = {
-          open:lastClose,
-          close:lastClose,
-          high:lastClose,
-          low:lastClose,
-          timestamp:d.timestamp + (timeframe),
-          volume:0
-        }
-        missingDataObj[i+1]= blankDay
- 
+      let blankDay = {
+        open: lastClose,
+        close: lastClose,
+        high: lastClose,
+        low: lastClose,
+        timestamp: d.timestamp + (timeframe),
+        volume: 0,
+        count: Math.round(diff / timeframe) -1
+      }
+      missingDataObj[i + 1] = blankDay
+
 
     }
   })
-  console.log({timeframe})
-  console.log({missingDataObj})
-  Object.keys(missingDataObj).reverse().forEach(index=>{
-    data.splice(index, 0,  missingDataObj[index])
+  // console.log({ timeframe })
+  // console.log({ missingDataObj })
+  Object.keys(missingDataObj).reverse().forEach(index => {
+    let {count} = missingDataObj[index]
+    delete missingDataObj[index].count
+    for(let x = 0 ; x < count ; x++){
+      let timestamp = data[index - 1].timestamp + (timeframe * (count - x))
+      data.splice(index, 0, {...missingDataObj[index], timestamp})
+    }
   })
 
 
   return data
 }
 
-function determineTimeFrame(data){
-  let diffObj ={}
+function determineTimeFrame(data) {
+  let diffObj = {}
   let prev = 0
-  data.forEach((d, i)=>{
-    if(i === data.length - 1) return
+  data.forEach((d, i) => {
+    if (i === data.length - 1) return
 
-    let diff = data[i+1].timestamp - d.timestamp 
-    if(!diffObj[diff]){
+    let diff = data[i + 1].timestamp - d.timestamp
+    if (!diffObj[diff]) {
       diffObj[diff] = 0
 
     }
     diffObj[diff]++
   })
 
-  console.log({diffObj})
+  // console.log({ diffObj })
 
   let timeframe;
   let topCount = 0
-  for(let timeDiff in diffObj){
+  for (let timeDiff in diffObj) {
     let count = diffObj[timeDiff]
-    if(count > topCount) {
+    if (count > topCount) {
       topCount = count
       timeframe = parseInt(timeDiff)
     }
   }
-  console.log({timeframe})
+  // console.log({ timeframe })
   return timeframe
 }
