@@ -5,6 +5,8 @@ import { zoom } from "d3-zoom";
 import { scaleLinear, scaleTime } from "d3-scale";
 import { extent, max, min } from "d3-array";
 import { select, event, mouse } from "d3-selection";
+import { drag } from "d3-drag";
+
 import diff from "../extrema.js";
 
 const margin = {
@@ -13,14 +15,20 @@ const margin = {
   bottom: 20,
   left: 35
 };
+let MOUSEX;
+let MOUSEY;
+let mouseDRAGSART;
+let dragStartData;
+let lastBarCount;
+let useHack
 
 function CandleStickChart({ width, height, timeframe }) {
   const chartRef = useRef();
   const [initChart, setInitChart] = useState(false);
   const [OHLCdata, setOHLCdata] = useState({
-    all:[], partial:[], zoomState:1
+    all: [], partial: [], zoomState: 1
   })
-
+  useHack = OHLCdata
   const innerWidth = width - (margin.left + margin.right);
 
   const innerHeight = height - (margin.top + margin.bottom);
@@ -51,15 +59,15 @@ function CandleStickChart({ width, height, timeframe }) {
       json.results = forwardFill(json.results)
       setOHLCdata({
 
-        all:json.results,
-        partial:json.results
+        all: json.results,
+        partial: json.results
       })
       setupChart()
     })
 
   }, [])
 
-  
+
   useEffect(() => {
     // console.log('draw candle')
     // console.log({ OHLCdata })
@@ -92,78 +100,184 @@ function CandleStickChart({ width, height, timeframe }) {
       .attr("transform", `translate(${width - margin.right}, ${margin.top})`)
       .call(priceAxis);
 
-      let chartWindow = svg
+    let chartWindow = svg
       .append("g")
       .attr("class", "chartWindow")
       .attr("transform", `translate(${margin.left},${margin.top})`)
 
-      const d3zoom = zoom()
-      .scaleExtent([1, 40])
+    const d3zoom = zoom()
+      // .scaleExtent([1, 40])
       .on("zoom", zoomed);
 
+    const d3drag = drag()
+      .on("start", dragStart)
+      .on("drag", dragged)
+      .on("end", dragEnd)
 
-      function zoomed() {
-        let kScale = event.transform.k
-        // console.log({OHLCdata})
-        setOHLCdata(prevData=>{
-          let candleZoom = parseInt(prevData.partial.length*.05)||1
-          console.log(candleZoom)
-          let {zoomState} = prevData
-          // console.log({prevData})
-          // console.log(prevData.partial.length)
-          let data = prevData.partial;
-// console.log(event)
-          if(event && event.sourceEvent && event.sourceEvent.type){
-            if( event && event.sourceEvent && event.sourceEvent.type == 'wheel'){
-              if(kScale > zoomState){
-  
-                data = prevData.partial.slice(candleZoom, prevData.partial.length -candleZoom)
-              }else{
-                let first = prevData.partial[0]
-                let last = prevData.partial[prevData.partial.length-1]
-                console.log({first, last})
-                if(!first || !last )return //fail safe?
-                let firstIndex = prevData.all.findIndex(d=>d.timestamp === first.timestamp)
-                let lastIndex = prevData.all.findIndex(d=>d.timestamp === last.timestamp)
-                // console.log({firstIndex, lastIndex})
-                let newFirstData = prevData.all.slice( firstIndex - candleZoom, firstIndex)
-                let newLastData = prevData.all.slice( lastIndex, lastIndex+candleZoom)
-                // data = prevData.partial.slice(candleZoom, prevData.partial.length -candleZoom)
-                data = [...newFirstData, ...prevData.partial, ...newLastData]
+    svg
+      .on('mousemove', () => {
+        let x = event.pageX - svg.node().getBoundingClientRect().x - margin.left
+        let y = event.pageY - svg.node().getBoundingClientRect().y - margin.top
+        x = x < 0 ? 0 : x
+        y = y < 0 ? 0 : y
+        // console.log({ x, y })
+        MOUSEX = x
+        MOUSEY = y
+
+      })
+
+
+
+
+    function zoomed() {
+      let mouseZoomPOS = MOUSEX / innerWidth
+      if(mouseZoomPOS > 0.98) mouseZoomPOS = 0.97
+      if(mouseZoomPOS < 0.02) mouseZoomPOS = 0.03
+      let kScale = event.transform.k
+      // console.log({OHLCdata})
+      console.log('zoom')
+
+      if (event && event.sourceEvent && event.sourceEvent.type) {
+        // console.log(event.sourceEvent.type)
+        if (event && event.sourceEvent && event.sourceEvent.type == 'wheel') {
+          setOHLCdata(prevData => {
+            // console.log(event.sourceEvent)
+            let { zoomState } = prevData
+            // console.log({prevData})
+            // console.log(prevData.partial.length)
+            let data = prevData.partial;
+            // console.log(event)
+
+            if (kScale > zoomState) {
+              if (prevData.partial.length < 30) return {
+                ...prevData, zoomState: kScale
               }
-            }else if(event.sourceEvent.type == 'mousemove'){
-              let x = event.transform.x
-              let y = event.transform.y
-              console.log({x, y})
-            
-            }
-          }
 
-          // console.log({candleZoom, data})
-          
+              // console.log('zooom in')
+              // console.log(prevData.partial.length)
+              let firstHalf = prevData.partial.slice(0, prevData.partial.length * mouseZoomPOS + 1)
+              let secondHalf = prevData.partial.slice(prevData.partial.length * -(1 - mouseZoomPOS))
+              // console.log(firstHalf.length + secondHalf.length)
+              // console.log({ firstHalf, secondHalf, mouseZoomPOS })
+              let firstHalfCandleZoom = parseInt(firstHalf.length < 10 ? 0 : ((firstHalf.length * .05) || 1))
+              let secondHalfCandleZoom = parseInt(secondHalf.length < 11 ? 0 : ((secondHalf.length * .05) || 1))
+              firstHalf = firstHalf.slice(firstHalfCandleZoom, firstHalf.length)
+              secondHalf = secondHalf.slice(0, (secondHalf.length - 1) - secondHalfCandleZoom)
+              // console.log({ firstHalf, secondHalf, firstHalfCandleZoom, secondHalfCandleZoom })
+              data = [...firstHalf, ...secondHalf]
+            } else {
+              let candleZoom = parseInt(prevData.partial.length * .05) || 1
+
+              let first = prevData.partial[0]
+              let last = prevData.partial[prevData.partial.length - 1]
+              // console.log({ first, last })
+              if (!first || !last) return //fail safe?
+              let firstIndex = prevData.all.findIndex(d => d.timestamp === first.timestamp)
+              let lastIndex = prevData.all.findIndex(d => d.timestamp === last.timestamp)
+              // console.log({firstIndex, lastIndex})
+              let newFirstData = prevData.all.slice(firstIndex - candleZoom, firstIndex)
+              let newLastData = prevData.all.slice(lastIndex, lastIndex + candleZoom)
+              // data = prevData.partial.slice(candleZoom, prevData.partial.length -candleZoom)
+              data = [...newFirstData, ...prevData.partial, ...newLastData]
+            }
+            // console.log({candleZoom, data})
+            return ({
+              ...prevData,
+              partial: data,
+              zoomState: kScale
+            })
+          })
+        }
+        // else if(event.sourceEvent.type == 'mousemove'){
+        //   let x = event.transform.x
+        //   let y = event.transform.y
+        //   console.log({x, y})
+
+        // }
+      }
+
+    }
+
+    svg.call(d3drag)//breaks if this is not first
+
+    svg.call(d3zoom)//needs to be after drag
+
+    function dragStart() {
+      // console.log('dragStart')
+      let xDragPOS = event.x - margin.left
+      mouseDRAGSART = xDragPOS
+      dragStartData = [...useHack.partial]
+    }
+    function dragged() {
+      let xDragPOS = event.x - margin.left
+      let dragAmount = Math.abs(xDragPOS - mouseDRAGSART)
+      let barWidth = innerWidth / dragStartData.length 
+      let barCount = parseInt(dragAmount/barWidth)
+      if(barCount < 1) return
+      if(lastBarCount === barCount)return
+      lastBarCount = barCount
+      console.log('dragged')
+      console.log({barCount})
+      // console.log({x:xDragPOS,mouseDRAGSART, dragAmount, barWidth, barCount, useHack, dragStartData})
+
+       // console.log()
+       let start = dragStartData[0]
+       let end = dragStartData[dragStartData.length-1]
+       let startIndex = useHack.all.findIndex(d=>d.timestamp===start.timestamp)
+       let endIndex = useHack.all.findIndex(d=>d.timestamp===end.timestamp)
+      //  console.log({end:end.timestamp})
+
+      let data;
+      if(xDragPOS > mouseDRAGSART){
+        // console.log('omving righ')
+ 
+        let dataEnd = dragStartData.slice(0, dragStartData.length-1 - barCount)
+        let dataStart = useHack.all.slice(startIndex-barCount, startIndex)
+        // console.log({startIndex, barCount, dataStart})
+        // console.log(dataStart[0].timestamp)
+        data = [...dataStart, ...dataEnd]
+        // draw(data)
+        setOHLCdata(prevData=>{
+
           return ({
             ...prevData,
-            partial:data,
-            zoomState:kScale
+            partial: data,
           })
         })
-        // chartWindow.attr("transform", event.transform);
-        // select('.priceAxis').call(priceAxis.scale(event.transform.rescaleX(priceScale)));
-        // select('.timeAxis').call(timeAxis.scale(event.transform.rescaleY(timeScale)));
-      }
-      svg.call(d3zoom)
-      svg.on('mousedown', clicked)
+      }else if(xDragPOS < mouseDRAGSART){
+       // console.log('omving righ')
+ 
+       let dataStart = dragStartData.slice(barCount, dragStartData.length-1)
+       let dataEnd = useHack.all.slice(endIndex, endIndex + barCount)
+      //  console.log({startIndex, barCount, dataStart})
+      //  console.log(dataStart[0].timestamp)
+       data = [...dataStart, ...dataEnd]
+      //  draw(data)
 
-      function clicked(){
-        console.log(mouse)
+       setOHLCdata(prevData=>{
+
+         return ({
+           ...prevData,
+           partial: data,
+         })
+       })
+
+
+
       }
-    
+
+    }
+    function dragEnd() {
+      console.log('dragEnd')
+      // console.log({x:event.x - margin.left,MOUSEX})
+    }
+
 
 
     setInitChart(true);
   };
-  console.log(OHLCdata)
-  if(!OHLCdata) OHLCdata.all=[]
+  // console.log(OHLCdata)
+  if (!OHLCdata) OHLCdata.all = []
   const timestamps = OHLCdata.all.map(d => d.timestamp)
   const highs = OHLCdata.all.map(d => d.high)
   const lows = OHLCdata.all.map(d => d.low)
@@ -205,21 +319,27 @@ function CandleStickChart({ width, height, timeframe }) {
     }
   }
 
-  const draw = () => {
-    if (!OHLCdata.partial.length) return;
+  const draw = (data) => {
+    let drawData
+    if(data){
+      drawData = data
+    }else{
+      drawData = OHLCdata.partial
+    }
+    if (!drawData.length) return;
 
-    let priceMax = max(OHLCdata.partial, d => d.high)
-    let priceMin = min(OHLCdata.partial, d => d.low)
+    let priceMax = max(drawData, d => d.high)
+    let priceMin = min(drawData, d => d.low)
     // console.log({
     //   priceMax,
     //   priceMin
     // })
 
-    let [timeMin, timeMax] = extent(OHLCdata.partial.map(({ timestamp }) => timestamp));
+    let [timeMin, timeMax] = extent(drawData.map(({ timestamp }) => timestamp));
     const priceRange = priceMax - priceMin;
-    let timeframe = OHLCdata.partial[1].timestamp - OHLCdata.partial[0].timestamp  
-      //  This helps the bars at the ends line up with the edge of the chart
-    timeScale.domain([timeMin-(timeframe/2), timeMax+(timeframe/2)]);
+    let timeframe = drawData[1].timestamp - drawData[0].timestamp
+    //  This helps the bars at the ends line up with the edge of the chart
+    timeScale.domain([timeMin - (timeframe / 2), timeMax + (timeframe / 2)]);
     candleHeightScale.domain([0, priceRange])
     priceScale.domain([priceMin, priceMax]);
 
@@ -229,13 +349,13 @@ function CandleStickChart({ width, height, timeframe }) {
     svg.select(".timeAxis").call(timeAxis);
     svg.select(".priceAxis").call(priceAxis);
     let chartWindow = svg.select(".chartWindow");
-    let candleWidth = innerWidth / OHLCdata.partial.length
+    let candleWidth = innerWidth / drawData.length
     let candleStrokeWidth = candleWidth / 10
     let halfWidth = candleWidth / 2
 
 
     // addWicks()
-    let candleWicks = chartWindow.selectAll("line").data(OHLCdata.partial);
+    let candleWicks = chartWindow.selectAll("line").data(drawData);
     candleWicks.exit().remove();
     candleWicks
       .enter()
@@ -254,7 +374,7 @@ function CandleStickChart({ width, height, timeframe }) {
 
 
     /* CANDLES STICKS */
-    let candleSticks = chartWindow.selectAll("rect").data(OHLCdata.partial);
+    let candleSticks = chartWindow.selectAll(".candleStick").data(drawData);
     candleSticks.exit().remove();
     candleSticks
       .enter()
@@ -338,7 +458,7 @@ function CandleStickChart({ width, height, timeframe }) {
     console.log({ valuesArray, line })
     let currentVal = valuesArray[index]
     let nextVal = valuesArray[index + 1]
-    if(!nextVal || !currentVal) return console.log('No next val')
+    if (!nextVal || !currentVal) return console.log('No next val')
     let x1 = timeScale(currentVal.x)
     let x2 = timeScale(nextVal.x)
     let y1 = priceScale(currentVal.y)
@@ -354,19 +474,22 @@ function CandleStickChart({ width, height, timeframe }) {
   function removeLine() {
     let cx = select(this).attr('cx')
     console.log('leave')
-    if(!LineObj[cx]) return //fail safe?
+    if (!LineObj[cx]) return //fail safe?
     LineObj[cx].style('opacity', 0)
     // clearInterval(timerObj[cx])
 
   }
 
   return (
-    <svg
-      ref={chartRef}
-      width={width}
-      height={height}
-      className="svgChart"
-    ></svg>
+    <>
+      <h3>{timeframe}</h3>
+      <svg
+        ref={chartRef}
+        width={width}
+        height={height}
+        className="svgChart"
+      ></svg>
+    </>
   );
 }
 
@@ -480,7 +603,7 @@ function forwardFill(data) {
 function fillMissingData(data, timeframe) {
   let missingDataObj = {}
   data.forEach((d, i) => {
-    
+
     if (i === data.length - 1) return
     let diff = data[i + 1].timestamp - d.timestamp
     let today = new Date(d.timestamp)
@@ -497,7 +620,7 @@ function fillMissingData(data, timeframe) {
         low: lastClose,
         timestamp: d.timestamp + (timeframe),
         volume: 0,
-        count: Math.round(diff / timeframe) -1
+        count: Math.round(diff / timeframe) - 1
       }
       missingDataObj[i + 1] = blankDay
 
@@ -507,11 +630,11 @@ function fillMissingData(data, timeframe) {
   // console.log({ timeframe })
   // console.log({ missingDataObj })
   Object.keys(missingDataObj).reverse().forEach(index => {
-    let {count} = missingDataObj[index]
+    let { count } = missingDataObj[index]
     delete missingDataObj[index].count
-    for(let x = 0 ; x < count ; x++){
+    for (let x = 0; x < count; x++) {
       let timestamp = data[index - 1].timestamp + (timeframe * (count - x))
-      data.splice(index, 0, {...missingDataObj[index], timestamp})
+      data.splice(index, 0, { ...missingDataObj[index], timestamp })
     }
   })
 
