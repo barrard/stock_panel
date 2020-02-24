@@ -122,6 +122,7 @@ function QuoteContainer({ data }) {
           height={150}
         />
         <CandleStickChart
+        timeframe={'intraday'}
           tickSize={tickSize}
           width={1000}
           height={450}

@@ -73,7 +73,7 @@ function CandleStickChart({ width, height, timeframe }) {
     console.log("load");
     //66.8.204.49
     fetch(
-      `http://localhost:45678/back_data/${timeframe}/${timeframe}-ES.json`
+      `${process.env.REACT_APP_STOCK_DATA_URL}/back_data/${timeframe}/${timeframe}-ES.json`
     ).then(async res => {
       let json = await res.json();
       console.log(json);

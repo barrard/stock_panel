@@ -1,6 +1,5 @@
 import io from 'socket.io-client'
-const socket = io("https://stocks.dakine.website");
-// const socket = io("http://192.168.0.11:45678");
+const socket = io(process.env.REACT_APP_STOCK_DATA_URL);
 
 const Events = {}
 
@@ -15,6 +14,7 @@ const Socket = {
         }
     },
     off:(event)=> {
+        console.log({event})
         console.log(typeof(Events[event]))
         if(typeof(Events[event]==='function')){
             
@@ -24,4 +24,7 @@ const Socket = {
     }
 }
 
+Socket.on('connect', ()=>console.log('Websocket connected'))
+
 export default Socket
+

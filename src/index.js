@@ -5,7 +5,9 @@ import App from './App';
 
 import * as serviceWorker from './serviceWorker';
 
-
+console.log(process.env.REACT_APP_STOCK_DATA_URL)
+console.log(process.env.REACT_APP_STOCK_DATA_URL)
+console.log(process.env.REACT_APP_STOCK_DATA_URL)
 ReactDOM.render(<App/>, document.getElementById('root'));
 
 // If you want your app to work offline and load faster, you can change
