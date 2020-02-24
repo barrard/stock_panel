@@ -8,7 +8,7 @@ export function addCandleSticks(
 ) {
   let candleStrokeWidth = candleWidth / 10;
   // addWicks()
-  let candleWicks = chartWindow.selectAll("line").data(drawData);
+  let candleWicks = chartWindow.selectAll(".candleStickWick").data(drawData);
 
   addCandleWicks(candleWicks, candleStrokeWidth, timeScale, priceScale);
 
@@ -41,6 +41,7 @@ export function addCandleWicks(
     .attr("y2", d => priceScale(d.high))
     .attr("stroke", "black")
     .attr("stroke-width", candleStrokeWidth)
+    .attr("class", "candleStickWick")
     .on("mouseover", ({ open, high, close, low, tradingDay }) =>
       console.log({ open, high, close, low, tradingDay })
     );

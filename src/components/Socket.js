@@ -1,5 +1,5 @@
 import io from 'socket.io-client'
-const socket = io("http://66.8.204.49:45678");
+const socket = io("https://stocks.dakine.website");
 // const socket = io("http://192.168.0.11:45678");
 
 const Events = {}

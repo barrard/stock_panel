@@ -167,128 +167,128 @@ export function doZoomOut(prevData) {
   return data;
 }
 
-export function utilDataSetup({OHLCdata, priceScale, timeScale}) {
+// export function utilDataSetup({OHLCdata, priceScale, timeScale, timeframe}) {
 
-const timestamps = OHLCdata.all.map(d => d.timestamp);
+// const timestamps = OHLCdata.all.map(d => d.timestamp);
 
-const minMaxValues = {
-  minValues: [],
-  maxValues: []
-};
+// const minMaxValues = {
+//   minValues: [],
+//   maxValues: []
+// };
 
-const LineObj = {};
-const timerObj = {};
+// const LineObj = {};
+// const timerObj = {};
 
 
-  const appendMinmaxMarkers = ({
-    chartWindow,
+//   const appendMinmaxMarkers = ({
+//     chartWindow,
 
-    data,
-    name,
-    minColor,
-    maxColor,
-    tolerance,
-    isMin,
-    isMax
-  }) => {
-    let { minValues, maxValues } = extrema.minMax(timestamps, data, tolerance);
-console.log('appendMinmaxMarkers')
-console.log({ name})
-    if (isMax) {
-      minMaxValues.maxValues = [...minMaxValues.maxValues, ...maxValues];
-      let maxMarkers = chartWindow
-        .selectAll(`.max${name}MarkerGroup`)
-        .data(maxValues);
-      appendMarker(maxMarkers, maxColor, 5, `max${name}MarkerGroup`);
-    }
+//     data,
+//     name,
+//     minColor,
+//     maxColor,
+//     tolerance,
+//     isMin,
+//     isMax
+//   }) => {
+//     let { minValues, maxValues } = extrema.minMax(timestamps, data, tolerance);
+// console.log('appendMinmaxMarkers')
+// console.log({ name, timeframe})
+//     if (isMax) {
+//       minMaxValues.maxValues = [...minMaxValues.maxValues, ...maxValues];
+//       let maxMarkers = chartWindow
+//         .selectAll(`.max${name}MarkerGroup`)
+//         .data(maxValues);
+//       appendMarker(maxMarkers, maxColor, 5, `max${name}MarkerGroup`);
+//     }
 
-    if (isMin) {
-      minMaxValues.minValues = [...minMaxValues.minValues, ...minValues];
-      let minMarkers = chartWindow
-        .selectAll(`.min${name}MarkerGroup`)
-        .data(minValues);
-      appendMarker(minMarkers, minColor, 5, `min${name}MarkerGroup`);
-    }
+//     if (isMin) {
+//       minMaxValues.minValues = [...minMaxValues.minValues, ...minValues];
+//       let minMarkers = chartWindow
+//         .selectAll(`.min${name}MarkerGroup`)
+//         .data(minValues);
+//       appendMarker(minMarkers, minColor, 5, `min${name}MarkerGroup`);
+//     }
 
-    function appendMarker(markers, color, r, classAttr) {
-      markers.exit().remove();
-      markers
-        .enter()
-        .append("circle")
-        .merge(markers)
-        .attr("cx", d => timeScale(d.x))
-        .attr("cy", d => priceScale(d.y))
-        .attr("r", r)
-        .attr("fill", color)
-        .attr("class", classAttr)
-        .on("mouseover", function(d){
-            drawlineThenRotate({
-                chartWindow, cx:timeScale(d.x)
-              })
-        }
+//     function appendMarker(markers, color, r, classAttr) {
+//       markers.exit().remove();
+//       markers
+//         .enter()
+//         .append("circle")
+//         .merge(markers)
+//         .attr("cx", d => timeScale(d.x))
+//         .attr("cy", d => priceScale(d.y))
+//         .attr("r", r)
+//         .attr("fill", color)
+//         .attr("class", classAttr)
+//         .on("mouseover", function(d){
+//             drawlineThenRotate({
+//                 chartWindow, cx:timeScale(d.x)
+//               })
+//         }
           
-        )
-        .on("mouseleave", removeLine)
-        .style("filter", "url(#drop-shadow)");
-    }
-  };
+//         )
+//         .on("mouseleave", removeLine)
+//         .style("filter", "url(#drop-shadow)");
+//     }
+//   };
 
-  function drawlineThenRotate({ chartWindow, cx }) {
-    // let cx = parseFloat(select(this).attr("cx"));
-    console.log("mouse");
-    console.log(cx);
-    if (!LineObj[cx]) {
-      LineObj[cx] = chartWindow.append("line").attr("class", "slopeLine");
-    }
-    LineObj[cx].style("opacity", 1);
+//   function drawlineThenRotate({ chartWindow, cx }) {
+//     // let cx = parseFloat(select(this).attr("cx"));
+//     console.log("mouse");
+//     console.log(cx);
+//     if (!LineObj[cx]) {
+//       LineObj[cx] = chartWindow.append("line").attr("class", "slopeLine");
+//     }
+//     LineObj[cx].style("opacity", 1);
   
-    let { minValues, maxValues } = minMaxValues;
+//     let { minValues, maxValues } = minMaxValues;
   
-    minValues.some((minVal, index) => {
-      if (timeScale(minVal.x) == cx) {
-        startRotation(LineObj[cx], index, minValues);
-        return true;
-      }
-    });
-    maxValues.some((maxVal, index) => {
-      if (timeScale(maxVal.x) == cx) {
-        startRotation(LineObj[cx], index, maxValues);
-        return true;
-      }
-    });
-  }
+//     minValues.some((minVal, index) => {
+//       if (timeScale(minVal.x) == cx) {
+//         startRotation(LineObj[cx], index, minValues);
+//         return true;
+//       }
+//     });
+//     maxValues.some((maxVal, index) => {
+//       if (timeScale(maxVal.x) == cx) {
+//         startRotation(LineObj[cx], index, maxValues);
+//         return true;
+//       }
+//     });
+//   }
   
-  function startRotation(line, index, valuesArray) {
-    console.log({ valuesArray, line });
-    let currentVal = valuesArray[index];
-    let nextVal = valuesArray[index + 1];
-    if (!nextVal || !currentVal) return console.log("No next val");
-    let x1 = timeScale(currentVal.x);
-    let x2 = timeScale(nextVal.x);
-    let y1 = priceScale(currentVal.y);
-    let y2 = priceScale(nextVal.y);
-    console.log({ x1, x2, y1, y2 });
-    line.attr("x1", x1);
-    line.attr("x2", x2);
-    line.attr("y1", y1);
-    line.attr("y2", y2);
-  }
+//   function startRotation(line, index, valuesArray) {
+//     console.log({ valuesArray, line });
+//     let currentVal = valuesArray[index];
+//     let nextVal = valuesArray[index + 1];
+//     if (!nextVal || !currentVal) return console.log("No next val");
+//     let x1 = timeScale(currentVal.x);
+//     let x2 = timeScale(nextVal.x);
+//     let y1 = priceScale(currentVal.y);
+//     let y2 = priceScale(nextVal.y);
+//     console.log({ x1, x2, y1, y2 });
+//     line.attr("x1", x1);
+//     line.attr("x2", x2);
+//     line.attr("y1", y1);
+//     line.attr("y2", y2);
+//   }
   
-  function removeLine() {
-    let cx = select(this).attr("cx");
-    console.log("leave");
-    if (!LineObj[cx]) return; //fail safe?
-    LineObj[cx].style("opacity", 0);
-    // clearInterval(timerObj[cx])
-  }
+//   function removeLine() {
+//     let cx = select(this).attr("cx");
+//     console.log("leave");
+//     if (!LineObj[cx]) return; //fail safe?
+//     LineObj[cx].style("opacity", 0);
+//     // clearInterval(timerObj[cx])
+//   }
   
 
 
 
 
-  return {
-    appendMinmaxMarkers
-  };
+//   return {
+//     appendMinmaxMarkers
+//   };
 
-}
+// }
 

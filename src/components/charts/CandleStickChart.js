@@ -4,15 +4,15 @@ import { axisBottom, axisRight } from "d3-axis";
 import { zoom } from "d3-zoom";
 import { scaleLinear, scaleTime } from "d3-scale";
 import { extent, max, min } from "d3-array";
-import { select, event } from "d3-selection";
+import { select, event, mouse } from "d3-selection";
 import { drag } from "d3-drag";
 import {
   forwardFill,
   dropShadow,
   doZoomIn,
-  doZoomOut,
-  utilDataSetup
+  doZoomOut
 } from "./chartHelpers/utils.js";
+import diff from "../extrema.js";
 
 import { addCandleSticks } from "./chartHelpers/candleStickUtils.js";
 
@@ -40,28 +40,26 @@ function CandleStickChart({ width, height, timeframe }) {
 
   // console.log(OHLCdata)
   if (!OHLCdata) OHLCdata.all = [];
-  // const timestamps = OHLCdata.all.map(d => d.timestamp);
+  const timestamps = OHLCdata.all.map(d => d.timestamp);
   const highs = OHLCdata.all.map(d => d.high);
   const lows = OHLCdata.all.map(d => d.low);
   const closes = OHLCdata.all.map(d => d.close);
   const opens = OHLCdata.all.map(d => d.open);
-  // const minMaxValues = {
-  //   minValues: [],
-  //   maxValues: []
-  // };
-  
+  const minMaxValues = {
+    minValues: [],
+    maxValues: []
+  };
+
   useHack = OHLCdata;
   const innerWidth = width - (margin.left + margin.right);
-  
+
   const innerHeight = height - (margin.top + margin.bottom);
-  
+
   const timeScale = scaleTime().range([0, innerWidth]);
-  
+
   const priceScale = scaleLinear().range([innerHeight, 0]);
-  
+
   const candleHeightScale = scaleLinear().range([0, innerHeight]);
-  
-  let {appendMinmaxMarkers} =  utilDataSetup({OHLCdata, priceScale, timeScale})
 
   let timeAxis = axisBottom(timeScale)
     .ticks(5)
@@ -222,49 +220,54 @@ function CandleStickChart({ width, height, timeframe }) {
   }
 
   const addHighLowMarkers = () => {
-    let svg = select(chartRef.current);
+    //  data,  name, mincolor, maxcolor, tolerence, ismin, ismax
+    appendMinmaxMarkers(highs, "high", "green", "red", 5, false, true, true);
+    appendMinmaxMarkers(lows, "low", "green", "red", 5, true, true, true);
+    // appendMinmaxMarkers(opens, "open", "green", "red", 10, true, true);
+    // appendMinmaxMarkers(closes, "close", "green", "red", 10, true, true);
+  };
 
+  const appendMinmaxMarkers = (
+    data,
+    name,
+    minColor,
+    maxColor,
+    tolerance,
+    min,
+    max,
+    addPriceLevels
+  ) => {
+    let svg = select(chartRef.current);
     let chartWindow = svg.select(".chartWindow");
-    appendMinmaxMarkers({
-      chartWindow,
-      data: highs,
-      name: "high",
-      minColor: "green",
-      maxColor: "red",
-      tolaerance: 5,
-      isMin: true,
-      isMax: true
-    });
-    appendMinmaxMarkers({
-      chartWindow,
-      data: lows,
-      name: "low",
-      minColor: "green",
-      maxColor: "red",
-      tolaerance: 10,
-      isMin: true,
-      isMax: true
-    });
-    appendMinmaxMarkers({
-      chartWindow,
-      data: opens,
-      name: "open",
-      minColor: "green",
-      maxColor: "red",
-      tolaerance: 10,
-      isMin: true,
-      isMax: true
-    });
-    appendMinmaxMarkers({
-      chartWindow,
-      data: closes,
-      name: "close",
-      minColor: "green",
-      maxColor: "red",
-      tolaerance: 10,
-      isMin: true,
-      isMax: true
-    });
+
+    let { minValues, maxValues } = diff.minMax(timestamps, data, tolerance);
+    console.log({ minMaxValues });
+    if (max) {
+      minMaxValues.maxValues = [...minMaxValues.maxValues, ...maxValues];
+      let maxMarkers = chartWindow
+        .selectAll(`.max${name}MarkerGroup`)
+        .data(maxValues);
+      appendMarker(maxMarkers, maxColor, 5, `max${name}MarkerGroup`);
+    }
+
+    if (min) {
+      minMaxValues.minValues = [...minMaxValues.minValues, ...minValues];
+      let minMarkers = chartWindow
+        .selectAll(`.min${name}MarkerGroup`)
+        .data(minValues);
+      appendMarker(minMarkers, minColor, 5, `min${name}MarkerGroup`);
+    }
+    if (addPriceLevels) {
+      let minPriceLevels = chartWindow
+        .selectAll(`.minPriceLevel`)
+        .data(minValues);
+      appendPriceLevel(minPriceLevels, minColor, `minPriceLevel`);
+
+      let maxPriceLevels = chartWindow
+        .selectAll(`.maxPriceLevel`)
+        .data(maxValues);
+      appendPriceLevel(maxPriceLevels, maxColor, `maxPriceLevel`);
+    }
   };
 
   const draw = data => {
@@ -307,6 +310,111 @@ function CandleStickChart({ width, height, timeframe }) {
     addHighLowMarkers();
   };
 
+  function appendMarker(markers, color, r, classAttr) {
+    markers.exit().remove();
+    markers
+      .enter()
+      .append("circle")
+      .merge(markers)
+      .attr("cx", d => timeScale(d.x))
+      .attr("cy", d => priceScale(d.y))
+      .attr("r", r)
+      .attr("fill", color)
+      .attr("class", classAttr)
+      .on("mouseover", drawlineThenRotate)
+      .on("mouseleave", removeLine)
+      .style("filter", "url(#drop-shadow)");
+  }
+
+  // appendPriceLevel(minPriceLevels, minColor, `minPriceLevel`);
+
+  function appendPriceLevel(priceLevels, color, classAttr) {
+    console.log('appedning pricle level')
+    priceLevels.exit().remove();
+    priceLevels
+      .enter()
+      .append("line")
+      .merge(priceLevels)
+
+      .attr("x1", d => timeScale(d.x))
+      .attr("y1", d => priceScale(d.y))
+      .attr("x2", (d, i) => {
+        if(i < priceLevels.data().length){
+          let prevData = priceLevels.data()[i+1]
+          if(!prevData)return console.log('fail') 
+          // console.log({prevData})
+          return timeScale(prevData.x);
+        }
+      })
+      .attr("y2", (d, i) => {
+        if(i < priceLevels.data().length){
+          console.log({i, ys:priceLevels.data()})
+          let prevData = priceLevels.data()[i+1]
+          if(!prevData)return console.log('fail') 
+          return priceScale(prevData.y);
+        }
+      })
+      // .attr("stroke-width", 4)
+      .attr("fill", color)
+      .attr("class", classAttr)
+      .attr("class", 'slopeLine')
+
+      // .style("filter", "url(#drop-shadow)");
+  }
+
+  const LineObj = {};
+  const timerObj = {};
+
+  function drawlineThenRotate() {
+    let svg = select(chartRef.current);
+    let chartWindow = svg.select(".chartWindow");
+    let cx = parseFloat(select(this).attr("cx"));
+    console.log("mouse");
+    console.log(cx);
+    if (!LineObj[cx]) {
+      LineObj[cx] = chartWindow.append("line").attr("class", "slopeLine");
+    }
+    LineObj[cx].style("opacity", 1);
+
+    let { minValues, maxValues } = minMaxValues;
+
+    minValues.some((minVal, index) => {
+      if (timeScale(minVal.x) == cx) {
+        startRotation(LineObj[cx], index, minValues);
+        return true;
+      }
+    });
+    maxValues.some((maxVal, index) => {
+      if (timeScale(maxVal.x) == cx) {
+        startRotation(LineObj[cx], index, maxValues);
+        return true;
+      }
+    });
+  }
+
+  function startRotation(line, index, valuesArray) {
+    console.log({ valuesArray, line });
+    let currentVal = valuesArray[index];
+    let nextVal = valuesArray[index + 1];
+    if (!nextVal || !currentVal) return console.log("No next val");
+    let x1 = timeScale(currentVal.x);
+    let x2 = timeScale(nextVal.x);
+    let y1 = priceScale(currentVal.y);
+    let y2 = priceScale(nextVal.y);
+    console.log({ x1, x2, y1, y2 });
+    line.attr("x1", x1);
+    line.attr("x2", x2);
+    line.attr("y1", y1);
+    line.attr("y2", y2);
+  }
+
+  function removeLine() {
+    let cx = select(this).attr("cx");
+    console.log("leave");
+    if (!LineObj[cx]) return; //fail safe?
+    LineObj[cx].style("opacity", 0);
+    // clearInterval(timerObj[cx])
+  }
 
   return (
     <>
