@@ -329,7 +329,7 @@ function CandleStickChart({ width, height, timeframe }) {
   // appendPriceLevel(minPriceLevels, minColor, `minPriceLevel`);
 
   function appendPriceLevel(priceLevels, color, classAttr) {
-    console.log('appedning pricle level')
+    console.log("appedning pricle level");
     priceLevels.exit().remove();
     priceLevels
       .enter()
@@ -339,27 +339,27 @@ function CandleStickChart({ width, height, timeframe }) {
       .attr("x1", d => timeScale(d.x))
       .attr("y1", d => priceScale(d.y))
       .attr("x2", (d, i) => {
-        if(i < priceLevels.data().length){
-          let prevData = priceLevels.data()[i+1]
-          if(!prevData)return console.log('fail') 
+        if (i < priceLevels.data().length) {
+          let prevData = priceLevels.data()[i + 1];
+          if (!prevData) return console.log("fail");
           // console.log({prevData})
           return timeScale(prevData.x);
         }
       })
       .attr("y2", (d, i) => {
-        if(i < priceLevels.data().length){
-          console.log({i, ys:priceLevels.data()})
-          let prevData = priceLevels.data()[i+1]
-          if(!prevData)return console.log('fail') 
+        if (i < priceLevels.data().length) {
+          console.log({ i, ys: priceLevels.data() });
+          let prevData = priceLevels.data()[i + 1];
+          if (!prevData) return console.log("fail");
           return priceScale(prevData.y);
         }
       })
       // .attr("stroke-width", 4)
       .attr("fill", color)
       .attr("class", classAttr)
-      .attr("class", 'slopeLine')
+      .attr("class", "slopeLine");
 
-      // .style("filter", "url(#drop-shadow)");
+    // .style("filter", "url(#drop-shadow)");
   }
 
   const LineObj = {};
