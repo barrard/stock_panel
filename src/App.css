@@ -61,9 +61,16 @@ box-shadow: 0px 0px 0px 0px rgba(207, 195, 195, 0.15);
   stroke: black;
 }
 
-.slopeLine{
+.slopeLineForward{
   fill:none;
   stroke: magenta;
+  stroke-width: 3px;
+  pointer-events:none;
+}
+
+.slopeLineBackward{
+  fill:none;
+  stroke: lawngreen;
   stroke-width: 3px;
   pointer-events:none;
 }

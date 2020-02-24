@@ -28,10 +28,13 @@ let mouseDRAGSART;
 let dragStartData;
 let lastBarCount;
 let useHack;
+let currentLineForward;
+let currentLineBackward;
 
 function CandleStickChart({ width, height, timeframe }) {
   const chartRef = useRef();
   const [initChart, setInitChart] = useState(false);
+
   const [OHLCdata, setOHLCdata] = useState({
     all: [],
     partial: [],
@@ -46,8 +49,27 @@ function CandleStickChart({ width, height, timeframe }) {
   const closes = OHLCdata.all.map(d => d.close);
   const opens = OHLCdata.all.map(d => d.open);
   const minMaxValues = {
-    minValues: [],
-    maxValues: []
+    open:{
+
+      minValues: [],
+      maxValues: []
+    },
+    close:{
+
+      minValues: [],
+      maxValues: []
+    },
+    high:{
+
+      minValues: [],
+      maxValues: []
+    },
+    low:{
+
+      minValues: [],
+      maxValues: []
+    },
+    
   };
 
   useHack = OHLCdata;
@@ -71,12 +93,13 @@ function CandleStickChart({ width, height, timeframe }) {
 
   useEffect(() => {
     console.log("load");
-    //66.8.204.49
     fetch(
       `${process.env.REACT_APP_STOCK_DATA_URL}/back_data/${timeframe}/${timeframe}-ES.json`
     ).then(async res => {
       let json = await res.json();
+      //TESTING TODO REMOVE
       console.log(json);
+      //TESTING TODO REMOVE
       json.results.forEach(
         r => (r.timestamp = new Date(r.timestamp).getTime())
       );
@@ -84,13 +107,14 @@ function CandleStickChart({ width, height, timeframe }) {
       json.results = forwardFill(json.results);
       setOHLCdata({
         all: json.results,
-        partial: json.results
+        partial: json.results.slice(600)
       });
       setupChart();
     });
   }, []);
 
   useEffect(() => {
+    // console.log("draw");
     draw();
   });
 
@@ -220,11 +244,11 @@ function CandleStickChart({ width, height, timeframe }) {
   }
 
   const addHighLowMarkers = () => {
-    //  data,  name, mincolor, maxcolor, tolerence, ismin, ismax
+    //  data,  name, mincolor, maxcolor, tolerence, ismin, ismax, PriceLevels
     appendMinmaxMarkers(highs, "high", "green", "red", 5, false, true, true);
-    appendMinmaxMarkers(lows, "low", "green", "red", 5, true, true, true);
-    // appendMinmaxMarkers(opens, "open", "green", "red", 10, true, true);
-    // appendMinmaxMarkers(closes, "close", "green", "red", 10, true, true);
+    appendMinmaxMarkers(lows, "low", "green", "red", 5, true, false, true);
+    appendMinmaxMarkers(opens, "open", "green", "red", 10, true, true, true);
+    appendMinmaxMarkers(closes, "close", "green", "red", 10, true, true, true);
   };
 
   const appendMinmaxMarkers = (
@@ -239,34 +263,38 @@ function CandleStickChart({ width, height, timeframe }) {
   ) => {
     let svg = select(chartRef.current);
     let chartWindow = svg.select(".chartWindow");
+    console.log({ name });
 
     let { minValues, maxValues } = diff.minMax(timestamps, data, tolerance);
-    console.log({ minMaxValues });
+    console.log({ maxValues: maxValues.length });
+    // console.log({ minValues: minValues.length });
+    // console.log({ minMaxValues });
     if (max) {
-      minMaxValues.maxValues = [...minMaxValues.maxValues, ...maxValues];
+      minMaxValues[name].maxValues = maxValues;
       let maxMarkers = chartWindow
         .selectAll(`.max${name}MarkerGroup`)
         .data(maxValues);
-      appendMarker(maxMarkers, maxColor, 5, `max${name}MarkerGroup`);
+      appendMarker(maxMarkers, maxColor, 5, `max${name}MarkerGroup`, name);
+      if (addPriceLevels) {
+        let maxPriceLevels = chartWindow
+          .selectAll(`.max${name}PriceLevel`)
+          .data(maxValues);
+        appendPriceLevel(maxPriceLevels, maxColor, `max${name}PriceLevel`);
+      }
     }
 
     if (min) {
-      minMaxValues.minValues = [...minMaxValues.minValues, ...minValues];
+      minMaxValues[name].minValues =minValues
       let minMarkers = chartWindow
         .selectAll(`.min${name}MarkerGroup`)
         .data(minValues);
-      appendMarker(minMarkers, minColor, 5, `min${name}MarkerGroup`);
-    }
-    if (addPriceLevels) {
-      let minPriceLevels = chartWindow
-        .selectAll(`.minPriceLevel`)
-        .data(minValues);
-      appendPriceLevel(minPriceLevels, minColor, `minPriceLevel`);
-
-      let maxPriceLevels = chartWindow
-        .selectAll(`.maxPriceLevel`)
-        .data(maxValues);
-      appendPriceLevel(maxPriceLevels, maxColor, `maxPriceLevel`);
+      appendMarker(minMarkers, minColor, 5, `min${name}MarkerGroup`, name);
+      if (addPriceLevels) {
+        let minPriceLevels = chartWindow
+          .selectAll(`.min${name}PriceLevel`)
+          .data(minValues);
+        appendPriceLevel(minPriceLevels, minColor, `min${name}PriceLevel`);
+      }
     }
   };
 
@@ -310,7 +338,7 @@ function CandleStickChart({ width, height, timeframe }) {
     addHighLowMarkers();
   };
 
-  function appendMarker(markers, color, r, classAttr) {
+  function appendMarker(markers, color, r, classAttr, name) {
     markers.exit().remove();
     markers
       .enter()
@@ -320,8 +348,8 @@ function CandleStickChart({ width, height, timeframe }) {
       .attr("cy", d => priceScale(d.y))
       .attr("r", r)
       .attr("fill", color)
-      .attr("class", classAttr)
-      .on("mouseover", drawlineThenRotate)
+      .attr("class", (d, i)=>`${classAttr} ${i}`)
+      .on("mouseover", function(){return drawDoubleSlopeLines(this,name)})
       .on("mouseleave", removeLine)
       .style("filter", "url(#drop-shadow)");
   }
@@ -329,7 +357,7 @@ function CandleStickChart({ width, height, timeframe }) {
   // appendPriceLevel(minPriceLevels, minColor, `minPriceLevel`);
 
   function appendPriceLevel(priceLevels, color, classAttr) {
-    console.log("appedning pricle level");
+    // console.log("appedning pricle level");
     priceLevels.exit().remove();
     priceLevels
       .enter()
@@ -339,25 +367,28 @@ function CandleStickChart({ width, height, timeframe }) {
       .attr("x1", d => timeScale(d.x))
       .attr("y1", d => priceScale(d.y))
       .attr("x2", (d, i) => {
-        if (i < priceLevels.data().length) {
+        if (i + 1 < priceLevels.data().length) {
           let prevData = priceLevels.data()[i + 1];
           if (!prevData) return console.log("fail");
           // console.log({prevData})
           return timeScale(prevData.x);
+        } else {
+          return timeScale(d.x);
         }
       })
       .attr("y2", (d, i) => {
-        if (i < priceLevels.data().length) {
-          console.log({ i, ys: priceLevels.data() });
+        if (i + 1 < priceLevels.data().length) {
+          // console.log({ i, ys: priceLevels.data()[i] });
           let prevData = priceLevels.data()[i + 1];
           if (!prevData) return console.log("fail");
           return priceScale(prevData.y);
+        } else {
+          return priceScale(d.y);
         }
       })
       // .attr("stroke-width", 4)
-      .attr("fill", color)
-      .attr("class", classAttr)
-      .attr("class", "slopeLine");
+      .attr("stroke", color)
+      .attr("class", classAttr);
 
     // .style("filter", "url(#drop-shadow)");
   }
@@ -365,57 +396,136 @@ function CandleStickChart({ width, height, timeframe }) {
   const LineObj = {};
   const timerObj = {};
 
-  function drawlineThenRotate() {
+  function drawDoubleSlopeLines(that,name) {
     let svg = select(chartRef.current);
     let chartWindow = svg.select(".chartWindow");
-    let cx = parseFloat(select(this).attr("cx"));
-    console.log("mouse");
-    console.log(cx);
-    if (!LineObj[cx]) {
-      LineObj[cx] = chartWindow.append("line").attr("class", "slopeLine");
+    let cx = parseFloat(select(that).attr("cx"));
+    let cy = parseFloat(select(that).attr("cy"));
+    let className = select(that).attr("class");
+    console.log({ className });
+    // console.log(cx);
+    // if (!LineObj[cx]) {
+    currentLineForward = chartWindow
+      .append("line")
+      .attr("class", "slopeLineForward");
+    currentLineBackward = chartWindow
+      .append("line")
+      .attr("class", "slopeLineBackward");
+
+    // }
+    currentLineForward.style("opacity", 1);
+    currentLineBackward.style("opacity", 1);
+
+    let { minValues, maxValues } = minMaxValues[name];
+
+    if (className.includes("min")) {
+      minValues.some((minVal, index) => {
+        console.log("looking in minvalues");
+        if (timeScale(minVal.x) == cx && priceScale(minVal.y) == cy) {
+          appendSlopeLines(
+            currentLineForward,
+            currentLineBackward,
+            index,
+            minValues
+          );
+          return true;
+        }
+      });
     }
-    LineObj[cx].style("opacity", 1);
 
-    let { minValues, maxValues } = minMaxValues;
-
-    minValues.some((minVal, index) => {
-      if (timeScale(minVal.x) == cx) {
-        startRotation(LineObj[cx], index, minValues);
-        return true;
-      }
-    });
-    maxValues.some((maxVal, index) => {
-      if (timeScale(maxVal.x) == cx) {
-        startRotation(LineObj[cx], index, maxValues);
-        return true;
-      }
-    });
+    if (className.includes("max")) {
+      maxValues.some((maxVal, index) => {
+        console.log("looking in maxvalues");
+        if (timeScale(maxVal.x) == cx && priceScale(maxVal.y) == cy) {
+          appendSlopeLines(
+            currentLineForward,
+            currentLineBackward,
+            index,
+            maxValues
+          );
+          return true;
+        }
+      });
+    }
   }
 
-  function startRotation(line, index, valuesArray) {
-    console.log({ valuesArray, line });
+  function appendSlopeLines(forwardLine, backwardLine, index, valuesArray) {
+    console.log({index, valuesArrayLength:valuesArray.length})
+    // console.log({ valuesArray, line });
     let currentVal = valuesArray[index];
     let nextVal = valuesArray[index + 1];
-    if (!nextVal || !currentVal) return console.log("No next val");
-    let x1 = timeScale(currentVal.x);
-    let x2 = timeScale(nextVal.x);
-    let y1 = priceScale(currentVal.y);
-    let y2 = priceScale(nextVal.y);
-    console.log({ x1, x2, y1, y2 });
-    line.attr("x1", x1);
-    line.attr("x2", x2);
-    line.attr("y1", y1);
-    line.attr("y2", y2);
+    let prevVal = valuesArray[index - 1];
+    let line1 = false
+    let line2 = false
+    if (!nextVal || !currentVal || (index === valuesArray.length-1)) {
+      console.log("No next val");
+    } else {
+      let x1 = timeScale(currentVal.x);
+      let x2 = timeScale(nextVal.x);
+      let y1 = priceScale(currentVal.y);
+      let y2 = priceScale(nextVal.y);
+      // console.log({ x1, x2, y1, y2 });
+      forwardLine.attr("x1", x1);
+      forwardLine.attr("x2", x2);
+      forwardLine.attr("y1", y1);
+      forwardLine.attr("y2", y2);
+      line2 = {x1, x2, y1, y2}
+    }
+    if (!prevVal || !currentVal || index === 0) {
+      console.log("No prev val");
+    } else {
+      let x1 = timeScale(prevVal.x);
+      let x2 = timeScale(currentVal.x);
+      let y1 = priceScale(prevVal.y);
+      let y2 = priceScale(currentVal.y);
+      // console.log({ x1, x2, y1, y2 });
+      backwardLine.attr("x1", x1);
+      backwardLine.attr("x2", x2);
+      backwardLine.attr("y1", y1);
+      backwardLine.attr("y2", y2);
+      line1 = {x1, x2, y1, y2}
+    }
+    if(line1&&line2){
+      /*
+      Compare the slopes of thee two lines?
+      */
+     slopeCompare({line1, line2})
+    }
   }
 
   function removeLine() {
     let cx = select(this).attr("cx");
-    console.log("leave");
-    if (!LineObj[cx]) return; //fail safe?
-    LineObj[cx].style("opacity", 0);
-    // clearInterval(timerObj[cx])
+    // console.log("leave");
+    if (currentLineForward) {
+      currentLineForward.style("opacity", 0);
+      currentLineForward = false;
+    }
+    if (currentLineBackward) {
+      currentLineBackward.style("opacity", 0);
+      currentLineBackward = false;
+    }
   }
 
+  function slopeCompare({line1, line2}){
+    console.log({line1, line2})
+    let slopeLine1 = slopeLine(line1)
+    console.log({slopeLine1})
+    let slopeLine2 = slopeLine(line2)
+    console.log({slopeLine2})
+    let avgSlope = (slopeLine1+slopeLine2)/2
+    console.log({avgSlope})
+    let yIntcpt = intercept({x:line2.x2, y:line2.y2}, slopeLine2)
+    console.log({yIntcpt})
+    //Whats the date 5 bars out
+    let barWidth = innerWidth / OHLCdata.partial.length;
+    console.log({barWidth, x2:line2.x2})
+    let futureX = line2.x2+(barWidth*10)
+    let futureDate = timeScale.invert(futureX)
+    console.log({futureDate})
+    let futureY = yIntcpt + (futureX*avgSlope)
+    console.log({futureY})
+    console.log(priceScale.invert(futureY))
+  }
   return (
     <>
       <h3>{timeframe}</h3>
@@ -431,7 +541,12 @@ function CandleStickChart({ width, height, timeframe }) {
 
 export default CandleStickChart;
 
+function slopeLine({x1, x2, y1, y2}){
+  return slope({x:x1, y:y1}, {x:x2, y:y2})
+}
+
 function slope(a, b) {
+  console.log({a,b})
   if (a.x == b.x) {
     return null;
   }

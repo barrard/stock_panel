@@ -11,12 +11,12 @@ function ChartAnalysis({ data, width, height }) {
           <h2>Chart Analysis</h2>
           
           <CandleStickChart
-      width={900}
+      width={800}
       height={450}
       timeframe={'intraday'}
       />
 
- <CandleStickChart
+ {/* <CandleStickChart
       width={900}
       height={450}
       timeframe={'daily'}
@@ -26,7 +26,7 @@ function ChartAnalysis({ data, width, height }) {
       width={900}
       height={450}
       timeframe={'weekly'}
-      /> 
+      />  */}
       </Div>
   )
 }

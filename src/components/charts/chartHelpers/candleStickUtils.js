@@ -42,8 +42,8 @@ export function addCandleWicks(
     .attr("stroke", "black")
     .attr("stroke-width", candleStrokeWidth)
     .attr("class", "candleStickWick")
-    .on("mouseover", ({ open, high, close, low, tradingDay }) =>
-      console.log({ open, high, close, low, tradingDay })
+    .on("mouseover", ({ open, high, close, low, timestamp, tradingDay }) =>
+      console.log({ open, high, close, low, timestamp, tradingDay })
     );
 }
 
@@ -75,8 +75,8 @@ export function addCandleSticksBody(
     .attr("fill", d => candleFillAccessor(d))
     .attr("stroke", "black")
     .attr("stroke-width", candleStrokeWidth / 2)
-    .on("mouseover", ({ open, high, close, low, tradingDay }) =>
-      console.log({ open, high, close, low, tradingDay })
+    .on("mouseover", ({ open, high, close, low, timestamp, tradingDay }) =>
+      console.log({ open, high, close, low, timestamp:new Date(timestamp) })
     )
     .attr("class", "candleStick");
 }
