@@ -93,7 +93,8 @@ function QuoteContainer({ data }) {
 
     return (
       <Container className={`quoteBox ${redGreenClass}`} key={symbol}>
-        <HideButton onClick={() => hide(symbol)}>HIDE</HideButton>
+        <div>DAT BOY</div>
+        {/* <HideButton onClick={() => hide(symbol)}>HIDE</HideButton>
         <QuoteSymbol symbol={symbol} />
         <IconButton>
           <Link to={`/chart/${symbol}`}>
@@ -127,7 +128,7 @@ function QuoteContainer({ data }) {
           width={1000}
           height={450}
         />
-        <TotalVolume TotalVol={TotalVol} />
+        <TotalVolume TotalVol={TotalVol} /> */}
       </Container>
     );
   });

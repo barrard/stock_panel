@@ -76,7 +76,7 @@ export function addCandleSticksBody(
     .attr("stroke", "black")
     .attr("stroke-width", candleStrokeWidth / 2)
     .on("mouseover", ({ open, high, close, low, timestamp, tradingDay }) =>
-      console.log({ open, high, close, low, timestamp:new Date(timestamp) })
+      console.log({ open, high, close, low, timestamp:new Date(timestamp), tradingDay })
     )
     .attr("class", "candleStick");
 }
