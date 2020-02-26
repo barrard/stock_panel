@@ -112,15 +112,14 @@ let quoteTimeInLong = 0
 
   return (
     <AppContainer>
-      {/* <FilterButton setShow={setShowFilter} show={showFilter} />
+      <FilterButton setShow={setShowFilter} show={showFilter} />
       <PlayPauseBtn onClick={() => setPlayPause(!playPause)}>
         {playPause && "Pause"}
         {!playPause && "Play"}
       </PlayPauseBtn>
 {routing}
 
-       */}
-       <div>WTF</div>
+      
 
 
     </AppContainer>

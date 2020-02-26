@@ -7,28 +7,27 @@ function ChartAnalysis({ data, width, height }) {
 
 
   return (
-      <div>HI</div>
-//       <Div>
-//           <h2>Chart Analysis</h2>
+      <Div>
+          <h2>Chart Analysis</h2>
           
-//           <CandleStickChart
-//       width={800}
-//       height={450}
-//       timeframe={'intraday'}
-//       />
+          <CandleStickChart
+      width={800}
+      height={450}
+      timeframe={'intraday'}
+      />
 
-//  <CandleStickChart
-//       width={800}
-//       height={450}
-//       timeframe={'daily'}
-//       />
+ <CandleStickChart
+      width={800}
+      height={450}
+      timeframe={'daily'}
+      />
 
-// <CandleStickChart
-//       width={800}
-//       height={450}
-//       timeframe={'weekly'}
-//       /> 
-//       </Div>
+<CandleStickChart
+      width={800}
+      height={450}
+      timeframe={'weekly'}
+      /> 
+      </Div>
   )
 }
 
