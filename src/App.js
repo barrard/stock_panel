@@ -20,20 +20,24 @@ localStorage.setItem("filterList",   defaultFilterList  );
 
 function App() {
   const [commodities_quotes, setCommodities_quotes] = useState({});
-  const [playPause, setPlayPause] = useState(false);
+  const [playPause, setPlayPause] = useState(true);
   const [showFilter, setShowFilter] = useState(false);
   const [timerStarted, setTimerStarted] = useState(false);
 
 let quoteTimeInLong = 0
   
   if(playPause){
-    Socket.on("commodities_quotes", commodities_quotes => {
-      // console.log('commodities_quotes')
+    Socket.on("commodities_quotes", ({commodities_quotes, timestamp}) => {
+   
       if(!commodities_quotes) return console.log('NO DATA?!?!?!')
       for (let sym in commodities_quotes){
-        commodities_quotes[sym.slice(1)] = commodities_quotes[sym]
+        let safe_symbol = sym.slice(1)//'symbol comes in as /ES, we want ES'
+        commodities_quotes[safe_symbol] = commodities_quotes[sym]
+        commodities_quotes[safe_symbol].quoteTimeInLong = timestamp
         delete commodities_quotes[sym]
       }
+      console.log((commodities_quotes['ES']))
+
       let bad = quoteTimeInLong === commodities_quotes['ES'].quoteTimeInLong
         // console.log(commodities_quotes['CL'])
       // if(bad) console.log('BAAAAD')

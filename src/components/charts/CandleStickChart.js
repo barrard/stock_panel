@@ -1,4 +1,5 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
+import styled from "styled-components";
 import { axisBottom, axisRight } from "d3-axis";
 
 import { zoom } from "d3-zoom";
@@ -17,10 +18,18 @@ import diff from "../charts/chartHelpers/extrema.js";
 import { addCandleSticks } from "./chartHelpers/candleStickUtils.js";
 import { line } from "d3";
 
-
+let visibeIndicators = {
+  swingLines: false,
+  minMaxMarkers: false,
+  futureLines: false,
+  horizontalPriceLevel:false,
+  ema20:false,ema200:false, ema50:false
+};
 
 function CandleStickChart({ width, height, timeframe }) {
   const chartRef = useRef();
+  const [, updateState] = React.useState();
+  const forceUpdate = useCallback(() => updateState({}), []);
   const margin = {
     top: 15,
     right: 40,
@@ -35,12 +44,16 @@ function CandleStickChart({ width, height, timeframe }) {
   let currentLineForward;
   let currentLineBackward;
   let futureLineForward;
-  
+
   let timestamps;
   let highs;
   let lows;
   let closes;
   let opens;
+  let ema ={'20':[],
+   '50':[],
+    '200':[]
+ } //array of {x,y} coords
   let timeMin, timeMax;
   let futureLines = {};
   let OHLCdata = {
@@ -48,16 +61,9 @@ function CandleStickChart({ width, height, timeframe }) {
     partial: [],
     zoomState: 1
   };
-  // const [initChart, setInitChart] = useState(false);
-
-  // const [OHLCdata, setOHLCdata] = useState({
-  //   all: [],
-  //   partial: [],
-  //   zoomState: 1
-  // });
 
   console.log(OHLCdata);
-  if (!OHLCdata) OHLCdata.all = [];
+  // if (!OHLCdata) OHLCdata.all = [];
 
   console.log({ highs, lows, opens, closes });
   const minMaxValues = {
@@ -98,23 +104,21 @@ function CandleStickChart({ width, height, timeframe }) {
     .tickSize(-innerWidth);
 
   useEffect(() => {
-    console.log("load");
+    console.log("onload");
     fetch(
       `${process.env.REACT_APP_STOCK_DATA_URL}/back_data/${timeframe}/${timeframe}-ES.json`
     ).then(async res => {
       let json = await res.json();
-      //TESTING TODO REMOVE
-      console.log(json);
-      //TESTING TODO REMOVE
-      json.results.forEach(
-        r => (r.timestamp = new Date(r.timestamp).getTime())
-      );
+      //set the time to a number
+      json.forEach(r => (r.timestamp = new Date(r.timestamp).getTime()));
       //add any missing data with forward fill
-      json.results = forwardFill(json.results);
+      json = forwardFill(json);
       OHLCdata = {
         ...OHLCdata,
-        all: json.results,
-        partial: json.results
+        // all: json.slice(-100),
+        // partial: json.slice(-100)
+        all: json,
+        partial: json
       };
       setupChart();
     });
@@ -122,6 +126,7 @@ function CandleStickChart({ width, height, timeframe }) {
 
   useEffect(() => {
     // console.log("draw");
+
     draw();
   });
 
@@ -135,6 +140,10 @@ function CandleStickChart({ width, height, timeframe }) {
     lows = OHLCdata.all.map(d => d.low);
     closes = OHLCdata.all.map(d => d.close);
     opens = OHLCdata.all.map(d => d.open);
+
+    ema['20'] = makeEMA('20', 'close')
+    ema['50'] = makeEMA('50', 'close')
+    ema['200'] = makeEMA('200', 'close')
 
     //append timeAxis group
     svg
@@ -178,7 +187,6 @@ function CandleStickChart({ width, height, timeframe }) {
     svg.call(d3zoom); //needs to be after drag
 
     draw();
-    // setInitChart(true);
   };
 
   function zoomed() {
@@ -263,7 +271,26 @@ function CandleStickChart({ width, height, timeframe }) {
     // console.log({x:event.x - margin.left,MOUSEX})
   }
 
+  //TODO this could maybe go in another filter
+  function makeEMA(emaVal, price){
+    emaVal = parseInt(emaVal)
+
+    // return console.log(OHLCdata)
+    //rolling window
+    OHLCdata.all.forEach((data, index)=>{
+      //mke small arrays the length of emaVal
+      if(index < emaVal -1 ) return
+      if(index > 22)return
+      let start = index - (emaVal-1)
+      let end = start + emaVal
+      let windowData = OHLCdata.all.slice(start, end)
+      let test = OHLCdata.all.slice(0, 20)
+      console.log({test, windowData, OHLCdata, start:index - (emaVal-1), end:(emaVal)})
+    })
+
+  }
   const addHighLowMarkers = () => {
+    console.log("add markers");
     //  data,  name, mincolor, maxcolor, tolerence, ismin, ismax, PriceLevels
     appendMinmaxMarkers(highs, "high", "green", "red", 5, false, true, true);
     appendMinmaxMarkers(lows, "low", "green", "red", 5, true, false, true);
@@ -319,7 +346,7 @@ function CandleStickChart({ width, height, timeframe }) {
         chartWindow
       );
       if (addPriceLevels) {
-        appendPriceLevel(
+        appendSwingLevel(
           maxValues,
           maxColor,
           `max${name}PriceLevel`,
@@ -346,7 +373,7 @@ function CandleStickChart({ width, height, timeframe }) {
         chartWindow
       );
       if (addPriceLevels) {
-        appendPriceLevel(
+        appendSwingLevel(
           minValues,
           minColor,
           `min${name}PriceLevel`,
@@ -404,9 +431,19 @@ function CandleStickChart({ width, height, timeframe }) {
 
     addHighLowMarkers();
     appendFutureLines();
+    appendMovingAverges()
+  }
+
+  function appendMovingAverges(){
+    if(visibeIndicators.ema20){
+      //show 20 EMA
+
+    }
   }
 
   function appendFutureLines() {
+    if(!visibeIndicators.futureLines)return
+    console.log('Append futureLines')
     let currentLinesForward = [];
     let currentLinesBackward = [];
     let futureLinesForward = [];
@@ -431,46 +468,22 @@ function CandleStickChart({ width, height, timeframe }) {
   }
 
   function drawFutureLines(linesData, className, chartWindow) {
-    console.log({ linesData, className });
+    // console.log({ linesData, className });
     let lines = chartWindow.selectAll(`.${className}`).data(linesData);
     lines.exit().remove();
     lines
       .enter()
       .append("line")
       .merge(lines)
-      .attr("class", className)
+      .attr("class", `${className} futureLines`)
       .attr("x1", d => timeScale(d.x1))
       .attr("x2", d => timeScale(d.x2))
       .attr("y1", d => priceScale(d.y1))
       .attr("y2", d => priceScale(d.y2));
   }
 
-  function appendFutureMarker_AndLine({ point1, point2, futureLineForward }) {
-    console.log({ point1, point2 });
-    let svg = select(chartRef.current);
-    let chartWindow = svg.select(".chartWindow");
-    let data = [{ x: point2.x, y: point2.y }];
-    appendMarker(
-      data,
-      "orange",
-      6,
-      "futureMarker",
-      "futureMarker",
-      chartWindow
-    );
-
-    let x1 = point1.x;
-    let x2 = timeScale(point2.x);
-    let y1 = point1.y;
-    let y2 = priceScale(point2.y);
-    // console.log({ x1, x2, y1, y2 });
-    // futureLineForward.attr("x1", x1);
-    // futureLineForward.attr("x2", x2);
-    // futureLineForward.attr("y1", y1);
-    // futureLineForward.attr("y2", y2);
-  }
-
   function appendMarker(data, color, r, classAttr, name, chartWindow) {
+    if (!visibeIndicators.minMaxMarkers) return;
     let markers = chartWindow.selectAll(`.${classAttr}`).data(data);
     markers.exit().remove();
     markers
@@ -481,7 +494,7 @@ function CandleStickChart({ width, height, timeframe }) {
       .attr("cy", d => priceScale(d.y))
       .attr("r", r)
       .attr("fill", color)
-      .attr("class", (d, i) => `${classAttr} ${i}`)
+      .attr("class", (d, i) => `${classAttr} ${i} minMaxMarkers`)
       .on("mouseover", function() {
         if (name === "futureMarker") {
           let x = select(this).attr("cy");
@@ -499,13 +512,14 @@ function CandleStickChart({ width, height, timeframe }) {
 
   // appendHorizontalPriceLevel(data, minColor, `minPriceLevel`);
   function appendHorizontalPriceLevel(data, color, classAttr, chartWindow) {
+    if (!visibeIndicators.horizontalPriceLevel) return;
     let priceLevels = chartWindow.selectAll(`.${classAttr}`).data(data);
     let barWidth = innerWidth / OHLCdata.partial.length;
     let strokeWidth = barWidth / 5 < 1 ? 1 : barWidth / 5;
 
-    console.log({ data, color, classAttr, barWidth });
-    console.log("appedning pricle level");
-    console.log(priceLevels);
+    // console.log({ data, color, classAttr, barWidth });
+    // console.log("appedning pricle level");
+    // console.log(priceLevels);
     priceLevels.exit().remove();
     priceLevels
       .enter()
@@ -519,13 +533,14 @@ function CandleStickChart({ width, height, timeframe }) {
       .attr("y2", d => priceScale(d.y))
       .attr("stroke-width", 2)
       .attr("stroke", color)
-      .attr("class", classAttr)
+      .attr("class", `${classAttr} horizontalPriceLevel`)
       .style("opacity", 0.1);
   }
 
-  // appendPriceLevel(minPriceLevels, minColor, `minPriceLevel`);
-  function appendPriceLevel(data, color, classAttr, chartWindow) {
+  // appendSwingLevel(minPriceLevels, minColor, `minPriceLevel`);
+  function appendSwingLevel(data, color, classAttr, chartWindow) {
     // console.log("appedning pricle level");
+    if(!visibeIndicators.swingLines)return
     let priceLevels = chartWindow.selectAll(`.${classAttr}`).data(data);
     let dataLength = priceLevels.data().length;
     priceLevels.exit().remove();
@@ -556,7 +571,7 @@ function CandleStickChart({ width, height, timeframe }) {
       })
       // .attr("stroke-width", 4)
       .attr("stroke", color)
-      .attr("class", classAttr);
+      .attr("class", `${classAttr} swingLines`);
     // .style("filter", "url(#drop-shadow)");
   }
 
@@ -602,15 +617,6 @@ function CandleStickChart({ width, height, timeframe }) {
     let line2 = false;
     let linesData = futureLines[className];
     if (!linesData) {
-      // let currentLineForward = chartWindow
-      //   .append("line")
-      //   .attr("class", "slopeLineForward");
-      //   let currentLineBackward = chartWindow
-      //   .append("line")
-      //   .attr("class", "slopeLineBackward");
-      //   let futureLineForward = chartWindow
-      //   .append("line")
-      //   .attr("class", "futureLineForward");
       futureLines[className] = {};
       linesData = futureLines[className];
     }
@@ -652,7 +658,7 @@ function CandleStickChart({ width, height, timeframe }) {
       Draw a line, add a dot, blah blah
       */
       let { futureEndPoint, line2EndPoint } = slopeCompare({ line1, line2 });
-      // appendFutureMarker_AndLine({point1:line2EndPoint,point2:futureEndPoint, futureLineForward} );
+
       let x1 = timeScale.invert(line2EndPoint.x);
       let x2 = futureEndPoint.x;
       let y1 = priceScale.invert(line2EndPoint.y);
@@ -665,27 +671,6 @@ function CandleStickChart({ width, height, timeframe }) {
   function removeLine() {
     console.log(futureLines);
     return console.log("test");
-    let className = select(this).attr("class");
-    if (!futureLines[className]) {
-      return console.log("I dont know about this marker");
-    }
-    // console.log("leave");
-    let {
-      currentLineForward,
-      currentLineBackward,
-      futureLineForward
-    } = futureLines[className];
-    if (currentLineForward) {
-      currentLineForward.remove();
-    }
-    if (currentLineBackward) {
-      currentLineBackward.remove();
-    }
-    if (futureLineForward) {
-      futureLineForward.remove();
-    }
-
-    console.log(futureLines);
   }
 
   function slopeCompare({ line1, line2 }) {
@@ -703,9 +688,58 @@ function CandleStickChart({ width, height, timeframe }) {
     let futureEndPoint = { x: futureDate, y: futurePrice };
     return { futureEndPoint, line2EndPoint };
   }
+  function toggleIndicators(indicator) {
+    let svg = select(chartRef.current);
+    let markers = svg.selectAll(`.${indicator}`);
+    markers.remove();
+    let val = visibeIndicators[indicator];
+    val = !val;
+    visibeIndicators[indicator] = val;
+
+    forceUpdate();
+  }
   return (
+    //horizontalPriceLevel
     <>
       <h3>{timeframe}</h3>
+      <ToggleIndicatorButton
+        onClick={() => toggleIndicators("swingLines")}
+        isSet={visibeIndicators.swingLines}
+      >
+        SWINGLINES
+      </ToggleIndicatorButton>
+      <ToggleIndicatorButton
+        onClick={() => toggleIndicators("minMaxMarkers")}
+        isSet={visibeIndicators.minMaxMarkers}
+      >
+        MARKERS
+      </ToggleIndicatorButton>
+      <ToggleIndicatorButton
+        onClick={() => toggleIndicators("futureLines")}
+        isSet={visibeIndicators.futureLines}
+      >
+        FUTURE LINES
+      </ToggleIndicatorButton>
+      <ToggleIndicatorButton
+        onClick={() => toggleIndicators("horizontalPriceLevel")}
+        isSet={visibeIndicators.horizontalPriceLevel}
+      >
+        PRICE LEVELS
+      </ToggleIndicatorButton>
+
+      <ToggleIndicatorButton
+        onClick={() => toggleIndicators("ema20")}
+        isSet={visibeIndicators.ema20}
+      >
+        20 EMA
+      </ToggleIndicatorButton>
+
+      <ToggleIndicatorButton
+        onClick={() => toggleIndicators("ema50")}
+        isSet={visibeIndicators.ema50}
+      >
+        50EMA
+      </ToggleIndicatorButton>
       <svg
         ref={chartRef}
         width={width}
@@ -717,6 +751,8 @@ function CandleStickChart({ width, height, timeframe }) {
 }
 
 export default CandleStickChart;
+
+
 
 function slopeLine({ x1, x2, y1, y2 }) {
   return slope({ x: x1, y: y1 }, { x: x2, y: y2 });
@@ -743,3 +779,10 @@ function intercept(point, slope) {
 function xIntercept(a, m) {
   return a.x - a.y / m;
 }
+
+let ToggleIndicatorButton = styled.button`
+  background: ${({ isSet }) => {
+    console.log({ isSet });
+    return isSet ? "green" : "red";
+  }};
+`;
