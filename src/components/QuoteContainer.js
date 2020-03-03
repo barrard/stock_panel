@@ -10,6 +10,7 @@ import QuotePrice from "./QuoteComponents/QuotePrice.js";
 import LastVolume from "./QuoteComponents/LastVol.js";
 import AvgVol from "./QuoteComponents/AvgVol.js";
 import TotalVolume from "./QuoteComponents/TotalVolume.js";
+import FilterButton from "./FilterButton.js";
 
 import HorizontalHistogram from "../components/charts/HorizontalHistogram.js";
 import TickChart from "../components/charts/TickChart.js";
@@ -27,31 +28,34 @@ let allMinMaxValues = {
   minValues: []
 };
 
-function QuoteContainer({ data }) {
-  if (!data) return <></>;
+function QuoteContainer({Socket}) {
+  const [commodities_quotes, setCommodities_quotes] = useState({});
+  const [playPause, setPlayPause] = useState(true);
+  const [showFilter, setShowFilter] = useState(false);
+  if (!commodities_quotes) return <></>;
   let filterList = localStorage.getItem("filterList");
   filterList = JSON.parse(filterList);
 
-  let AllQuotes = Object.keys(data).map(symbol => {
+  let AllQuotes = Object.keys(commodities_quotes).map(symbol => {
     if (filterList.indexOf(symbol) >= 0) return <div key={symbol}></div>;
     if (!LAST_VOL[symbol]) {
       PRICE_VOL_LIST[symbol] = [];
       volumePriceProfile[symbol] = {};
-      LAST_VOL[symbol] = data[symbol].totalVolume;
-      LAST_PRICE[symbol] = data[symbol].lastPriceInDouble;
+      LAST_VOL[symbol] = commodities_quotes[symbol].totalVolume;
+      LAST_PRICE[symbol] = commodities_quotes[symbol].lastPriceInDouble;
     }
 
-    const Price = data[symbol].lastPriceInDouble;
-    const BidSize = data[symbol].bidSizeInLong;
-    const AskSize = data[symbol].askSizeInLong;
-    const BidPrice = data[symbol].bidPriceInDouble;
-    const AskPrice = data[symbol].askPriceInDouble;
-    const LastVol = data[symbol].totalVolume - LAST_VOL[symbol];
-    const TotalVol = data[symbol].totalVolume;
-    const quote_time = data[symbol].quoteTimeInLong;
-    const tickSize = data[symbol].tick ? data[symbol].tick : 0.25;
+    const Price = commodities_quotes[symbol].lastPriceInDouble;
+    const BidSize = commodities_quotes[symbol].bidSizeInLong;
+    const AskSize = commodities_quotes[symbol].askSizeInLong;
+    const BidPrice = commodities_quotes[symbol].bidPriceInDouble;
+    const AskPrice = commodities_quotes[symbol].askPriceInDouble;
+    const LastVol = commodities_quotes[symbol].totalVolume - LAST_VOL[symbol];
+    const TotalVol = commodities_quotes[symbol].totalVolume;
+    const quote_time = commodities_quotes[symbol].quoteTimeInLong;
+    const tickSize = commodities_quotes[symbol].tick ? commodities_quotes[symbol].tick : 0.25;
 
-    let currentPrice = data[symbol].lastPriceInDouble;
+    let currentPrice = commodities_quotes[symbol].lastPriceInDouble;
     let last = LAST_PRICE[symbol];
     let redGreenClass = "";
 
@@ -64,7 +68,7 @@ function QuoteContainer({ data }) {
     }
     const LastVols = PRICE_VOL_LIST[symbol].slice(-15);
     PRICE_VOL_LIST[symbol].push({ LastVol, Price, quote_time });
-    LAST_VOL[symbol] = data[symbol].totalVolume;
+    LAST_VOL[symbol] = commodities_quotes[symbol].totalVolume;
     LAST_PRICE[symbol] = currentPrice;
 
     if (LastVol && LastVol != NaN && !volumePriceProfile[symbol][Price]) {
@@ -132,7 +136,36 @@ function QuoteContainer({ data }) {
     );
   });
 
-  return <QuotesContainer>{AllQuotes}</QuotesContainer>;
+  if (playPause) {
+    Socket.on("commodities_quotes", ({ commodities_quotes, timestamp }) => {
+      if (!commodities_quotes) return console.log("NO DATA?!?!?!");
+      for (let sym in commodities_quotes) {
+        let safe_symbol = sym.slice(1); //'symbol comes in as /ES, we want ES'
+        commodities_quotes[safe_symbol] = commodities_quotes[sym];
+        commodities_quotes[safe_symbol].quoteTimeInLong = timestamp;
+        delete commodities_quotes[sym];
+      }
+      console.log(commodities_quotes["ES"]);
+
+      // let bad = quoteTimeInLong === commodities_quotes["ES"].quoteTimeInLong;
+      // console.log(commodities_quotes['CL'])
+      // if(bad) console.log('BAAAAD')
+      // quoteTimeInLong = commodities_quotes["ES"].quoteTimeInLong;
+
+      setCommodities_quotes(commodities_quotes);
+    });
+  } else {
+    Socket.off("commodities_quotes");
+    console.log("commodities_quotes paused");
+  }
+
+  return <QuotesContainer>
+          <FilterButton setShow={setShowFilter} show={showFilter} />
+      <PlayPauseBtn onClick={() => setPlayPause(!playPause)}>
+        {playPause && "Pause"}
+        {!playPause && "Play"}
+      </PlayPauseBtn>
+      {AllQuotes}</QuotesContainer>;
 }
 
 export default QuoteContainer;
@@ -169,3 +202,11 @@ function hide(symbol) {
     console.log(err);
   }
 }
+
+
+const PlayPauseBtn = styled.button`
+  z-index: 100;
+  position: fixed;
+  top: 10px;
+  left: 10px;
+`;

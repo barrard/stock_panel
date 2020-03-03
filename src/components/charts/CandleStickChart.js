@@ -22,8 +22,10 @@ let visibeIndicators = {
   swingLines: false,
   minMaxMarkers: false,
   futureLines: false,
-  horizontalPriceLevel:false,
-  ema20:false,ema200:false, ema50:false
+  horizontalPriceLevel: false,
+  ema20: false,
+  ema200: false,
+  ema50: false
 };
 
 function CandleStickChart({ width, height, timeframe }) {
@@ -50,10 +52,7 @@ function CandleStickChart({ width, height, timeframe }) {
   let lows;
   let closes;
   let opens;
-  let ema ={'20':[],
-   '50':[],
-    '200':[]
- } //array of {x,y} coords
+  let ema = { "20": [], "50": [], "200": [] }; //array of {x,y} coords
   let timeMin, timeMax;
   let futureLines = {};
   let OHLCdata = {
@@ -141,9 +140,9 @@ function CandleStickChart({ width, height, timeframe }) {
     closes = OHLCdata.all.map(d => d.close);
     opens = OHLCdata.all.map(d => d.open);
 
-    ema['20'] = makeEMA('20', 'close')
-    ema['50'] = makeEMA('50', 'close')
-    ema['200'] = makeEMA('200', 'close')
+    ema["20"] = makeEMA("20", "close");
+    ema["50"] = makeEMA("50", "close");
+    ema["200"] = makeEMA("200", "close");
 
     //append timeAxis group
     svg
@@ -272,22 +271,27 @@ function CandleStickChart({ width, height, timeframe }) {
   }
 
   //TODO this could maybe go in another filter
-  function makeEMA(emaVal, price){
-    emaVal = parseInt(emaVal)
+  function makeEMA(emaVal, price) {
+    emaVal = parseInt(emaVal);
 
     // return console.log(OHLCdata)
     //rolling window
-    OHLCdata.all.forEach((data, index)=>{
+    OHLCdata.all.forEach((data, index) => {
       //mke small arrays the length of emaVal
-      if(index < emaVal -1 ) return
-      if(index > 22)return
-      let start = index - (emaVal-1)
-      let end = start + emaVal
-      let windowData = OHLCdata.all.slice(start, end)
-      let test = OHLCdata.all.slice(0, 20)
-      console.log({test, windowData, OHLCdata, start:index - (emaVal-1), end:(emaVal)})
-    })
-
+      if (index < emaVal - 1) return;
+      if (index > 22) return;
+      let start = index - (emaVal - 1);
+      let end = start + emaVal;
+      let windowData = OHLCdata.all.slice(start, end);
+      let test = OHLCdata.all.slice(0, 20);
+      console.log({
+        test,
+        windowData,
+        OHLCdata,
+        start: index - (emaVal - 1),
+        end: emaVal
+      });
+    });
   }
   const addHighLowMarkers = () => {
     console.log("add markers");
@@ -431,19 +435,18 @@ function CandleStickChart({ width, height, timeframe }) {
 
     addHighLowMarkers();
     appendFutureLines();
-    appendMovingAverges()
+    appendMovingAverges();
   }
 
-  function appendMovingAverges(){
-    if(visibeIndicators.ema20){
+  function appendMovingAverges() {
+    if (visibeIndicators.ema20) {
       //show 20 EMA
-
     }
   }
 
   function appendFutureLines() {
-    if(!visibeIndicators.futureLines)return
-    console.log('Append futureLines')
+    if (!visibeIndicators.futureLines) return;
+    console.log("Append futureLines");
     let currentLinesForward = [];
     let currentLinesBackward = [];
     let futureLinesForward = [];
@@ -540,7 +543,7 @@ function CandleStickChart({ width, height, timeframe }) {
   // appendSwingLevel(minPriceLevels, minColor, `minPriceLevel`);
   function appendSwingLevel(data, color, classAttr, chartWindow) {
     // console.log("appedning pricle level");
-    if(!visibeIndicators.swingLines)return
+    if (!visibeIndicators.swingLines) return;
     let priceLevels = chartWindow.selectAll(`.${classAttr}`).data(data);
     let dataLength = priceLevels.data().length;
     priceLevels.exit().remove();
@@ -752,8 +755,6 @@ function CandleStickChart({ width, height, timeframe }) {
 
 export default CandleStickChart;
 
-
-
 function slopeLine({ x1, x2, y1, y2 }) {
   return slope({ x: x1, y: y1 }, { x: x2, y: y2 });
 }
@@ -781,8 +782,5 @@ function xIntercept(a, m) {
 }
 
 let ToggleIndicatorButton = styled.button`
-  background: ${({ isSet }) => {
-    console.log({ isSet });
-    return isSet ? "green" : "red";
-  }};
+  background: ${({ isSet }) => (isSet ? "green" : "red")};
 `;
