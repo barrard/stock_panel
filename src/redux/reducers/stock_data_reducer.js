@@ -2,16 +2,36 @@
 
 const initial_state = {
   has_symbols_data: false,
-  symbols_data: {},
+  stock_symbols_data: [],
+  commodity_symbols_data: [],
   charts: {},
   search_symbol: "",
-  home_page_data: {},
-  home_page_data_set_at: 0,
-  sector_data: {}
+  sector_data: {},
+  movers:{},
+  commodity_data:{}
 };
 
 export default (state = initial_state, action) => {
   switch (action.type) {
+    case "ADD_COMMODITY_CHART_DATA":{
+      console.log(action)
+      let { chart_data, symbol, timeframe } = action
+      let commodity_data = {
+        ...state.commodity_data
+      }
+      if(!commodity_data[symbol])commodity_data[symbol] = {}
+      commodity_data[symbol][timeframe]=chart_data
+
+        return {
+        ...state, commodity_data
+
+        }
+      }
+    
+    case "SET_MOVERS":{
+      let {movers}=action
+      return {...state, movers}
+    }
     case "ADD_MA_DATA": {
       let { symbol, MA_data } = action;
       let stock_data = state.charts[symbol];
@@ -35,15 +55,9 @@ export default (state = initial_state, action) => {
         sector_data: sector_data
       };
     }
-    case "SET_HOME_PAGE_DATA": {
-      const { home_page_data, home_page_data_set_at } = action;
-      return {
-        ...state,
-        home_page_data,
-        home_page_data_set_at
-      };
-    }
-    case "SET_SEACH_SYMBOL": {
+
+    case "SET_SEARCH_SYMBOL": {
+      console.log(action)
       return {
         ...state,
         search_symbol: action.search_symbol
@@ -57,10 +71,14 @@ export default (state = initial_state, action) => {
       };
     }
     case "SET_SYMBOLS_DATA": {
-      console.log('setting symbols data array?')
+      console.log({action})
+      let{stock_symbols_data,
+        commodity_symbols_data} = action
+        commodity_symbols_data = formatCommoditySymbolsData(commodity_symbols_data)
       return {
         ...state,
-        symbols_data: action.symbols_data,
+        stock_symbols_data,
+        commodity_symbols_data,
         has_symbols_data: true
       };
     }
@@ -69,3 +87,31 @@ export default (state = initial_state, action) => {
       return state;
   }
 };
+
+
+
+function formatCommoditySymbolsData(data){
+  let formatedSymbolsData = []
+  /*
+  CIK: "1090872"
+Ticker: "A"
+Name: "Agilent Technologies Inc"
+Exchange: "NYSE"
+SIC: "3825"
+Business: "CA"
+Incorporated: "DE"
+IRS: "770518772"
+  */
+  data.forEach(group=>{
+    let groupName = group.group
+    group.symbols.forEach(symbolData=>{
+      let Ticker = `${symbolData.symbol}`
+      let Name = symbolData.name
+      let isCommodity = true
+      formatedSymbolsData.push({Ticker, Name, isCommodity, groupName})
+    })
+
+  })
+
+  return formatedSymbolsData
+}

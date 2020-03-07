@@ -13,7 +13,3 @@ const LastVolume = ({ LastVol }) => {
 
 export default LastVolume;
 
-const Symbol = styled.h3`
-  display: inline;
-  color: red;
-`;

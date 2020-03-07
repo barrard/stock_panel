@@ -100,7 +100,7 @@ function QuoteContainer({Socket}) {
         <HideButton onClick={() => hide(symbol)}>HIDE</HideButton>
         <QuoteSymbol symbol={symbol} />
         <IconButton>
-          <Link to={`/chart/${symbol}`}>
+          <Link to={`/chartAnalysis/${symbol}`}>
             <GiChart />
           </Link>
         </IconButton>

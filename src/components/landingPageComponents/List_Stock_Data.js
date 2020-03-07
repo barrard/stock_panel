@@ -4,15 +4,16 @@ import ReactDOM from "react-dom";
 import { Link } from "react-router-dom";
 import { useParams } from "react-router-dom";
 import {
-  view_selected_stock_symbol,
+  view_selected_stock,
   fetch_sector_data
 } from "./chart_data_utils.js";
 import TotalVolume from "../QuoteComponents/TotalVolume.js";
 
 export class List_Stock_Data extends React.Component {
-  constructor({ data }) {
-    super({ data });
-    let { percent, value } = data;
+  constructor(props) {
+    super(props);
+
+    let { percent, value } = props.data;
 
     this.state = {
       sorted_prop: "totalVolume",
@@ -78,9 +79,8 @@ export class List_Stock_Data extends React.Component {
     const data = this.state.data;
 
     const { title } = this.props;
-    const { props } = this.props;
-    // console.log(props)
     // console.log(this.props)
+    // console.log(this.props.title)
 
     return (
       <>
@@ -103,6 +103,7 @@ export class List_Stock_Data extends React.Component {
                   key={index}
                   index={index}
                   stock_data={stock_data}
+                  props={this.props.props}
                 />
               ))}
             </div>
@@ -114,13 +115,24 @@ export class List_Stock_Data extends React.Component {
 }
 
 function Display_Stock_Row({ stock_data, index, props }) {
-  const { symbol, last, change, totalVolume } = stock_data;
+  // console.log({stock_data})
+  const {
+    symbol,
+    last,
+    change,
+    totalVolume,
+    description,
+    direction
+  } = stock_data;
   let class_name = index % 2 == 0 ? "ticker_row_light" : "ticker_row_dark";
-
+  let timeframe = "day";
+  let end = new Date().getTime();
   return (
     <div
       className={`row clickable ${class_name}`}
-      onClick={() => view_selected_stock_symbol(symbol, props)}
+      onClick={() =>
+        view_selected_stock({ timeframe, end, symbol, props })
+      }
     >
       <div className="col-2 flex">
         <Symbol symbol={symbol} />
@@ -179,7 +191,7 @@ const Stock_List_Header = ({ sort_by, sort_state, sorted_prop }) => {
 };
 const Volume = ({ vol }) => {
   if (!vol) vol = 1234;
-  return <span className="ticker_vol">{vol.toLocaleString("en-US")}</span>
+  return <span className="ticker_vol">{vol.toLocaleString("en-US")}</span>;
 };
 
 const Price = ({ price }) => (

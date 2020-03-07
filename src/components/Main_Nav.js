@@ -1,13 +1,13 @@
 import React from "react";
 import { connect } from "react-redux";
-import { Link } from "react-router-dom";
+import { Link, withRouter } from "react-router-dom";
 
 import {
   set_symbols_data,
   set_search_symbol,
   add_chart_data
 } from "../redux/actions/stock_actions.js";
-import { view_selected_stock_symbol } from "./landingPageComponents/chart_data_utils.js";
+import { view_selected_stock, view_selected_commodity } from "./landingPageComponents/chart_data_utils.js";
 import { is_loading, show_filter_list } from "../redux/actions/meta_actions.js";
 import API from "./API.js";
 class Main_Nav extends React.Component {
@@ -16,8 +16,8 @@ class Main_Nav extends React.Component {
     this.state = {
       // search_symbol: "",
       filtered_stock_list: [],
-      searching: true,
-      stock_selected: false
+      // searching: true,
+      // stock_selected: false
       // show_filter_list: false
     };
 
@@ -27,16 +27,15 @@ class Main_Nav extends React.Component {
     this.filtered_stock_list_item = this.filtered_stock_list_item.bind(this);
   }
   async componentDidMount() {
-    console.log("123123");
     // const { api_server } = location.origin;
     // console.log(location);
     // console.log(api_server);
     try {
       const { has_symbols_data } = this.props.stock_data;
+      console.log({has_symbols_data})
       if (has_symbols_data) return;
-      console.log(this.props);
       let { dispatch } = this.props;
-      let all_stock_symbols = await API.getAllSymbolsData(dispatch);
+      await API.getAllSymbolsData(dispatch);
     } catch (err) {
       console.log("err");
       console.log(err);
@@ -44,25 +43,36 @@ class Main_Nav extends React.Component {
   }
 
   handle_seach_symbol_input(e) {
-    if (!this.props.meta.show_filter_list)
+    if (!this.props.meta.show_filter_list){
       this.props.dispatch(show_filter_list(true));
+    }
     this.props.dispatch(set_search_symbol(e.target.value));
     this.make_filter_list(e.target.value);
   }
-  // handle_search(e) {
-  //   e.preventDefault();
-  //   console.log(this.state.search);
-  // }
+
   /* On input makes the list */
   make_filter_list(search_text) {
-    var search_text = search_text.toLowerCase();
-    let full_list = this.props.stock_data.symbols_data;
+    console.log({search_text})
+    let full_list;
+    if(search_text.split('')[0]==="/"){
+      console.log('its a commmoodity')
+      search_text = search_text.slice(1)
+      full_list = this.props.stock_data.commodity_symbols_data;
+      console.log({search_text, full_list})
+
+    }else{
+      console.log({search_text, full_list})
+      console.log(search_text.split('')[0])
+      search_text = search_text.toLowerCase();
+      full_list = this.props.stock_data.stock_symbols_data;
+    }
+    // console.log(full_list)
     if (!full_list) {
       /* wait a second...  try again */
-      console.log("no full list");
       setTimeout(() => this.make_filter_list(search_text), 100);
       return;
     }
+    console.log({search_text, full_list})
     // console.log(full_list);
     /* list of possible arrays with data */
     var symbol_starts_with = [];
@@ -111,6 +121,8 @@ class Main_Nav extends React.Component {
 
   /* Use the filtered stock list to make items */
   Filtered_Stock_List({ filtered_stock_list, search_symbol }) {
+    if(search_symbol.split('')[0]=== '/')
+    search_symbol = search_symbol.slice(1)
     return (
       <div className="filtered_stock_list">
         <>
@@ -130,11 +142,26 @@ class Main_Nav extends React.Component {
 
   /* Items that make the list of filtered stocks, on click event resets some things */
   filtered_stock_list_item(data, index, search) {
+    let symbol = data.Ticker
+    let {isCommodity} = data
+    let props= this.props
+    let timeframe = 'day'
+    let end = new Date().getTime()
     return (
       <div
         className="filtered_stock_list_item"
         key={index}
-        onClick={() => view_selected_stock_symbol(data.symbol, this.props)}
+        onClick={() => {
+          if(isCommodity){
+             view_selected_commodity({ timeframe:'intraday', symbol, props })
+             view_selected_commodity({ timeframe:'daily', symbol, props })
+             view_selected_commodity({ timeframe:'weekly', symbol, props })
+             return props.history.push(`/commodity/${symbol}`);
+
+          }else{
+            return view_selected_stock({timeframe, end, symbol, props})
+          }
+        }}
       >
         <span
           dangerouslySetInnerHTML={this.highlight_search_letters(
@@ -154,7 +181,7 @@ class Main_Nav extends React.Component {
   }
 
   highlight_search_letters(name, search) {
-    // console.log({ name, search });
+    console.log({ name, search });
     let index_of_search_term_name = name
       .toLowerCase()
       .indexOf(search.toLowerCase());
@@ -186,15 +213,15 @@ class Main_Nav extends React.Component {
 
   render() {
     let is_loggedin = this.props.user.is_loggedin;
-    let { pathname } = "/chart";
-    console.log(window.location);
-    console.log(this.props);
-    console.log(this.state)
+    let { pathname } = this.props.location;
+
+
     return (
       <nav className="navbar navbar-expand-lg navbar-light bg-light relative">
-        <Link to="/">
-          <a className="navbar-brand">Home</a>
+        <Link activeclassname="active" className="navbar-brand" to="/">
+          Home
         </Link>
+
         {/* <button
           className="navbar-toggler"
           type="button"
@@ -245,7 +272,7 @@ function mapStateToProps(state) {
   return state;
 }
 
-export default connect(mapStateToProps)(Main_Nav);
+export default connect(mapStateToProps)(withRouter(Main_Nav));
 
 /*              Nav components               */
 
@@ -284,14 +311,12 @@ const Charts_Dropdown = ({ pathname, charts }) => (
     <div className="dropdown-menu" aria-labelledby="navbarDropdown">
       {charts &&
         Object.keys(charts).map((symbol, index) => (
-          <Link to={`/chart?symbol=${symbol}`} key={index}>
-            <a className="stock-list-dropdown">
+            <Link className="stock-list-dropdown" to={`/chart?symbol=${symbol}`} key={index}>
               <p className="justify_center zero_margin">{symbol}</p>
               {index + 1 != Object.keys(charts).length && (
                 <div className="dropdown-divider" />
               )}
-            </a>
-          </Link>
+            </Link>
         ))}
     </div>
   </li>
@@ -323,51 +348,27 @@ const Logout_Link = ({ pathname }) => (
       pathname={pathname}
     />
 
-    <Navbar_Links
-      nofetch={true}
-      name="Logout"
-      path={"/auth/logout"}
-      pathname={pathname}
-    />
+    <Navbar_Links name="Logout" path={"/auth/logout"} pathname={pathname} />
   </>
 );
 
-const Register_Login_Links = ({ pathname }) => (
-  <>
-    <Navbar_Links name="Login" path={"/login"} pathname={pathname} />
+const Register_Login_Links = ({ pathname }) => {
+  return (
+    <>
+      <Navbar_Links name="Login" path={"/login"} pathname={pathname} />
 
-    <Navbar_Links name="Sign Up" path={"/sign-up"} pathname={pathname} />
-  </>
-);
+      <Navbar_Links name="Sign Up" path={"/sign-up"} pathname={pathname} />
+    </>
+  );
+};
 
-const Navbar_Links = ({ path, pathname, name, nofetch }) => (
-  <>
-    {!nofetch && (
-      <li className="nav-item">
-        <Link to={path}>
-          <a
-            className={`${
-              pathname == path ? "active " : " "
-            }" nav-link dropdown-item"`}
-          >
-            {name}
-          </a>
-        </Link>
-      </li>
-    )}
-
-    {nofetch && (
-      <li className="nav-item">
-        <Link to={path}>
-          <a
-            className={`${
-              pathname == path ? "active " : " "
-            }" nav-link dropdown-item"`}
-          >
-            {name}
-          </a>
-        </Link>
-      </li>
-    )}
-  </>
+const Navbar_Links = ({ path, pathname, name }) => (
+  <li className="nav-item">
+    <Link
+      className={`${pathname == path ? "active " : " "} nav-link dropdown-item`}
+      to={path}
+    >
+      {name}
+    </Link>
+  </li>
 );

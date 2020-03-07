@@ -4,11 +4,23 @@ import './index.css';
 import { Provider } from 'react-redux'
 import store from './redux/store'
 import App from './App';
+import ReduxToastr from 'react-redux-toastr'
 
 import * as serviceWorker from './serviceWorker';
 
 ReactDOM.render(
 <Provider store={store}>
+<ReduxToastr
+              timeOut={4000}
+              newestOnTop={false}
+              preventDuplicates
+              position="top-left"
+              transitionIn="fadeIn"
+              transitionOut="fadeOut"
+              progressBar={true}
+              showCloseButton={false}
+              closeOnToastrClick
+            />
 
 <App/>
 </Provider>

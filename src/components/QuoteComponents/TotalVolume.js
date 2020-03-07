@@ -12,7 +12,7 @@ const TotalVolume = ({ TotalVol }) => {
 
 export default TotalVolume;
 
-const Symbol = styled.h3`
-  display: inline;
-  color: red;
-`;
+// const Symbol = styled.h3`
+//   display: inline;
+//   color: red;
+// `;

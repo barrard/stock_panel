@@ -1,8 +1,134 @@
-import {scaleLinear} from 'd3-scale'
-import {axisRight, axisBottom,axisLeft, axisTop} from 'd3-axis'
+import React from "react";
+import { axisBottom, axisLeft, axisRight, axisTop } from "d3-axis";
+import { select } from "d3-selection";
+import { line, curveLinear } from "d3-shape";
+import { timeParse, timeFormat } from "d3-time-format";
+
+//const formatTime = timeFormat("%X"); // "11:12:56 PM"
+const formatTime = timeFormat("%c"); // "11:12:56 PM"
+
+
+export const drawAxisAnnotation = (tagId,scale, xy) => {
+
+    
+    let value = scale.invert(xy);
+    // console.log(value)
+    // value = formatTime(value);
+    // console.log(value)
+
+    if (tagId.includes( "Time")) {
+    //   value = value.toFixed(3);
+    //   if (String(value).length > 6) value = parseFloat(value).toFixed(2);
+    // } else {
+      /* need to have time formatting */
+      value = formatTime(value);
+    }
+    // console.log(String(value).length);
+    // console.log({ value: value });
+    // console.log(`place a marker at ${xy} with value ${value}`);
+    select(`#${tagId}`)
+      .attr("d", getAccessorPathData(tagId, xy))
+      .style("display", "block")
+      .attr("fill", "green");
+    setTagText(value, xy, tagId);
+  };
 
 
 
-function AddAxis(side, scale){
 
-}
+  function setTagText(value, xy, tagId) {
+
+    let tagText = select(`#${tagId}Text`);
+  
+    tagText
+      .text(value)
+      .attr("font-size", "1.3em")
+      .style("display", "block");
+      //   case "left":
+      //     tagText.attr("y", xy + 4).attr("x", -15);
+      
+      if (tagId.includes("right"))
+        tagText.attr("y", xy + 4).attr("x", 15);
+  
+    //   case "top":
+    //     tagText.attr("y", 0 - 6).attr("x", xy);
+  
+
+    if (tagId.includes("bottom"))
+
+        tagText.attr("y", +15).attr("x", xy);
+  
+    
+  }
+
+  function getAccessorPathData(tagId, xy) {
+    // const { position, innerWidth, innerHeight } = options;
+
+    // case "left":
+    //     return axisMarkerTagAccessor(leftAxisMarkerTagLine(xy));
+    //     break;
+      if (tagId.includes("right"))
+        return axisMarkerTagAccessor(rightAxisMarkerTagLine(xy));
+  
+    //   case "top":
+    //     return axisMarkerTagAccessor(topAxisMarkerTagLine(xy));
+    //     break;
+  
+        if (tagId.includes("bottom"))
+
+        return axisMarkerTagAccessor(bottomAxisMarkerTagLine(xy));
+
+  
+
+        
+
+    }
+  
+  const axisMarkerTagAccessor = line()
+    .x(d => d.x)
+    .y(d => d.y)
+    .curve(curveLinear);
+  
+  const leftAxisMarkerTagLine = y => [
+    { x: 0, y: 0 + y },
+    { x: -20, y: -10 + y },
+    { x: -60, y: -10 + y },
+    { x: -60, y: 10 + y },
+    { x: -20, y: 10 + y },
+    { x: 0, y: 0 + y }
+  ];
+  
+  const rightAxisMarkerTagLine = y => [
+    { x: 0, y: 0 + y },
+    { x: 20, y: -10 + y },
+    { x: 60, y: -10 + y },
+    { x: 60, y: 10 + y },
+    { x: 20, y: 10 + y },
+    { x: 0, y: 0 + y }
+  ];
+  
+  
+  const topAxisMarkerTagLine = x => [
+    { x: x + 0, y: 0 },
+    { x: x - 40, y: -4 },
+    { x: x - 40, y: -20 },
+    { x: x- 40, y: -20 },
+    { x: x + 40, y: -20 },
+    { x: x + 40, y: -20 },
+    { x: x + 40, y: -4 },
+    { x: x + 0, y: -0 },
+  ];
+  
+  
+  const bottomAxisMarkerTagLine = x => [
+    { x: x + 0, y: 0 },
+    { x: x - 40, y: 4 },
+    { x: x - 40, y: 20 },
+    { x: x- 40, y: 20 },
+    { x: x + 40, y: 20 },
+    { x: x + 40, y: 20 },
+    { x: x + 40, y: 4 },
+    { x: x + 0, y: 0 },
+  ];
+  
+  

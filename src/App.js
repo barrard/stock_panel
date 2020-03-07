@@ -1,13 +1,16 @@
 import React, { useState } from "react";
-import Chart from "./components/ChartAnalysis.js";
 import { Route, BrowserRouter as Router } from "react-router-dom";
+import styled from "styled-components";
 
 import "./App.css";
 import Socket from "./components/Socket.js";
-import { csv } from "d3-fetch";
 import QuoteContainer from "./components/QuoteContainer.js";
+import ChartAnalysis from "./components/ChartAnalysis.js";
 import LandingPage from "./components/landingPage.js";
-import styled from "styled-components";
+import SignupPage from "./components/SignupPage.js";
+import LoginPage from "./components/LoginPage.js";
+import StockChart from "./components/StockChartPage.js";
+import CommodityChartPage from "./components/CommodityChartPage.js"
 import defaultFilterList from "./components/QuoteComponents/DefaultFilterList.js";
 import Main_Nav from "./components/Main_Nav.js";
 let allData = { ES: [], CL: [], GC: [] };
@@ -30,7 +33,12 @@ function App() {
           // component={QuoteContainer}
           render={props => <QuoteContainer {...props} Socket={Socket} />}
         />
-        <Route path="/chart/:sym" component={Chart} />
+        <Route path="/chart/:symbol" component={StockChart} />
+        <Route path="/sign-up" component={SignupPage} />
+        <Route path="/login" component={LoginPage} />
+        
+        <Route path="/commodity/:symbol" component={CommodityChartPage} />
+        
       </div>
     </Router>
   );

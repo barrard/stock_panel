@@ -1,7 +1,22 @@
-import { select, event, mouse } from "d3-selection";
+// import { select, event, mouse } from "d3-selection";
 
-import extrema from "./extrema.js";
+// import extrema from "./extrema.js";
 
+export function formatData(data) {
+  if (data.length && data[0].t) {
+    //alpaca data
+    data = data.map(d => ({
+      timestamp: d.t*1000,
+      open: d.o,
+      high: d.h,
+      close: d.c,
+      low: d.l
+    }));
+    return data
+  } else {
+    return data;
+  }
+}
 
 export function forwardFill(data) {
   //find the time line
@@ -19,19 +34,19 @@ export function fillMissingData(data, timeframe) {
   data.forEach((d, i) => {
     if (i === data.length - 1) return;
     let diff = data[i + 1].timestamp - d.timestamp;
-    let today = new Date(d.timestamp);
-    let tomorrow = new Date(data[i + 1].timestamp);
+    // let today = new Date(d.timestamp);
+    // let tomorrow = new Date(data[i + 1].timestamp);
     // console.log({diff, timeframe})
     // console.log({i, diff:Math.round(diff / timeframe), today, tomorrow})
-    if (Math.round(diff / timeframe) != 1) {
+    if (Math.round(diff / timeframe) !== 1) {
       // console.log({ diff: Math.round(diff / timeframe), today, tomorrow, i, timeframe })
       let lastClose = d.close;
       let blankDay = {
+        timestamp: d.timestamp + timeframe,
         open: lastClose,
         close: lastClose,
         high: lastClose,
         low: lastClose,
-        timestamp: d.timestamp + timeframe,
         volume: 0,
         count: Math.round(diff / timeframe) - 1
       };
@@ -56,7 +71,7 @@ export function fillMissingData(data, timeframe) {
 
 export function determineTimeFrame(data) {
   let diffObj = {};
-  let prev = 0;
+  // let prev = 0;
   data.forEach((d, i) => {
     if (i === data.length - 1) return;
 
@@ -125,14 +140,14 @@ export function dropShadow(svg) {
   feMerge.append("feMergeNode").attr("in", "SourceGraphic");
 }
 
-export function doZoomIn(prevData, mouseZoomPOS) {
+export function doZoomIn({partialOHLCdata}, mouseZoomPOS) {
   // console.log('zooom in')
-  let firstHalf = prevData.partial.slice(
+  let firstHalf = partialOHLCdata.slice(
     0,
-    prevData.partial.length * mouseZoomPOS + 1
+    partialOHLCdata.length * mouseZoomPOS + 1
   );
-  let secondHalf = prevData.partial.slice(
-    prevData.partial.length * -(1 - mouseZoomPOS)
+  let secondHalf = partialOHLCdata.slice(
+    partialOHLCdata.length * -(1 - mouseZoomPOS)
   );
 
   let firstHalfCandleZoom = parseInt(
@@ -150,20 +165,20 @@ export function doZoomIn(prevData, mouseZoomPOS) {
   return data;
 }
 
-export function doZoomOut(prevData) {
-  let candleZoom = parseInt(prevData.partial.length * 0.05) || 1;
+export function doZoomOut({allOHLCdata, partialOHLCdata}) {
+  let candleZoom = parseInt(partialOHLCdata.length * 0.05) || 1;
 
-  let first = prevData.partial[0];
-  let last = prevData.partial[prevData.partial.length - 1];
+  let first = partialOHLCdata[0];
+  let last = partialOHLCdata[partialOHLCdata.length - 1];
   // console.log({ first, last })
   if (!first || !last) return; //fail safe?
-  let firstIndex = prevData.all.findIndex(d => d.timestamp === first.timestamp);
-  let lastIndex = prevData.all.findIndex(d => d.timestamp === last.timestamp);
+  let firstIndex = allOHLCdata.findIndex(d => d.timestamp === first.timestamp);
+  let lastIndex = allOHLCdata.findIndex(d => d.timestamp === last.timestamp);
   // console.log({firstIndex, lastIndex})
-  let newFirstData = prevData.all.slice(firstIndex - candleZoom, firstIndex);
-  let newLastData = prevData.all.slice(lastIndex, lastIndex + candleZoom);
-  // data = prevData.partial.slice(candleZoom, prevData.partial.length -candleZoom)
-  let data = [...newFirstData, ...prevData.partial, ...newLastData];
+  let newFirstData = allOHLCdata.slice(firstIndex - candleZoom, firstIndex);
+  let newLastData = allOHLCdata.slice(lastIndex, lastIndex + candleZoom);
+  // data = partialOHLCdata.slice(candleZoom, partialOHLCdata.length -candleZoom)
+  let data = [...newFirstData, ...partialOHLCdata, ...newLastData];
   return data;
 }
 
@@ -178,7 +193,6 @@ export function doZoomOut(prevData) {
 
 // const LineObj = {};
 // const timerObj = {};
-
 
 //   const appendMinmaxMarkers = ({
 //     chartWindow,
@@ -226,7 +240,7 @@ export function doZoomOut(prevData) {
 //                 chartWindow, cx:timeScale(d.x)
 //               })
 //         }
-          
+
 //         )
 //         .on("mouseleave", removeLine)
 //         .style("filter", "url(#drop-shadow)");
@@ -241,9 +255,9 @@ export function doZoomOut(prevData) {
 //       LineObj[cx] = chartWindow.append("line").attr("class", "slopeLine");
 //     }
 //     LineObj[cx].style("opacity", 1);
-  
+
 //     let { minValues, maxValues } = minMaxValues;
-  
+
 //     minValues.some((minVal, index) => {
 //       if (timeScale(minVal.x) == cx) {
 //         startRotation(LineObj[cx], index, minValues);
@@ -257,7 +271,7 @@ export function doZoomOut(prevData) {
 //       }
 //     });
 //   }
-  
+
 //   function startRotation(line, index, valuesArray) {
 //     console.log({ valuesArray, line });
 //     let currentVal = valuesArray[index];
@@ -273,7 +287,7 @@ export function doZoomOut(prevData) {
 //     line.attr("y1", y1);
 //     line.attr("y2", y2);
 //   }
-  
+
 //   function removeLine() {
 //     let cx = select(this).attr("cx");
 //     console.log("leave");
@@ -281,14 +295,9 @@ export function doZoomOut(prevData) {
 //     LineObj[cx].style("opacity", 0);
 //     // clearInterval(timerObj[cx])
 //   }
-  
-
-
-
 
 //   return {
 //     appendMinmaxMarkers
 //   };
 
 // }
-

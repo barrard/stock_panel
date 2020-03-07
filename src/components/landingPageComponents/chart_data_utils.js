@@ -4,25 +4,55 @@ import {
 } from "../../redux/actions/meta_actions.js";
 import {
   set_search_symbol,
-  add_chart_data,
-  set_sector_data
+  add_chart_data, add_commodity_chart_data
 } from "../../redux/actions/stock_actions.js";
 
-export function view_selected_stock_symbol(symbol, props) {
+import API from "../API.js";
+
+
+export async function view_selected_commodity({ timeframe, symbol, props }) {
+  // console.log(props);
   const { dispatch } = props;
-  console.log(symbol);
-  /* Set the search symbol aas selected */
+  // console.log(dispatch);
+  // console.log(symbol);
+  // /* Set the search symbol aas selected */
   dispatch(set_search_symbol(symbol));
-  /* set show filtered list false */
+  // /* set show filtered list false */
+  // dispatch(show_filter_list(false));
+  // /* fetch data and add to the store/charts array */
+  let chart_data = await fetch_commodity_chart_data({
+    timeframe,
+    symbol,
+    props
+  });
+  dispatch(add_commodity_chart_data({symbol, chart_data, timeframe}));
+  dispatch(is_loading(false));
+}
+
+export async function view_selected_stock({ timeframe, end, symbol, props }) {
+  // console.log(props);
+  const { dispatch } = props;
+  // console.log(dispatch);
+  // console.log(symbol);
+  // /* Set the search symbol aas selected */
+  dispatch(set_search_symbol(symbol));
+  // /* set show filtered list false */
   dispatch(show_filter_list(false));
-  /* fetch data and add to the store/charts array */
-  fetch_selected_chart_data(symbol, props);
+  // /* fetch data and add to the store/charts array */
+  let stockData = await fetch_selected_chart_data({
+    timeframe,
+    end,
+    symbol,
+    props
+  });
+  dispatch(add_chart_data(stockData));
+  dispatch(is_loading(false));
 }
 
 /* HELPER METHOD */
 export async function fetch_data(url, ctx) {
   if (ctx && ctx.req && ctx.req.headers) {
-    console.log("got ctx headers?");
+    // console.log("got ctx headers?");
     return await fetch(url, {
       headers: {
         /* Need header maybe? */
@@ -31,8 +61,8 @@ export async function fetch_data(url, ctx) {
       }
     });
   } else {
-    console.log("DONT have ctx headers?");
-console.log(url)
+    // console.log("DONT have ctx headers?");
+    // console.log(url);
     return await fetch(url, {
       // credentials: "same-origin",
       // credentials: "include"
@@ -40,98 +70,36 @@ console.log(url)
   }
 }
 
-export async function fetch_sector_data(sector, props) {
-  const { meta, dispatch, router, ctx } = props;
-  const { api_server } = meta;
-  router.push(`/sector?sector=${encodeURIComponent(sector)}`);
-  let sector_data_json = await fetch_data(
-    `
-  ${api_server}/stock/market/collection/sector?collectionName=${sector}
-  `,
-    ctx
-  );
-  let sector_data = await sector_data_json.json();
-  // console.log(sector_data);
-  dispatch(set_sector_data(sector, sector_data));
-}
 
-export async function fetch_selected_chart_data(symbol, props) {
-  const { meta, dispatch, router, ctx } = props;
+
+export async function fetch_commodity_chart_data({
+  timeframe,
+  symbol,
+  props
+}) {
+  const { meta, dispatch } = props;
+  // console.log({ props });
   /* Start loading */
   dispatch(is_loading(true));
-  if (router) router.push(`/chart?symbol=${symbol}`);
-  const { api_server } = meta;
-  let book_data_json = await fetch_data(
-    `  
-    ${api_server}/stock/${symbol}/book
-  `,
-    ctx
-  );
-  // console.log("done fetch");
-  let chart_data_json = await fetch_data(
-    `${api_server}/stock/${symbol}/chart/5y
-  `,
-    ctx
-  );
-  // console.log("done fetch");
+  const stock_data = await API.fetchCommodityData({ timeframe, symbol });
+  // console.log(stock_data);
+  return stock_data;
+}
 
-  let chart_logo_json = await fetch_data(
-    `
-  ${api_server}/stock/${symbol}/logo
-  `,
-    ctx
-  );
-  // console.log("done fetch");
 
-  let chart_stats_json = await fetch_data(
-    `
-    ${api_server}/stock/${symbol}/stats
-  `,
-    ctx
-  );
-  // console.log("done fetch");
 
-  let company_json = await fetch_data(
-    `
-    ${api_server}/stock/${symbol}/company
-  `,
-    ctx
-  );
-  // console.log('done fetch')
-  // let chart_larget_trades_json = await fetch_data(
-  //   `
-  //   ${api_server}/stock/${symbol}/largest-trades
-  // `,
-  //   ctx
-  // );
-  // console.log("done fetch");
-
-  // let chart_larget_trades = await chart_larget_trades_json.json();
-  let company = await company_json.json();
-  let chart_stats = await chart_stats_json.json();
-  let chart_logo = await chart_logo_json.json();
-  let book_data = await book_data_json.json();
-  let chart_data = await chart_data_json.json();
-  // console.log('done fetch')
-
-  dispatch(
-    add_chart_data({
-      [symbol]: {
-        company,
-        book_data,
-        chart_data,
-        chart_logo,
-        chart_stats
-        // chart_larget_trades
-      }
-    })
-  );
-  dispatch(is_loading(false));
-  // console.log({
-  //   book_data,
-  //   chart_data,
-  //   chart_logo,
-  //   chart_stats,
-  //   chart_larget_trades
-  // });
+export async function fetch_selected_chart_data({
+  timeframe,
+  end,
+  symbol,
+  props
+}) {
+  const { meta, dispatch } = props;
+  // console.log({ props });
+  /* Start loading */
+  dispatch(is_loading(true));
+  props.history.push(`/chart/${symbol}`);
+  const stock_data = await API.fetchStockData({ timeframe, symbol, end });
+  // console.log(stock_data);
+  return stock_data;
 }

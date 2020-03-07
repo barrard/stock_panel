@@ -15,7 +15,6 @@ const initial_state = {
   ],
   saved_query_results: [],
   saved_queries: [],
-  saved_query_results: [],
   current_query_results: [],
   sorted_query_results: [],
   number_rows: 30, //starting default

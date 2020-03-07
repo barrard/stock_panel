@@ -1,16 +1,26 @@
+import {formatData, forwardFill} from '../../components/charts/chartHelpers/utils.js'
 
-export function set_symbols_data(symbols_data) {
+export function set_symbols_data(stock_symbols_data, commodity_symbols_data) {
   console.log('set_symbols_data')
-  console.log({symbols_data})
+  console.log({stock_symbols_data,
+    commodity_symbols_data})
   return {
     type: "SET_SYMBOLS_DATA",
-    symbols_data
+    stock_symbols_data, commodity_symbols_data
+  };
+}
+
+export function set_movers(movers) {
+  return {
+    type: "SET_MOVERS",
+    movers
   };
 }
 
 export function set_search_symbol(search_symbol) {
+  console.log(search_symbol)
   return {
-    type: "SET_SEACH_SYMBOL",
+    type: "SET_SEARCH_SYMBOL",
     search_symbol
   };
 }
@@ -35,7 +45,22 @@ export function set_sector_data(sector, data) {
   };
 }
 
+
+export function add_commodity_chart_data({symbol, chart_data, timeframe}) {
+  console.log({chart_data})
+        chart_data.forEach(r => (r.timestamp = new Date(r.timestamp).getTime()));
+        chart_data = forwardFill(chart_data);
+  return {
+    type: "ADD_COMMODITY_CHART_DATA",
+    chart_data, symbol, timeframe
+  };
+}
+
 export function add_chart_data(chart_data) {
+  for(let sym in chart_data){
+    chart_data[sym] = formatData(chart_data[sym]);
+    chart_data[sym] = forwardFill(chart_data[sym]);
+  }
   return {
     type: "ADD_CHART_DATA",
     chart_data
@@ -49,11 +74,3 @@ export function add_MA_data_action(MA_data, symbol){
 
 }
 
-
-export function set_home_page_data(home_page_data) {
-  const home_page_data_set_at = new Date().getTime()
-  return {
-    type: "SET_HOME_PAGE_DATA",
-    home_page_data, home_page_data_set_at
-  };
-}
