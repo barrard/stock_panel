@@ -132,6 +132,7 @@ const extremaXY = (e, t, n) => {
 
 function minMax(xArray, yArray, tolerance = 1) {
   //xArray is time, yArray is price
+  console.log('CALC MIN MAX')
   let minValues = [];
   let maxValues = [];
   let totalLength = yArray.length;

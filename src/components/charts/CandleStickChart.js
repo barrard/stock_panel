@@ -12,15 +12,21 @@ import {
   dropShadow,
   doZoomIn,
   doZoomOut,
-  formatData
+  formatData, slopeLine,
+  slope,
+  intercept,
+  xIntercept
 } from "./chartHelpers/utils.js";
 import diff from "../charts/chartHelpers/extrema.js";
 
 import { addCandleSticks } from "./chartHelpers/candleStickUtils.js";
 // import { line } from "d3";
-import {drawAxisAnnotation} from './chartHelpers/chartAxis.js'
-
-
+import {
+  drawAxisAnnotation,
+  removeAllAxisAnnotations
+} from "./chartHelpers/chartAxis.js";
+import { makeEMA, makeSTD, drawMALine } from "./chartHelpers/MA-lines.js";
+import {evaluateMinMaxPoints} from './chartHelpers/evaluateMinMaxPoints.js'
 let visibleIndicators = {
   swingLines: false,
   minMaxMarkers: false,
@@ -29,7 +35,7 @@ let visibleIndicators = {
   ema20: false,
   ema200: false,
   ema50: false
-}
+};
 function CandleStickChart({ width, height, timeframe, data }) {
   const chartRef = useRef();
   // const { stock_data } = useSelector(state => state);
@@ -56,7 +62,14 @@ function CandleStickChart({ width, height, timeframe, data }) {
   let lows;
   let closes;
   let opens;
-  let ema = { "20": [], "50": [], "200": [] }; //array of {x,y} coords
+  let EMA_data = {
+    "20": [],
+    "50": [], "200": []
+  }; //array of {x,y} coords
+  let STD_data = {
+    "20": [],
+    "50": [], "200": []
+  }; //array of {x,y} coords
   let timeMin, timeMax;
   let futureLines = {};
   let allOHLCdata = [];
@@ -105,14 +118,14 @@ function CandleStickChart({ width, height, timeframe, data }) {
     .tickSize(-innerWidth);
 
   useEffect(() => {
-    console.log("data data changed");
-    console.log({data})
-    if(data && data.length){
-      console.log("data data has length");
+    // console.log("data data changed");
+    // console.log({data})
+    if (data && data.length) {
+      // console.log("data data has length");
 
-      console.log(data)
-      allOHLCdata = data
-      partialOHLCdata = data
+      // console.log(data)
+      allOHLCdata = data;
+      partialOHLCdata = data;
       setupChart();
     }
   }, [data]);
@@ -142,6 +155,8 @@ function CandleStickChart({ width, height, timeframe, data }) {
   }, []);
 
   useEffect(() => {
+    console.log('USE EFEFEct')
+    console.log(minMaxValues)
     // console.log("draw");
     // console.log({allOHLCdata, partialOHLCdata})
 
@@ -149,32 +164,32 @@ function CandleStickChart({ width, height, timeframe, data }) {
     //   draw([])
     // }else{
 
-      draw();
+    draw();
     // }
-  });
+  }, [minMaxValues]);
 
   const appendMinmaxMarkers = (
-    data,
     name,
     minColor,
     maxColor,
-    tolerance,
     min,
-    max,
+    max
   ) => {
-    if (!visibleIndicators.minMaxMarkers) return console.log('minMaxMarkers not turned on');;
+    if (!visibleIndicators.minMaxMarkers)
+      return console.log("minMaxMarkers not turned on");
 
     let svg = select(chartRef.current);
     let chartWindow = svg.select(".chartWindow");
     // console.log({ name });
 
-    let { minValues, maxValues } = diff.minMax(timestamps, data, tolerance);
+    // let { minValues, maxValues } = diff.minMax(timestamps, data, tolerance);
     // console.log({ maxValues: maxValues.length });
     // console.log({ minValues: minValues.length });
     // console.log({ minMaxValues });
     if (max) {
-      minMaxValues[name].maxValues = maxValues;
-
+      // minMaxValues[name].maxValues = maxValues;
+      console.log(minMaxValues)
+      let maxValues = minMaxValues[name].maxValues
       appendMarker(
         maxValues,
         maxColor,
@@ -183,23 +198,23 @@ function CandleStickChart({ width, height, timeframe, data }) {
         name,
         chartWindow
       );
-        appendSwingLevel(
-          maxValues,
-          maxColor,
-          `max${name}PriceLevel`,
-          chartWindow
-        );
-        appendHorizontalPriceLevel(
-          maxValues,
-          maxColor,
-          `maxHorizontal${name}PriceLevel`,
-          chartWindow
-        );
-  
+      appendSwingLevel(
+        maxValues,
+        maxColor,
+        `max${name}PriceLevel`,
+        chartWindow
+      );
+      appendHorizontalPriceLevel(
+        maxValues,
+        maxColor,
+        `maxHorizontal${name}PriceLevel`,
+        chartWindow
+      );
     }
 
     if (min) {
-      minMaxValues[name].minValues = minValues;
+      // minMaxValues[name].minValues = minValues;
+      let minValues = minMaxValues[name].minValues
 
       appendMarker(
         minValues,
@@ -209,67 +224,77 @@ function CandleStickChart({ width, height, timeframe, data }) {
         name,
         chartWindow
       );
-        appendSwingLevel(
-          minValues,
-          minColor,
-          `min${name}PriceLevel`,
-          chartWindow
-        );
-        appendHorizontalPriceLevel(
-          minValues,
-          minColor,
-          `minHorizontal${name}PriceLevel`,
-          chartWindow
-        );
-    
+      appendSwingLevel(
+        minValues,
+        minColor,
+        `min${name}PriceLevel`,
+        chartWindow
+      );
+      appendHorizontalPriceLevel(
+        minValues,
+        minColor,
+        `minHorizontal${name}PriceLevel`,
+        chartWindow
+      );
     }
   };
   const addHighLowMarkers = () => {
-    if (!visibleIndicators.minMaxMarkers) return console.log(' minMaxMarkers not turned on');
+    if (!visibleIndicators.minMaxMarkers) return; //console.log(' minMaxMarkers not turned on');
 
-    console.log("add markers");
+    // console.log("add markers");
     //  data,  name, mincolor, maxcolor, tolerence, ismin, ismax, PriceLevels
-    appendMinmaxMarkers(highs, "high", "green", "red", 5, false, true);
-    appendMinmaxMarkers(lows, "low", "green", "red", 5, true, false);
+    appendMinmaxMarkers( "high", "green", "red", false, true);
+    appendMinmaxMarkers("low", "green", "red",  true, false);
+    appendMinmaxMarkers("open", "limegreen", "orangered", true, true);
     appendMinmaxMarkers(
-      opens,
-      "open",
-      "limegreen",
-      "orangered",
-      5,
-      true,
-      true,
-    );
-    appendMinmaxMarkers(
-      closes,
+      
       "close",
       "lightseagreen",
       "palevioletred",
-      5,
+      
       true,
-      true,
+      true
     );
   };
 
   const setupChart = () => {
-    console.log('setupChart')
+    // console.log('setupChart')
     if (!chartRef.current) return;
     let svg = select(chartRef.current);
     svg.selectAll("*").remove();
-
+    //min max tolerence  TODO make it more dynamic
+    const tolerance = 6
     dropShadow(svg);
+
     //Set up some data
-    console.log({ allOHLCdata });
+    // console.log({ allOHLCdata });
     timestamps = allOHLCdata.map(d => d.timestamp);
     highs = allOHLCdata.map(d => d.high);
     lows = allOHLCdata.map(d => d.low);
     closes = allOHLCdata.map(d => d.close);
     opens = allOHLCdata.map(d => d.open);
     const timeDomain = extent(timestamps, d => d.timestamp);
+    var { minValues, maxValues } = diff.minMax(timestamps, highs, tolerance);
+    minMaxValues['high'].maxValues = maxValues;
+    minMaxValues['high'].minValues = minValues;
 
-    ema["20"] = makeEMA("20", "close");
-    ema["50"] = makeEMA("50", "close");
-    ema["200"] = makeEMA("200", "close");
+    var { minValues, maxValues } = diff.minMax(timestamps, lows, tolerance);
+    minMaxValues['low'].maxValues = maxValues;
+    minMaxValues['low'].minValues = minValues;
+    var { minValues, maxValues } = diff.minMax(timestamps, opens, tolerance);
+    minMaxValues['open'].maxValues = maxValues;
+    minMaxValues['open'].minValues = minValues;
+    var { minValues, maxValues } = diff.minMax(timestamps, closes, tolerance);
+    minMaxValues['close'].maxValues = maxValues;
+    minMaxValues['close'].minValues = minValues;
+
+    evaluateMinMaxPoints(minMaxValues, allOHLCdata)
+
+    //make all EMA/STD data
+    Object.keys(EMA_data).forEach(MA_value => {
+      EMA_data[MA_value] = makeEMA(MA_value, allOHLCdata);
+      STD_data[MA_value] = makeSTD(MA_value, allOHLCdata);
+    });
 
     //append timeAxis group
     let timeAxisG = svg
@@ -285,20 +310,21 @@ function CandleStickChart({ width, height, timeframe, data }) {
       .call(priceAxis);
 
     //append the crosshair marker
-      timeAxisG.append("path")
+    timeAxisG
+      .append("path")
       .attr("id", `bottomTimeTag`)
       // .attr("stroke", "blue")
       .attr("stroke-width", 2);
-      timeAxisG.append("text").attr("id", `bottomTimeTagText`);
+    timeAxisG.append("text").attr("id", `bottomTimeTagText`);
 
+    //append the crosshair marker
+    priceAxisG
+      .append("path")
+      .attr("id", `rightPriceTag`)
+      // .attr("stroke", "blue")
+      .attr("stroke-width", 2);
+    priceAxisG.append("text").attr("id", `rightPriceTagText`);
 
-          //append the crosshair marker
-          priceAxisG.append("path")
-          .attr("id", `rightPriceTag`)
-          // .attr("stroke", "blue")
-          .attr("stroke-width", 2);
-          priceAxisG.append("text").attr("id", `rightPriceTagText`);
-    
     let chartWindow = svg
       .append("g")
       .attr("class", "chartWindow")
@@ -317,9 +343,9 @@ function CandleStickChart({ width, height, timeframe, data }) {
     crosshair
       .append("line")
       .attr("id", "crosshairY")
-      .attr("class", "crosshair");     
+      .attr("class", "crosshair");
 
-      chartWindow
+    chartWindow
       .append("rect")
       .attr("class", "overlay")
 
@@ -330,88 +356,48 @@ function CandleStickChart({ width, height, timeframe, data }) {
       })
       .on("mouseout", function() {
         crosshair.style("display", "none");
-        // removeAllAxisAnnotations();
+        removeAllAxisAnnotations(svg);
       })
       .on("mousemove", mousemove);
 
-      function mousemove() {
-        let _mouse = mouse(this);
-        MOUSEX= _mouse[0];
-        MOUSEY = _mouse[1];
+    function mousemove() {
+      let _mouse = mouse(this);
+      MOUSEX = _mouse[0];
+      MOUSEY = _mouse[1];
 
-        appendAxisAnnotations(MOUSEX,MOUSEY);
-        // let mouseDate = timeScale.invert(MOUSEX);
-        crosshair
-          .select("#crosshairX")
-          .attr("x1", MOUSEX)
-          .attr("y1", 0)
-          .attr("x2", MOUSEX)
-          .attr("y2", innerHeight);
-  
-        crosshair
-          .select("#crosshairY")
-          .attr("x1", timeScale(timestamps[0]))
-          .attr("y1", MOUSEY)
-          .attr("x2", timeScale(timestamps[timestamps.length-1]))
-          .attr("y2", MOUSEY);
-     
-  
-        // console.log({ x, y, mouseDate });
-      }
-      function appendAxisAnnotations(x, y) {
-        /* Candle stick is the top candleStickWindowHeight */
-        // drawAxisAnnotation(topOpts, x);
-        drawAxisAnnotation('bottomTimeTag', timeScale ,x);
-        // if (y < candleStickWindowHeight) {
-          // drawAxisAnnotation(leftOpts, y);
-          drawAxisAnnotation('rightPriceTag',priceScale, y);
-          // removeVolumeAxisAnnotations();
-        // } else if (y > candleStickWindowHeight) {
-        //   y = y - candleStickWindowHeight;
-        //   drawAxisAnnotation(leftVolOpts, y);
-        //   drawAxisAnnotation(rightVolOpts, y);
-        //   removePriceAxisAnnotations();
-        // }
-      }
+      appendAxisAnnotations(MOUSEX, MOUSEY, svg);
+      // let mouseDate = timeScale.invert(MOUSEX);
+      crosshair
+        .select("#crosshairX")
+        .attr("x1", MOUSEX)
+        .attr("y1", 0)
+        .attr("x2", MOUSEX)
+        .attr("y2", innerHeight);
 
-          /* Axis config  */
-    let leftOpts = {
-      position: "left",
-      scale: priceScale,
-      name: "Price"
-    };
-    let bottomOpts = {
-      position: "bottom",
-      scale: timeScale,
-      name: "Time",
-      innerHeight
-    };
-    let rightOpts = {
-      position: "right",
-      scale: priceScale,
-      name: "Price",
-      innerWidth
-    };
-    let topOpts = {
-      position: "top",
-      scale: timeScale,
-      name: "Time"
-    };
-    // let leftVolOpts = {
-    //   position: "left",
-    //   scale: volumeScale,
-    //   name: "Volume"
-    // };
-    // let rightVolOpts = {
-    //   position: "right",
-    //   scale: volumeScale,
-    //   name: "Volume",
-    //   innerWidth
-    // };
-      
-      
-      
+      crosshair
+        .select("#crosshairY")
+        .attr("x1", timeScale(timestamps[0]))
+        .attr("y1", MOUSEY)
+        .attr("x2", timeScale(timestamps[timestamps.length - 1]))
+        .attr("y2", MOUSEY);
 
+      // console.log({ x, y, mouseDate });
+    }
+    function appendAxisAnnotations(x, y, svg) {
+      /* Candle stick is the top candleStickWindowHeight */
+      // drawAxisAnnotation(topOpts, x);
+      drawAxisAnnotation("bottomTimeTag", timeScale, x, svg);
+      // if (y < candleStickWindowHeight) {
+      // drawAxisAnnotation(leftOpts, y);
+      drawAxisAnnotation("rightPriceTag", priceScale, y, svg);
+      // removeVolumeAxisAnnotations();
+      // } else if (y > candleStickWindowHeight) {
+      //   y = y - candleStickWindowHeight;
+      //   drawAxisAnnotation(leftVolOpts, y);
+      //   drawAxisAnnotation(rightVolOpts, y);
+      //   removePriceAxisAnnotations();
+      // }
+    }
 
     const d3zoom = zoom()
       // .scaleExtent([1, 40])
@@ -421,16 +407,6 @@ function CandleStickChart({ width, height, timeframe, data }) {
       .on("start", dragStart)
       .on("drag", dragged)
       .on("end", dragEnd);
-
-    // chartWindow.on("mousemove", () => {
-    //   let x = event.pageX - svg.node().getBoundingClientRect().x - margin.left;
-    //   let y = event.pageY - svg.node().getBoundingClientRect().y - margin.top;
-    //   x = x < 0 ? 0 : x;
-    //   y = y < 0 ? 0 : y;
-    //   console.log({ x, y })
-    //   MOUSEX = x;
-    //   MOUSEY = y;
-    // });
 
     svg.call(d3drag); //breaks if this is not first
 
@@ -444,7 +420,7 @@ function CandleStickChart({ width, height, timeframe, data }) {
     if (mouseZoomPOS > 0.98) mouseZoomPOS = 0.97;
     if (mouseZoomPOS < 0.02) mouseZoomPOS = 0.03;
     let kScale = event.transform.k;
-    console.log("zoom");
+    // console.log("zoom");
 
     if (event && event.sourceEvent && event.sourceEvent.type == "wheel") {
       // setOHLCdata(prevData => {
@@ -487,14 +463,18 @@ function CandleStickChart({ width, height, timeframe, data }) {
     // console.log("dragged");
     let data;
     if (xDragPOS > mouseDRAGSART) {
+      // console.log('right')
       let start = dragStartData[0];
       let startIndex = allOHLCdata.findIndex(
         d => d.timestamp === start.timestamp
       );
+      // console.log({startIndex, barCount})
       let dataEnd = dragStartData.slice(0, dragStartData.length - 1 - barCount);
-      let dataStart = allOHLCdata.slice(startIndex - barCount, startIndex);
+      let zeroOrGreater = startIndex - barCount < 0 ? 0 : startIndex - barCount
+      let dataStart = allOHLCdata.slice(zeroOrGreater, startIndex);
       data = [...dataStart, ...dataEnd];
     } else if (xDragPOS < mouseDRAGSART) {
+            // console.log('left')
       let end = dragStartData[dragStartData.length - 1];
       let endIndex = allOHLCdata.findIndex(d => d.timestamp === end.timestamp);
       let dataStart = dragStartData.slice(barCount, dragStartData.length - 1);
@@ -509,29 +489,6 @@ function CandleStickChart({ width, height, timeframe, data }) {
   function dragEnd() {
     // console.log("dragEnd");
     // console.log({x:event.x - margin.left,MOUSEX})
-  }
-
-  //TODO this could maybe go in another filter
-  function makeEMA(emaVal, price) {
-    emaVal = parseInt(emaVal);
-
-    // return console.log(OHLCdata)
-    //rolling window
-    allOHLCdata.forEach((data, index) => {
-      //mke small arrays the length of emaVal
-      if (index < emaVal - 1) return;
-      if (index > 22) return;
-      let start = index - (emaVal - 1);
-      let end = start + emaVal;
-      let windowData = allOHLCdata.slice(start, end);
-      let test = allOHLCdata.slice(0, 20);
-      // console.log({
-      //   test,
-      //   windowData,
-      //   start: index - (emaVal - 1),
-      //   end: emaVal
-      // });
-    });
   }
 
   function draw(data) {
@@ -577,18 +534,43 @@ function CandleStickChart({ width, height, timeframe, data }) {
 
     addHighLowMarkers();
     appendFutureLines();
-    appendMovingAverges();
+
+    appendEMA(chartWindow, {timeScale, priceScale});
+    appendSTD();
   }
 
-  function appendMovingAverges() {
+  function appendEMA(chartWindow, {timeScale, priceScale}) {
     if (visibleIndicators.ema20) {
       //show 20 EMA
+      drawMALine(
+        chartWindow, EMA_data,20,
+          {timeScale, priceScale}
+        );
+    }
+    if (visibleIndicators.ema50) {
+      //show 50 EMA
+      drawMALine(
+        chartWindow, EMA_data,50,
+          {timeScale, priceScale}
+        );
+    }
+    if (visibleIndicators.ema200) {
+      //show 200 EMA
+      drawMALine(
+        chartWindow, EMA_data,200,
+          {timeScale, priceScale}
+        );
     }
   }
 
+  function appendSTD(chartWindow, timeScale, priceScale) {
+    console.log({minMaxValues})
+    console.log("TODO");
+  }
+
   function appendFutureLines() {
-    if (!visibleIndicators.futureLines) return console.log('futureLines not turned on');;
-    console.log("Append futureLines");
+    if (!visibleIndicators.futureLines) return; //console.log('futureLines not turned on');;
+    // console.log("Append futureLines");
     let currentLinesForward = [];
     let currentLinesBackward = [];
     let futureLinesForward = [];
@@ -656,7 +638,7 @@ function CandleStickChart({ width, height, timeframe, data }) {
 
   // appendHorizontalPriceLevel(data, minColor, `minPriceLevel`);
   function appendHorizontalPriceLevel(data, color, classAttr, chartWindow) {
-    if (!visibleIndicators.horizontalPriceLevel) return //console.log('horizontalPriceLevel not turned on');;
+    if (!visibleIndicators.horizontalPriceLevel) return; //console.log('horizontalPriceLevel not turned on');;
     let priceLevels = chartWindow.selectAll(`.${classAttr}`).data(data);
     let barWidth = innerWidth / partialOHLCdata.length;
     // let strokeWidth = barWidth / 5 < 1 ? 1 : barWidth / 5;
@@ -678,13 +660,14 @@ function CandleStickChart({ width, height, timeframe, data }) {
       .attr("stroke-width", 2)
       .attr("stroke", color)
       .attr("class", `${classAttr} horizontalPriceLevel`)
-      .style("opacity", 0.1);
+      .style("opacity", 0.3);
   }
 
   // appendSwingLevel(minPriceLevels, minColor, `minPriceLevel`);
   function appendSwingLevel(data, color, classAttr, chartWindow) {
     // console.log("appedning pricle level");
-    if (!visibleIndicators.swingLines) return console.log('swingLines not turned on');;
+    if (!visibleIndicators.swingLines)
+      return //console.log("swingLines not turned on");
     let priceLevels = chartWindow.selectAll(`.${classAttr}`).data(data);
     let dataLength = priceLevels.data().length;
     priceLevels.exit().remove();
@@ -741,7 +724,7 @@ function CandleStickChart({ width, height, timeframe, data }) {
 
     if (className.includes("max")) {
       maxValues.some((maxVal, index) => {
-        // console.log("looking in maxvalues");
+        // console.log("looking in maxValues");
         if (timeScale(maxVal.x) == cx && priceScale(maxVal.y) == cy) {
           appendSlopeLines(className, index, maxValues);
           return true;
@@ -761,8 +744,8 @@ function CandleStickChart({ width, height, timeframe, data }) {
     let line2 = false;
     let linesData = futureLines[className];
     if (!linesData) {
-      futureLines[className] = {};
-      linesData = futureLines[className];
+      linesData = futureLines[className] = {};
+      //  futureLines[className];
     }
     if (!nextVal || !currentVal || index === valuesArray.length - 1) {
       console.log("No next val");
@@ -833,7 +816,7 @@ function CandleStickChart({ width, height, timeframe, data }) {
     return { futureEndPoint, line2EndPoint };
   }
   function toggleIndicators(indicator) {
-    console.log(indicator)
+    console.log({indicator, minMaxValues});
     let svg = select(chartRef.current);
     let markers = svg.selectAll(`.${indicator}`);
     markers.remove();
@@ -841,7 +824,7 @@ function CandleStickChart({ width, height, timeframe, data }) {
     val = !val;
     // setVisibleIndicators({...visibleIndicators, [indicator]:val})
     visibleIndicators[indicator] = val;
-// console.log(visibleIndicators)
+    // console.log(visibleIndicators)
     forceUpdate();
   }
 
@@ -888,7 +871,13 @@ function CandleStickChart({ width, height, timeframe, data }) {
         onClick={() => toggleIndicators("ema50")}
         isSet={visibleIndicators.ema50}
       >
-        50EMA
+        50 EMA
+      </ToggleIndicatorButton>     
+       <ToggleIndicatorButton
+        onClick={() => toggleIndicators("ema200")}
+        isSet={visibleIndicators.ema200}
+      >
+        200 EMA
       </ToggleIndicatorButton>
       <svg
         ref={chartRef}
@@ -902,31 +891,7 @@ function CandleStickChart({ width, height, timeframe, data }) {
 
 export default CandleStickChart;
 
-function slopeLine({ x1, x2, y1, y2 }) {
-  return slope({ x: x1, y: y1 }, { x: x2, y: y2 });
-}
 
-function slope(a, b) {
-  // console.log({ a, b });
-  if (a.x == b.x) {
-    return null;
-  }
-
-  return (b.y - a.y) / (b.x - a.x);
-}
-
-function intercept(point, slope) {
-  if (slope === null) {
-    // vertical line
-    return point.x;
-  }
-
-  return point.y - slope * point.x;
-}
-
-function xIntercept(a, m) {
-  return a.x - a.y / m;
-}
 
 let ToggleIndicatorButton = styled.button`
 position: relative;

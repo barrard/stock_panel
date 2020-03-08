@@ -8,7 +8,7 @@ import { timeParse, timeFormat } from "d3-time-format";
 const formatTime = timeFormat("%c"); // "11:12:56 PM"
 
 
-export const drawAxisAnnotation = (tagId,scale, xy) => {
+export const drawAxisAnnotation = (tagId,scale, xy, svg) => {
 
     
     let value = scale.invert(xy);
@@ -26,19 +26,19 @@ export const drawAxisAnnotation = (tagId,scale, xy) => {
     // console.log(String(value).length);
     // console.log({ value: value });
     // console.log(`place a marker at ${xy} with value ${value}`);
-    select(`#${tagId}`)
+    svg.select(`#${tagId}`)
       .attr("d", getAccessorPathData(tagId, xy))
       .style("display", "block")
       .attr("fill", "green");
-    setTagText(value, xy, tagId);
+    setTagText(value, xy, tagId, svg);
   };
 
 
 
 
-  function setTagText(value, xy, tagId) {
+  function setTagText(value, xy, tagId, svg) {
 
-    let tagText = select(`#${tagId}Text`);
+    let tagText = svg.select(`#${tagId}Text`);
   
     tagText
       .text(value)
@@ -61,6 +61,28 @@ export const drawAxisAnnotation = (tagId,scale, xy) => {
     
   }
 
+
+  export function removeAllAxisAnnotations(svg) {
+    hideElements(svg,[
+      "#leftPriceTag",
+      "#leftPriceTagText",
+      "#rightPriceTag",
+      "#rightPriceTagText",
+      "#rightVolumeTag",
+      "#rightVolumeTagText",
+      "#leftVolumeTag",
+      "#leftVolumeTagText",
+      "#topTimeTag",
+      "#topTimeTagText",
+      "#bottomTimeTag",
+      "#bottomTimeTagText"
+    ]);
+  }
+  export const hideElements = (svg,elements) => {
+    elements.map(el => svg.select(el).style("display", "none"));
+  };
+  
+
   function getAccessorPathData(tagId, xy) {
     // const { position, innerWidth, innerHeight } = options;
 
@@ -77,13 +99,9 @@ export const drawAxisAnnotation = (tagId,scale, xy) => {
         if (tagId.includes("bottom"))
 
         return axisMarkerTagAccessor(bottomAxisMarkerTagLine(xy));
-
-  
-
-        
-
     }
   
+
   const axisMarkerTagAccessor = line()
     .x(d => d.x)
     .y(d => d.y)

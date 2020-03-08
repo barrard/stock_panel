@@ -25,3 +25,5 @@ yarn-error.log*
 GC.csv
 ES.csv
 CL.csv
+
+.env

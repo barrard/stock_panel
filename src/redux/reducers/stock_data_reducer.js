@@ -14,7 +14,7 @@ const initial_state = {
 export default (state = initial_state, action) => {
   switch (action.type) {
     case "ADD_COMMODITY_CHART_DATA":{
-      console.log(action)
+      // console.log(action)
       let { chart_data, symbol, timeframe } = action
       let commodity_data = {
         ...state.commodity_data
@@ -57,7 +57,7 @@ export default (state = initial_state, action) => {
     }
 
     case "SET_SEARCH_SYMBOL": {
-      console.log(action)
+      // console.log(action)
       return {
         ...state,
         search_symbol: action.search_symbol
@@ -71,7 +71,7 @@ export default (state = initial_state, action) => {
       };
     }
     case "SET_SYMBOLS_DATA": {
-      console.log({action})
+      // console.log({action})
       let{stock_symbols_data,
         commodity_symbols_data} = action
         commodity_symbols_data = formatCommoditySymbolsData(commodity_symbols_data)

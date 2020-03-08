@@ -182,6 +182,33 @@ export function doZoomOut({allOHLCdata, partialOHLCdata}) {
   return data;
 }
 
+
+export function slopeLine({ x1, x2, y1, y2 }) {
+  return slope({ x: x1, y: y1 }, { x: x2, y: y2 });
+}
+
+export function slope(a, b) {
+  // console.log({ a, b });
+  if (a.x == b.x) {
+    return null;
+  }
+
+  return (b.y - a.y) / (b.x - a.x);
+}
+
+export function intercept(point, slope) {
+  if (slope === null) {
+    // vertical line
+    return point.x;
+  }
+
+  return point.y - slope * point.x;
+}
+
+export function xIntercept(a, m) {
+  return a.x - a.y / m;
+}
+
 // export function utilDataSetup({OHLCdata, priceScale, timeScale, timeframe}) {
 
 // const timestamps = OHLCdata.all.map(d => d.timestamp);

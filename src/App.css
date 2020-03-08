@@ -125,6 +125,18 @@ text{
   pointer-events: none;
 }
 
+.ema20{
+  stroke: red;
+}
+
+
+.ema50{
+  stroke: blue;
+}
+
+.ema200{
+  stroke: green;
+}
 
 
 

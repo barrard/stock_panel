@@ -33,8 +33,8 @@ class CommodityChartPage extends React.Component {
         //   strict: false
         // });
         let { symbol } = this.props.match.params;
-        console.log({symbol})
-        console.log(this.props.stock_data.commodity_data)
+        // console.log({symbol})
+        // console.log(this.props.stock_data.commodity_data)
         let commodityData = this.props.stock_data.commodity_data[symbol]
         let intraday, daily, weekly;
         if(commodityData){
@@ -66,21 +66,21 @@ class CommodityChartPage extends React.Component {
     let { stock_data } = this.props;
     let { symbol } = this.props.match.params;
     let commodityData = stock_data.commodity_data[symbol]
-    console.log({stock_data, commodityData, symbol})
+    // console.log({stock_data, commodityData, symbol})
     let intradayCommodityData
 let dailyCommodityData
 let weeklyCommodityData
     if(commodityData){
       
-      console.log('got commodities data')
+      // console.log('got commodities data')
       intradayCommodityData = commodityData['intraday']
       dailyCommodityData = commodityData['daily']
       weeklyCommodityData = commodityData['weekly']
 
     }
-    console.log({intradayCommodityData,
-      dailyCommodityData,
-      weeklyCommodityData})
+    // console.log({intradayCommodityData,
+    //   dailyCommodityData,
+    //   weeklyCommodityData})
 
 
     let canvas_width = this.state.canvas_width;
@@ -93,7 +93,7 @@ let weeklyCommodityData
             width={950}
             height={400}
           />
-              <CandleStickChart
+              {/* <CandleStickChart
             data={dailyCommodityData}
             width={950}
             height={400}
@@ -102,7 +102,7 @@ let weeklyCommodityData
             data={weeklyCommodityData}
             width={950}
             height={400}
-          />
+          /> */}
 
         
         </div>

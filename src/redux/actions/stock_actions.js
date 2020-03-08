@@ -1,9 +1,9 @@
 import {formatData, forwardFill} from '../../components/charts/chartHelpers/utils.js'
 
 export function set_symbols_data(stock_symbols_data, commodity_symbols_data) {
-  console.log('set_symbols_data')
-  console.log({stock_symbols_data,
-    commodity_symbols_data})
+  // console.log('set_symbols_data')
+  // console.log({stock_symbols_data,
+    // commodity_symbols_data})
   return {
     type: "SET_SYMBOLS_DATA",
     stock_symbols_data, commodity_symbols_data
@@ -18,7 +18,7 @@ export function set_movers(movers) {
 }
 
 export function set_search_symbol(search_symbol) {
-  console.log(search_symbol)
+  // console.log(search_symbol)
   return {
     type: "SET_SEARCH_SYMBOL",
     search_symbol
@@ -26,7 +26,7 @@ export function set_search_symbol(search_symbol) {
 }
 
 export function get_sector_data(sector, iex_api){
-  console.log('GET SECTOR DATA')
+  // console.log('GET SECTOR DATA')
   return async dispatch =>{
     let sector_data_json = await fetch(`
     ${iex_api}/stock/market/collection/sector?collectionName=${sector}&token=pk_9c5351666ec649d99eb45ff08817d362
@@ -38,7 +38,7 @@ export function get_sector_data(sector, iex_api){
 }
 
 export function set_sector_data(sector, data) {
-  console.log('set_sector_data')
+  // console.log('set_sector_data')
   return {
     type: "SET_SECTOR_DATA",
     sector, data
@@ -47,7 +47,7 @@ export function set_sector_data(sector, data) {
 
 
 export function add_commodity_chart_data({symbol, chart_data, timeframe}) {
-  console.log({chart_data})
+  // console.log({chart_data})
         chart_data.forEach(r => (r.timestamp = new Date(r.timestamp).getTime()));
         chart_data = forwardFill(chart_data);
   return {
