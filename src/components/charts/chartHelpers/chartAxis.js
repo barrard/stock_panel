@@ -27,6 +27,7 @@ export const drawAxisAnnotation = (tagId,scale, xy, svg) => {
     // console.log({ value: value });
     // console.log(`place a marker at ${xy} with value ${value}`);
     svg.select(`#${tagId}`)
+    .attr('class', 'axisAnnotation')
       .attr("d", getAccessorPathData(tagId, xy))
       .style("display", "block")
       .attr("fill", "green");
@@ -140,12 +141,12 @@ export const drawAxisAnnotation = (tagId,scale, xy, svg) => {
   
   const bottomAxisMarkerTagLine = x => [
     { x: x + 0, y: 0 },
-    { x: x - 40, y: 4 },
-    { x: x - 40, y: 20 },
-    { x: x- 40, y: 20 },
-    { x: x + 40, y: 20 },
-    { x: x + 40, y: 20 },
-    { x: x + 40, y: 4 },
+    { x: x - 70, y: 4 },
+    { x: x - 70, y: 20 },
+ 
+    
+    { x: x + 70, y: 20 },
+    { x: x + 70, y: 4 },
     { x: x + 0, y: 0 },
   ];
   

@@ -1,142 +1,14 @@
-const enumerate = e => {
-  var t = [];
-  var n = Object.keys(e);
-  for (var r = 0; r < n.length; r++) {
-    t[r] = e[n[r]];
-  }
-  return t;
-};
-
-const diff = (e, t) => {
-  var n, r;
-  r = enumerate(e);
-  n = Object.keys(r).map(Math.floor);
-  return diffXY(n, r, t);
-};
-const diffXY = (e, t, n) => {
-  if (n > 1) {
-    t = diffXY(e, t, n - 1);
-    e.pop();
-  }
-  var r = Object.keys(e);
-  var i = Object.keys(t);
-  var s = Math.min(r.length - 1, i.length - 1);
-  for (var o = 0; o < s; o++) {
-    t[o] = (t[i[o + 1]] - t[i[o]]) / (e[r[o + 1]] - e[r[o]]);
-  }
-  t.pop();
-  return t;
-};
-const integral = (e, t) => {
-  var n, r;
-  r = enumerate(e);
-  n = Object.keys(r).map(Math.floor);
-  return integralXY(n, r, t);
-};
-
-const integralXY = (e, t, n) => {
-  if (n > 1) {
-    t = integral(e, t, n - 1);
-  }
-  var r = Object.keys(e);
-  var i = Object.keys(t);
-  var s = Math.min(r.length - 1, i.length - 1);
-  t[s] = -t[s] * (e[r[s]] - e[r[s - 1]]);
-  for (var o = s - 1; o >= 0; o--) {
-    t[o] = -t[i[o]] * (e[r[o + 1]] - e[r[o]]) + t[i[o + 1]];
-  }
-  return t;
-};
-const extrema = (e, t) => {
-  var n, r;
-  r = enumerate(e);
-  n = Object.keys(r).map(Math.floor);
-  var i = extremaXY(n, r, t);
-  i.minlist = i.minlist.map(function(t) {
-    var n = Math.floor((t[1] + t[0]) / 2);
-    return Object.keys(e)[n];
-  });
-  i.maxlist = i.maxlist.map(function(t) {
-    var n = Math.floor((t[1] + t[0]) / 2);
-    return Object.keys(e)[n];
-  });
-  return { minlist: i.minlist, maxlist: i.maxlist };
-};
-const extremaXY = (e, t, n) => {
-  var r, i, s, o, u, a, f, l;
-  var c = e => {
-    var t = [];
-    var n = Object.keys(e);
-    for (var r = 0; r < n.length; r++) {
-      t[r] = e[n[r]];
-    }
-    return t;
-  };
-  t = c(t);
-  e = c(e);
-  r = t.length;
-  i = 0;
-  s = t[0];
-  o = t[0];
-  u = [];
-  a = [];
-  f = 1;
-  if (typeof n == "undefined") {
-    n = 0.1;
-  }
-  while (f < r) {
-    if (i == 0) {
-      if (!(o - n <= t[f] && t[f] <= s + n)) {
-        if (o - n > t[f]) {
-          i = -1;
-        }
-        if (s + n < t[f]) {
-          i = 1;
-        }
-      }
-      o = Math.max(o, t[f]);
-      s = Math.min(s, t[f]);
-    } else {
-      if (i == 1) {
-        if (o - n <= t[f]) {
-          o = Math.max(o, t[f]);
-        } else {
-          l = f - 1;
-          while (t[l] >= o - n) {
-            l--;
-          }
-          u.push([e[l], e[f]]);
-          i = -1;
-          s = t[f];
-        }
-      } else {
-        if (i == -1) {
-          if (s + n >= t[f]) {
-            s = Math.min(s, t[f]);
-          } else {
-            l = f - 1;
-            while (t[l] <= s + n) {
-              l--;
-            }
-            a.push([e[l], e[f]]);
-            i = 1;
-            o = t[f];
-          }
-        }
-      }
-    }
-    f++;
-  }
-  return { minlist: a, maxlist: u };
-};
+import { mean } from "d3-array";
+import { slopeLine, intercept } from "./utils.js";
 
 function minMax(xArray, yArray, tolerance = 1) {
+  console.log({ tolerance });
   //xArray is time, yArray is price
-  console.log('CALC MIN MAX')
+  console.log(`CALC MIN MAX array size ${xArray.length}`);
   let minValues = [];
   let maxValues = [];
   let totalLength = yArray.length;
-// console.log({xArray, yArray, tolerance})
+  // console.log({xArray, yArray, tolerance})
   yArray.forEach((value, index) => {
     // console.log({index, tolerance})
     if (index - tolerance < 0 || index + tolerance > totalLength) {
@@ -144,32 +16,34 @@ function minMax(xArray, yArray, tolerance = 1) {
     } else {
       // console.log({index, tolerance})
 
-      let minima = false
-      let maxima = false
-      let same = false
-     //loop from 
-      for (let x = index - tolerance ; x <= index + tolerance ; x++){
-        if( x === index) continue
-        if ( yArray[index] < yArray[x] ) minima = true
-        if ( yArray[index] > yArray[x] ) maxima = true
-        if ( yArray[index] === yArray[x] ) same = true
+      let minima = false;
+      let maxima = false;
+      let same = [];
+      //loop from
+      for (let x = index - tolerance; x <= index + tolerance; x++) {
+        if (x === index) continue;
+        if (yArray[index] < yArray[x]) minima = true;
+        if (yArray[index] > yArray[x]) maxima = true;
+        if (yArray[index] === yArray[x]) {
+          same.push(true);
+        } else {
+          same.pop();
+        }
 
-        let indexVal = yArray[index]
-        let checkVal = yArray[x]
+        let indexVal = yArray[index];
+        let checkVal = yArray[x];
         // console.log({indexVal, checkVal})
-
       }
 
-        // console.log({
-        //   minima, maxima, same
-        // })
-        if(!minima && maxima ) {
-          maxValues.push({x:xArray[index], y:yArray[index]})
-        }
-        if(minima && !maxima ) {
-          minValues.push({x:xArray[index], y:yArray[index]})
-        }
-
+      // console.log({
+      //   minima, maxima, same
+      // })
+      if (!minima && maxima && same.length < tolerance) {
+        maxValues.push({ x: xArray[index], y: yArray[index] });
+      }
+      if (minima && !maxima && same.length < tolerance) {
+        minValues.push({ x: xArray[index], y: yArray[index] });
+      }
 
       // minValues.push(value);
     }
@@ -177,15 +51,283 @@ function minMax(xArray, yArray, tolerance = 1) {
   return { minValues, maxValues };
 }
 
+function consolidateMinMaxValues(allPoints, allOHLCdata) {
+  console.log({ allPoints, allOHLCdata });
+  allPoints = allPoints.sort((a, b) => {
+    if (a.x > b.x) return 1;
+    if (a.x < b.x) return -1;
+  });
+  // console.log(allPoints);
+  //hmm figure out the time for each bar
+  let timeframe = 0;
+  let timeFrameFlag = 0;
+  let loopCount = 0;
+
+  allOHLCdata.forEach((p, i) => {
+    loopCount++;
+    if (timeFrameFlag > 10) {
+      if (!timeframe) timeFrameFlag = 0;
+      else return;
+    }
+    if (i + 1 < allOHLCdata.length) {
+      let diff = allOHLCdata[i + 1].timestamp - p.timestamp;
+      if (diff != timeframe) {
+        timeframe = diff;
+        timeFrameFlag = 0;
+      } else {
+        timeFrameFlag++;
+      }
+    }
+  });
+  // console.log(
+  //   `OK so we know that the timeframe = ${timeframe} and it only took ${loopCount} loops`
+  // );
+  //look for consolidated points
+  let consolidatedPoints = [];
+  // console.log(allPoints.length);
+  allPoints.forEach((point, pointIndex) => {
+    // console.log({ pointIndex, point });
+    let { x } = point;
+    if (pointIndex === 0) {
+      // console.log(`First round see index is ${pointIndex}`);
+      return consolidatedPoints.push([point]);
+    }
+    //find group index where this market should go
+    let groupIndex = consolidatedPoints.findIndex(group => {
+      let flag = false;
+      group.forEach(p => {
+        // console.log({ x, timeframe, pT: p.x });
+        // console.log(x - p.x <= timeframe);
+        if (x - p.x <= timeframe) {
+          flag = true;
+        }
+      });
+      return flag;
+    });
+    // console.log({ groupIndex });
+    if (groupIndex < 0) {
+      consolidatedPoints.push([point]);
+    } else {
+      if (!consolidatedPoints[groupIndex]) {
+        consolidatedPoints[groupIndex] = [point];
+      } else {
+        consolidatedPoints[groupIndex].push(point);
+      }
+    }
+  });
+  // console.log({ consolidatedPoints });
+
+  let finalConsolidatedMarkers = consolidatedPoints.map(group => {
+    let x = mean(group, d => d.x);
+    let y = mean(group, d => d.y);
+    return { x, y };
+  });
+  // console.log({finalConsolidatedMarkers})
+  return finalConsolidatedMarkers;
+}
+
+function regressionAnalysis(points, errLimit, lines = [], count  = 2) {
+  // if(points.length) return lines
+
+  console.log(points);
+
+
+
+  //Make two line and compare
+  /**
+   * this will have several items
+   * {
+   *  pointsArray, line1, line2, count
+    
+   * }
+   */
+  let {line1, line2, current_count, pointsArray} = RMSerror(points, count)
+  console.log({line1, line2, current_count, pointsArray})
+  //compare the error
+  
+  let error = line2.results_error
+  /**
+   * If the RMS error is too high 
+   * we will just take the last good line (line1)
+   * and restart the process
+   */
+  if(error > errLimit){
+    //we need to save line 1, and restart the function with spliced array
+    let nearbyPoints = pointsArray.slice(0,count)
+    pointsArray.splice(0,count-1)
+    line1.nearbyPoints = nearbyPoints
+    lines.push(line1)
+    /**
+     * if the sliced array is too small to restart
+     * we will just return the lines and stop
+     */
+    if(pointsArray.length<3){
+      console.log('Returning lines')
+      console.log(pointsArray)
+      return lines
+    /**
+     * else, we will restart with the spliced
+     * array and use the default count.
+     * Include the lines array to continue adding
+     */
+    }else{
+      regressionAnalysis(pointsArray, errLimit, lines)
+
+    }
+  /**
+   * if the RMS error is still low,
+   * we can increment count to test more points
+   */
+  }else{
+    /**
+     * make sure there is enough points in the
+     * array to run the function again,
+     */
+    if(pointsArray.length > count ){
+      regressionAnalysis(pointsArray, errLimit, lines, count+1)
+  
+    }else{
+      /**
+       * else we can just take the last good line (line2)
+       * and return all the lines.
+       */
+      console.log({line1, line2})
+      console.log('Returning lines')
+
+      console.log({pointsArray, line1, line2})
+      line2.nearbyPoints = pointsArray
+      lines.push(line2)
+      return lines
+    }
+
+  }
+
+
+
+  //HIGHS
+  //first get slope of first two points
+  // highLines[0] = findLineByLeastSquares(highMarks.slice(0, 2));
+  // highLines[1] = findLineByLeastSquares(highMarks.slice(0, 3));
+  // let slope1 = highLines[0].m
+  // let slope2 = highLines[1].m
+
+  // console.log((slope1-slope2)/slope1)
+
+  // highLines[2] = findLineByLeastSquares(highMarks.slice(0, 4));
+  // let slope3 = highLines[2].m
+  // console.log((slope2-slope3)/slope2)
+  // highLines[3] = findLineByLeastSquares(highMarks.slice(0, 5));
+  // highLines[4] = findLineByLeastSquares(highMarks.slice(0, 6));
+  // highLines[5] = findLineByLeastSquares(highMarks.slice(0, 7));
+
+  // // LOWS
+  // // first get slope of first two points
+  // lowLines[0] = findLineByLeastSquares(lowMarks.slice(0, 2));
+  // lowLines[1] = findLineByLeastSquares(lowMarks.slice(0, 3));
+  // lowLines[2] = findLineByLeastSquares(lowMarks.slice(0, 4));
+  // lowLines[3] = findLineByLeastSquares(lowMarks.slice(0, 5));
+  // lowLines[4] = findLineByLeastSquares(lowMarks.slice(0, 6));
+  // lowLines[5] = findLineByLeastSquares(lowMarks.slice(0, 7));
+
+  return lines;
+}
+
+
+function RMSerror(pointsArray, current_count){
+  let line1 = findLineByLeastSquares(pointsArray.slice(0, current_count));
+  let line2 = findLineByLeastSquares(pointsArray.slice(0, current_count+1));
+
+  return {
+    pointsArray, line1, line2, current_count
+  }
+
+    // highLines[0] = findLineByLeastSquares(highMarks.slice(0, 2));
+  // highLines[1] = findLineByLeastSquares(highMarks.slice(0, 3));
+
+}
+
+function findLineByLeastSquares(points) {
+  let values_x = points.map(({ x }) => x);
+  let values_y = points.map(({ y }) => y);
+  console.log({ points, values_x, values_y });
+  var x_sum = 0;
+  var y_sum = 0;
+  var xy_sum = 0;
+  var xx_sum = 0;
+  var count = 0;
+
+  /*
+   * The above is just for quick access, makes the program faster
+   */
+  var x = 0;
+  var y = 0;
+  var values_length = values_x.length;
+
+  if (values_length != values_y.length) {
+    throw new Error(
+      "The parameters values_x and values_y need to have same size!"
+    );
+  }
+
+  /*
+   * Above and below cover edge cases
+   */
+  if (values_length === 0) {
+    return [[], []];
+  }
+
+  /*
+   * Calculate the sum for each of the parts necessary.
+   */
+  for (let i = 0; i < values_length; i++) {
+    x = values_x[i];
+    y = values_y[i];
+    x_sum += x;
+    y_sum += y;
+    xx_sum += x * x;
+    xy_sum += x * y;
+    count++;
+  }
+
+  /*
+   * Calculate m and b for the line equation:
+   * y = x * m + b
+   */
+  var m = (count * xy_sum - x_sum * y_sum) / (count * xx_sum - x_sum * x_sum);
+  var b = y_sum / count - (m * x_sum) / count;
+
+  /*
+   * We then return the x and y data points according to our fit
+   */
+  var result_values_x = [];
+  var result_values_y = [];
+  var results_error = 0
+
+  for (let i = 0; i < values_length; i++) {
+    x = values_x[i];
+    y = x * m + b;
+    result_values_x.push(x);
+    result_values_y.push(y);
+    results_error += Math.abs(y - values_y[i])
+  }
+  /**
+   * Combine x, y results into object points
+   */
+
+
+    let x1= result_values_x[0]
+    let y1= result_values_y[0]
+    let x2= result_values_x[result_values_x.length-1]
+    let y2=result_values_y[result_values_y.length-1]
+  
+
+  return { x1, y1, x2, y2, m, b, results_error };
+}
+
 // y = [ 0,   1,   2,   3,  2,   3.2,   4,   5,   1,   0];
 // x = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 export default {
-  enumerate,
-  diff,
-  diffXY,
-  integral,
-  integralXY,
-  extrema,
-  extremaXY,
-  minMax
+  minMax,
+  consolidateMinMaxValues,
+  regressionAnalysis
 };

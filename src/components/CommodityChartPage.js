@@ -26,15 +26,7 @@ class CommodityChartPage extends React.Component {
 
 
   ensureData(){
-        //https://github.com/ReactTraining/react-router/issues/5870#issuecomment-394194338
-        // const match = matchPath(this.props.history.location.pathname, {
-        //   path: "/commodity/:symbol",
-        //   exact: true,
-        //   strict: false
-        // });
         let { symbol } = this.props.match.params;
-        // console.log({symbol})
-        // console.log(this.props.stock_data.commodity_data)
         let commodityData = this.props.stock_data.commodity_data[symbol]
         let intraday, daily, weekly;
         if(commodityData){
@@ -93,7 +85,7 @@ let weeklyCommodityData
             width={950}
             height={400}
           />
-              {/* <CandleStickChart
+              <CandleStickChart
             data={dailyCommodityData}
             width={950}
             height={400}
@@ -102,7 +94,7 @@ let weeklyCommodityData
             data={weeklyCommodityData}
             width={950}
             height={400}
-          /> */}
+          />
 
         
         </div>

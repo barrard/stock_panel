@@ -21,5 +21,6 @@ export function drawLine(
     .append("path")
     .merge(linePath)
     .attr("class", `line ${className}`)
+    .attr('stroke-width', 3)
     .attr("d", lineFunc);
 }

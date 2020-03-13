@@ -107,7 +107,7 @@ class Signup extends React.Component {
     // console.log(this.props)
     return (
 
-        <div >
+        <div className="white">
 
           <div className="row mt-5 text-center">
             <div className="col-md-6 offset-md-3">

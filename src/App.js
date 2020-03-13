@@ -50,4 +50,5 @@ export default App;
 
 const AppContainer = styled.div`
   position: relative;
+  background:#333;
 `;

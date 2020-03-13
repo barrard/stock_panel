@@ -52,7 +52,7 @@ class Main_Nav extends React.Component {
 
   /* On input makes the list */
   make_filter_list(search_text) {
-    console.log({search_text})
+    // console.log({search_text})
     let full_list;
     if(search_text.split('')[0]==="/"){
       console.log('its a commmoodity')
@@ -61,8 +61,8 @@ class Main_Nav extends React.Component {
       console.log({search_text, full_list})
 
     }else{
-      console.log({search_text, full_list})
-      console.log(search_text.split('')[0])
+      // console.log({search_text, full_list})
+      // console.log(search_text.split('')[0])
       search_text = search_text.toLowerCase();
       full_list = this.props.stock_data.stock_symbols_data;
     }
@@ -72,7 +72,7 @@ class Main_Nav extends React.Component {
       setTimeout(() => this.make_filter_list(search_text), 100);
       return;
     }
-    console.log({search_text, full_list})
+    // console.log({search_text, full_list})
     // console.log(full_list);
     /* list of possible arrays with data */
     var symbol_starts_with = [];
@@ -181,7 +181,7 @@ class Main_Nav extends React.Component {
   }
 
   highlight_search_letters(name, search) {
-    console.log({ name, search });
+    // console.log({ name, search });
     let index_of_search_term_name = name
       .toLowerCase()
       .indexOf(search.toLowerCase());
@@ -217,8 +217,8 @@ class Main_Nav extends React.Component {
 
 
     return (
-      <nav className="navbar navbar-expand-lg navbar-light bg-light relative">
-        <Link activeclassname="active" className="navbar-brand" to="/">
+      <nav className="navbar navbar-expand-lg navbar-dark bg-dark relative ">
+        <Link activeclassname="active" className="navbar-brand " to="/">
           Home
         </Link>
 
@@ -298,7 +298,7 @@ const Navbar_Search = ({
 const Charts_Dropdown = ({ pathname, charts }) => (
   <li className="nav-item dropdown margin_right_4em">
     <a
-      className="nav-link dropdown-toggle"
+      className="nav-link dropdown-toggle white"
       href="#"
       id="navbarDropdown"
       role="button"
@@ -365,7 +365,7 @@ const Register_Login_Links = ({ pathname }) => {
 const Navbar_Links = ({ path, pathname, name }) => (
   <li className="nav-item">
     <Link
-      className={`${pathname == path ? "active " : " "} nav-link dropdown-item`}
+      className={`${pathname == path ? "active " : " "} nav-link dropdown-item white`}
       to={path}
     >
       {name}

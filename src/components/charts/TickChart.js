@@ -33,9 +33,13 @@ function TickChart({ data, width, height, localMinMax, tickSize }) {
 
   const volScale = scaleLinear().range([innerHeight, 0]);
 
-  let timeAxis = axisBottom(timeScale).ticks(4);
+  let timeAxis = axisBottom(timeScale).ticks(4)
+  .tickSize(-innerHeight);
 
-  let priceAxis = axisRight(priceScale).ticks(4);
+
+  let priceAxis = axisRight(priceScale).ticks(4)
+  .tickSize(-innerWidth);
+
   let volAxis = axisLeft(volScale).ticks(4);
 
   let lineFn = line()
@@ -55,7 +59,9 @@ function TickChart({ data, width, height, localMinMax, tickSize }) {
     priceScale.domain([priceMin - tickSize, priceMax + tickSize]);
 
     volScale.domain([0, volMax]);
-    let svg = select(chartRef.current);
+    let svg = select(chartRef.current)
+    svg.style("background-color", '#222');
+
 
     //append chart window
     let chartWindow = svg
@@ -65,20 +71,20 @@ function TickChart({ data, width, height, localMinMax, tickSize }) {
     //append timeAxis group
     svg
       .append("g")
-      .attr("class", "timeAxis")
+      .attr("class", "white timeAxis")
       .attr("transform", `translate(${margin.left}, ${height - margin.bottom})`)
       .call(timeAxis);
 
     //append priceAxis group
     svg
       .append("g")
-      .attr("class", "priceAxis")
+      .attr("class", "white priceAxis")
       .attr("transform", `translate(${width - margin.right}, ${margin.top})`)
       .call(priceAxis);
     //appand volAxis
     svg
       .append("g")
-      .attr("class", "volAxis")
+      .attr("class", "white volAxis")
       .attr("transform", `translate(${margin.left}, ${margin.top})`)
       .call(volAxis);
 
@@ -104,6 +110,8 @@ function TickChart({ data, width, height, localMinMax, tickSize }) {
     let svg = select(chartRef.current);
 
     let chartWindow = svg.select(".chartWindow");
+    //ensure we draw a new line to be on top da other lines
+    chartWindow.selectAll('.tickPriceLine').remove()
 
     //append timeAxis group
     svg.select(".timeAxis").call(timeAxis);
@@ -129,15 +137,17 @@ function TickChart({ data, width, height, localMinMax, tickSize }) {
         return this.getAttribute("width") / 10;
       });
 
-    let tickLinePath = chartWindow.selectAll("path").data(prices);
+    let tickLinePath = chartWindow.selectAll("path").data([prices]);
     tickLinePath.exit().remove();
 
     tickLinePath
       .enter()
       .append("path")
       .merge(tickLinePath)
+      .attr('stroke-color', 'white')
+      .attr('stroke-width', '3')
 
-      .attr("class", "line") // Assign a class for styling
+      .attr("class", "tickPriceLine") // Assign a class for styling
       .attr("d", lineFn(prices)); // 11. Calls the line generator
 
     //add min max lines? circles? markers???

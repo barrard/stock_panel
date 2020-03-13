@@ -8,6 +8,7 @@ const close = d => d.close;
 
 /* Makes the data for given  Standard Deviation */
 export function makeSTD(STD_length, data) {
+  if(!data)return
   let STDdata = {high:[], low:[]};
   data.forEach((d, i) => {
       if(i === 0 )return
@@ -28,6 +29,7 @@ export function makeSTD(STD_length, data) {
 
 /* Makes the data for given  Moving Average*/
 export function makeEMA(EMA_val, data) {
+  if(!data) return
     EMA_val = parseInt(EMA_val)//EMA_val is a string, the number of days on average
   const multiplier = 2 / (EMA_val + 1);
 

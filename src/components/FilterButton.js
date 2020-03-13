@@ -25,7 +25,10 @@ function FilterButton({ show, setShow }) {
   return (
     <Container>
       <Button onClick={() => setShow(!show)}>{btnText}</Button>
+      {/* <FilterListContainer> */}
+
       {FilterList}
+      {/* </FilterListContainer> */}
     </Container>
   );
 }
@@ -46,26 +49,39 @@ const showSym = (sym)=>{
 }
 
 const Button = styled.button`
-position:absolute;
-top:0px;
-right:0px;
+position:fixed;
+top:60px;
+left:80px;
 `;
+
+// const FilterListContainer = styled.div`
+//     display: flex;
+//     flex-wrap: wrap;
+//   z-index: 100;
+//   position: fixed;
+//   top: 60px;
+//   left: 150px;
+//   background: #eee;
+//   border: 1px solid black;
+// `;
 
 const Container = styled.div`
     display: flex;
     flex-wrap: wrap;
   z-index: 100;
   position: fixed;
-  top: 10px;
-  right: 10px;
-  background: #eee;
-  border: 1px solid black;
+  top: 100px;
+  left: 0px;
+  background: #555;
+  border: 1px solid white;
 `;
 
 const P = styled.p`
 &:hover{
   background:#fff;
+  color:#333;
   cursor: pointer;
+  text-s
 }
   text-align:center;
   margin:0;

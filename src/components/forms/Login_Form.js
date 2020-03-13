@@ -34,7 +34,7 @@ class Login_Form extends React.Component {
 
   render() {
     return (
-      <div className="container">
+      <div className="container white">
         <form onSubmit={(event)=>this.handle_login(event)}>
           <div className="form-group row">
             <label

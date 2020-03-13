@@ -49,7 +49,7 @@ export function set_sector_data(sector, data) {
 export function add_commodity_chart_data({symbol, chart_data, timeframe}) {
   // console.log({chart_data})
         chart_data.forEach(r => (r.timestamp = new Date(r.timestamp).getTime()));
-        chart_data = forwardFill(chart_data);
+        // chart_data = forwardFill(chart_data);
   return {
     type: "ADD_COMMODITY_CHART_DATA",
     chart_data, symbol, timeframe
@@ -59,7 +59,7 @@ export function add_commodity_chart_data({symbol, chart_data, timeframe}) {
 export function add_chart_data(chart_data) {
   for(let sym in chart_data){
     chart_data[sym] = formatData(chart_data[sym]);
-    chart_data[sym] = forwardFill(chart_data[sym]);
+    // chart_data[sym] = forwardFill(chart_data[sym]);
   }
   return {
     type: "ADD_CHART_DATA",

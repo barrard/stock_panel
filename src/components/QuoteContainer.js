@@ -37,7 +37,7 @@ function QuoteContainer({Socket}) {
   filterList = JSON.parse(filterList);
 
   let AllQuotes = Object.keys(commodities_quotes).map(symbol => {
-    if (filterList.indexOf(symbol) >= 0) return <div key={symbol}></div>;
+  if (filterList.indexOf(symbol) >= 0) return <div key={symbol}></div>;
     if (!LAST_VOL[symbol]) {
       PRICE_VOL_LIST[symbol] = [];
       volumePriceProfile[symbol] = {};
@@ -172,6 +172,8 @@ export default QuoteContainer;
 
 const QuotesContainer = styled.div`
   margin-top: 5em;
+  background:#333;
+  color:white;
 `;
 
 const IconButton = styled.button`
@@ -207,6 +209,6 @@ function hide(symbol) {
 const PlayPauseBtn = styled.button`
   z-index: 100;
   position: fixed;
-  top: 10px;
+  top: 60px;
   left: 10px;
 `;

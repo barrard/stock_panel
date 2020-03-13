@@ -30,6 +30,7 @@ export function forwardFill(data) {
 }
 
 export function fillMissingData(data, timeframe) {
+  if(!data)return
   let missingDataObj = {};
   data.forEach((d, i) => {
     if (i === data.length - 1) return;
@@ -70,6 +71,7 @@ export function fillMissingData(data, timeframe) {
 }
 
 export function determineTimeFrame(data) {
+  if(!data)return
   let diffObj = {};
   // let prev = 0;
   data.forEach((d, i) => {
@@ -166,6 +168,7 @@ export function doZoomIn({partialOHLCdata}, mouseZoomPOS) {
 }
 
 export function doZoomOut({allOHLCdata, partialOHLCdata}) {
+  if(!allOHLCdata || !partialOHLCdata)return
   let candleZoom = parseInt(partialOHLCdata.length * 0.05) || 1;
 
   let first = partialOHLCdata[0];
@@ -189,10 +192,10 @@ export function slopeLine({ x1, x2, y1, y2 }) {
 
 export function slope(a, b) {
   // console.log({ a, b });
-  if (a.x == b.x) {
+  if (a.x === b.x) {
     return null;
   }
-
+  if((b.y === a.y))return 0
   return (b.y - a.y) / (b.x - a.x);
 }
 

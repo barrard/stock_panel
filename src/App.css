@@ -4,7 +4,7 @@
       box-shadow: 0px 0px 0px 0px rgba(207, 195, 195, 0.15);
   }
   25% {
-      box-shadow: 0px 0px 5px 0px green;
+      box-shadow: 0px 0px 50px 0px green;
 
   }
 
@@ -19,7 +19,7 @@
         }
   25% {
 
-      box-shadow: 0px 0px 5px 0px red;
+      box-shadow: 0px 0px 50px 0px red;
 
   }
 
@@ -59,6 +59,15 @@ box-shadow: 0px 0px 0px 0px rgba(207, 195, 195, 0.15);
 .line{
   fill:none;
   stroke: black;
+}
+.tickPriceLine{
+  fill:none;
+  stroke: white;
+}
+
+.white-line{
+  fill:none;
+  stroke: white;
 }
 
 .currentLineForward{
@@ -107,10 +116,10 @@ text{
   stroke-width: 1px;
 }
 .line #crosshairX {
-  stroke: black;
+  stroke: white;
 }
 .line #crosshairY {
-  stroke: black;
+  stroke: white;
 }
 .volPriceDividerLine{
   stroke: black;
@@ -137,16 +146,43 @@ text{
 .ema200{
   stroke: green;
 }
+.svgChart{
+  /* fill: black; */
+  /* stroke: white; */
+}
+
+.hoveredRegressionLine{
+  stroke-width: 4;
+}
 
 
+.white{
+  stroke:white;
+  color: white;
+  /* fill: black; */
+}
+
+ .white{
+  color: white !important;
+  }
 
 
+.tick line{
+  stroke: white;
+}
+
+.importantLine{
+  stroke-width: 10px;
+}
+
+.axisAnnotation{
+  z-index: 10;
+}
 
 
-
-
-
-
+body{
+  background: #333;
+}
 
 
 /* Stock app */
@@ -252,7 +288,7 @@ body { height: 100%; }
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
   
-  border-bottom: 5px solid black;
+  border-bottom: 5px solid white;
 }
 .crosshair_overlay{
   cursor: crosshair;
@@ -279,7 +315,7 @@ canvas{
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
   
-  border-top: 5px solid black;
+  border-top: 5px solid white;
 }
 .padding_6{
   padding: 6px

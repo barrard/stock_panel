@@ -38,30 +38,31 @@ export class List_Stock_Data extends React.Component {
     return 0;
   }
 
-  sort_by(prop, flag) {
-    console.log(prop, flag);
+  sort_by(prop) {
+
     //flag true dont switch sort_state
     const number_rows = this.state.number_rows;
     this.setState({ sorted_prop: prop });
     var sort_state = this.state.sort_state;
     /* Flag for not resetting sort_state */
-    if (flag) sort_state = !sort_state;
-
+    // if (flag) sort_state = !sort_state;
+    console.log(this.state.data)
+    sort_state = !sort_state
+    console.log({sort_state, prop})
     if (sort_state) {
       this.setState({ sort_state: false });
       this.setState({
         data: this.state.all_data
           .sort((a, b) => this.high_to_low(a, b, prop))
-          .slice(0, number_rows)
       });
     } else {
       this.setState({ sort_state: true });
       this.setState({
         data: this.state.all_data
           .sort((a, b) => this.low_to_high(a, b, prop))
-          .slice(0, number_rows)
       });
     }
+    this.setState({sort_state})
   }
   load_more_data() {
     console.log("LOAD MORE DATA");
@@ -88,7 +89,7 @@ export class List_Stock_Data extends React.Component {
         {data && data.length > 0 && (
           <div className="col-12">
             <div className="row flex_center">
-              <h5>{title}</h5>
+              <h5 className="white">{title}</h5>
             </div>
             <Stock_List_Header
               sorted_prop={this.state.sorted_prop}
@@ -154,7 +155,7 @@ function Display_Stock_Row({ stock_data, index, props }) {
 
 const Stock_List_Header = ({ sort_by, sort_state, sorted_prop }) => {
   return (
-    <div className="row">
+    <div className="row white">
       <div className="align_items_center col-2 flex">
         <h6 onClick={() => sort_by("symbol")}>Sym.</h6>
         {sort_state && sorted_prop == "symbol" && <div className="arrow-up" />}

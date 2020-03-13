@@ -112,7 +112,7 @@ class Login extends React.Component {
     // console.log(this)
     return (
       <div>
-        <div className="row mt-5 text-center">
+        <div className="row mt-5 text-center white">
           <div className="col-md-6 offset-md-3">
             <h1>Login</h1>
          
