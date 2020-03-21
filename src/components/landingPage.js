@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 // import { toastr } from "react-redux-toastr";
 
 import { set_movers } from "../redux/actions/stock_actions.js";
-import { List_Stock_Data } from "./landingPageComponents/List_Stock_Data.js";
+import List_Stock_Data from "./landingPageComponents/List_Stock_Data.js";
 
 import API from "../components/API.js";
 

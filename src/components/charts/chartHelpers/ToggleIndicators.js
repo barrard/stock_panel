@@ -1,0 +1,86 @@
+import React from 'react';
+import { connect } from 'react-redux';
+import { toastr } from 'react-redux-toastr';
+//import { withRouter } from 'next/router';
+import { Link, withRouter } from 'react-router-dom';
+import styled from 'styled-components';
+
+
+//import Main_Layout from '../layouts/Main_Layout.js';
+class Contracts extends React.Component{
+    constructor(props) {
+        super(props);
+        this.state={}
+    }
+    render(){
+        return(
+            <>
+            <ToggleIndicatorButton
+            posLeft={0}
+            onClick={() => this.props.toggleIndicators("swingLines")}
+            isSet={this.props.visibleIndicators.swingLines}
+          >
+            SWINGLINES
+          </ToggleIndicatorButton>
+          <ToggleIndicatorButton
+            posLeft={3}
+            onClick={() => this.props.toggleIndicators("minMaxMarkers")}
+            isSet={this.props.visibleIndicators.minMaxMarkers}
+          >
+            MARKERS
+          </ToggleIndicatorButton>
+  
+          <ToggleIndicatorButton
+            onClick={() => this.props.toggleIndicators("importantPriceLevel")}
+            isSet={this.props.visibleIndicators.importantPriceLevel}
+          >
+            PRICE LEVELS
+          </ToggleIndicatorButton>
+          <ToggleIndicatorButton
+            onClick={() => this.props.toggleIndicators("regressionLines")}
+            isSet={this.props.visibleIndicators.regressionLines}
+          >
+            Regression Lines
+          </ToggleIndicatorButton>
+  
+          <ToggleIndicatorButton
+            onClick={() => this.props.toggleIndicators("ema20")}
+            isSet={this.props.visibleIndicators.ema20}
+          >
+            20 EMA
+          </ToggleIndicatorButton>
+  
+          <ToggleIndicatorButton
+            onClick={() => this.props.toggleIndicators("ema50")}
+            isSet={this.props.visibleIndicators.ema50}
+          >
+            50 EMA
+          </ToggleIndicatorButton>
+          <ToggleIndicatorButton
+            onClick={() => this.props.toggleIndicators("ema200")}
+            isSet={this.props.visibleIndicators.ema200}
+          >
+            200 EMA
+          </ToggleIndicatorButton>
+  
+
+          </>
+        )
+    }
+}
+
+
+function mapStateToProps(state) {
+    return state;
+}
+
+
+export default connect(mapStateToProps)(withRouter(Contracts));
+
+
+let ToggleIndicatorButton = styled.button`
+position: relative;
+top:0;
+/* left:${({ posLeft }) => posLeft}; */
+  background: ${({ isSet }) => (isSet ? "green" : "red")};
+`;

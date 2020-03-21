@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Route, BrowserRouter as Router } from "react-router-dom";
 import styled from "styled-components";
+import { connect } from "react-redux";
 
 import "./App.css";
 import Socket from "./components/Socket.js";
@@ -10,9 +11,10 @@ import LandingPage from "./components/landingPage.js";
 import SignupPage from "./components/SignupPage.js";
 import LoginPage from "./components/LoginPage.js";
 import StockChart from "./components/StockChartPage.js";
-import CommodityChartPage from "./components/CommodityChartPage.js"
+import CommodityChartPage from "./components/CommodityChartPage.js";
 import defaultFilterList from "./components/QuoteComponents/DefaultFilterList.js";
 import Main_Nav from "./components/Main_Nav.js";
+import { updateCommodityData } from "./redux/actions/stock_actions.js";
 let allData = { ES: [], CL: [], GC: [] };
 let i = 0;
 let prices_timer;
@@ -20,35 +22,58 @@ let es_data = { "/ES": {} };
 
 localStorage.setItem("filterList", defaultFilterList);
 
-function App() {
-  const routing = (
-    <Router>
-      <Main_Nav />
+class App extends React.Component {
+  constructor(props) {
+    super(props);
 
-      <div>
-        <Route exact path="/" component={LandingPage} />
-        <Route
-          exact
-          path="/commodities"
-          // component={QuoteContainer}
-          render={props => <QuoteContainer {...props} Socket={Socket} />}
-        />
-        <Route path="/chart/:symbol" component={StockChart} />
-        <Route path="/sign-up" component={SignupPage} />
-        <Route path="/login" component={LoginPage} />
-        
-        <Route path="/commodity/:symbol" component={CommodityChartPage} />
-        
-      </div>
-    </Router>
-  );
+    this.state = {};
+  }
 
-  return <AppContainer>{routing}</AppContainer>;
+  componentDidMount() {
+    let {dispatch}=this.props
+    Socket.on("new_minutley_data", (newData)=>dispatch(updateCommodityData(newData, 'minute')));
+    Socket.on("current_minute_data", (newData)=>dispatch(updateCommodityData(newData, 'tick')));
+  }
+
+  render() {
+    const routing = (
+      <Router>
+        <Main_Nav />
+
+        <div>
+          <Route exact path="/" component={LandingPage} />
+          <Route path="/sign-up" component={SignupPage} />
+          <Route path="/login" component={LoginPage} />
+          <Route
+            exact
+            path="/commodities"
+            // component={QuoteContainer}
+            render={props => <QuoteContainer {...props} Socket={Socket} />}
+          />
+          <Route
+            path="/chart/:symbol"
+            render={props => <StockChart {...props} Socket={Socket} />}
+          />
+
+          <Route
+            path="/commodity/:symbol"
+            render={props => <CommodityChartPage {...props} Socket={Socket} />}
+          />
+        </div>
+      </Router>
+    );
+
+    return <AppContainer>{routing}</AppContainer>;
+  }
 }
 
-export default App;
+function mapStateToProps(state) {
+  return state;
+}
+
+export default connect(mapStateToProps)(App);
 
 const AppContainer = styled.div`
   position: relative;
-  background:#333;
+  background: #333;
 `;

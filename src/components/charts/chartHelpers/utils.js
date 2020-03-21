@@ -20,7 +20,7 @@ export function formatData(data) {
 
 export function forwardFill(data) {
   //find the time line
-  // console.log({data})
+  console.log({data})
   let timeframe = determineTimeFrame(data);
   data = fillMissingData(data, timeframe);
   // console.log('================================')

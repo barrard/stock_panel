@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom";
+import { Link, withRouter } from "react-router-dom";
 
-import { Link } from "react-router-dom";
 import { useParams } from "react-router-dom";
 import {
   view_selected_stock,
@@ -9,7 +9,7 @@ import {
 } from "./chart_data_utils.js";
 import TotalVolume from "../QuoteComponents/TotalVolume.js";
 
-export class List_Stock_Data extends React.Component {
+class List_Stock_Data extends React.Component {
   constructor(props) {
     super(props);
 
@@ -115,6 +115,7 @@ export class List_Stock_Data extends React.Component {
   }
 }
 
+export default withRouter(List_Stock_Data)
 function Display_Stock_Row({ stock_data, index, props }) {
   // console.log({stock_data})
   const {
@@ -132,7 +133,8 @@ function Display_Stock_Row({ stock_data, index, props }) {
     <div
       className={`row clickable ${class_name}`}
       onClick={() =>
-        view_selected_stock({ timeframe, end, symbol, props })
+        props.history.push(`/chart/${symbol}`)
+        // view_selected_stock({ timeframe, end, symbol, props })
       }
     >
       <div className="col-2 flex">

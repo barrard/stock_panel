@@ -1,10 +1,10 @@
-import { mean } from "d3-array";
+import { mean, min, max } from "d3-array";
 import { slopeLine, intercept } from "./utils.js";
 
 function minMax(xArray, yArray, tolerance = 1) {
-  console.log({ tolerance });
+  // console.log({ tolerance });
   //xArray is time, yArray is price
-  console.log(`CALC MIN MAX array size ${xArray.length}`);
+  // console.log(`CALC MIN MAX array size ${xArray.length}`);
   let minValues = [];
   let maxValues = [];
   let totalLength = yArray.length;
@@ -126,12 +126,43 @@ function consolidateMinMaxValues(allPoints, allOHLCdata) {
   return finalConsolidatedMarkers;
 }
 
-function regressionAnalysis(points, errLimit, lines = [], count  = 2) {
+function mergeImportantPriceLevels(priceLevels, tolerance) {
+  let mergedPrices = {};
+  // console.log({ priceLevels, tolerance });
+  priceLevels.map(priceLevel => {
+    let similar = false;
+
+    for (let mergedPriceLevel in mergedPrices) {
+      if(similar)return
+      // console.log(mergedPriceLevel);
+      // console.log({ mergedPriceLevel, priceLevel: priceLevel.y });
+      // console.log(mergedPriceLevel / priceLevel.y);
+      let absDiff = Math.abs(priceLevel.y / mergedPriceLevel - 1);
+      // console.log({ absDiff });
+      if (absDiff < 0.003) {
+        similar = true;
+        mergedPrices[mergedPriceLevel].push(priceLevel);
+      }
+    }
+    if (!similar) {
+      mergedPrices[priceLevel.y] = [priceLevel];
+    }
+  });
+  let groupedPoints = []
+  for(let price in mergedPrices){
+    groupedPoints.push(mergedPrices[price])
+    let avgPrice = mean(mergedPrices[price], ({y})=>y)
+  }
+  // console.log({mergedPrices, groupedPoints});
+  return groupedPoints
+
+}
+
+function regressionAnalysis(points, errLimit, lines = [], count = 2) {
   // if(points.length) return lines
 
-  console.log(points);
-
-
+  // console.log(points);
+  // points.forEach(p=>console.log(new Date(p.x).toLocaleString()))
 
   //Make two line and compare
   /**
@@ -141,115 +172,87 @@ function regressionAnalysis(points, errLimit, lines = [], count  = 2) {
     
    * }
    */
-  let {line1, line2, current_count, pointsArray} = RMSerror(points, count)
-  console.log({line1, line2, current_count, pointsArray})
+  let { line1, line2, current_count, pointsArray } = RMSerror(points, count);
+  // console.log({line1, line2, current_count, pointsArray})
   //compare the error
-  
-  let error = line2.results_error
+
+  let error = line2.results_error;
   /**
-   * If the RMS error is too high 
+   * If the RMS error is too high
    * we will just take the last good line (line1)
    * and restart the process
    */
-  if(error > errLimit){
+  if (error > errLimit) {
     //we need to save line 1, and restart the function with spliced array
-    let nearbyPoints = pointsArray.slice(0,count)
-    pointsArray.splice(0,count-1)
-    line1.nearbyPoints = nearbyPoints
-    lines.push(line1)
+    let nearbyPoints = pointsArray.slice(0, count);
+    pointsArray.splice(0, count - 1);
+    line1.nearbyPoints = nearbyPoints;
+    lines.push(line1);
     /**
      * if the sliced array is too small to restart
      * we will just return the lines and stop
      */
-    if(pointsArray.length<3){
-      console.log('Returning lines')
-      console.log(pointsArray)
-      return lines
-    /**
-     * else, we will restart with the spliced
-     * array and use the default count.
-     * Include the lines array to continue adding
-     */
-    }else{
-      regressionAnalysis(pointsArray, errLimit, lines)
-
+    if (pointsArray.length < 2) {
+      console.log("Returning lines");
+      console.log(pointsArray);
+      return lines;
+      /**
+       * else, we will restart with the spliced
+       * array and use the default count.
+       * Include the lines array to continue adding
+       */
+    } else {
+      regressionAnalysis(pointsArray, errLimit, lines);
     }
-  /**
-   * if the RMS error is still low,
-   * we can increment count to test more points
-   */
-  }else{
+    /**
+     * if the RMS error is still low,
+     * we can increment count to test more points
+     */
+  } else {
     /**
      * make sure there is enough points in the
      * array to run the function again,
      */
-    if(pointsArray.length > count ){
-      regressionAnalysis(pointsArray, errLimit, lines, count+1)
-  
-    }else{
+    if (pointsArray.length > count) {
+      regressionAnalysis(pointsArray, errLimit, lines, count + 1);
+    } else {
       /**
        * else we can just take the last good line (line2)
        * and return all the lines.
        */
-      console.log({line1, line2})
-      console.log('Returning lines')
+      // console.log({line1, line2})
+      // console.log('Returning lines')
 
-      console.log({pointsArray, line1, line2})
-      line2.nearbyPoints = pointsArray
-      lines.push(line2)
-      return lines
+      // console.log({pointsArray, line1, line2})
+      line2.nearbyPoints = pointsArray;
+      lines.push(line2);
+      return lines;
     }
-
   }
-
-
-
-  //HIGHS
-  //first get slope of first two points
-  // highLines[0] = findLineByLeastSquares(highMarks.slice(0, 2));
-  // highLines[1] = findLineByLeastSquares(highMarks.slice(0, 3));
-  // let slope1 = highLines[0].m
-  // let slope2 = highLines[1].m
-
-  // console.log((slope1-slope2)/slope1)
-
-  // highLines[2] = findLineByLeastSquares(highMarks.slice(0, 4));
-  // let slope3 = highLines[2].m
-  // console.log((slope2-slope3)/slope2)
-  // highLines[3] = findLineByLeastSquares(highMarks.slice(0, 5));
-  // highLines[4] = findLineByLeastSquares(highMarks.slice(0, 6));
-  // highLines[5] = findLineByLeastSquares(highMarks.slice(0, 7));
-
-  // // LOWS
-  // // first get slope of first two points
-  // lowLines[0] = findLineByLeastSquares(lowMarks.slice(0, 2));
-  // lowLines[1] = findLineByLeastSquares(lowMarks.slice(0, 3));
-  // lowLines[2] = findLineByLeastSquares(lowMarks.slice(0, 4));
-  // lowLines[3] = findLineByLeastSquares(lowMarks.slice(0, 5));
-  // lowLines[4] = findLineByLeastSquares(lowMarks.slice(0, 6));
-  // lowLines[5] = findLineByLeastSquares(lowMarks.slice(0, 7));
 
   return lines;
 }
 
-
-function RMSerror(pointsArray, current_count){
+function RMSerror(pointsArray, current_count) {
+  // console.log(pointsArray.length)
   let line1 = findLineByLeastSquares(pointsArray.slice(0, current_count));
-  let line2 = findLineByLeastSquares(pointsArray.slice(0, current_count+1));
+  let line2 = findLineByLeastSquares(pointsArray.slice(0, current_count + 1));
 
   return {
-    pointsArray, line1, line2, current_count
-  }
+    pointsArray,
+    line1,
+    line2,
+    current_count
+  };
 
-    // highLines[0] = findLineByLeastSquares(highMarks.slice(0, 2));
+  // highLines[0] = findLineByLeastSquares(highMarks.slice(0, 2));
   // highLines[1] = findLineByLeastSquares(highMarks.slice(0, 3));
-
 }
 
 function findLineByLeastSquares(points) {
   let values_x = points.map(({ x }) => x);
   let values_y = points.map(({ y }) => y);
-  console.log({ points, values_x, values_y });
+  // console.log({ points, values_x, values_y });
   var x_sum = 0;
   var y_sum = 0;
   var xy_sum = 0;
@@ -301,25 +304,24 @@ function findLineByLeastSquares(points) {
    */
   var result_values_x = [];
   var result_values_y = [];
-  var results_error = 0
+  var results_error = 0;
 
   for (let i = 0; i < values_length; i++) {
     x = values_x[i];
     y = x * m + b;
     result_values_x.push(x);
     result_values_y.push(y);
-    results_error += Math.abs(y - values_y[i])
+    results_error += Math.abs(y - values_y[i]);
   }
   /**
    * Combine x, y results into object points
    */
 
-
-    let x1= result_values_x[0]
-    let y1= result_values_y[0]
-    let x2= result_values_x[result_values_x.length-1]
-    let y2=result_values_y[result_values_y.length-1]
-  
+  let x1 = result_values_x[0];
+  let y1 = result_values_y[0];
+  let x2 = result_values_x[result_values_x.length - 1];
+  x2 = (x2 - x1) * 2 + x2;
+  let y2 = x2 * m + b;
 
   return { x1, y1, x2, y2, m, b, results_error };
 }
@@ -328,6 +330,7 @@ function findLineByLeastSquares(points) {
 // x = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 export default {
   minMax,
+  mergeImportantPriceLevels,
   consolidateMinMaxValues,
   regressionAnalysis
 };

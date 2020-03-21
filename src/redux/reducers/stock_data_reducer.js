@@ -7,30 +7,139 @@ const initial_state = {
   charts: {},
   search_symbol: "",
   sector_data: {},
-  movers:{},
-  commodity_data:{}
+  movers: {},
+  commodity_data: {},
+  commodityRegressionData: {},
+  stockRegressionData: {},
+  currentTickData: {},
+  newestMinuteData: {}
 };
 
 export default (state = initial_state, action) => {
   switch (action.type) {
-    case "ADD_COMMODITY_CHART_DATA":{
-      // console.log(action)
-      let { chart_data, symbol, timeframe } = action
+    case "REMOVE_COMMODITY_REGRESSION_DATA": {
+      console.log(action);
+      let { id } = action;
+      console.log(state)
+      let commodityRegressionData = [
+        ...state.commodityRegressionData[state.search_symbol]
+      ];
+      console.log(commodityRegressionData)
+      commodityRegressionData = commodityRegressionData.filter(d=>d._id != id)
+      console.log(commodityRegressionData)
+      commodityRegressionData = {...state.commodityRegressionData, ...commodityRegressionData}
+      return {
+        ...state,
+        commodityRegressionData
+      };
+    }
+
+
+    case "ADD_COMMODITY_CHART_DATA": {
+      console.log(action);
+      let { chart_data, symbol, timeframe } = action;
       let commodity_data = {
         ...state.commodity_data
-      }
-      if(!commodity_data[symbol])commodity_data[symbol] = {}
-      commodity_data[symbol][timeframe]=chart_data
+      };
+      if (!commodity_data[symbol]) commodity_data[symbol] = {};
+      // let currentData = commodity_data[symbol][timeframe];
+      // let orderedData = [...currentData, chart_data].sort(byDate);
+      commodity_data[symbol][timeframe] = chart_data;
 
-        return {
-        ...state, commodity_data
+      return {
+        ...state,
+        commodity_data
+      };
+    }
+    case "ADD_NEW_MINUTE": {
+      let { new_minute_data } = action;
+      console.log({ new_minute_data });
+      console.log({ state });
+      console.log(new_minute_data["ES"].prices);
+      let commodity_data = { ...state.commodity_data };
 
+      for (let symbol in state.commodity_data) {
+
+        new_minute_data[symbol].timestamp = new Date(
+          new_minute_data[symbol].start_timestamp
+        ).getTime();
+        if (!commodity_data[symbol]) {
+          //This should NEvEr ruN
+          console.log("-----------    This should NEvEr ruN  ============");
+          commodity_data[symbol] = {};
+          commodity_data[symbol]["1Min"] = [];
         }
+        commodity_data[symbol]["1Min"].push(new_minute_data[symbol]);
       }
-    
-    case "SET_MOVERS":{
-      let {movers}=action
-      return {...state, movers}
+
+      return {
+        ...state,
+        ...commodity_data
+      };
+    }
+
+    case "ADD_NEW_TICK": {
+      let { new_tick_data } = action;
+
+      let currentTickData = { ...state.currentTickData };
+      for (let symbol in state.commodity_data) {
+        if (!currentTickData[symbol]) currentTickData[symbol] = {};
+        currentTickData[symbol] = new_tick_data[symbol];
+        currentTickData[symbol].timestamp = new Date(
+          currentTickData[symbol].start_timestamp
+        ).getTime();
+      }
+
+      return {
+        ...state,
+        currentTickData
+      };
+    }
+
+    case "SET_COMMODITY_REGRESSION_DATA": {
+      // console.log({action})
+      let { commodityRegressionData } = action;
+      if (!commodityRegressionData.length) return state;
+      // console.log(commodityRegressionData[0])
+      let { symbol } = commodityRegressionData[0];
+      // console.log({commodityRegressionData, symbol})
+      let currentData = state.commodityRegressionData;
+      if (!currentData[symbol]) currentData[symbol] = [];
+      let index = currentData[symbol].findIndex(
+        d => d._id === commodityRegressionData[0]._id
+      );
+      // console.log(index)
+      if (index !== -1) return state;
+      currentData[symbol] = [
+        ...currentData[symbol],
+        ...commodityRegressionData
+      ];
+
+      return { ...state, commodityRegressionData: { ...currentData } };
+    }
+
+    case "SET_STOCK_REGRESSION_DATA": {
+      let { stockRegressionData } = action;
+      if (!stockRegressionData.length) return state;
+
+      let { symbol } = stockRegressionData[0];
+      // console.log(stockRegressionData[0])
+      // console.log({stockRegressionData, symbol})
+      let currentData = state.stockRegressionData;
+      if (!currentData[symbol]) currentData[symbol] = [];
+      let index = currentData[symbol].findIndex(
+        d => d._id === stockRegressionData[0]._id
+      );
+      console.log(index);
+      if (index !== -1) return state;
+      currentData[symbol] = [...currentData[symbol], ...stockRegressionData];
+
+      return { ...state, stockRegressionData: { ...currentData } };
+    }
+
+    case "SET_MOVERS": {
+      let { movers } = action;
+      return { ...state, movers };
     }
     case "ADD_MA_DATA": {
       let { symbol, MA_data } = action;
@@ -40,9 +149,11 @@ export default (state = initial_state, action) => {
 
       return {
         ...state,
-        charts:{
-          ...state.charts, [symbol]:{
-            ...state.charts[symbol], ...stock_data_with_MA
+        charts: {
+          ...state.charts,
+          [symbol]: {
+            ...state.charts[symbol],
+            ...stock_data_with_MA
           }
         }
       };
@@ -60,21 +171,30 @@ export default (state = initial_state, action) => {
       // console.log(action)
       return {
         ...state,
-        search_symbol: action.search_symbol
+        search_symbol: action.search_symbol.toUpperCase()
       };
     }
+
     case "ADD_CHART_DATA": {
-      let charts = { ...state.charts, ...action.chart_data };
+      let { timeframe, chart_data, symbol } = action;
+      let charts = {
+        ...state.charts
+      };
+      if (!charts[symbol]) charts[symbol] = {};
+      charts[symbol][timeframe] = chart_data;
       return {
         ...state,
         charts
       };
     }
+
     case "SET_SYMBOLS_DATA": {
       // console.log({action})
-      let{stock_symbols_data,
-        commodity_symbols_data} = action
-        commodity_symbols_data = formatCommoditySymbolsData(commodity_symbols_data)
+      let { stock_symbols_data, commodity_symbols_data } = action;
+      // console.log(stock_symbols_data)
+      commodity_symbols_data = formatCommoditySymbolsData(
+        commodity_symbols_data
+      );
       return {
         ...state,
         stock_symbols_data,
@@ -88,10 +208,8 @@ export default (state = initial_state, action) => {
   }
 };
 
-
-
-function formatCommoditySymbolsData(data){
-  let formatedSymbolsData = []
+function formatCommoditySymbolsData(symbols) {
+  let formatedSymbolsData = [];
   /*
   CIK: "1090872"
 Ticker: "A"
@@ -102,16 +220,18 @@ Business: "CA"
 Incorporated: "DE"
 IRS: "770518772"
   */
-  data.forEach(group=>{
-    let groupName = group.group
-    group.symbols.forEach(symbolData=>{
-      let Ticker = `${symbolData.symbol}`
-      let Name = symbolData.name
-      let isCommodity = true
-      formatedSymbolsData.push({Ticker, Name, isCommodity, groupName})
-    })
 
-  })
+  for (let symbol in symbols) {
+    let Ticker = symbol;
+    let Name = symbols[symbol].name;
+    let isCommodity = true;
+    formatedSymbolsData.push({ Ticker, Name, isCommodity });
+  }
 
-  return formatedSymbolsData
+  return formatedSymbolsData;
+}
+
+function byDate(a, b) {
+  if (a.timestamp > b.timestamp) return 1;
+  if (a.timestamp < b.timestamp) return -1;
 }

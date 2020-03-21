@@ -10,6 +10,14 @@ export function set_symbols_data(stock_symbols_data, commodity_symbols_data) {
   };
 }
 
+export function commodityRegressionData(commodityRegressionData) {
+  return {
+    type: "SET_COMMODITY_REGRESSION_DATA",
+    commodityRegressionData
+  };
+}
+
+
 export function set_movers(movers) {
   return {
     type: "SET_MOVERS",
@@ -46,24 +54,78 @@ export function set_sector_data(sector, data) {
 }
 
 
-export function add_commodity_chart_data({symbol, chart_data, timeframe}) {
-  // console.log({chart_data})
-        chart_data.forEach(r => (r.timestamp = new Date(r.timestamp).getTime()));
-        // chart_data = forwardFill(chart_data);
+export function add_commodity_minutely_data({symbol, chart_data}) {
+  console.log({chart_data})
+  chart_data.forEach(r => {
+    r.timestamp = new Date(parseInt(r.start_timestamp)).getTime()
+    r.open = +r.open
+    r.close = +r.close
+    r.high = +r.high
+    r.low = +r.low
+    r.volume= +r.volume
+    r.sample_times = JSON.parse(r.sample_times)
+    r.bid_prices = JSON.parse(r.bid_prices)
+    r.ask_prices = JSON.parse(r.ask_prices)
+    r.bid_sizes = JSON.parse(r.bid_sizes)
+    r.ask_sizes = JSON.parse(r.ask_sizes)
+    r.prices = JSON.parse(r.prices)
+    r.vols = JSON.parse(r.vols)
+  })
+  let timeframe = '1Min'
   return {
     type: "ADD_COMMODITY_CHART_DATA",
     chart_data, symbol, timeframe
   };
 }
 
-export function add_chart_data(chart_data) {
-  for(let sym in chart_data){
-    chart_data[sym] = formatData(chart_data[sym]);
-    // chart_data[sym] = forwardFill(chart_data[sym]);
+/**
+ * 
+ * @param {object} data object of commodity data
+ * @param {string} type 'tick' or 'minute'
+ */
+export function updateCommodityData(newData, type){
+    if(type === 'minute'){
+
+      return {
+        type:"ADD_NEW_MINUTE",
+        new_minute_data : newData
+      }
+    }else if(type === 'tick'){
+
+      return {
+        type:"ADD_NEW_TICK",
+        new_tick_data : newData
+      }
+    }
+}
+
+export function add_commodity_chart_data({symbol, chart_data, timeframe}) {
+  console.log('ADD_COMMODITY_CHART_DATA')
+        chart_data.forEach(r => (r.timestamp = new Date(r.timestamp).getTime()));
+        chart_data = forwardFill(chart_data);
+  return {
+    type: "ADD_COMMODITY_CHART_DATA",
+    chart_data, symbol, timeframe
+  };
+}
+
+export function deleteCommodityRegressionData(id){
+  return {
+    type:"REMOVE_COMMODITY_REGRESSION_DATA",
+    id
   }
+
+}
+
+export function add_chart_data(symbol, chart_data, timeframe) {
+  console.log('ADD_CHART_DATA')
+  console.log(symbol)
+  console.log(chart_data)
+    chart_data = formatData(chart_data);
+    chart_data = forwardFill(chart_data);
   return {
     type: "ADD_CHART_DATA",
-    chart_data
+    chart_data, timeframe, symbol
   };
 }
 

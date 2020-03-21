@@ -7,7 +7,6 @@ import { fetch_selected_chart_data } from "./landingPageComponents/chart_data_ut
 import Canvas_Chart from "./charts/Canvas_Chart.js";
 import Analysis_Chart from "./charts/Analysis_Chart.js";
 import CandleStickChart from "./charts/CandleStickChart.js";
-import { view_selected_stock } from "../components/landingPageComponents/chart_data_utils.js";
 import {set_search_symbol} from '../redux/actions/stock_actions.js'
 
 class Account_Profile extends React.Component {
@@ -26,23 +25,16 @@ class Account_Profile extends React.Component {
 
     this.props.dispatch(set_search_symbol(symbol))
 
-    if (!this.props.stock_data.charts[symbol]) {
-      console.log('fetching data')
-      let { symbol } = this.props.match.params;
-      const timeframe = "day";
-      const end = new Date().getTime();
-      const props = this.props;
-      view_selected_stock({ timeframe, end, symbol, props });
-    }
+
   }
   componentDidUpdate(prevProps){
     let currentURL = this.props.match.url
     let prevURL = prevProps.match.url
-    console.log(this.props.match.params.symbol)
-    if(currentURL !== prevURL){
-      console.log('set data?')
-      set_search_symbol(this.props.match.params.symbol)
-    }
+    // console.log(this.props.match.params.symbol)
+    // if(currentURL !== prevURL){
+    //   console.log('set data?')
+    //   set_search_symbol(this.props.match.params.symbol)
+    // }
   }
 
 
@@ -53,10 +45,10 @@ class Account_Profile extends React.Component {
   // }
 
   render() {
-    let { stock_data } = this.props;
-    let symbol = stock_data.search_symbol;
-    let stockData = stock_data.charts[symbol]
-    console.log({symbol, stockData})
+    // let { stock_data } = this.props;
+    let symbol = this.props.match.params.symbol;
+    // let stockData = stock_data.charts
+    // console.log({symbol, stockData})
 
 
     let canvas_width = this.state.canvas_width;
@@ -65,10 +57,10 @@ class Account_Profile extends React.Component {
       <div className="p-5">
         <div className="row ">
           <CandleStickChart
-            data={stockData}
+          type="stock"
+           symbol={symbol}
             width={950}
             height={400}
-            // timeframe={"intraday"}
           />
 
           {/* <div className={`col-sm-${canvas_width} vh_50`}>

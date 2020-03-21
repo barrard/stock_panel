@@ -7,7 +7,7 @@ import {
   set_search_symbol,
   add_chart_data
 } from "../redux/actions/stock_actions.js";
-import { view_selected_stock, view_selected_commodity } from "./landingPageComponents/chart_data_utils.js";
+import { view_selected_stock, view_selected_commodity, getMinutelyCommodityData } from "./landingPageComponents/chart_data_utils.js";
 import { is_loading, show_filter_list } from "../redux/actions/meta_actions.js";
 import API from "./API.js";
 class Main_Nav extends React.Component {
@@ -52,7 +52,7 @@ class Main_Nav extends React.Component {
 
   /* On input makes the list */
   make_filter_list(search_text) {
-    // console.log({search_text})
+    console.log({search_text})
     let full_list;
     if(search_text.split('')[0]==="/"){
       console.log('its a commmoodity')
@@ -63,9 +63,9 @@ class Main_Nav extends React.Component {
     }else{
       // console.log({search_text, full_list})
       // console.log(search_text.split('')[0])
-      search_text = search_text.toLowerCase();
       full_list = this.props.stock_data.stock_symbols_data;
     }
+    search_text = search_text.toUpperCase();
     // console.log(full_list)
     if (!full_list) {
       /* wait a second...  try again */
@@ -83,14 +83,14 @@ class Main_Nav extends React.Component {
 
     /* check symbol starts with */
     symbol_starts_with = full_list.filter(list_item =>
-      list_item.Ticker.toLowerCase().startsWith(search_text)
+      list_item.Ticker.toUpperCase().startsWith(search_text)
     );
     // console.log(symbol_starts_with);
     filtered_stock_list = [...filtered_stock_list, ...symbol_starts_with];
     if (filtered_stock_list.length < 100) {
       /* check name starts with */
       name_starts_with = full_list.filter(list_item =>
-        list_item.Name.toLowerCase().startsWith(search_text)
+        list_item.Name.toUpperCase().startsWith(search_text)
       );
       // console.log(name_starts_with);
       filtered_stock_list = [...filtered_stock_list, ...name_starts_with];
@@ -99,7 +99,7 @@ class Main_Nav extends React.Component {
     if (filtered_stock_list.length < 100) {
       /* check symbols */
       symbol_list = full_list.filter(list_item =>
-        list_item.Ticker.toLowerCase().includes(search_text)
+        list_item.Ticker.toUpperCase().includes(search_text)
       );
       // console.log(symbol_list);
       filtered_stock_list = [...filtered_stock_list, ...symbol_list];
@@ -108,7 +108,7 @@ class Main_Nav extends React.Component {
     if (filtered_stock_list.length < 100) {
       /* check name */
       name_list = full_list.filter(list_item =>
-        list_item.Name.toLowerCase().includes(search_text)
+        list_item.Name.toUpperCase().includes(search_text)
       );
       // console.log(name_list);
       filtered_stock_list = [...filtered_stock_list, ...name_list];
@@ -153,13 +153,19 @@ class Main_Nav extends React.Component {
         key={index}
         onClick={() => {
           if(isCommodity){
-             view_selected_commodity({ timeframe:'intraday', symbol, props })
-             view_selected_commodity({ timeframe:'daily', symbol, props })
-             view_selected_commodity({ timeframe:'weekly', symbol, props })
+            // getMinutelyCommodityData({ date:'3-13-2020', symbol, props })
+            // view_selected_commodity({ timeframe:'intraday', symbol, props })
+            // view_selected_commodity({ timeframe:'daily', symbol, props })
+            //  view_selected_commodity({ timeframe:'weekly', symbol, props })
+            // this.props.dispatch(set_search_symbol(symbol));
+
              return props.history.push(`/commodity/${symbol}`);
 
           }else{
-            return view_selected_stock({timeframe, end, symbol, props})
+            // this.props.dispatch(set_search_symbol(symbol));
+
+            return props.history.push(`/chart/${symbol}`);
+            // return view_selected_stock({timeframe, end, symbol, props})
           }
         }}
       >
@@ -183,8 +189,8 @@ class Main_Nav extends React.Component {
   highlight_search_letters(name, search) {
     // console.log({ name, search });
     let index_of_search_term_name = name
-      .toLowerCase()
-      .indexOf(search.toLowerCase());
+      .toUpperCase()
+      .indexOf(search.toUpperCase());
 
     // console.log({ index_of_search_term_name });
     if (index_of_search_term_name >= 0) {
