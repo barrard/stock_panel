@@ -126,9 +126,9 @@ function consolidateMinMaxValues(allPoints, allOHLCdata) {
   return finalConsolidatedMarkers;
 }
 
-function mergeImportantPriceLevels(priceLevels, tolerance) {
+function mergeImportantPriceLevels(priceLevels, priceLevelSensitivity) {
   let mergedPrices = {};
-  // console.log({ priceLevels, tolerance });
+  // console.log({ priceLevels, priceLevelSensitivity });
   priceLevels.map(priceLevel => {
     let similar = false;
 
@@ -139,7 +139,9 @@ function mergeImportantPriceLevels(priceLevels, tolerance) {
       // console.log(mergedPriceLevel / priceLevel.y);
       let absDiff = Math.abs(priceLevel.y / mergedPriceLevel - 1);
       // console.log({ absDiff });
-      if (absDiff < 0.003) {
+      // console.log({priceLevelSensitivity})
+      // console.log(priceLevelSensitivity/10000)
+      if (absDiff < priceLevelSensitivity/10000) {
         similar = true;
         mergedPrices[mergedPriceLevel].push(priceLevel);
       }
@@ -150,10 +152,13 @@ function mergeImportantPriceLevels(priceLevels, tolerance) {
   });
   let groupedPoints = []
   for(let price in mergedPrices){
-    groupedPoints.push(mergedPrices[price])
     let avgPrice = mean(mergedPrices[price], ({y})=>y)
+    avgPrice = parseFloat(avgPrice.toFixed(4))
+    let minTime = min(mergedPrices[price], ({x})=>x)
+    let points = mergedPrices[price]
+    groupedPoints.push({x:minTime , y:avgPrice, points })
   }
-  // console.log({mergedPrices, groupedPoints});
+  // console.log(groupedPoints)
   return groupedPoints
 
 }
@@ -320,7 +325,7 @@ function findLineByLeastSquares(points) {
   let x1 = result_values_x[0];
   let y1 = result_values_y[0];
   let x2 = result_values_x[result_values_x.length - 1];
-  x2 = (x2 - x1) * 2 + x2;
+  x2 = (x2 - x1) * 0.5 + x2;
   let y2 = x2 * m + b;
 
   return { x1, y1, x2, y2, m, b, results_error };

@@ -15,6 +15,7 @@ import CommodityChartPage from "./components/CommodityChartPage.js";
 import defaultFilterList from "./components/QuoteComponents/DefaultFilterList.js";
 import Main_Nav from "./components/Main_Nav.js";
 import { updateCommodityData } from "./redux/actions/stock_actions.js";
+import TradeBot from './components/TradeBot/TradeBot.js'
 let allData = { ES: [], CL: [], GC: [] };
 let i = 0;
 let prices_timer;
@@ -26,19 +27,27 @@ class App extends React.Component {
   constructor(props) {
     super(props);
 
-    this.state = {};
+    this.state = {
+      newTickData:{}
+    };
   }
 
   componentDidMount() {
     let {dispatch}=this.props
-    Socket.on("new_minutley_data", (newData)=>dispatch(updateCommodityData(newData, 'minute')));
-    Socket.on("current_minute_data", (newData)=>dispatch(updateCommodityData(newData, 'tick')));
+    Socket.on("new_minutley_data", (newTickData)=>dispatch(updateCommodityData(newTickData, 'minute')));
+    Socket.on("current_minute_data", (newTickData)=>dispatch(updateCommodityData(newTickData, 'tick')));
+    // Socket.on("current_minute_data", (newTickData)=>{
+    //   // console.log(newTickData)
+    //   this.setState({newTickData})
+    //   // TradeBot.run(newTickData)
+    // });
   }
 
   render() {
     const routing = (
       <Router>
         <Main_Nav />
+        <TradeBot newTickData={this.state.newTickData}/>
 
         <div>
           <Route exact path="/" component={LandingPage} />

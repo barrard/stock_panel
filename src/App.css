@@ -275,6 +275,11 @@ body { height: 100%; }
 .red{
   color:red
 }
+.goGreenGo{
+  border: 1px solid black;
+  background: green;
+  color: yellow;
+}
 .trade_post_form_overlay{
   left:2em;
   top:2em;

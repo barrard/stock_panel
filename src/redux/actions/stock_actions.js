@@ -55,7 +55,7 @@ export function set_sector_data(sector, data) {
 
 
 export function add_commodity_minutely_data({symbol, chart_data}) {
-  console.log({chart_data})
+  // console.log({chart_data})
   chart_data.forEach(r => {
     r.timestamp = new Date(parseInt(r.start_timestamp)).getTime()
     r.open = +r.open

@@ -17,10 +17,12 @@ export default {
   fetch_commodity_realtime_data,
   saveRegressionValues,
   getCommodityRegressionValues,
-  deleteRegressionValues
+  deleteRegressionValues,
+  setRegressionSettingsTimeframe
 };
 
 const API_SERVER = process.env.REACT_APP_STOCK_DATA_URL;
+const LOCAL_SERVER = 'http://localhost:3003';
 
 async function getCommodityRegressionValues(symbol, props) {
   console.log("get regression values");
@@ -29,22 +31,34 @@ async function getCommodityRegressionValues(symbol, props) {
     return console.log("Already have the commodityRegressionData");
   }
   let regressionData = await fetch(
-    `${API_SERVER}/API/commodityRegressionSettings/${symbol}`
+    `${LOCAL_SERVER}/API/commodityRegressionSettings/${symbol}`
   );
   regressionData = await regressionData.json();
   // console.log(regressionData);
   props.dispatch(commodityRegressionData(regressionData));
 }
 
-async function saveRegressionValues({
-  symbol,
-  minMaxTolerance,
-  regressionErrorLimit,
+async function setRegressionSettingsTimeframe(
+  id,
+  { timeframe, regressionLines, importantPriceLevels },
   props
-}) {
+) {
+  console.log({
+    regressionLines,
+    importantPriceLevels
+  });
+  /**
+   * get an array of mx+b m = and b =
+   */
+  let slopeInts = [];
+  importantPriceLevels.map(p => slopeInts.push({ m: 0, b: p.y }));
+  regressionLines.highLines.map(({ m, b }) => slopeInts.push({ m, b }));
+  regressionLines.lowLines.map(({ m, b }) => slopeInts.push({ m, b }));
+  console.log({ slopeInts });
+
   let regressionData = await fetch(
-    `${API_SERVER}/API/commodityRegressionSettings`,
-    POST({ symbol, minMaxTolerance, regressionErrorLimit })
+    `${LOCAL_SERVER}/API/commodityRegressionSettings`,
+    PUT({ id, timeframe })
   );
   regressionData = await regressionData.json();
   console.log(regressionData);
@@ -53,14 +67,40 @@ async function saveRegressionValues({
   props.dispatch(commodityRegressionData([regressionData]));
 }
 
+async function saveRegressionValues({
+  symbol,
+  minMaxTolerance,
+  regressionErrorLimit,
+  priceLevelMinMax,
+  priceLevelSensitivity,
+  props
+}) {
+  let regressionData = await fetch(
+    `${LOCAL_SERVER}/API/commodityRegressionSettings`,
+    POST({
+      symbol,
+      minMaxTolerance,
+      regressionErrorLimit,
+      priceLevelMinMax,
+      priceLevelSensitivity
+    })
+  );
+  regressionData = await regressionData.json();
+  console.log(regressionData);
+  console.log(props);
+  //use an array becasue thats what the actions is expecting
+  toastr.success('Regression settings saved')
+  props.dispatch(commodityRegressionData([regressionData]));
+}
+
 async function deleteRegressionValues(id, props) {
   let deletedData = await fetch(
-    `${API_SERVER}/API/commodityRegressionSettings`,
+    `${LOCAL_SERVER}/API/commodityRegressionSettings`,
     DELETE({ id })
   );
   deletedData = await deletedData.json();
-  if(!deletedData.ok) return toastr.error('Error deleting data')
-  toastr.success('Regression data was  deleted')
+  if (!deletedData.ok) return toastr.error("Error deleting data");
+  toastr.success("Regression data was  deleted");
   console.log(deletedData);
   console.log(props);
 
@@ -148,6 +188,17 @@ async function fetchStockData({ timeframe, symbol, end }) {
 function POST(body) {
   return {
     method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  };
+}
+
+function PUT(body) {
+  return {
+    method: "PUT",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json"

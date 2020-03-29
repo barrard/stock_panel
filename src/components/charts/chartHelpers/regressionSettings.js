@@ -12,45 +12,28 @@ class RegressionSettings extends React.Component {
   }
   render() {
     let symbol = this.props.stock_data.search_symbol;
-    let {setRegressionSettings} = this.props 
     // console.log(this.props);
     return (
       <>
         <div className="row flex_center ">
-          <div className="col-sm-6 ">
-            <div className="row flex_center">
-              <div className="col-sm-8 flex_end">
-                <Label>MinMax Point Tolerance</Label>
-              </div>
-              <div className="col-sm-4 flex_start">
-                <input
-                  className="small_input"
-                  value={this.props.minMaxTolerance}
-                  onChange={e => this.props.updateMinMaxTolerance(e)}
-                  type="number"
-                />
-              </div>
-            </div>
-            <div className="row flex_center">
-              <div className="col-sm-8 flex_end">
-                <Label>Regression RMS error limit</Label>
-              </div>
-              <div className="col-sm-4 flex_start">
-                <input
-                  className="small_input"
-                  value={this.props.regressionErrorLimit}
-                  onChange={e => this.props.updateRegressionErrorLimit(e)}
-                  step="any"
-                  step="0.1"
-                  type="number"
-                />
-              </div>
-            </div>
-          </div>
-          <div className="col-sm-6 flex_center white">
+          <SettingsInputs
+            priceLevelSensitivity={this.props.priceLevelSensitivity}
+            updatePriceLevelSensitivity={this.props.updatePriceLevelSensitivity}
+            minMaxTolerance={this.props.minMaxTolerance}
+            updateMinMaxTolerance={this.props.updateMinMaxTolerance}
+            regressionErrorLimit={this.props.regressionErrorLimit}
+            updateRegressionErrorLimit={this.props.updateRegressionErrorLimit}
+            priceLevelMinMax={this.props.priceLevelMinMax}
+            updatePriceLevelMinMax={this.props.updatePriceLevelMinMax}
+            priceLevelSensitivity={this.props.priceLevelSensitivity}
+            updatePriceLevelSensitivity={this.props.updatePriceLevelSensitivity}
+          />
+          <div className="col-sm-8  white">
             <SettingValuesList
-            remove={this.props.remove}
-            setRegressionSettings={setRegressionSettings}
+              timeframe={this.props.timeframe}
+              setTimeframe={this.props.setTimeframe}
+              remove={this.props.remove}
+              setRegressionSettings={this.props.setRegressionSettings}
               settings={this.props.stock_data.commodityRegressionData[symbol]}
             />
           </div>
@@ -75,38 +58,144 @@ let Label = styled.span`
   color: white;
 `;
 
-function SettingValuesList({ settings, setRegressionSettings, remove }) {
+function SettingsInputs(props) {
+  return (
+    <div className="col-sm-4 ">
+      <div className="row flex_center">
+        <div className="col-sm-8 flex_end">
+          <Label>MinMax Point Tolerance</Label>
+        </div>
+        <div className="col-sm-4 flex_start">
+          <input
+            className="small_input"
+            value={props.minMaxTolerance}
+            onChange={e => props.updateMinMaxTolerance(e)}
+            type="number"
+          />
+        </div>
+      </div>
+      <div className="row flex_center">
+        <div className="col-sm-8 flex_end">
+          <Label>Regression RMS error limit</Label>
+        </div>
+        <div className="col-sm-4 flex_start">
+          <input
+            className="small_input"
+            value={props.regressionErrorLimit}
+            onChange={e => props.updateRegressionErrorLimit(e)}
+            step="any"
+            step="0.1"
+            type="number"
+          />
+        </div>
+      </div>
+      <div className="row flex_center">
+        <div className="col-sm-8 flex_end">
+          <Label>Price Level MinMax</Label>
+        </div>
+        <div className="col-sm-4 flex_start">
+          <input
+            className="small_input"
+            value={props.priceLevelMinMax}
+            onChange={e => props.updatePriceLevelMinMax(e)}
+            step="1"
+            type="number"
+          />
+        </div>
+      </div>
+      <div className="row flex_center">
+        <div className="col-sm-8 flex_end">
+          <Label>Price Level Sensitivity</Label>
+        </div>
+        <div className="col-sm-4 flex_start">
+          <input
+            className="small_input"
+            value={props.priceLevelSensitivity}
+            onChange={e => props.updatePriceLevelSensitivity(e)}
+            step="1"
+            type="number"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SettingValuesList({
+  timeframe,
+  settings,
+  setRegressionSettings,
+  remove,
+  setTimeframe
+}) {
   // console.log(settings);
   if (!settings) return <div>No Settings Saved</div>;
   let settingsList = settings.map(setting => (
-    <SettingsItem key={setting._id} setting={setting}
-    remove={remove}
-    setRegressionSettings={setRegressionSettings} />
+    <SettingsItem
+      timeframe={timeframe}
+      key={setting._id}
+      setting={setting}
+      remove={remove}
+      setRegressionSettings={setRegressionSettings}
+      setTimeframe={setTimeframe}
+    />
   ));
   return (
     <div className="row">
-      <div className="col-sm-5 flex_center">MinMaxTolerance</div>
-      <div className="col-sm-5 flex_center">Regression Error limit</div>
+      <div className="col-sm-2 flex_center">Timeframe</div>
+      <div className="col-sm-3 flex_center">MinMaxTolerance</div>
+      <div className="col-sm-3 flex_center">Error limit</div>
+      <div className="col-sm-2 flex_center">RUN</div>
       <div className="col-sm-2 flex_center">Delete</div>
-  
+
       {settingsList}
     </div>
   );
 }
 
-const SettingsItem = ({ setting, setRegressionSettings, remove }) => {
-  let { minMaxTolerance, regressionErrorLimit } = setting;
+const SettingsItem = ({
+  timeframe,
+  setting,
+  setRegressionSettings,
+  remove,
+  setTimeframe
+}) => {
+  let {
+    minMaxTolerance,
+    regressionErrorLimit,
+    priceLevelMinMax,
+    priceLevelSensitivity
+  } = setting;
+  // console.log({timeframe, setting})
   return (
-    <div className="col-sm-12 flex_center clickable highlightOnHover"
+    <div
+      className="col-sm-12 flex_center clickable highlightOnHover"
       onClick={() =>
-        setRegressionSettings({ minMaxTolerance, regressionErrorLimit })
+        setRegressionSettings({
+          minMaxTolerance,
+          regressionErrorLimit,
+          priceLevelMinMax,
+          priceLevelSensitivity
+        })
       }
     >
-      <div className="col-sm-5 flex_center">{minMaxTolerance}</div>
-      <div className="col-sm-5 flex_center">{regressionErrorLimit}</div>
-      <div className="col-sm-2 flex_center clickable"
-        onClick={()=>remove(setting._id)}>X</div>
-      
+      <div className="col-sm-2 flex_center">{setting.timeframe}</div>
+      <div className="col-sm-3 flex_center">{minMaxTolerance}</div>
+      <div className="col-sm-3 flex_center">{regressionErrorLimit}</div>
+      <div
+        className={`col-sm-2 flex_center clickable ${
+          setting.timeframe === timeframe ? " goGreenGo " : " "
+        }`}
+        onClick={() => setTimeframe(setting._id)}
+      >
+        O
+      </div>
+      <div
+        className="col-sm-2 flex_center clickable red"
+        onClick={() => remove(setting._id)}
+      >
+        X
+      </div>
     </div>
   );
 };

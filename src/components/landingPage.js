@@ -28,7 +28,7 @@ class Landing_Page extends React.Component {
   }
 
   render() {
-    console.log(this.props)
+    // console.log(this.props)
     let { movers } = this.props.stock_data;
     return (
       <div className="row flex_center">
