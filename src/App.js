@@ -14,7 +14,7 @@ import StockChart from "./components/StockChartPage.js";
 import CommodityChartPage from "./components/CommodityChartPage.js";
 import defaultFilterList from "./components/QuoteComponents/DefaultFilterList.js";
 import Main_Nav from "./components/Main_Nav.js";
-import { updateCommodityData } from "./redux/actions/stock_actions.js";
+import { updateCommodityData, addCommodityTrades, updateCommodityTrade } from "./redux/actions/stock_actions.js";
 import TradeBot from './components/TradeBot/TradeBot.js'
 let allData = { ES: [], CL: [], GC: [] };
 let i = 0;
@@ -36,6 +36,15 @@ class App extends React.Component {
     let {dispatch}=this.props
     Socket.on("new_minutley_data", (newTickData)=>dispatch(updateCommodityData(newTickData, 'minute')));
     Socket.on("current_minute_data", (newTickData)=>dispatch(updateCommodityData(newTickData, 'tick')));
+    Socket.on("enterTrade", newTrade=>{
+      console.log('ENTERING A TRADE')
+      return dispatch(addCommodityTrades([newTrade], newTrade.symbol))
+    })
+    Socket.on("updateTrade", updateTrade=>{
+      console.log('updateTrade')
+      return dispatch(updateCommodityTrade(updateTrade, updateTrade.symbol))
+    })
+    
     // Socket.on("current_minute_data", (newTickData)=>{
     //   // console.log(newTickData)
     //   this.setState({newTickData})

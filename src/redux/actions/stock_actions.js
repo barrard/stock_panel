@@ -10,6 +10,22 @@ export function set_symbols_data(stock_symbols_data, commodity_symbols_data) {
   };
 }
 
+export function updateCommodityTrade(trade){
+  console.log(trade)
+  return{
+    type:"UPDATE_COMMODITY_TRADES", 
+    trade
+  }
+}
+
+export function addCommodityTrades(trades, symbol){
+  console.log(trades)
+  return{
+    type:"ADD_COMMODITY_TRADES", 
+    trades, symbol
+  }
+}
+
 export function commodityRegressionData(commodityRegressionData) {
   return {
     type: "SET_COMMODITY_REGRESSION_DATA",
@@ -71,10 +87,11 @@ export function add_commodity_minutely_data({symbol, chart_data}) {
     r.prices = JSON.parse(r.prices)
     r.vols = JSON.parse(r.vols)
   })
+  let rawCommodityChartData = [...chart_data]
   let timeframe = '1Min'
   return {
     type: "ADD_COMMODITY_CHART_DATA",
-    chart_data, symbol, timeframe
+    chart_data, symbol, timeframe, rawCommodityChartData
   };
 }
 
@@ -101,11 +118,14 @@ export function updateCommodityData(newData, type){
 
 export function add_commodity_chart_data({symbol, chart_data, timeframe}) {
   console.log('ADD_COMMODITY_CHART_DATA')
+  console.log({chart_data})
         chart_data.forEach(r => (r.timestamp = new Date(r.timestamp).getTime()));
+        let rawCommodityChartData = [...chart_data]
+        console.log({rawCommodityChartData, chart_data})
         chart_data = forwardFill(chart_data);
   return {
     type: "ADD_COMMODITY_CHART_DATA",
-    chart_data, symbol, timeframe
+    chart_data, symbol, timeframe, rawCommodityChartData
   };
 }
 
@@ -122,10 +142,12 @@ export function add_chart_data(symbol, chart_data, timeframe) {
   console.log(symbol)
   console.log(chart_data)
     chart_data = formatData(chart_data);
+    let rawData = [...chart_data]
+
     chart_data = forwardFill(chart_data);
   return {
     type: "ADD_CHART_DATA",
-    chart_data, timeframe, symbol
+    chart_data, timeframe, symbol, rawData
   };
 }
 

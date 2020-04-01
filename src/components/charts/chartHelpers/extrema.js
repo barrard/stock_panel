@@ -1,8 +1,8 @@
 import { mean, min, max } from "d3-array";
 import { slopeLine, intercept } from "./utils.js";
 
-function minMax(xArray, yArray, tolerance = 1) {
-  // console.log({ tolerance });
+function minMax(xArray, yArray, tolerance = 1, minMaxMostRecentData = false) {
+  // console.log({ tolerance, minMaxMostRecentData });
   //xArray is time, yArray is price
   // console.log(`CALC MIN MAX array size ${xArray.length}`);
   let minValues = [];
@@ -11,9 +11,14 @@ function minMax(xArray, yArray, tolerance = 1) {
   // console.log({xArray, yArray, tolerance})
   yArray.forEach((value, index) => {
     // console.log({index, tolerance})
-    if (index - tolerance < 0 || index + tolerance > totalLength) {
+    if (index - tolerance < 0) {
       return;
-    } else {
+    }
+    if(index + tolerance > totalLength && minMaxMostRecentData){
+      // tolerance = parseInt(tolerance/4)
+      tolerance = parseInt(tolerance/2)
+    
+    } else if(index + tolerance > totalLength) return
       // console.log({index, tolerance})
 
       let minima = false;
@@ -32,12 +37,9 @@ function minMax(xArray, yArray, tolerance = 1) {
 
         let indexVal = yArray[index];
         let checkVal = yArray[x];
-        // console.log({indexVal, checkVal})
+
       }
 
-      // console.log({
-      //   minima, maxima, same
-      // })
       if (!minima && maxima && same.length < tolerance) {
         maxValues.push({ x: xArray[index], y: yArray[index] });
       }
@@ -45,8 +47,7 @@ function minMax(xArray, yArray, tolerance = 1) {
         minValues.push({ x: xArray[index], y: yArray[index] });
       }
 
-      // minValues.push(value);
-    }
+    
   });
   return { minValues, maxValues };
 }
@@ -137,7 +138,7 @@ function mergeImportantPriceLevels(priceLevels, priceLevelSensitivity) {
       // console.log(mergedPriceLevel);
       // console.log({ mergedPriceLevel, priceLevel: priceLevel.y });
       // console.log(mergedPriceLevel / priceLevel.y);
-      let absDiff = Math.abs(priceLevel.y / mergedPriceLevel - 1);
+      let absDiff = Math.abs((priceLevel.y / mergedPriceLevel) - 1);
       // console.log({ absDiff });
       // console.log({priceLevelSensitivity})
       // console.log(priceLevelSensitivity/10000)

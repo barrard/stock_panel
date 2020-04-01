@@ -4,7 +4,8 @@ import { csv } from "d3-fetch";
 import {
   set_symbols_data,
   commodityRegressionData,
-  deleteCommodityRegressionData
+  deleteCommodityRegressionData,
+  addCommodityTrades
   // set_search_symbol,
   // add_chart_data
 } from "../redux/actions/stock_actions.js";
@@ -14,15 +15,38 @@ export default {
   fetchStockData,
   fetchCommodityData,
   fetch_commodity_minutely_data,
-  fetch_commodity_realtime_data,
   saveRegressionValues,
   getCommodityRegressionValues,
   deleteRegressionValues,
-  setRegressionSettingsTimeframe
+  setRegressionSettingsTimeframe,
+  getCommodityTrades
 };
 
 const API_SERVER = process.env.REACT_APP_STOCK_DATA_URL;
-const LOCAL_SERVER = 'http://localhost:3003';
+const LOCAL_SERVER = process.env.REACT_APP_LOCAL_DATA;
+
+async function getCommodityTrades(symbol, props) {
+  let trades
+try {
+  if(symbol){
+
+    trades = await fetch(
+      `${LOCAL_SERVER}/API/commodityTrades/${symbol}`
+      );
+    }else{
+      trades = await fetch(
+        `${LOCAL_SERVER}/API/commodityTrades`
+        );
+    }
+    trades = await trades.json()
+    console.log(trades)
+    props.dispatch(addCommodityTrades(trades, symbol))
+} catch (err) {
+
+  return console.log('ERROR')
+  
+}
+}
 
 async function getCommodityRegressionValues(symbol, props) {
   console.log("get regression values");
@@ -31,7 +55,8 @@ async function getCommodityRegressionValues(symbol, props) {
     return console.log("Already have the commodityRegressionData");
   }
   let regressionData = await fetch(
-    `${LOCAL_SERVER}/API/commodityRegressionSettings/${symbol}`
+    `${LOCAL_SERVER}/API/commodityRegressionSettings/${symbol}`,
+    // { credentials: "include" }
   );
   regressionData = await regressionData.json();
   // console.log(regressionData);
@@ -58,7 +83,7 @@ async function setRegressionSettingsTimeframe(
 
   let regressionData = await fetch(
     `${LOCAL_SERVER}/API/commodityRegressionSettings`,
-    PUT({ id, timeframe })
+    { credentials: "include", ...PUT({ id, timeframe }) }
   );
   regressionData = await regressionData.json();
   console.log(regressionData);
@@ -77,28 +102,32 @@ async function saveRegressionValues({
 }) {
   let regressionData = await fetch(
     `${LOCAL_SERVER}/API/commodityRegressionSettings`,
-    POST({
-      symbol,
-      minMaxTolerance,
-      regressionErrorLimit,
-      priceLevelMinMax,
-      priceLevelSensitivity
-    })
+    {
+      credentials: "include",
+      ...POST({
+        symbol,
+        minMaxTolerance,
+        regressionErrorLimit,
+        priceLevelMinMax,
+        priceLevelSensitivity
+      })
+    }
   );
   regressionData = await regressionData.json();
   console.log(regressionData);
   console.log(props);
   //use an array becasue thats what the actions is expecting
-  toastr.success('Regression settings saved')
+  toastr.success("Regression settings saved");
   props.dispatch(commodityRegressionData([regressionData]));
 }
 
 async function deleteRegressionValues(id, props) {
   let deletedData = await fetch(
     `${LOCAL_SERVER}/API/commodityRegressionSettings`,
-    DELETE({ id })
+    { credentials: "include", ...DELETE({ id }) }
   );
   deletedData = await deletedData.json();
+  console.log(deletedData)
   if (!deletedData.ok) return toastr.error("Error deleting data");
   toastr.success("Regression data was  deleted");
   console.log(deletedData);
@@ -124,29 +153,13 @@ async function getAllSymbolsData(dispatch) {
   return;
 }
 
-async function fetch_commodity_realtime_data({ symbol }) {
-  try {
-    symbol = settleSymbol(symbol);
-    //TD_data/dailyParsedTickData
-    let data = await csv(`${API_SERVER}/current_data/${symbol}.csv`);
-    // data = await data.json();
-    // console.log({data})
-    // console.log('TOASTR')
-    toastr.success(`Data loaded`, `${data.length} bars loaded for ${symbol}`);
-    return data;
-  } catch (err) {
-    let data = [];
-    toastr.success(`Data loaded`, `${data.length} bars loaded for ${symbol}`);
-    return data;
-  }
-}
-
 async function fetch_commodity_minutely_data({ date, symbol }) {
   try {
     symbol = settleSymbol(symbol);
     //TD_data/dailyParsedTickData
     let data = await csv(
-      `${API_SERVER}/TD_data/dailyParsedTickData/${date}/${symbol}-${date}.csv`
+      `${API_SERVER}/TD_data/dailyParsedTickData/${date}/${symbol}-${date}.csv`,
+      { withCredentials: true }
     );
     // data = await data.json();
     // console.log({data})
@@ -161,11 +174,12 @@ async function fetch_commodity_minutely_data({ date, symbol }) {
 }
 
 async function fetchCommodityData({ timeframe, symbol }) {
+  console.log(LOCAL_SERVER)
   let data = await fetch(
-    `${API_SERVER}/back_data/${timeframe}/${timeframe}-${symbol}.json`
+    `${LOCAL_SERVER}/back_data/${timeframe}/${timeframe}-${symbol}.json`
   );
   data = await data.json();
-  // console.log({data})
+  console.log({data})
   // console.log('TOASTR')
   toastr.success(`Data loaded`, `${data.length} bars loaded for ${symbol}`);
   return data;

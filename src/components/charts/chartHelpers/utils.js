@@ -99,9 +99,50 @@ export function determineTimeFrame(data) {
   return timeframe;
 }
 
-export function dropShadow(svg) {
+export function priceRangeRed(defs){
+  let gradient = defs.append('linearGradient')
+  .attr('id', 'priceLevelGradientRed')
+  .attr('gradientTransform',"rotate(90)")
+  gradient.append('stop')
+  .attr('offset', '0%')
+  .attr('stop-opacity', '.4')
+  .attr('stop-color','red')
+
+  gradient.append('stop')
+  .attr('stop-color','red')
+  .attr('offset', '20%')
+  .attr('stop-opacity', '0.1')
+
+  gradient.append('stop')
+  .attr('stop-color','red')
+  .attr('offset', '50%')
+  .attr('stop-opacity', '0.0')
+}
+
+
+export function priceRangeGreen(defs){
+  let gradient = defs.append('linearGradient')
+  .attr('id', 'priceLevelGradientGreen')
+  .attr('gradientTransform',"rotate(90)")
+  gradient.append('stop')
+  .attr('stop-color','green')
+  .attr('offset', '50%')
+  .attr('stop-opacity', '0.0')
+  
+  gradient.append('stop')
+  .attr('stop-color','green')
+  .attr('offset', '80%')
+  .attr('stop-opacity', '0.2')
+  
+  gradient.append('stop')
+  .attr('offset', '100%')
+  .attr('stop-opacity', '0.4')
+  .attr('stop-color','green')
+}
+
+
+export function dropShadow(defs) {
   // filters go in defs element
-  var defs = svg.append("defs");
 
   // create filter with id #drop-shadow
   // height=130% so that the shadow is not clipped
