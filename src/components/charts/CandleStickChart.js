@@ -5,7 +5,7 @@ import styled from "styled-components";
 import { axisBottom, axisRight } from "d3-axis";
 // import { useDispatch, useSelector } from "react-redux";
 import { view_selected_stock, appendMinutelyCommodityDataAsNeeded } from "../landingPageComponents/chart_data_utils.js";
-
+import TradesList from './chartHelpers/TradesList.js'
 import { zoom } from "d3-zoom";
 import { scaleLinear, scaleTime } from "d3-scale";
 import { extent, max, min, mean } from "d3-array";
@@ -1664,6 +1664,9 @@ exitTime(pin):1585659963841
   }
   render() {
     // console.log("RENDERING??");
+    let symbol = this.props.stock_data.search_symbol
+    let trades = this.props.stock_data.commodityTrades[symbol]
+
     return (
       <div>
         <h3>{this.state.timeframe}</h3>
@@ -1755,6 +1758,11 @@ exitTime(pin):1585659963841
             }}
           />
         </RegressionSettingsContainer>
+        {trades && trades.length &&
+        <TradesListContainer>
+            <TradesList trades = {trades}/>
+        </TradesListContainer>
+        }
       </div>
     );
   }
@@ -1768,6 +1776,11 @@ export default connect(mapStateToProps)(withRouter(CandleStickChart));
 
 
 let RegressionSettingsContainer = styled.div`
+  border: solid red 1px;
+`;
+
+
+let TradesListContainer = styled.div`
   border: solid red 1px;
 `;
 

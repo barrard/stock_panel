@@ -64,6 +64,7 @@ class List_Stock_Data extends React.Component {
     }
     this.setState({sort_state})
   }
+  
   load_more_data() {
     console.log("LOAD MORE DATA");
     const { number_rows } = this.state;
@@ -116,6 +117,8 @@ class List_Stock_Data extends React.Component {
 }
 
 export default withRouter(List_Stock_Data)
+
+
 function Display_Stock_Row({ stock_data, index, props }) {
   // console.log({stock_data})
   const {

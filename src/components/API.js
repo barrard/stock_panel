@@ -128,7 +128,7 @@ async function deleteRegressionValues(id, props) {
   );
   deletedData = await deletedData.json();
   console.log(deletedData)
-  if (!deletedData.ok) return toastr.error("Error deleting data");
+  if (!deletedData.symbol) return toastr.error("Error deleting data");
   toastr.success("Regression data was  deleted");
   console.log(deletedData);
   console.log(props);
