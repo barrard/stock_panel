@@ -20,6 +20,7 @@ function HorizontalHistogram({
   timePriceData,
   tickSize
 }) {
+  // if(!volPriceData)return
   const chartRef = useRef();
   const [initChart, setInitChart] = useState(false);
   const innerWidth = width - (margin.left + margin.right);
@@ -106,6 +107,7 @@ function HorizontalHistogram({
   };
 
   const draw = () => {
+    console.log('DRAW')
     if (!volPriceData) return;
     // console.log({volPriceData})
     let volValues = Array.from(Object.values(volPriceData));
@@ -192,7 +194,7 @@ function HorizontalHistogram({
     draw();
   });
   if (!priceMax || !priceMin)
-    return <div className="not-available">Not enough Data to make chart</div>;
+    return <div className="not-available white">Not enough Data to make chart</div>;
 
   return (
     <svg

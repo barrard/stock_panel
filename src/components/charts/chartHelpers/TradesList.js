@@ -75,23 +75,26 @@ class TradesList extends React.Component {
   render() {
     let { data } = this.state;
     let symbol = this.props.stock_data.search_symbol;
-
+    let tradingDay; //variable for the trade list loop
     if (!data.length) return <div>No Trades</div>;
-    let totalPL = 0
-    data.forEach(({PL})=>{ 
-        if(PL){
-            totalPL+=PL
-        }
-}
-    )
+    let totalPL = 0;
+    data.forEach(({ PL }) => {
+      if (PL) {
+        totalPL += PL;
+      }
+    });
     return (
       <>
         {/* Avoid rendering if data array is empty */}
         {data && data.length > 0 && (
           <div className="col-12">
             <div className="row flex_center">
-              <h5 className="white">{symbol}</h5>
-        <h5>Total PL {totalPL}</h5>
+              <div className="col-sm-3 flex_center">
+                <h5 className="white">{symbol}</h5>
+              </div>
+              <div className="col-sm-3 flex_center">
+                <h5 className="white">Total PL {totalPL}</h5>
+              </div>
             </div>
             <Stock_List_Header
               sorted_prop={this.state.sorted_prop}
@@ -101,14 +104,29 @@ class TradesList extends React.Component {
             />
 
             <div className="row_container">
-              {data.map((trade_data, index) => (
-                <Display_Stock_Row
-                  key={index}
-                  index={index}
-                  trade_data={trade_data}
-                  props={this.props.props}
-                />
-              ))}
+              {data.map((trade_data, index) => {
+                let day = new Date(trade_data.entryTime)
+                  .toLocaleString()
+                  .split(",")[0];
+                let DAY;
+                if (!tradingDay) {
+                  tradingDay = day;
+                  DAY = day;
+                } else if (tradingDay != day) {
+                  tradingDay = day;
+                  DAY = day;
+                }
+                return (
+                  <div key={trade_data._id}>
+                    <p className="white">{DAY}</p>
+                    <Display_Stock_Row
+                      index={index}
+                      trade_data={trade_data}
+                      props={this.props.props}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

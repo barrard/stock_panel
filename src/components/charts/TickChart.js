@@ -16,11 +16,13 @@ const margin = {
 let dataset = [];
 
 function TickChart({ data, width, height, localMinMax, tickSize }) {
+
   const chartRef = useRef();
   const [initChart, setInitChart] = useState(false);
   const innerWidth = width - (margin.left + margin.right);
   const innerHeight = height - (margin.top + margin.bottom);
-  let prices = data.map(d => d.Price);
+  console.log(data)
+  let prices = data.map(d => d.price);
   let volValues = data.map(d => d.LastVol);
   let quote_times = data.map(d => d.quote_time);
 
@@ -151,34 +153,34 @@ function TickChart({ data, width, height, localMinMax, tickSize }) {
       .attr("d", lineFn(prices)); // 11. Calls the line generator
 
     //add min max lines? circles? markers???
-    let { minValues, maxValues } = localMinMax;
-    // console.log({minValues, maxValues})
+    // let { minValues, maxValues } = localMinMax;
+    // // console.log({minValues, maxValues})
 
-    let maxMarkers = chartWindow.selectAll(".maxMarkerGroup").data(maxValues);
-    maxMarkers.exit().remove();
-    maxMarkers
-      .enter()
-      .append("circle")
-      .merge(maxMarkers)
+    // let maxMarkers = chartWindow.selectAll(".maxMarkerGroup").data(maxValues);
+    // maxMarkers.exit().remove();
+    // maxMarkers
+    //   .enter()
+    //   .append("circle")
+    //   .merge(maxMarkers)
 
-      .attr("cx", d => timeScale(d.x))
-      .attr("cy", d => priceScale(d.y))
-      .attr("r", 3)
-      .attr("fill", "red")
-      .attr("class", "maxMarkerGroup");
+    //   .attr("cx", d => timeScale(d.x))
+    //   .attr("cy", d => priceScale(d.y))
+    //   .attr("r", 3)
+    //   .attr("fill", "red")
+    //   .attr("class", "maxMarkerGroup");
 
-    let minMarkers = chartWindow.selectAll(".minMarkerGroup").data(minValues);
-    minMarkers.exit().remove();
-    minMarkers
-      .enter()
-      .append("circle")
-      .merge(minMarkers)
+    // let minMarkers = chartWindow.selectAll(".minMarkerGroup").data(minValues);
+    // minMarkers.exit().remove();
+    // minMarkers
+    //   .enter()
+    //   .append("circle")
+    //   .merge(minMarkers)
 
-      .attr("cx", d => timeScale(d.x))
-      .attr("cy", d => priceScale(d.y))
-      .attr("r", 3)
-      .attr("fill", "green")
-      .attr("class", "minMarkerGroup");
+    //   .attr("cx", d => timeScale(d.x))
+    //   .attr("cy", d => priceScale(d.y))
+    //   .attr("r", 3)
+    //   .attr("fill", "green")
+    //   .attr("class", "minMarkerGroup");
   };
   useEffect(() => {
     if (!initChart) {
@@ -188,7 +190,7 @@ function TickChart({ data, width, height, localMinMax, tickSize }) {
   });
 
   if (!priceMax || !priceMin)
-    return <div className="not-available">Not enough Data to make chart</div>;
+    return <div className="not-available white">Not enough Data to make chart</div>;
 
   return (
     <svg

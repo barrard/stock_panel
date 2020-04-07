@@ -184,7 +184,6 @@ export function dropShadow(defs) {
 }
 
 export function doZoomIn({partialOHLCdata}, mouseZoomPOS) {
-  // console.log('zooom in')
   let firstHalf = partialOHLCdata.slice(
     0,
     partialOHLCdata.length * mouseZoomPOS + 1
@@ -214,7 +213,6 @@ export function doZoomOut({allOHLCdata, partialOHLCdata}) {
 
   let first = partialOHLCdata[0];
   let last = partialOHLCdata[partialOHLCdata.length - 1];
-  // console.log({ first, last })
   if (!first || !last) return; //fail safe?
   let firstIndex = allOHLCdata.findIndex(d => d.timestamp === first.timestamp);
   let lastIndex = allOHLCdata.findIndex(d => d.timestamp === last.timestamp);

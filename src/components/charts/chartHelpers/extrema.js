@@ -1,6 +1,15 @@
 import { mean, min, max } from "d3-array";
 import { slopeLine, intercept } from "./utils.js";
 
+
+function pythagorean(x1, x2, y1, y2){
+  let sideA, sideB
+  sideA = Math.abs(x1-x2)
+  sideB = Math.abs(y1 - y2)
+
+  return Math.sqrt(Math.pow(sideA, 2) + Math.pow(sideB, 2));
+}
+
 function minMax(xArray, yArray, tolerance = 1, minMaxMostRecentData = false) {
   // console.log({ tolerance, minMaxMostRecentData });
   //xArray is time, yArray is price
@@ -328,8 +337,9 @@ function findLineByLeastSquares(points) {
   let x2 = result_values_x[result_values_x.length - 1];
   x2 = (x2 - x1) * 0.5 + x2;
   let y2 = x2 * m + b;
+  let length = pythagorean(x1, x2, y1, y2)
 
-  return { x1, y1, x2, y2, m, b, results_error };
+  return { x1, y1, x2, y2, m, b, results_error, length };
 }
 
 // y = [ 0,   1,   2,   3,  2,   3.2,   4,   5,   1,   0];

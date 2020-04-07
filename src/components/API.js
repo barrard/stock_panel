@@ -5,7 +5,7 @@ import {
   set_symbols_data,
   commodityRegressionData,
   deleteCommodityRegressionData,
-  addCommodityTrades
+  addAllCommodityTrades
   // set_search_symbol,
   // add_chart_data
 } from "../redux/actions/stock_actions.js";
@@ -19,15 +19,16 @@ export default {
   getCommodityRegressionValues,
   deleteRegressionValues,
   setRegressionSettingsTimeframe,
-  getCommodityTrades
+  getAllCommodityTrades
 };
 
 const API_SERVER = process.env.REACT_APP_STOCK_DATA_URL;
 const LOCAL_SERVER = process.env.REACT_APP_LOCAL_DATA;
 
-async function getCommodityTrades(symbol, props) {
+async function getAllCommodityTrades(symbol, props) {
   let trades
 try {
+  console.log({symbol})
   if(symbol){
 
     trades = await fetch(
@@ -40,7 +41,7 @@ try {
     }
     trades = await trades.json()
     console.log(trades)
-    props.dispatch(addCommodityTrades(trades, symbol))
+    props.dispatch(addAllCommodityTrades(trades, symbol))
 } catch (err) {
 
   return console.log('ERROR')

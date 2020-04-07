@@ -13,16 +13,24 @@ export function set_symbols_data(stock_symbols_data, commodity_symbols_data) {
 export function updateCommodityTrade(trade){
   console.log(trade)
   return{
-    type:"UPDATE_COMMODITY_TRADES", 
+    type:"UPDATE_COMMODITY_TRADE", 
     trade
   }
 }
 
-export function addCommodityTrades(trades, symbol){
-  console.log(trades)
+export function addAllCommodityTrades(trades, symbol){
+  console.log({trades, symbol})
   return{
-    type:"ADD_COMMODITY_TRADES", 
+    type:"ADD_ALL_COMMODITY_TRADES", 
     trades, symbol
+  }
+}
+
+export function addCommodityTrade(trade, symbol){
+  console.log(trade)
+  return{
+    type:"ADD_COMMODITY_TRADE", 
+    trade, symbol
   }
 }
 

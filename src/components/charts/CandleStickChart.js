@@ -172,7 +172,7 @@ class CandleStickChart extends React.Component {
       }
     } else if (this.props.type === "commodity") {
       API.getCommodityRegressionValues(this.props.symbol, this.props);
-      API.getCommodityTrades(this.props.symbol, this.props);
+      API.getAllCommodityTrades(this.props.symbol, this.props);
       if (!this.props.stock_data.commodity_data[symbol]) {
         // console.log("loadCommodityData");
         // console.log({ timeframe, symbol });
@@ -367,6 +367,7 @@ class CandleStickChart extends React.Component {
       } else if (this.props.type === "commodity") {
         let { props } = this;
         API.getCommodityRegressionValues(this.props.symbol, this.props);
+        API.getAllCommodityTrades(this.props.symbol, this.props);
         await this.loadCommodityData({ timeframe, symbol, props });
         this.setNewData(symbol, timeframe);
       }
@@ -630,8 +631,7 @@ class CandleStickChart extends React.Component {
   addHighLowMarkers(minMaxValues) {
     let that = this;
     if (!this.state.visibleIndicators.minMaxMarkers) return; //console.log(' minMaxMarkers not turned on');
-    //console.log(minMaxValues);
-    // console.log("add markers");
+
     //   name, mincolor, maxcolor, ismin, ismax, PriceLevels
     appendMinmaxMarkers("high", "green", "red", false, true, that);
     appendMinmaxMarkers("low", "green", "red", true, false, that);
@@ -664,12 +664,7 @@ class CandleStickChart extends React.Component {
           name,
           chartWindow
         );
-        that.appendSwingLevel(
-          maxValues,
-          maxColor,
-          `max${name}PriceLevel`,
-          chartWindow
-        );
+
       }
 
       if (min) {
@@ -684,12 +679,7 @@ class CandleStickChart extends React.Component {
           name,
           chartWindow
         );
-        that.appendSwingLevel(
-          minValues,
-          minColor,
-          `min${name}PriceLevel`,
-          chartWindow
-        );
+
       }
     }
   }
@@ -768,7 +758,8 @@ class CandleStickChart extends React.Component {
       .attr("fill", "black");
     /* CrossHair */
     // create crosshairs
-    var crosshair = chartWindow.append("g").attr("class", "line");
+    var crosshair = chartWindow.append("g")
+    .attr("class", "line");
     // create horizontal line
     crosshair
       .append("line")
@@ -858,8 +849,8 @@ class CandleStickChart extends React.Component {
       });
 
     svg.call(d3drag); //breaks if this is not first
-
     svg.call(d3zoom); //needs to be after drag
+
     this.setState({
       timeAxis,
       priceAxis
@@ -1009,13 +1000,16 @@ class CandleStickChart extends React.Component {
     // priceMin = priceMin+(priceMin*.1);
 
     let [timeMin, timeMax] = extent(drawData.map(({ timestamp }) => timestamp));
-    this.setState({ timeMin, timeMax });
+    // this.setState({ timeMin, timeMax });
     const priceRange = priceMax - priceMin;
     let timeframe = drawData[1].timestamp - drawData[0].timestamp;
     //  This helps the bars at the ends line up with the edge of the chart
     this.state.timeScale.domain([
-      timeMin - timeframe / 2,
-      timeMax + timeframe / 2
+      timeMin - timeframe,
+      timeMax + timeframe
+
+      // timeMin ,
+      // timeMax 
     ]);
     this.state.candleHeightScale.domain([0, priceRange]);
     this.state.priceScale.domain([priceMin, priceMax]);
@@ -1127,6 +1121,7 @@ exitTime(pin):1585659963841
       let scaler = 3.5
       if(candleWidth < 15) scaler = 2.5
       if(candleWidth < 6) scaler = 1.5
+      // x = x + (candleWidth*2)
       return `M ${x}, ${y}
                   l ${scaler*5}, ${scaler*-3.75}
                   l ${scaler*0}, ${scaler*2.5}
@@ -1166,15 +1161,17 @@ exitTime(pin):1585659963841
     if (!this.state.visibleIndicators.tradeMarkers) return //console.log('showTrades not turned on');
     let symbol = this.props.stock_data.search_symbol
     let trades = this.props.stock_data.commodityTrades[symbol]
-    let trandeEntry = chartWindow
+    let tradeEntry = chartWindow
     .selectAll(`.${"tradeEntryMarkers"}`)
     .data(trades);
+    // if(!tradeEntry.length) return
+    // console.log(tradeEntry)
 
-  trandeEntry.exit().remove();
-  trandeEntry
+  tradeEntry.exit().remove();
+  tradeEntry
     .enter()
     .append("path")
-    .merge(trandeEntry)
+    .merge(tradeEntry)
 
     // .attr('class', 'dirArrow')
     .attr('transform', (d)=>{
@@ -1273,7 +1270,7 @@ exitTime(pin):1585659963841
       .attr("x1", d => timeScale(d.x1))
       .attr("x2", d => timeScale(d.x2))
       .attr("y2", d => priceScale(d.y2))
-      .attr("stroke-width", 2)
+      .attr("stroke-width", 5)
       .attr("stroke", d => {
         return "yellow";
       })
@@ -1284,7 +1281,7 @@ exitTime(pin):1585659963841
       })
       .on("mouseover", function(d) {
         // console.log(d);
-        this.classList.add("hoveredRegressionLine");
+        // this.classList.add("hoveredRegressionLine");
         that.regressionNearbyPoints(d, chartWindow, {
           priceScale,
           timeScale

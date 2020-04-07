@@ -20,14 +20,54 @@ const initial_state = {
 
 export default (state = initial_state, action) => {
   switch (action.type) {
-    case "ADD_COMMODITY_TRADES": {
-      let { trades, symbol } = action;
+    case "ADD_COMMODITY_TRADE": {
+      let { trade, symbol } = action;
       let commodityTrades = { ...state.commodityTrades };
-
+      
       if (!commodityTrades[symbol]) {
         commodityTrades[symbol] = [];
       }
-      commodityTrades[symbol] = [...commodityTrades[symbol], ...trades];
+      console.log(commodityTrades[symbol].length)
+      console.log({trade})
+      commodityTrades[symbol] = [...commodityTrades[symbol], trade];
+      console.log(commodityTrades[symbol].length)
+      return {
+        ...state,
+        commodityTrades
+      };
+    }
+    case "UPDATE_COMMODITY_TRADE": {
+      let { trade } = action;
+      let {symbol} = trade
+      let commodityTrades = { ...state.commodityTrades };
+      console.log({trade})
+      console.log(commodityTrades[symbol])
+
+      if(!commodityTrades[symbol]){
+        commodityTrades[symbol] = [trade]
+      }else{
+        let commodityTradeIndex = commodityTrades[symbol].findIndex(t=>t._id === trade._id)
+      if(commodityTradeIndex < 0 ) {
+        console.error('WE HAVE A PROBLEM')
+      }else{
+
+        commodityTrades[symbol][commodityTradeIndex] = trade
+        console.log(commodityTrades[symbol])
+      }
+      }
+
+      
+      return {
+        ...state,
+        commodityTrades
+      };
+    }
+    case "ADD_ALL_COMMODITY_TRADES": {
+      let { trades, symbol } = action;
+      let commodityTrades = { ...state.commodityTrades };
+
+      commodityTrades[symbol] = [...trades];
+      console.log(commodityTrades)
       return {
         ...state,
         commodityTrades
@@ -82,7 +122,7 @@ export default (state = initial_state, action) => {
     }
     case "ADD_NEW_MINUTE": {
       let { new_minute_data } = action;
-      // console.log({ new_minute_data });
+      console.log({ new_minute_data });
       // console.log({ state });
       // console.log(new_minute_data["ES"].prices);
       let commodity_data = { ...state.commodity_data };
@@ -108,7 +148,7 @@ export default (state = initial_state, action) => {
 
     case "ADD_NEW_TICK": {
       let { new_tick_data } = action;
-
+      // console.log({new_tick_data})
       let currentTickData = { ...state.currentTickData };
       for (let symbol in state.commodity_data) {
         if (!currentTickData[symbol]) currentTickData[symbol] = {};

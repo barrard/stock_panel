@@ -9,6 +9,7 @@ import Analysis_Chart from "./charts/Analysis_Chart.js";
 import CandleStickChart from "./charts/CandleStickChart.js";
 import { view_selected_commodity, getMinutelyCommodityData } from "../components/landingPageComponents/chart_data_utils.js";
 import { set_search_symbol } from "../redux/actions/stock_actions.js";
+import TickCharts from './charts/chartHelpers/TickCharts.js'
 class CommodityChartPage extends React.Component {
   constructor(props) {
     super(props);
@@ -79,11 +80,14 @@ class CommodityChartPage extends React.Component {
 
     return (
       <div className="p-5">
+        <div className='row flex_center'>
+        <TickCharts symbol={symbol}/>
+        </div>
         <div className="row ">
           <CandleStickChart
           type="commodity"
             symbol={symbol}
-            width={950}
+            width={1000}
             height={400}
           />
           {/* <CandleStickChart

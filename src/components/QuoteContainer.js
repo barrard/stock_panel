@@ -138,14 +138,18 @@ function QuoteContainer({Socket}) {
 
   if (playPause) {
     Socket.on("commodities_quotes", ({ commodities_quotes, timestamp }) => {
+      // let ticks={}
       if (!commodities_quotes) return console.log("NO DATA?!?!?!");
       for (let sym in commodities_quotes) {
+        // ticks[sym] = commodities_quotes[sym].tick
         let safe_symbol = sym.slice(1); //'symbol comes in as /ES, we want ES'
         commodities_quotes[safe_symbol] = commodities_quotes[sym];
         commodities_quotes[safe_symbol].quoteTimeInLong = timestamp;
         delete commodities_quotes[sym];
+   
       }
-      console.log(commodities_quotes["ES"]);
+      // console.log(ticks)
+      // console.log(commodities_quotes);
 
       // let bad = quoteTimeInLong === commodities_quotes["ES"].quoteTimeInLong;
       // console.log(commodities_quotes['CL'])
