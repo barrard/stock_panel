@@ -4,8 +4,12 @@ import { Link, withRouter } from "react-router-dom";
 import styled from "styled-components";
 import { axisBottom, axisRight } from "d3-axis";
 // import { useDispatch, useSelector } from "react-redux";
-import { view_selected_stock, appendMinutelyCommodityDataAsNeeded } from "../landingPageComponents/chart_data_utils.js";
-import TradesList from './chartHelpers/TradesList.js'
+import {
+  view_selected_stock,
+  getMinutesForTimeframe,
+  appendMinutelyCommodityDataAsNeeded,
+} from "../landingPageComponents/chart_data_utils.js";
+import TradesList from "./chartHelpers/TradesList.js";
 import { zoom } from "d3-zoom";
 import { scaleLinear, scaleTime } from "d3-scale";
 import { extent, max, min, mean } from "d3-array";
@@ -18,11 +22,12 @@ import {
   priceRangeRed,
   dropShadow,
   doZoomIn,
-  doZoomOut
+  doZoomOut,
 } from "./chartHelpers/utils.js";
+import Timers from "./chartHelpers/Timers.js";
 import {
   view_selected_commodity,
-  getMinutelyCommodityData
+  getMinutelyCommodityData,
 } from "../landingPageComponents/chart_data_utils.js";
 
 import diff from "../charts/chartHelpers/extrema.js";
@@ -30,12 +35,13 @@ import { addCandleSticks } from "./chartHelpers/candleStickUtils.js";
 // import { line } from "d3";
 import {
   drawAxisAnnotation,
-  removeAllAxisAnnotations
+  removeAllAxisAnnotations,
 } from "./chartHelpers/chartAxis.js";
 import { makeEMA, makeSTD, drawMALine } from "./chartHelpers/MA-lines.js";
 import { evaluateMinMaxPoints } from "./chartHelpers/evaluateMinMaxPoints.js";
 import API from "../API.js";
 import RegressionSettings from "./chartHelpers/regressionSettings.js";
+import FibonacciLines from './chartHelpers/ChartMarkers/FibonacciLines.js'
 
 import { set_data_view_params } from "../../redux/actions/Chart_Analysis_actions.js";
 
@@ -44,7 +50,7 @@ let margin = {
   top: 15,
   right: 60,
   bottom: 20,
-  left: 35
+  left: 35,
 };
 
 let MOUSEX = 0;
@@ -85,48 +91,49 @@ class CandleStickChart extends React.Component {
       EMA_data: {
         "20": [],
         "50": [],
-        "200": []
+        "200": [],
       }, //array of {x,y} coords
       STD_data: {
         "20": [],
         "50": [],
-        "200": []
+        "200": [],
       }, //array of {x,y} coords
       timeMin: 0,
       timeMax: 0,
       regressionLines: {
         highLins: [],
-        lowLines: []
+        lowLines: [],
       },
       rawOHLCData: [],
       consolidatedMinMaxPoints: [],
       minMaxValues: {
         open: {
           minValues: [],
-          maxValues: []
+          maxValues: [],
         },
         close: {
           minValues: [],
-          maxValues: []
+          maxValues: [],
         },
         high: {
           minValues: [],
-          maxValues: []
+          maxValues: [],
         },
         low: {
           minValues: [],
-          maxValues: []
-        }
+          maxValues: [],
+        },
       },
       visibleIndicators: {
         swingLines: false,
         minMaxMarkers: false,
-        showTrades:false,
+        showTrades: false,
         importantPriceLevel: false,
         regressionLines: false,
         ema20: false,
         ema200: false,
-        ema50: false
+        ema50: false,
+        fibonacciLines:false
       },
       chartRef: React.createRef(),
       innerWidth: width - (margin.left + margin.right),
@@ -144,7 +151,7 @@ class CandleStickChart extends React.Component {
       // .ticks(5)
       // .tickSize(-innerHeight),
 
-      priceAxis: {}
+      priceAxis: {},
       //  axisRight(this.state.priceScale)
       //   .ticks(8)
       //   .tickSize(-innerWidth),
@@ -211,78 +218,118 @@ class CandleStickChart extends React.Component {
 
     let currentTickData = stock_data.currentTickData[symbol];
     let lastTickData = prevProps.stock_data.currentTickData[symbol];
-    // console.log(stock_data);
-
+    console.log(stock_data);
 
     currentData = stock_data.commodity_data[symbol][timeframe];
-    // console.log(currentData)
-    // console.log(this.state.rawOHLCData)
+    console.log(currentData);
+    console.log(this.state.rawOHLCData);
     currentRawOHLCData = this.state.rawOHLCData;
-    if (!currentData || currentData.length) return;
+    if (!currentData || !currentData.length) return;
     let lastBar = currentData[currentData.length - 1];
     let lastPartialBar = partialOHLCdata.slice(-1)[0];
     let secondLastPartialBar = partialOHLCdata.slice(-2)[0];
 
+    //Get Time frame minutes?  and maybe figure out what the next bar time should be
+    let nextChartDataBarTimestamp =
+      lastBar.timestamp + 1000 * 60 * getMinutesForTimeframe(timeframe);
+
+    console.log({
+      lastBar,
+      lastPartialBar,
+      secondLastPartialBar,
+      nextChartDataBarTimestamp,
+      currentTickData,
+    });
+    let { open, high, low, close, volume, timestamp } = currentTickData;
+    if (currentTickData.timestamp >= nextChartDataBarTimestamp) {
+      console.log("ADD THE NEW BAR");
+      let newBar = {
+        open,
+        high,
+        low,
+        close,
+        volume,
+        timestamp,
+      };
+      if (lastPartialBar.timestamp === currentData.timestamp) {
+        partialOHLCdata.push(lastBar);
+      }
+      currentData.push(newBar);
+      currentRawOHLCData.push(newBar);
+    } else {
+      console.log("JUST ADD THIS DATA TO THE last data bar");
+      console.log(currentTickData);
+
+      lastBar.close = close;
+      if (high > lastBar.high) {
+        lastBar.high = high;
+      }
+
+      if (low < lastBar.low) {
+        lastBar.low = low;
+      }
+
+      if (lastPartialBar.timestamp === lastBar.timestamp) {
+        partialOHLCdata[partialOHLCdata.length - 1] = lastBar;
+      }
+      currentData[currentData.length - 1] = lastBar;
+      currentRawOHLCData[currentRawOHLCData.length - 1] = lastBar;
+    }
     /**
      * this needs ot be the last bar
      * in the data, but we dont want
      * to add it over and over, just once
      */
     // console.log({lastBar, currentTickData})
-    if (lastBar.timestamp !== currentTickData.timestamp) {
-      // console.log("pushin");
-      currentData.push(currentTickData);
-      currentRawOHLCData.push(currentTickData);
-      if (lastPartialBar.timestamp === lastBar.timestamp) {
-        partialOHLCdata.push(currentTickData);
-      }
+    // if (lastBar.timestamp !== currentTickData.timestamp) {
+    //   // console.log("pushin");
+    //   currentData.push(currentTickData);
+    //   currentRawOHLCData.push(currentTickData);
+    //   if (lastPartialBar.timestamp === lastBar.timestamp) {
+    //     partialOHLCdata.push(currentTickData);
+    //   }
 
-      this.createPriceLevelsData();
-    } else {
-      // console.log("not pushing");
-      currentData[currentData.length - 1] = currentTickData;
-      currentRawOHLCData[currentRawOHLCData.length - 1] = currentTickData;
-      if (lastPartialBar.timestamp === currentTickData.timestamp) {
-        partialOHLCdata[partialOHLCdata.length - 1] = currentTickData;
-      }
-    }
+    //   this.createPriceLevelsData();
+    // } else {
+    //   // console.log("not pushing");
+    //   currentData[currentData.length - 1] = currentTickData;
+    //   currentRawOHLCData[currentRawOHLCData.length - 1] = currentTickData;
+
+    // }
     // console.log({partialOHLCdata, currentData})
     this.setState({
       allOHLCdata: [...currentData],
-      rawOHLCData: [...currentRawOHLCData]
+      rawOHLCData: [...currentRawOHLCData],
     });
-    setTimeout(() => this.setupChart(), 0);
-
-
-
+    // setTimeout(() => this.setupChart(), 0);
   }
 
   addTickDataToOtherTimeframes(prevProps) {
+    console.log("addTickDataToOtherTimeframes");
     let { type, stock_data, symbol } = this.props;
     const timeframe = this.state.timeframe;
     let currentData;
     let currentRawOHLCData;
     let currentTickData = stock_data.currentTickData[symbol];
     let lastTickData = prevProps.stock_data.currentTickData[symbol];
-    
-    
-    for(let timeframe in stock_data.commodity_data[symbol]){
-      if(timeframe !== '1Min'){
+
+    for (let timeframe in stock_data.commodity_data[symbol]) {
+      console.log({ timeframe });
+      if (timeframe !== "1Min") {
         console.log({ stock_data, lastTickData, currentTickData });
-        let chart_data = stock_data.commodity_data[symbol][timeframe]
-        let props = this.props
+        let chart_data = stock_data.commodity_data[symbol][timeframe];
+        let props = this.props;
+        console.log({ chart_data });
+
         chart_data = appendMinutelyCommodityDataAsNeeded(
           props,
           chart_data,
           timeframe,
           symbol
-        ) 
-        console.log({chart_data})
-
+        );
+        console.log({ chart_data });
       }
     }
-
-
   }
 
   handleNewTick(prevState, prevProps) {
@@ -297,14 +344,17 @@ class CandleStickChart extends React.Component {
       if (currentTickData !== lastTickData) {
         if (timeframe !== "1Min")
           return this.handleUpdatingOtherTimeframesOnTick(prevProps);
-        // console.log(currentTickData.timestamp);
+        console.log(currentTickData.timestamp);
+        //TODO
         this.addTickDataToOtherTimeframes(prevProps);
+        console.log(stock_data);
+        //TODO
         // console.log({currentTickData,
         //   lastTickData})
         //   console.log(currentTickData === lastTickData)
         if (!stock_data.commodity_data[symbol]["1Min"]) {
-          console.log(stock_data.commodity_data);
-          return; //why dont we have 1Min data yet?
+          // console.log(stock_data.commodity_data);
+          return; //why don't we have 1Min data yet?
         }
         // console.log("new Tick data");
         // console.log(stock_data.commodity_data[symbol]["1Min"].length)
@@ -324,15 +374,17 @@ class CandleStickChart extends React.Component {
         // console.log({lastBar, currentTickData})
         if (lastBar.timestamp !== currentTickData.timestamp) {
           // console.log("pushin");
-          currentData.push(currentTickData);
-          currentRawOHLCData.push(currentTickData);
-          if (lastPartialBar.timestamp === currentTickData.timestamp) {
+          // console.log({currentTickData})
+          if (lastPartialBar.timestamp === lastBar.timestamp) {
             partialOHLCdata.push(currentTickData);
           }
+          currentData.push(currentTickData);
+          currentRawOHLCData.push(currentTickData);
 
           this.createPriceLevelsData();
         } else {
           // console.log("not pushing");
+          // console.log({currentTickData})
           currentData[currentData.length - 1] = currentTickData;
           currentRawOHLCData[currentRawOHLCData.length - 1] = currentTickData;
           if (lastPartialBar.timestamp === currentTickData.timestamp) {
@@ -342,7 +394,7 @@ class CandleStickChart extends React.Component {
         // console.log({partialOHLCdata, currentData})
         this.setState({
           allOHLCdata: [...currentData],
-          rawOHLCData: [...currentRawOHLCData]
+          rawOHLCData: [...currentRawOHLCData],
         });
         setTimeout(() => this.setupChart(), 0);
       }
@@ -360,7 +412,7 @@ class CandleStickChart extends React.Component {
       let timeframe = this.state.timeframe;
       let symbol = currentSymbol;
       this.setState({
-        symbol
+        symbol,
       });
       if (this.props.type === "stock") {
         this.getStockDataSetUp(symbol, timeframe);
@@ -384,11 +436,11 @@ class CandleStickChart extends React.Component {
       const end = new Date().getTime();
       await view_selected_stock({ timeframe, end, symbol, props });
       this.setState({
-        allOHLCdata: this.props.stock_data.charts[symbol][timeframe]
+        allOHLCdata: this.props.stock_data.charts[symbol][timeframe],
       });
     } else {
       this.setState({
-        allOHLCdata: this.props.stock_data.charts[symbol][timeframe]
+        allOHLCdata: this.props.stock_data.charts[symbol][timeframe],
       });
     }
   }
@@ -465,19 +517,20 @@ class CandleStickChart extends React.Component {
           const end = new Date().getTime();
           await view_selected_stock({ timeframe, end, symbol, props });
           this.setState({
-            allOHLCdata: this.props.stock_data.charts[symbol][timeframe]
+            allOHLCdata: this.props.stock_data.charts[symbol][timeframe],
           });
         } else {
           console.log("Whaaat now?");
           this.setState({
-            allOHLCdata: this.props.stock_data.charts[symbol][timeframe]
+            allOHLCdata: this.props.stock_data.charts[symbol][timeframe],
           });
         }
       } else if (this.props.type === "commodity") {
         if (
           timeframe !== "daily" &&
           timeframe !== "weekly" &&
-          timeframe !== "intraday"
+          timeframe !== "intraday" &&
+          timeframe !== "5Min"
           /**
            * The timeframe is some minutely
            * 1Min,  5Min 15Min, 30Min
@@ -496,7 +549,7 @@ class CandleStickChart extends React.Component {
             await getMinutelyCommodityData({
               symbol,
               props,
-              tryGetOneMoreDay
+              tryGetOneMoreDay,
             });
           } else {
             if (!this.props.stock_data.commodity_data[symbol][timeframe]) {
@@ -509,7 +562,8 @@ class CandleStickChart extends React.Component {
         } else if (
           timeframe === "daily" ||
           timeframe === "weekly" ||
-          timeframe === "intraday"
+          timeframe === "intraday" ||
+          timeframe === "5Min"
         ) {
           if (
             !this.props.stock_data.commodity_data[symbol] ||
@@ -520,7 +574,7 @@ class CandleStickChart extends React.Component {
             await getMinutelyCommodityData({
               symbol,
               props,
-              tryGetOneMoreDay
+              tryGetOneMoreDay,
             });
           }
           if (
@@ -572,7 +626,6 @@ class CandleStickChart extends React.Component {
       currentData = stock_data.charts[symbol][timeframe];
       currentRawData = stock_data.rawCharts[symbol][timeframe];
     }
-    console.log({ currentData, partialOHLCdata });
     // console.log(currentData[currentData.length-2])
     // console.log(currentData[currentData.length-1])
     // let forwardFilledData = forwardFill(currentData);
@@ -594,10 +647,11 @@ class CandleStickChart extends React.Component {
 
       this.setState({
         allOHLCdata: currentData,
-        rawOHLCData: currentRawData
+        rawOHLCData: currentRawData,
         // currentRawData:currentRawData
       });
       partialOHLCdata = currentData;
+      console.log({ currentData, partialOHLCdata });
       setTimeout(() => this.setupChart(), 0);
     }
   }
@@ -664,7 +718,6 @@ class CandleStickChart extends React.Component {
           name,
           chartWindow
         );
-
       }
 
       if (min) {
@@ -679,7 +732,6 @@ class CandleStickChart extends React.Component {
           name,
           chartWindow
         );
-
       }
     }
   }
@@ -696,8 +748,8 @@ class CandleStickChart extends React.Component {
     let defs = svg.append("defs");
 
     dropShadow(defs);
-    priceRangeRed(defs)
-    priceRangeGreen(defs)
+    priceRangeRed(defs);
+    priceRangeGreen(defs);
     let timeAxis = axisBottom(this.state.timeScale)
       .ticks(5)
       .tickSize(-this.state.innerHeight);
@@ -710,7 +762,7 @@ class CandleStickChart extends React.Component {
     this.createPriceLevelsData();
 
     //make all EMA/STD data
-    Object.keys(this.state.EMA_data).forEach(MA_value => {
+    Object.keys(this.state.EMA_data).forEach((MA_value) => {
       this.state.EMA_data[MA_value] = makeEMA(MA_value, this.state.allOHLCdata);
       this.state.STD_data[MA_value] = makeSTD(MA_value, this.state.allOHLCdata);
     });
@@ -758,8 +810,7 @@ class CandleStickChart extends React.Component {
       .attr("fill", "black");
     /* CrossHair */
     // create crosshairs
-    var crosshair = chartWindow.append("g")
-    .attr("class", "line");
+    var crosshair = chartWindow.append("g").attr("class", "line");
     // create horizontal line
     crosshair
       .append("line")
@@ -778,14 +829,14 @@ class CandleStickChart extends React.Component {
 
       .attr("height", this.state.innerHeight)
       .attr("width", this.state.innerWidth)
-      .on("mouseover", function() {
+      .on("mouseover", function () {
         crosshair.style("display", null);
       })
-      .on("mouseout", function() {
+      .on("mouseout", function () {
         crosshair.style("display", "none");
         removeAllAxisAnnotations(svg);
       })
-      .on("mousemove", function() {
+      .on("mousemove", function () {
         return mousemove(that, this);
       });
 
@@ -833,18 +884,18 @@ class CandleStickChart extends React.Component {
 
     const d3zoom = zoom()
       // .scaleExtent([1, 40])
-      .on("zoom", function() {
+      .on("zoom", function () {
         return that.zoomed();
       });
 
     const d3drag = drag()
-      .on("start", function() {
+      .on("start", function () {
         return that.dragStart();
       })
-      .on("drag", function() {
+      .on("drag", function () {
         return that.dragged();
       })
-      .on("end", function() {
+      .on("end", function () {
         return that.dragEnd();
       });
 
@@ -853,25 +904,14 @@ class CandleStickChart extends React.Component {
 
     this.setState({
       timeAxis,
-      priceAxis
+      priceAxis,
     });
     this.draw();
   } //setupChart()
 
   appendAxisAnnotations(x, y, svg) {
-    /* Candle stick is the top candleStickWindowHeight */
-    // drawAxisAnnotation(topOpts, x);
     drawAxisAnnotation("bottomTimeTag", this.state.timeScale, x, svg);
-    // if (y < candleStickWindowHeight) {
-    // drawAxisAnnotation(leftOpts, y);
     drawAxisAnnotation("rightPriceTag", this.state.priceScale, y, svg);
-    // removeVolumeAxisAnnotations();
-    // } else if (y > candleStickWindowHeight) {
-    //   y = y - candleStickWindowHeight;
-    //   drawAxisAnnotation(leftVolOpts, y);
-    //   drawAxisAnnotation(rightVolOpts, y);
-    //   removePriceAxisAnnotations();
-    // }
   }
 
   zoomed() {
@@ -886,48 +926,33 @@ class CandleStickChart extends React.Component {
     // console.log("zoom");
 
     if (event && event.sourceEvent && event.sourceEvent.type == "wheel") {
-      // setOHLCdata(prevData => {
       let data = partialOHLCdata;
 
       if (kScale > zoomState) {
         if (partialOHLCdata.length < 30) {
-          // this.setState({
           zoomState = kScale;
-          // });
-
           return this.draw();
         }
-        // this.setState({
         data = doZoomIn({ partialOHLCdata: partialOHLCdata }, mouseZoomPOS);
-        // });
       } else if (kScale < zoomState) {
-        // this.setState({
         data = doZoomOut({
           allOHLCdata: this.state.allOHLCdata,
-          partialOHLCdata: partialOHLCdata
+          partialOHLCdata: partialOHLCdata,
         });
-        // });
       }
-      // console.log({candleZoom, data})
 
-      // this.setState({
       zoomState = kScale;
       partialOHLCdata = data;
-      // });
       return this.draw();
-
-      // });
     }
   }
 
   dragStart() {
     // console.log("dragStart");
     if (!partialOHLCdata) return;
-    // console.log(partialOHLCdata);
-    // this.setState({
+
     mouseDRAGSART = event.x - margin.left;
     dragStartData = [...partialOHLCdata];
-    // });
   }
   dragged() {
     let xDragPOS = event.x - margin.left;
@@ -937,39 +962,45 @@ class CandleStickChart extends React.Component {
     if (barCount < 1) return;
     if (lastBarCount === barCount) return;
     lastBarCount = barCount;
-    // console.log("dragged");
+    console.log("dragged");
     let data;
     if (xDragPOS > mouseDRAGSART) {
-      // console.log('right')
+      console.log("right");
       let start = dragStartData[0];
       let startIndex = this.state.allOHLCdata.findIndex(
-        d => d.timestamp === start.timestamp
+        (d) => d.timestamp === start.timestamp
       );
-      // console.log({startIndex, barCount})
+      console.log({ startIndex, barCount });
       let dataEnd = dragStartData.slice(0, dragStartData.length - 1 - barCount);
       let zeroOrGreater = startIndex - barCount < 0 ? 0 : startIndex - barCount;
       let dataStart = this.state.allOHLCdata.slice(zeroOrGreater, startIndex);
-      // console.log({
-      //   dataEnd,
-      //   zeroOrGreater,
-      //   dataStart,
-      //   dragStartData,
-      //   barCount,
-      //   startIndex,
-      //   start
-      // });
+      console.log({
+        dataEnd,
+        zeroOrGreater,
+        dataStart,
+        dragStartData,
+        barCount,
+        startIndex,
+        start,
+      });
       data = [...dataStart, ...dataEnd];
     } else if (xDragPOS < mouseDRAGSART) {
-      //console.log("left");
+      console.log("left");
       let end = dragStartData[dragStartData.length - 1];
       let endIndex = this.state.allOHLCdata.findIndex(
-        d => d.timestamp === end.timestamp
+        (d) => d.timestamp === end.timestamp
       );
       let dataStart = dragStartData.slice(barCount, dragStartData.length - 1);
       let dataEnd = this.state.allOHLCdata.slice(endIndex, endIndex + barCount);
+      console.log({
+        dataEnd,
+        dataStart,
+        dragStartData,
+        barCount,
+      });
       data = [...dataStart, ...dataEnd];
     }
-    // console.log({ data });
+    console.log({ data });
 
     // this.setState({
     partialOHLCdata = data;
@@ -994,8 +1025,8 @@ class CandleStickChart extends React.Component {
     }
     if (!drawData || !drawData.length || drawData.length < 2) return;
 
-    let priceMax = max(drawData, d => d.high);
-    let priceMin = min(drawData, d => d.low);
+    let priceMax = max(drawData, (d) => d.high);
+    let priceMin = min(drawData, (d) => d.low);
     // priceMax = priceMax+(priceMax*.1);
     // priceMin = priceMin+(priceMin*.1);
 
@@ -1006,10 +1037,10 @@ class CandleStickChart extends React.Component {
     //  This helps the bars at the ends line up with the edge of the chart
     this.state.timeScale.domain([
       timeMin - timeframe,
-      timeMax + timeframe
+      timeMax + timeframe,
 
       // timeMin ,
-      // timeMax 
+      // timeMax
     ]);
     this.state.candleHeightScale.domain([0, priceRange]);
     this.state.priceScale.domain([priceMin, priceMax]);
@@ -1036,39 +1067,39 @@ class CandleStickChart extends React.Component {
     // appendFutureLines();
     let scales = {
       timeScale: this.state.timeScale,
-      priceScale: this.state.priceScale
+      priceScale: this.state.priceScale,
     };
     this.appendEMA(chartWindow, scales);
     this.appendSTD();
     this.appendImportantPriceLevel(this, chartWindow, scales);
+    this.appendFibonacciLines(this, chartWindow, scales);
+    
 
     this.appendPriceLevelRanges(this, chartWindow, scales);
     this.appendRegressionLines(this, chartWindow, scales);
-    this.appendTrades(this, chartWindow, scales)
+    this.appendTrades(this, chartWindow, scales);
   }
-
-
 
   appendEMA(chartWindow, { timeScale, priceScale }) {
     if (this.state.visibleIndicators.ema20) {
       //show 20 EMA
       drawMALine(chartWindow, this.state.EMA_data, 20, {
         timeScale,
-        priceScale
+        priceScale,
       });
     }
     if (this.state.visibleIndicators.ema50) {
       //show 50 EMA
       drawMALine(chartWindow, this.state.EMA_data, 50, {
         timeScale,
-        priceScale
+        priceScale,
       });
     }
     if (this.state.visibleIndicators.ema200) {
       //show 200 EMA
       drawMALine(chartWindow, this.state.EMA_data, 200, {
         timeScale,
-        priceScale
+        priceScale,
       });
     }
   }
@@ -1085,20 +1116,20 @@ class CandleStickChart extends React.Component {
       .enter()
       .append("circle")
       .merge(markers)
-      .attr("cx", d => this.state.timeScale(d.x))
-      .attr("cy", d => this.state.priceScale(d.y))
+      .attr("cx", (d) => this.state.timeScale(d.x))
+      .attr("cy", (d) => this.state.priceScale(d.y))
       .attr("r", r)
       .attr("fill", color)
       .attr("stroke", "white")
       .attr("class", (d, i) => `${classAttr} ${i} minMaxMarkers `)
-      .on("mouseover", function(d) {
-        console.log(d)
-        })
+      .on("mouseover", function (d) {
+        console.log(d);
+      })
       .on("mouseleave", this.removeLine);
     // .style("filter", "url(#drop-shadow)");
   }
 
-  appendTrades(that,chartWindow, {timeScale, priceScale}){
+  appendTrades(that, chartWindow, { timeScale, priceScale }) {
     /**
      * id(pin):"5e833a02a693dc4122d7355f"
 buyOrSell(pin):"Buy"
@@ -1114,146 +1145,138 @@ exitPrice(pin):2595.25
 exitTime(pin):1585659963841
      */
     let candleWidth = that.state.innerWidth / partialOHLCdata.length;
-    function entryArrow (data) {
-      let {entryTime, exitTime, exitPrice, entryPrice} = data
-      let x = timeScale(entryTime)
-      let y = priceScale(entryPrice)
-      let scaler = 3.5
-      if(candleWidth < 15) scaler = 2.5
-      if(candleWidth < 6) scaler = 1.5
+    function entryArrow(data) {
+      let { entryTime, exitTime, exitPrice, entryPrice } = data;
+      let x = timeScale(entryTime);
+      let y = priceScale(entryPrice);
+      let scaler = 3.5;
+      if (candleWidth < 15) scaler = 2.5;
+      if (candleWidth < 6) scaler = 1.5;
       // x = x + (candleWidth*2)
       return `M ${x}, ${y}
-                  l ${scaler*5}, ${scaler*-3.75}
-                  l ${scaler*0}, ${scaler*2.5}
-                  l ${scaler*7.5}, ${scaler*0}
-                  l ${scaler*0}, ${scaler*2.5}
-                  l ${scaler*-7.5}, ${scaler*0}
-                  l ${scaler*0}, ${scaler*2.5} z`
+                  l ${scaler * 5}, ${scaler * -3.75}
+                  l ${scaler * 0}, ${scaler * 2.5}
+                  l ${scaler * 7.5}, ${scaler * 0}
+                  l ${scaler * 0}, ${scaler * 2.5}
+                  l ${scaler * -7.5}, ${scaler * 0}
+                  l ${scaler * 0}, ${scaler * 2.5} z`;
     }
 
-    function exitArrow (data) {
-      let {entryTime, exitTime, exitPrice, entryPrice} = data
-      if(!exitPrice || !exitTime)return
-      let x = timeScale(exitTime)
-      let y = priceScale(exitPrice)
-      let scaler = 3.5
-      if(candleWidth < 15) scaler = 2.5
-      if(candleWidth < 6) scaler = 1.5
+    function exitArrow(data) {
+      let { entryTime, exitTime, exitPrice, entryPrice } = data;
+      if (!exitPrice || !exitTime) return;
+      let x = timeScale(exitTime);
+      let y = priceScale(exitPrice);
+      let scaler = 3.5;
+      if (candleWidth < 15) scaler = 2.5;
+      if (candleWidth < 6) scaler = 1.5;
       return `M ${x}, ${y}
-                  l ${scaler*5}, ${scaler*-3.75}
-                  l ${scaler*0}, ${scaler*2.5}
-                  l ${scaler*7.5}, ${scaler*0}
-                  l ${scaler*0}, ${scaler*2.5}
-                  l ${scaler*-7.5}, ${scaler*0}
-                  l ${scaler*0}, ${scaler*2.5} z`
+                  l ${scaler * 5}, ${scaler * -3.75}
+                  l ${scaler * 0}, ${scaler * 2.5}
+                  l ${scaler * 7.5}, ${scaler * 0}
+                  l ${scaler * 0}, ${scaler * 2.5}
+                  l ${scaler * -7.5}, ${scaler * 0}
+                  l ${scaler * 0}, ${scaler * 2.5} z`;
     }
 
-    function PL_color({PL}){
-     
-      return PL > 0 ? 'green' :'red'
+    function PL_color({ PL }) {
+      return PL > 0 ? "green" : "red";
     }
-    function buyOrSellColor({buyOrSell}){
-      if(buyOrSell === 'Buy') return 'green'
-      else return 'red'
+    function buyOrSellColor({ buyOrSell }) {
+      if (buyOrSell === "Buy") return "green";
+      else return "red";
     }
 
-
-    if (!this.state.visibleIndicators.tradeMarkers) return //console.log('showTrades not turned on');
-    let symbol = this.props.stock_data.search_symbol
-    let trades = this.props.stock_data.commodityTrades[symbol]
+    if (!this.state.visibleIndicators.tradeMarkers) return; //console.log('showTrades not turned on');
+    let symbol = this.props.stock_data.search_symbol;
+    let trades = this.props.stock_data.commodityTrades[symbol];
     let tradeEntry = chartWindow
-    .selectAll(`.${"tradeEntryMarkers"}`)
-    .data(trades);
+      .selectAll(`.${"tradeEntryMarkers"}`)
+      .data(trades);
     // if(!tradeEntry.length) return
     // console.log(tradeEntry)
 
-  tradeEntry.exit().remove();
-  tradeEntry
-    .enter()
-    .append("path")
-    .merge(tradeEntry)
+    tradeEntry.exit().remove();
+    tradeEntry
+      .enter()
+      .append("path")
+      .merge(tradeEntry)
 
-    // .attr('class', 'dirArrow')
-    .attr('transform', (d)=>{
-      let {entryTime, exitTime, exitPrice, entryPrice} = d
-      let x = timeScale(entryTime)
-      let y = priceScale(entryPrice)
-      return `rotate(${180}, ${x}, ${y})`
-    })
-    .attr('d', (d)=>entryArrow(d))
+      // .attr('class', 'dirArrow')
+      .attr("transform", (d) => {
+        let { entryTime, exitTime, exitPrice, entryPrice } = d;
+        let x = timeScale(entryTime);
+        let y = priceScale(entryPrice);
+        return `rotate(${180}, ${x}, ${y})`;
+      })
+      .attr("d", (d) => entryArrow(d))
 
-    .attr("fill", (d)=>buyOrSellColor(d))
+      .attr("fill", (d) => buyOrSellColor(d))
 
-    
-    .attr("stroke",'black')
-    .attr("class", `tradeMarkers tradeEntryMarkers`)
-    .style("opacity", 0.9)
-    .on("click", function(d) {
-      console.log("click");
-    })
-    .on("mouseover", function(d) {
-      // console.log(d);
-      this.classList.add("hoveredtradeMarker");
-      that.showTradeDetails(d, chartWindow, {
-        priceScale,
-        timeScale
+      .attr("stroke", "black")
+      .attr("class", `tradeMarkers tradeEntryMarkers`)
+      .style("opacity", 0.9)
+      .on("click", function (d) {
+        console.log("click");
+      })
+      .on("mouseover", function (d) {
+        // console.log(d);
+        this.classList.add("hoveredtradeMarker");
+        that.showTradeDetails(d, chartWindow, {
+          priceScale,
+          timeScale,
+        });
+      })
+      .on("mouseout", function () {
+        this.classList.remove("hoveredtradeMarker");
+        chartWindow.selectAll(".tradeMarkerDetails").remove();
+        // console.log("remove");
       });
-    })
-    .on("mouseout", function() {
-      this.classList.remove("hoveredtradeMarker");
-      chartWindow.selectAll(".tradeMarkerDetails").remove();
-      // console.log("remove");
-    });
-
-
-
 
     let tradeExit = chartWindow
-    .selectAll(`.${"tradeExitMarkers"}`)
-    .data(trades);
+      .selectAll(`.${"tradeExitMarkers"}`)
+      .data(trades);
 
-  tradeExit.exit().remove();
-  tradeExit
-    .enter()
-    .append("path")
-    .merge(tradeExit)
+    tradeExit.exit().remove();
+    tradeExit
+      .enter()
+      .append("path")
+      .merge(tradeExit)
 
-    // .attr('class', 'dirArrow')
- 
-    .attr('d', (d)=>exitArrow(d))
+      // .attr('class', 'dirArrow')
 
-    .attr("fill", (d)=>PL_color(d))
+      .attr("d", (d) => exitArrow(d))
 
-    
-    .attr("stroke",'black')
-    .attr("class", `tradeMarkers tradeExitMarkers`)
-    .style("opacity", 0.9)
-    .on("click", function(d) {
-      console.log("click");
-    })
-    .on("mouseover", function(d) {
-      // console.log(d);
-      this.classList.add("hoveredtradeMarker");
-      that.showTradeDetails(d, chartWindow, {
-        priceScale,
-        timeScale
+      .attr("fill", (d) => PL_color(d))
+
+      .attr("stroke", "black")
+      .attr("class", `tradeMarkers tradeExitMarkers`)
+      .style("opacity", 0.9)
+      .on("click", function (d) {
+        console.log("click");
+      })
+      .on("mouseover", function (d) {
+        // console.log(d);
+        this.classList.add("hoveredtradeMarker");
+        that.showTradeDetails(d, chartWindow, {
+          priceScale,
+          timeScale,
+        });
+      })
+      .on("mouseout", function () {
+        this.classList.remove("hoveredtradeMarker");
+        chartWindow.selectAll(".tradeMarkerDetails").remove();
+        // console.log("remove");
       });
-    })
-    .on("mouseout", function() {
-      this.classList.remove("hoveredtradeMarker");
-      chartWindow.selectAll(".tradeMarkerDetails").remove();
-      // console.log("remove");
-    });
-
-
-
   }
 
   appendRegressionLines(that, chartWindow, { priceScale, timeScale }) {
     if (!this.state.visibleIndicators.regressionLines) return; //console.log('importantPriceLevel not turned on');
     // console.log(this.state.regressionLines);
     let { regressionLines } = this.state;
+    // console.log(this.state)
     let { highLines, lowLines } = regressionLines;
+    if (!highLines || !lowLines) return;
     let allLines = [...highLines, ...lowLines];
     let plottedRegressionLines = chartWindow
       .selectAll(`.${"regressionLines"}`)
@@ -1265,36 +1288,44 @@ exitTime(pin):1585659963841
       .append("line")
       .merge(plottedRegressionLines)
 
-      .attr("y1", d => priceScale(d.y1))
+      .attr("y1", (d) => priceScale(d.y1))
 
-      .attr("x1", d => timeScale(d.x1))
-      .attr("x2", d => timeScale(d.x2))
-      .attr("y2", d => priceScale(d.y2))
+      .attr("x1", (d) => timeScale(d.x1))
+      .attr("x2", (d) => timeScale(d.x2))
+      .attr("y2", (d) => priceScale(d.y2))
       .attr("stroke-width", 5)
-      .attr("stroke", d => {
+      .attr("stroke", (d) => {
         return "yellow";
       })
       .attr("class", `regressionLines`)
       .style("opacity", 0.5)
-      .on("click", function(d) {
+      .on("click", function (d) {
         console.log("click");
       })
-      .on("mouseover", function(d) {
+      .on("mouseover", function (d) {
         // console.log(d);
         // this.classList.add("hoveredRegressionLine");
         that.regressionNearbyPoints(d, chartWindow, {
           priceScale,
-          timeScale
+          timeScale,
         });
+        //extend length to edth of chart
+        let maxTime = max(that.state.timestamps, (t) => t);
+        let { m, b } = d;
+        let price = m * maxTime + b;
+        // console.log({m,b,price,maxTime})
+        this.setAttribute("x2", timeScale(maxTime));
+        this.setAttribute("y2", priceScale(price));
+        console.log(d);
       })
-      .on("mouseout", function() {
+      .on("mouseout", function () {
         this.classList.remove("hoveredRegressionLine");
         chartWindow.selectAll(".regressionNearbyPoint").remove();
         // console.log("remove");
       });
   }
 
-  showTradeDetails(data, chartWindow, { priceScale, timeScale }){
+  showTradeDetails(data, chartWindow, { priceScale, timeScale }) {
     //TODO
     // .tradeMarkerDetails
     // console.log(data)
@@ -1310,19 +1341,18 @@ exitTime(pin):1585659963841
       .enter()
       .append("circle")
       .merge(regressionNearbyPoint)
-      .attr("cx", d => timeScale(d.x))
-      .attr("cy", d => priceScale(d.y))
+      .attr("cx", (d) => timeScale(d.x))
+      .attr("cy", (d) => priceScale(d.y))
       .attr("r", 10)
       .attr("fill", "blue")
       .attr("stroke", "white")
       .attr("class", `regressionNearbyPoint`);
   }
 
-
-  appendPriceLevelRanges(that, chartWindow, { priceScale, timeScale }){
+  appendPriceLevelRanges(that, chartWindow, { priceScale, timeScale }) {
     if (!this.state.visibleIndicators.importantPriceLevel) return; //console.log('importantPriceLevel not turned on');;
-    let timeMax = max(this.state.timestamps, d => d);
-    let {priceLevelSensitivity}  = this.state
+    let timeMax = max(this.state.timestamps, (d) => d);
+    let { priceLevelSensitivity } = this.state;
 
     let importantPriceRangeLow = chartWindow
       .selectAll(`.${"importantPriceRangeLow"}`)
@@ -1334,25 +1364,24 @@ exitTime(pin):1585659963841
       .append("rect")
       .merge(importantPriceRangeLow)
 
-
-      .attr("x", d => timeScale(d.x))
-      .attr("y", d => priceScale(d.y))
-      .attr("height", d => {
-        return Math.abs(priceScale(d.y) - priceScale(d.y/ ((priceLevelSensitivity/10000)+1)))//10000 is magic number?  
+      .attr("x", (d) => timeScale(d.x))
+      .attr("y", (d) => priceScale(d.y))
+      .attr("height", (d) => {
+        return Math.abs(
+          priceScale(d.y) -
+            priceScale(d.y / (priceLevelSensitivity / 10000 + 1))
+        ); //10000 is magic number?
       })
-      .attr("width", (d)=>{
-         return timeScale(timeMax) - timeScale(d.x)
+      .attr("width", (d) => {
+        return timeScale(timeMax) - timeScale(d.x);
       })
-      .attr('stroke', 'none')
-      .attr('pointer-events', 'none')
-      .attr("fill", 'url(#priceLevelGradientRed)')
+      .attr("stroke", "none")
+      .attr("pointer-events", "none")
+      .attr("fill", "url(#priceLevelGradientRed)")
       .attr("class", `importantPriceRangeLow importantPriceLevel`)
-          .on("mouseover", function(d) {
-  
-      })
+      .on("mouseover", function (d) {});
 
-
-      let importantPriceRangeHigh = chartWindow
+    let importantPriceRangeHigh = chartWindow
       .selectAll(`.${"importantPriceRangeHigh"}`)
       .data(this.state.importantPriceLevels);
 
@@ -1361,24 +1390,31 @@ exitTime(pin):1585659963841
       .enter()
       .append("rect")
       .merge(importantPriceRangeHigh)
-      .attr('pointer-events', 'none')
-      .attr("x", d => timeScale(d.x))
-      .attr("y", d => priceScale(d.y) - Math.abs(priceScale(d.y) - priceScale(d.y/ ((priceLevelSensitivity/10000)+1))))
-      .attr("height", d => {
-        return Math.abs(priceScale(d.y) - priceScale(d.y/ ((priceLevelSensitivity/10000)+1)))//10000 is magic number?  
+      .attr("pointer-events", "none")
+      .attr("x", (d) => timeScale(d.x))
+      .attr(
+        "y",
+        (d) =>
+          priceScale(d.y) -
+          Math.abs(
+            priceScale(d.y) -
+              priceScale(d.y / (priceLevelSensitivity / 10000 + 1))
+          )
+      )
+      .attr("height", (d) => {
+        return Math.abs(
+          priceScale(d.y) -
+            priceScale(d.y / (priceLevelSensitivity / 10000 + 1))
+        ); //10000 is magic number?
       })
-      .attr("width", (d)=>{
-         return timeScale(timeMax) - timeScale(d.x)
+      .attr("width", (d) => {
+        return timeScale(timeMax) - timeScale(d.x);
       })
-      .attr('stroke', 'none')
-      .attr("fill", 'url(#priceLevelGradientGreen)')
+      .attr("stroke", "none")
+      .attr("fill", "url(#priceLevelGradientGreen)")
       .attr("class", `importantPriceRangeHigh importantPriceLevel`)
 
-
-
-      .on("mouseover", function(d) {
-  
-      })
+      .on("mouseover", function (d) {});
     //   .on("mouseout", function() {
     //     this.classList.remove("importantLine");
     //     chartWindow.selectAll(".nearbyPoint").remove();
@@ -1386,9 +1422,14 @@ exitTime(pin):1585659963841
     //   });
   }
   // appendImportantPriceLevel(data, minColor, `minPriceLevel`);
+
+  appendFibonacciLines(that, chartWindow, { priceScale, timeScale }) {
+    FibonacciLines(that, chartWindow, { priceScale, timeScale })
+
+  }
   appendImportantPriceLevel(that, chartWindow, { priceScale, timeScale }) {
     if (!this.state.visibleIndicators.importantPriceLevel) return; //console.log('importantPriceLevel not turned on');;
-    let timeMax = max(this.state.timestamps, d => d);
+    let timeMax = max(this.state.timestamps, (d) => d);
 
     let importantPriceLevel = chartWindow
       .selectAll(`.${"importantPriceLevel"}`)
@@ -1400,26 +1441,26 @@ exitTime(pin):1585659963841
       .append("line")
       .merge(importantPriceLevel)
 
-      .attr("y1", d => priceScale(d.y))
+      .attr("y1", (d) => priceScale(d.y))
 
-      .attr("x1", d => timeScale(d.x))
-      .attr("x2", d => timeScale(timeMax))
-      .attr("y2", d => priceScale(d.y))
+      .attr("x1", (d) => timeScale(d.x))
+      .attr("x2", (d) => timeScale(timeMax))
+      .attr("y2", (d) => priceScale(d.y))
       .attr("stroke-width", 3)
-      .attr("stroke", d => {
+      .attr("stroke", (d) => {
         return "lawngreen";
       })
       .attr("class", `importantPriceLevel`)
       .style("opacity", 0.7)
-      .on("mouseover", function(d) {
+      .on("mouseover", function (d) {
         // console.log(d)
         this.classList.add("importantLine");
         that.highlightNearbyPoints(d, chartWindow, {
           priceScale,
-          timeScale
+          timeScale,
         });
       })
-      .on("mouseout", function() {
+      .on("mouseout", function () {
         this.classList.remove("importantLine");
         chartWindow.selectAll(".nearbyPoint").remove();
         // console.log("remove");
@@ -1433,8 +1474,8 @@ exitTime(pin):1585659963841
       .enter()
       .append("circle")
       .merge(nearbyPoints)
-      .attr("cx", d => timeScale(d.x))
-      .attr("cy", d => priceScale(d.y))
+      .attr("cx", (d) => timeScale(d.x))
+      .attr("cy", (d) => priceScale(d.y))
       .attr("r", 10)
       .attr("fill", "blue")
       .attr("stroke", "white")
@@ -1443,13 +1484,13 @@ exitTime(pin):1585659963841
 
   runMinMax(tolerance, minMaxMostRecentData) {
     // console.log({ tolerance, minMaxMostRecentData });
-  
-    let { highs, lows, closes, timestamps } = this.state;
 
+    let { highs, lows, closes, timestamps } = this.state;
+    // console.log({highs, lows, closes, timestamps})
     let minMaxValues = {
       high: { maxValues: [] },
       low: { minValues: [] },
-      close: { minValues: [], maxValues: [] }
+      close: { minValues: [], maxValues: [] },
     };
     // console.log({ highs: this.state.highs, data: this.props.data });
 
@@ -1459,9 +1500,6 @@ exitTime(pin):1585659963841
       tolerance,
       minMaxMostRecentData
     );
-    if(tolerance == 50) {
-      console.log({highs, lows, closes, timestamps, minValues, maxValues})
-    }
 
     minMaxValues["high"].maxValues = maxValues;
     // minMaxValues["high"].minValues = minValues;
@@ -1472,9 +1510,7 @@ exitTime(pin):1585659963841
       tolerance,
       minMaxMostRecentData
     );
-    if(tolerance == 50) {
-      console.log({highs, lows, closes, timestamps, minValues, maxValues})
-    }
+
 
     // minMaxValues["low"].maxValues = maxValues;
     minMaxValues["low"].minValues = minValues;
@@ -1488,9 +1524,6 @@ exitTime(pin):1585659963841
       tolerance,
       minMaxMostRecentData
     );
-    if(tolerance == 50) {
-      console.log({highs, lows, closes, timestamps, minValues, maxValues})
-    }
 
     minMaxValues["close"].maxValues = maxValues;
     minMaxValues["close"].minValues = minValues;
@@ -1545,11 +1578,13 @@ exitTime(pin):1585659963841
     let markers = svg.selectAll(`.${indicator}`);
     markers.remove();
     let temp = this.state.visibleIndicators;
+    console.log(temp);
     let val = temp[indicator];
     val = !val;
     temp[indicator] = val;
+    console.log(temp);
     this.setState({
-      visibleIndicators: temp
+      visibleIndicators: temp,
     });
     setTimeout(() => this.draw(), 0);
   }
@@ -1564,11 +1599,11 @@ exitTime(pin):1585659963841
     );
     let importantHighPoints = [
       ...importantMinMaxValues.high.maxValues,
-      ...importantMinMaxValues.close.maxValues
+      ...importantMinMaxValues.close.maxValues,
     ];
     let importantLowPoints = [
       ...importantMinMaxValues.low.minValues,
-      ...importantMinMaxValues.close.minValues
+      ...importantMinMaxValues.close.minValues,
     ];
     let allImportantPoints = [...importantHighPoints, ...importantLowPoints];
     /**
@@ -1592,18 +1627,18 @@ exitTime(pin):1585659963841
     // console.log(this.state.minMaxTolerance);
     if (!this.state.rawOHLCData) return;
     // console.log(this.state.rawOHLCData)
-    let timestamps = this.state.rawOHLCData.map(d => d.timestamp);
-    let highs = this.state.rawOHLCData.map(d => d.high);
-    let lows = this.state.rawOHLCData.map(d => d.low);
-    let closes = this.state.rawOHLCData.map(d => d.close);
-    let opens = this.state.rawOHLCData.map(d => d.open);
+    let timestamps = this.state.rawOHLCData.map((d) => d.timestamp);
+    let highs = this.state.rawOHLCData.map((d) => d.high);
+    let lows = this.state.rawOHLCData.map((d) => d.low);
+    let closes = this.state.rawOHLCData.map((d) => d.close);
+    let opens = this.state.rawOHLCData.map((d) => d.open);
 
     this.setState({
       timestamps,
       opens,
       highs,
       lows,
-      closes
+      closes,
     });
 
     setTimeout(() => {
@@ -1612,12 +1647,15 @@ exitTime(pin):1585659963841
         this.state.minMaxTolerance,
         minMaxMostRecentData
       );
+      // console.log({minMaxValues, lows})
       // let highPoints = [...minMaxValues.high.maxValues, ...minMaxValues.close.maxValues].sort(byDate)
       // let lowPoints = [...minMaxValues.low.minValues, ...minMaxValues.close.minValues].sort(byDate)
       let highPoints = [...minMaxValues.high.maxValues];
       let lowPoints = [...minMaxValues.low.minValues];
       //run a cool regression function with the min max values
       let errLimit = this.state.regressionErrorLimit;
+      // console.log({highPoints,
+      //   lowPoints})
       let highLines = diff.regressionAnalysis(highPoints, errLimit);
       let lowLines = diff.regressionAnalysis(lowPoints, errLimit);
       // console.log({ highLines, lowLines })
@@ -1626,7 +1664,7 @@ exitTime(pin):1585659963841
       this.setState({
         minMaxValues: minMaxValues,
         // consolidatedMinMaxPoints: newConsolidatedPoints,
-        regressionLines: { highLines, lowLines }
+        regressionLines: { highLines, lowLines },
       });
     }, 0);
     setTimeout(() => this.draw(), 0);
@@ -1639,7 +1677,7 @@ exitTime(pin):1585659963841
       minMaxTolerance,
       regressionErrorLimit,
       priceLevelMinMax,
-      priceLevelSensitivity
+      priceLevelSensitivity,
     } = this.state;
     let { props } = this;
     API.saveRegressionValues({
@@ -1648,7 +1686,7 @@ exitTime(pin):1585659963841
       regressionErrorLimit,
       priceLevelMinMax,
       priceLevelSensitivity,
-      props
+      props,
     });
   }
 
@@ -1656,19 +1694,21 @@ exitTime(pin):1585659963841
     let timeframe = e.target.value;
     console.log(timeframe);
     this.setState({
-      timeframe
+      timeframe,
     });
   }
   render() {
     // console.log("RENDERING??");
-    let symbol = this.props.stock_data.search_symbol
-    let trades = this.props.stock_data.commodityTrades[symbol]
+    let symbol = this.props.stock_data.search_symbol;
+    let trades = this.props.stock_data.commodityTrades[symbol];
+    let currentTickData = this.props.stock_data.currentTickData[symbol];
+    // console.log({trades})
 
     return (
       <div>
         <h3>{this.state.timeframe}</h3>
         <select
-          onChange={e => this.setTimeframe(e)}
+          onChange={(e) => this.setTimeframe(e)}
           className="form-control"
           name=""
           id=""
@@ -1682,7 +1722,7 @@ exitTime(pin):1585659963841
           <option value="weekly">Weekly</option>
         </select>
         <ToggleIndicators
-          toggleIndicators={indicator => this.toggleIndicators(indicator)}
+          toggleIndicators={(indicator) => this.toggleIndicators(indicator)}
           visibleIndicators={this.state.visibleIndicators}
         />
 
@@ -1696,70 +1736,70 @@ exitTime(pin):1585659963841
           height={this.state.height}
           className="svgChart"
         ></svg>
+        {currentTickData && <Timers lastTick={currentTickData} />}
         <RegressionSettingsContainer>
           {/* RegressionLine settings */}
           <RegressionSettings
             timeframe={this.state.timeframe}
             //for regression settings
             minMaxTolerance={this.state.minMaxTolerance}
-            updateMinMaxTolerance={e => {
+            updateMinMaxTolerance={(e) => {
               this.setState({
-                minMaxTolerance: parseInt(e.target.value)
+                minMaxTolerance: parseInt(e.target.value),
               });
               this.createPriceLevelsData();
             }}
             //for the regression lines
             regressionErrorLimit={this.state.regressionErrorLimit}
-            updateRegressionErrorLimit={e => {
+            updateRegressionErrorLimit={(e) => {
               this.setState({
-                regressionErrorLimit: parseFloat(e.target.value)
+                regressionErrorLimit: parseFloat(e.target.value),
               });
               this.createPriceLevelsData();
             }}
             //fo price levels
             priceLevelMinMax={this.state.priceLevelMinMax}
-            updatePriceLevelMinMax={e => {
+            updatePriceLevelMinMax={(e) => {
               this.setState({
-                priceLevelMinMax: parseInt(e.target.value)
+                priceLevelMinMax: parseInt(e.target.value),
               });
               setTimeout(() => this.runPriceLevels(), 0);
             }}
             //for price levels
             priceLevelSensitivity={this.state.priceLevelSensitivity}
-            updatePriceLevelSensitivity={e => {
+            updatePriceLevelSensitivity={(e) => {
               // console.log(e.target.value);
               this.setState({
-                priceLevelSensitivity: parseFloat(e.target.value)
+                priceLevelSensitivity: parseFloat(e.target.value),
               });
               setTimeout(() => this.runPriceLevels(), 0);
             }}
             saveRegressionSettings={() => this.saveRegressionSettings()}
             reset={() => this.createPriceLevelsData()}
-            setTimeframe={id =>
+            setTimeframe={(id) =>
               API.setRegressionSettingsTimeframe(id, this.state, this.props)
             }
-            remove={id => API.deleteRegressionValues(id, this.props)}
+            remove={(id) => API.deleteRegressionValues(id, this.props)}
             setRegressionSettings={({
               minMaxTolerance,
               regressionErrorLimit,
               priceLevelMinMax,
-              priceLevelSensitivity
+              priceLevelSensitivity,
             }) => {
               this.setState({
                 minMaxTolerance,
                 regressionErrorLimit,
                 priceLevelMinMax,
-                priceLevelSensitivity
+                priceLevelSensitivity,
               });
               setTimeout(() => this.createPriceLevelsData(), 0);
             }}
           />
         </RegressionSettingsContainer>
-        {trades && trades.length &&
+
         <TradesListContainer>
-            <TradesList trades = {trades}/>
+          <TradesList trades={trades} />
         </TradesListContainer>
-        }
       </div>
     );
   }
@@ -1771,17 +1811,13 @@ function mapStateToProps(state) {
 
 export default connect(mapStateToProps)(withRouter(CandleStickChart));
 
-
 let RegressionSettingsContainer = styled.div`
   border: solid red 1px;
 `;
 
-
 let TradesListContainer = styled.div`
   border: solid red 1px;
 `;
-
-
 
 function byDate(a, b) {
   if (a.timestamp < b.timestamp) return 1;

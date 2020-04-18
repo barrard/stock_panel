@@ -2,6 +2,7 @@
     "cSpell.words": [
         "crosshairs",
         "data",
+        "handle",
         "histo",
         "idata",
         "intcpt",
@@ -9,10 +10,15 @@
         "mf",
         "mousex",
         "ob",
+        "on",
+        "other",
         "pv",
         "rects",
         "tdata",
+        "tick",
+        "timeframes",
         "toastr",
+        "updating",
         "vdata",
         "y"
     ]

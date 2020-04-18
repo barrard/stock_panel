@@ -12,7 +12,7 @@ import TotalVolume from "../QuoteComponents/TotalVolume.js";
 class List_Stock_Data extends React.Component {
   constructor(props) {
     super(props);
-
+    console.log(props.data)
     let { percent, value } = props.data;
 
     this.state = {

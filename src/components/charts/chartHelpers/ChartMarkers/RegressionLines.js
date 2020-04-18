@@ -19,11 +19,13 @@ export function appendRegressionLines(
 //    errLimit = errLimit * dataPoints.slice(-1)[0].y
     // console.log({errLimit})
    let regressionLines = diff.regressionAnalysis(dataPoints, errLimit);
+   if(!regressionLines)return
+  //  console.log({regressionLines})
    let {m, length } = regressionLines.slice(-1)[0]
    let lastSlope = m
    let lastLength = length
 
-   console.log({lastLength, lastSlope})
+  //  console.log({lastLength, lastSlope})
 
 
    let plottedRegressionLines = chartWindow
@@ -37,13 +39,13 @@ export function appendRegressionLines(
     .merge(plottedRegressionLines)
 
     .attr("y1", (d) => {
+        // console.log(yScale(d.y1)+addedHeight)
+        // console.log(yScale(d.y1))
+        // console.log(addedHeight)
         // console.log(d.y1)
-        // console.log(d.y1 === NaN)
-        // console.log(d.y1 === 'NaN')
-        // if(yScale(d.y1)+addedHeight === NaN) console.log('fuuk')
-        // if(yScale(d.y1)+addedHeight === 'NaN') console.log('fuuk')
-        // if(typeof(yScale(d.y1)+addedHeight) === 'NaN') console.log('fuuk')
-        // if(typeof(yScale(d.y1)+addedHeight) === NaN) console.log('fuuk')
+        // if(d.y1 === NaN)return console.log('FOIND IT')
+        // if(typeof(d.y1) === NaN)return console.log('FOIND IT')
+
         return yScale(d.y1)+addedHeight
     })
 

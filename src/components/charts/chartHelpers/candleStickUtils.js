@@ -64,7 +64,14 @@ export function addCandleSticksBody(
     .merge(candleSticks)
     //   .on("mouseover", bubblyEvent)
     //   .on("mousemove", bubblyEvent)
-    .attr("x", d => timeScale(d.timestamp) - halfWidth)
+    .attr("x", d => {
+      let t = timeScale(d.timestamp) - halfWidth
+
+      if(isNaN(t)){
+        //console.log({d, halfWidth})
+      }
+      return  timeScale(d.timestamp) - halfWidth
+    })
     .attr("y", d => priceScale(yCandleAccessor(d)))
     .attr("height", d => {
       const h = candleHeightScale(heightCandleAccessor(d));

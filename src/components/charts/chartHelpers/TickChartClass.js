@@ -74,6 +74,7 @@ class TickChart extends React.Component {
   }
 
   didTickDataUpdate(prevPops) {
+    if(!partialOHLCdata.length)return
     //FIRST CHECK IF NEW TICK DATA IS HERE
     if (prevPops.currentTickData != this.props.currentTickData) {
       
@@ -85,6 +86,7 @@ class TickChart extends React.Component {
        * compared to tha partial data (draw data)
        * so we know if we shoudl also append the data to the drawData
        */
+      // console.log({partialOHLCdata})
       let lastPartialDataTickTime = partialOHLCdata.slice(-1)[0].timestamp;
       let lastDataTickTime = this.state.data[this.state.data.length - 1].timestamp;
 
@@ -161,7 +163,7 @@ class TickChart extends React.Component {
     // console.log(data)
     if (prevData != data) {
       let { volumePriceProfile } = this.props;
-      // console.log("TICK CHART UPDATE DATA");
+      console.log("TICK CHART UPDATE DATA");
       // console.log(this.props.currentTickData);
       // console.log(data);
       partialOHLCdata = data;
@@ -696,7 +698,7 @@ TOTAL_DOWN_VOL: 174893
       })
       .attr("stroke", "black")
       .attr("stroke-width", strokeWidth);
-
+// console.log(this.state.data)
     //Draw tick line
     let tickLinePath = chartWindow
       .selectAll(".tickPriceLine")

@@ -41,6 +41,14 @@ class Contracts extends React.Component {
         </ToggleIndicatorButton>
 
         <ToggleIndicatorButton
+          onClick={() => this.props.toggleIndicators("fibonacciLines")}
+          isSet={this.props.visibleIndicators.fibonacciLines}
+        >
+          Fibonacci Lines
+        </ToggleIndicatorButton>
+
+
+        <ToggleIndicatorButton
           onClick={() => this.props.toggleIndicators("ema20")}
           isSet={this.props.visibleIndicators.ema20}
         >

@@ -19,11 +19,39 @@ export default {
   getCommodityRegressionValues,
   deleteRegressionValues,
   setRegressionSettingsTimeframe,
-  getAllCommodityTrades
+  getAllCommodityTrades,
+  closePosition, goLong, goShort
 };
 
 const API_SERVER = process.env.REACT_APP_STOCK_DATA_URL;
 const LOCAL_SERVER = process.env.REACT_APP_LOCAL_DATA;
+
+
+
+async function goLong(symbol){
+  let data = await fetch(`${LOCAL_SERVER}/API/goLong/${symbol}`, { credentials: "include"});
+  data = await data.json();
+  console.log(data)
+  if(!data.resp || data.err)toastr.error('Error Going Long')
+  return;
+}
+
+async function goShort(symbol){
+  let data = await fetch(`${LOCAL_SERVER}/API/goShort/${symbol}`, { credentials: "include"});
+  data = await data.json();
+  console.log(data)
+  if(!data.resp || data.err)toastr.error('Error Going Short')
+  return;
+}
+async function closePosition(id) {
+  // console.log('getAllSymbolsData')
+  let data = await fetch(`${LOCAL_SERVER}/API/close-position/${id}`, { credentials: "include"});
+  data = await data.json();
+  console.log(data)
+  if(!data.resp || data.err)toastr.error('Error Closing Position')
+  return data;
+}
+
 
 async function getAllCommodityTrades(symbol, props) {
   let trades
@@ -43,7 +71,7 @@ try {
     console.log(trades)
     props.dispatch(addAllCommodityTrades(trades, symbol))
 } catch (err) {
-
+  console.log({err})
   return console.log('ERROR')
   
 }
@@ -69,28 +97,43 @@ async function setRegressionSettingsTimeframe(
   { timeframe, regressionLines, importantPriceLevels },
   props
 ) {
-  console.log({
-    regressionLines,
-    importantPriceLevels
-  });
-  /**
-   * get an array of mx+b m = and b =
-   */
-  let slopeInts = [];
-  importantPriceLevels.map(p => slopeInts.push({ m: 0, b: p.y }));
-  regressionLines.highLines.map(({ m, b }) => slopeInts.push({ m, b }));
-  regressionLines.lowLines.map(({ m, b }) => slopeInts.push({ m, b }));
-  console.log({ slopeInts });
+  try {
+    console.log({
+      regressionLines,
+      importantPriceLevels
+    });
+  
+    let regressionData = await fetch(
+      `${LOCAL_SERVER}/API/commodityRegressionSettings`,
+      { credentials: "include", ...PUT({ id, timeframe }) }
+    );
+    regressionData = await regressionData.json();
+    console.log(regressionData);
+    if(regressionData.err)throw regressionData.err
+    console.log(props);
+    //use an array becasue thats what the actions is expecting
+    props.dispatch(commodityRegressionData([regressionData]));
+      let {symbol} = regressionData
+    toastr.success(`Success`, `Settings saved for ${symbol} ${timeframe}!`);  
 
-  let regressionData = await fetch(
-    `${LOCAL_SERVER}/API/commodityRegressionSettings`,
-    { credentials: "include", ...PUT({ id, timeframe }) }
-  );
-  regressionData = await regressionData.json();
-  console.log(regressionData);
-  console.log(props);
-  //use an array becasue thats what the actions is expecting
-  props.dispatch(commodityRegressionData([regressionData]));
+  } catch (err) {
+    toastr.error(`Error`, ` ${err}`);  
+    
+  }
+
+  // if(!regressionLines ||
+  //   !regressionLines.highLines||
+  //   !regressionLines.lowLines||
+  //   !importantPriceLevels)return console.log('there are no importantPriceLevels')
+  // /**
+  //  * get an array of mx+b m = and b =
+  //  */
+  // let slopeInts = [];
+  // importantPriceLevels.map(p => slopeInts.push({ m: 0, b: p.y }));
+  // regressionLines.highLines.map(({ m, b }) => slopeInts.push({ m, b }));
+  // regressionLines.lowLines.map(({ m, b }) => slopeInts.push({ m, b }));
+  // console.log({ slopeInts });
+
 }
 
 async function saveRegressionValues({
@@ -139,7 +182,7 @@ async function deleteRegressionValues(id, props) {
 
 async function getMovers() {
   // console.log(API_SERVER);
-  let movers = await fetch(`${API_SERVER}/back_data/MOVERS/MOVERS.json`);
+  let movers = await fetch(`${API_SERVER}/MOVERS/MOVERS.json`);
   return movers;
 }
 
@@ -177,12 +220,15 @@ async function fetch_commodity_minutely_data({ date, symbol }) {
 async function fetchCommodityData({ timeframe, symbol }) {
   console.log(LOCAL_SERVER)
   let data = await fetch(
-    `${LOCAL_SERVER}/back_data/${timeframe}/${timeframe}-${symbol}.json`
+    `${LOCAL_SERVER}/back_data/${timeframe}/${symbol}`
   );
   data = await data.json();
   console.log({data})
   // console.log('TOASTR')
-  toastr.success(`Data loaded`, `${data.length} bars loaded for ${symbol}`);
+  if(data.err)
+    toastr.error(`Data Not loaded`, `An error occurred for ${symbol}`);  
+  else
+    toastr.success(`Data loaded`, `${data.length} bars loaded for ${symbol}`);
   return data;
 }
 

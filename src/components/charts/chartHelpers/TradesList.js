@@ -4,25 +4,61 @@ import { toastr } from "react-redux-toastr";
 //import { withRouter } from 'next/router';
 import { Link, withRouter } from "react-router-dom";
 import styled from "styled-components";
+import API from "../../API";
 
 //import Main_Layout from '../layouts/Main_Layout.js';
 class TradesList extends React.Component {
   constructor(props) {
     super(props);
+    // console.log(props)
+
     let symbol = props.stock_data.search_symbol;
-    let trades = props.trades;
+    // let trades = this.props.stock_data.commodityTrades[symbol] || []
+    let trades = props.trades || []
     console.log(trades);
     this.state = {
-      sorted_prop: "entryTime",
+      sorted_prop: 'entryTime',
       sort_state: false, //0 = low->high 1 = high->low
       number_rows: 30, //starting default
       all_data: [...trades],
-      data: [...trades]
-        .sort((a, b) => this.high_to_low(a, b, "entryTime"))
-        .slice(0, 30)
+
     };
 
     this.load_more_data = this.load_more_data.bind(this);
+    this.closePosition = this.closePosition.bind(this)
+  }
+
+  componentDidUpdate(prevProps, prevSate){
+    let {sorted_prop} = this.state
+    let symbol = this.props.stock_data.search_symbol
+    let prevTrades = prevProps.stock_data.commodityTrades[symbol]
+    let trades = this.props.stock_data.commodityTrades[symbol] 
+    // console.log({prevTrades, trades})
+    // console.log(prevTrades && prevTrades != trades && Array.isArray(trades))
+    if(trades && prevTrades != trades && Array.isArray(trades)){
+      this.setState({
+        all_data: [...trades],
+      data: [...trades]
+        .sort((a, b) => this.high_to_low(a, b, sorted_prop))
+        .slice(0, 30)
+      })
+    }
+    let stateTrades = this.state.all_data
+// let prevStateTrades = this.state.all_data
+
+    if(Array.isArray(stateTrades) && Array.isArray(trades)){
+      // console.log(stateTrades)
+      stateTrades.forEach((trade, index)=> {
+        // console.log({curentTradeTime:trade.exitTime,
+        //   prevTrade:prevTrades[index].exitTime})
+            if(trade.exitTime !== trades[index].exitTime){
+          // console.log('UPDATE FMMM')
+          this.setState({
+            all_data:this.props.stock_data.commodityTrades[symbol]
+          })
+        }
+      })
+    }
   }
 
   high_to_low(a, b, prop) {
@@ -43,9 +79,9 @@ class TradesList extends React.Component {
     var sort_state = this.state.sort_state;
     /* Flag for not resetting sort_state */
     // if (flag) sort_state = !sort_state;
-    console.log(this.state.data);
+    // console.log(this.state.data);
     sort_state = !sort_state;
-    console.log({ sort_state, prop });
+    // console.log({ sort_state, prop });
     if (sort_state) {
       this.setState({ sort_state: false });
       this.setState({
@@ -61,7 +97,7 @@ class TradesList extends React.Component {
   }
 
   load_more_data() {
-    console.log("LOAD MORE DATA");
+    // console.log("LOAD MORE DATA");
     const { number_rows } = this.state;
     this.setState({
       number_rows: this.state.number_rows + 30
@@ -72,19 +108,62 @@ class TradesList extends React.Component {
     }, 0);
   }
 
+  async closePosition(id){
+    // console.log(`close this position ${id}`)
+    let closedTrade = await API.closePosition(id)
+    // let tradeIndex = this.state.all_data.findIndex(trade=> {
+    //   console.log({trade, closedTrade})
+    //   return trade._id === closedTrade._id
+    // })
+    // let trades = {...this.state.all_data}
+    // trades[tradeIndex] = closedTrade
+    // this.setState({
+    //   all_data:trades
+    // })
+  }
+
+  async goLong(){
+    // console.log('go long')
+
+    let symbol = this.props.stock_data.search_symbol
+let resp =     await API.goLong(symbol)
+    // console.log({resp})
+    // console.log('done?')
+
+
+  }
+  async goShort(){
+    // console.log('go long')
+    let symbol = this.props.stock_data.search_symbol
+    let resp = await API.goShort(symbol)
+    // console.log({resp})
+    // console.log('done?')
+
+  }
   render() {
-    let { data } = this.state;
+    let  {all_data, sorted_prop}  = this.state;
+    let data = [...all_data]
+    .sort((a, b) => this.high_to_low(a, b, sorted_prop))
+    .slice(0, 30)
     let symbol = this.props.stock_data.search_symbol;
+    let currentQuote = this.props.stock_data.currentTickData[symbol]
+    // console.log(this.props)
+    // console.log({currentQuote})
     let tradingDay; //variable for the trade list loop
-    if (!data.length) return <div>No Trades</div>;
+    // if (!data.length) return 
     let totalPL = 0;
     data.forEach(({ PL }) => {
-      if (PL) {
+      if (PL && !isNaN(PL)) {
         totalPL += PL;
       }
     });
+    // console.log(data)
+ 
     return (
       <>
+      <OpenLongPosition onClick={()=>this.goLong()}>BUY</OpenLongPosition>
+      <OpenShortPosition onClick={()=>this.goShort()}>SHORT</OpenShortPosition>
+      {/* <div>No Trades</div>; */}
         {/* Avoid rendering if data array is empty */}
         {data && data.length > 0 && (
           <div className="col-12">
@@ -120,9 +199,11 @@ class TradesList extends React.Component {
                   <div key={trade_data._id}>
                     <p className="white">{DAY}</p>
                     <Display_Stock_Row
+                    currentQuote={currentQuote}
                       index={index}
                       trade_data={trade_data}
                       props={this.props.props}
+                      closePosition={this.closePosition}
                     />
                   </div>
                 );
@@ -141,8 +222,7 @@ function mapStateToProps(state) {
 
 export default connect(mapStateToProps)(withRouter(TradesList));
 
-function Display_Stock_Row({ trade_data, index, props }) {
-  // console.log({trade_data})
+function Display_Stock_Row({ trade_data, index, props, closePosition, currentQuote }) {
   const {
     symbol,
     entryTime,
@@ -156,6 +236,7 @@ function Display_Stock_Row({ trade_data, index, props }) {
     exitPrice,
     _id
   } = trade_data;
+
   let class_name = index % 2 == 0 ? "ticker_row_light" : "ticker_row_dark";
   let timeframe = "day";
   let end = new Date().getTime();
@@ -188,23 +269,45 @@ function Display_Stock_Row({ trade_data, index, props }) {
         <Price price={entryPrice} />
       </div>
       {/* exitPrice */}
-
       <div className="col-2 flex_center">
+      {!exitPrice && 
+         <TargetAndStopLoss 
+          target={target}
+          stop={stop}
+         />
+         }
+        {exitPrice &&
         <Price price={exitPrice} />
+        }
       </div>
 
       {/* exitTime */}
       <div className="col-2 flex_center white">
+      {!exitTime && 
+         <ClosePositionButton onClick={()=>closePosition(_id)}>
+           Close Position
+         </ClosePositionButton>
+         }
         <DateTime date={exitTime} />
       </div>
 
       {/* PL */}
 
       <div className="col-2 flex_center">
-        <ProfitLoss PL={PL} />
+  
+        <ProfitLoss PL={PL} currentQuote={currentQuote} entryPrice={entryPrice} buyOrSell={buyOrSell} />
       </div>
     </div>
   );
+}
+
+const TargetAndStopLoss =({target, stop})=>{
+  return(
+  <TargetStopDiv>
+    <p>Target: {target}</p>
+  <p>Stop: {stop}</p>
+  </TargetStopDiv>
+  )
 }
 
 const Stock_List_Header = ({ sort_by, sort_state, sorted_prop }) => {
@@ -291,7 +394,16 @@ const DateTime = ({ date }) => {
   // if(!new Date(date))
   return new Date(date).toLocaleString().split(",")[1];
 };
-const ProfitLoss = ({ PL }) => {
+const ProfitLoss = ({ PL, currentQuote, entryPrice, buyOrSell }) => {
+  // console.log({PL, currentQuote, entryPrice, buyOrSell})
+  if(isNaN(PL) && currentQuote && currentQuote.close){
+    let close = currentQuote.close
+    PL = buyOrSell === "Buy"?
+    close-entryPrice:
+    entryPrice - close
+
+
+  }
   return <Price price={PL} />;
 };
 
@@ -312,3 +424,28 @@ const BuyOrSell = ({ buyOrSell }) => {
 };
 
 const Symbol = ({ symbol }) => <span className="ticker_symbol">{symbol}</span>;
+
+
+const ClosePositionButton = styled.button`
+color:white;
+background:red;
+position: absolute;
+`
+
+const OpenShortPosition = styled.button`
+color:white;
+background:red;
+/* position: absolute; */
+/* left:100px; */
+`
+const OpenLongPosition = styled.button`
+color:white;
+background:green;
+/* position: absolute; */
+/* left:40px; */
+`
+
+
+const TargetStopDiv = styled.div`
+display: block;
+color:white;`

@@ -88,7 +88,7 @@ function CandleStickChart({ data, width, height }) {
   useEffect(() => {
     console.log('load')
     //66.8.204.49
-    fetch(`${process.env.REACT_APP_STOCK_DATA_URL}/back_data/intraday/intraday-ES.json`).then(async res=>{
+    fetch(`${process.env.REACT_APP_STOCK_DATA_URL}/back_data/intraday/ES`).then(async res=>{
         let json = await res.json()
         console.log(json)
         json.results.forEach(r => r.timestamp = new Date(r.timestamp).getTime())

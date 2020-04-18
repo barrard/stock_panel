@@ -30,6 +30,7 @@ class Landing_Page extends React.Component {
   render() {
     // console.log(this.props)
     let { movers } = this.props.stock_data;
+    console.log({movers})
     return (
       <div className="row flex_center">
         <div className="col-sm-6">
@@ -39,6 +40,7 @@ class Landing_Page extends React.Component {
             {
               Object.keys(movers).map((market, index) => {
                 let { down, up } = movers[market];
+                console.log({down, up})
 
                 return (
                   <div className="full-width" key = {index}>

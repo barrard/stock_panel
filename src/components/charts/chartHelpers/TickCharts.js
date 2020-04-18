@@ -17,7 +17,7 @@ class TickCharts extends React.Component {
       volumePriceProfile: {},
       LAST_PRICE: 0,
       currentTickData: {},
-      showTick:true
+      showTick:false
     };
   }
 
@@ -65,6 +65,9 @@ class TickCharts extends React.Component {
         } else if (price > lastPrice) {
           //went up
           redGreenClass = "upTick";
+        }else {
+          //went up
+          redGreenClass = "neutralTick";
         }
         // console.log({ redGreenClass });
     
@@ -72,6 +75,7 @@ class TickCharts extends React.Component {
       currentTickData = this.compilePriceVolumeData([currentTickData]);
       // console.log({currentTickData})
       this.setState({ LAST_PRICE: price, currentTickData, redGreenClass });
+      setTimeout(()=>this.setState({redGreenClass:''}), 1000)
     }
   }
 
@@ -124,7 +128,7 @@ class TickCharts extends React.Component {
           LAST_VOL = minute.vols[i];
         }
 
-        let timestamp = minute.sample_times[i];
+        let timestamp = new Date(minute.sample_times[i]).getTime();
         let volumeChange = minute.vols[i] - LAST_VOL;
         // console.log({LAST_VOL, volumeChange})
 

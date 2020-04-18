@@ -28,15 +28,36 @@ box-shadow: 0px 0px 0px 0px rgba(207, 195, 195, 0.15);
   }
 }
 
+@keyframes neutralTick {
+  0% {
+      box-shadow: 0px 0px 0px 0px rgba(207, 195, 195, 0.15);
+        }
+  25% {
+
+      box-shadow: 0px 0px 50px 0px whitesmoke;
+
+  }
+
+  100% {
+box-shadow: 0px 0px 0px 0px rgba(207, 195, 195, 0.15);
+  }
+}
+
+
 .upTick {
-  animation-duration: 1.5s;
+  animation-duration: 1s;
 
   animation-name: upTick;
 }
 .downTick {
-  animation-duration: 1.5s;
+  animation-duration: 1s;
 
   animation-name: downTick;
+}
+.neutralTick {
+  animation-duration: 1s;
+
+  animation-name: neutralTick;
 }
 
 .quoteBox{

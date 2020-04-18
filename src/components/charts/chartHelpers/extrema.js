@@ -139,6 +139,10 @@ function consolidateMinMaxValues(allPoints, allOHLCdata) {
 function mergeImportantPriceLevels(priceLevels, priceLevelSensitivity) {
   let mergedPrices = {};
   // console.log({ priceLevels, priceLevelSensitivity });
+  priceLevels.sort((a,b)=>a.y-b.y)
+
+  // console.log(priceLevels)
+
   priceLevels.map(priceLevel => {
     let similar = false;
 
@@ -161,6 +165,7 @@ function mergeImportantPriceLevels(priceLevels, priceLevelSensitivity) {
     }
   });
   let groupedPoints = []
+  // console.log({mergedPrices})
   for(let price in mergedPrices){
     let avgPrice = mean(mergedPrices[price], ({y})=>y)
     avgPrice = parseFloat(avgPrice.toFixed(4))
@@ -197,7 +202,11 @@ function regressionAnalysis(points, errLimit, lines = [], count = 2) {
    * we will just take the last good line (line1)
    * and restart the process
    */
-  if (error > errLimit) {
+
+  let badLine1 =  isNaN(line1.results_error)
+  let badLine2 =  isNaN(line2.results_error)
+ 
+  if (error > errLimit  && (!badLine1&&!badLine2)) {
     //we need to save line 1, and restart the function with spliced array
     let nearbyPoints = pointsArray.slice(0, count);
     pointsArray.splice(0, count - 1);
@@ -239,6 +248,7 @@ function regressionAnalysis(points, errLimit, lines = [], count = 2) {
       // console.log('Returning lines')
 
       // console.log({pointsArray, line1, line2})
+      if(badLine2)return
       line2.nearbyPoints = pointsArray;
       lines.push(line2);
       return lines;
@@ -338,7 +348,7 @@ function findLineByLeastSquares(points) {
   x2 = (x2 - x1) * 0.5 + x2;
   let y2 = x2 * m + b;
   let length = pythagorean(x1, x2, y1, y2)
-
+// console.log({ x1, y1, x2, y2, m, b, results_error, length})
   return { x1, y1, x2, y2, m, b, results_error, length };
 }
 

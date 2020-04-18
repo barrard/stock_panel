@@ -127,7 +127,13 @@ export function updateCommodityData(newData, type){
 export function add_commodity_chart_data({symbol, chart_data, timeframe}) {
   console.log('ADD_COMMODITY_CHART_DATA')
   console.log({chart_data})
-        chart_data.forEach(r => (r.timestamp = new Date(r.timestamp).getTime()));
+        chart_data.forEach(r => {
+          r.timestamp = new Date(+r.timestamp).getTime()
+          r.open = +r.open
+          r.close = +r.close
+          r.high = +r.high
+          r.low = +r.low
+        });
         let rawCommodityChartData = [...chart_data]
         console.log({rawCommodityChartData, chart_data})
         chart_data = forwardFill(chart_data);

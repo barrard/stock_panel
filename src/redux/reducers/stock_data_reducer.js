@@ -29,7 +29,7 @@ export default (state = initial_state, action) => {
       }
       console.log(commodityTrades[symbol].length)
       console.log({trade})
-      commodityTrades[symbol] = [...commodityTrades[symbol], trade];
+      commodityTrades[symbol] = [trade, ...commodityTrades[symbol]];
       console.log(commodityTrades[symbol].length)
       return {
         ...state,
@@ -151,7 +151,10 @@ export default (state = initial_state, action) => {
       // console.log({new_tick_data})
       let currentTickData = { ...state.currentTickData };
       for (let symbol in state.commodity_data) {
+        // console.log(state.commodity_data)
+        // console.log({symbol})
         if (!currentTickData[symbol]) currentTickData[symbol] = {};
+        // console.log(currentTickData[symbol])
         currentTickData[symbol] = new_tick_data[symbol];
         currentTickData[symbol].timestamp = new Date(
           currentTickData[symbol].start_timestamp

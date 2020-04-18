@@ -110,11 +110,14 @@ neutral: 0
   }
 
   didTickDataUpdate(prevPops) {
+    if(!partialOHLCdata.length)return
     //FIRST CHECK IF NEW TICK DATA IS HERE
     if (prevPops.currentTickData != this.props.currentTickData) {
       let { data } = this.props;
+      // console.log(this.state)
+      // console.log(this.props)
       let lastPartialDataTickTime = partialOHLCdata.slice(-1)[0].timestamp;
-      let lastDataTickTime = this.state.data[this.state.data.length - 1].timestamp;
+      let lastDataTickTime = this.state.data.slice(-1)[0].timestamp;
 
       let { priceChangeData, volumePriceProfile } = this.props.currentTickData;
       // console.log({ priceChangeData, data });
@@ -215,7 +218,7 @@ neutral: 0
           partialOHLCdata: partialOHLCdata,
         });
       }
-      console.log(data);
+      // console.log(data);
       zoomState = kScale;
       partialOHLCdata = data;
       return this.draw();
