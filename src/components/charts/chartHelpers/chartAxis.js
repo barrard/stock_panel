@@ -7,7 +7,16 @@ import { timeParse, timeFormat } from "d3-time-format";
 //const formatTime = timeFormat("%X"); // "11:12:56 PM"
 const formatTime = timeFormat("%c"); // "11:12:56 PM"
 
-export const drawAxisAnnotation = (tagId, scale, xy, svg) => {
+export const drawAxisAnnotation = (tagId, scale, xy, svg, axisClass) => {
+
+  //Remove any first
+
+  svg.select(`#${tagId}`).remove();
+  svg.select(`#${tagId}Text`).remove();
+
+  let axisG = svg.select(`.${axisClass}`)
+  addAxisAnnotationElements(axisG, tagId)
+
   let value = scale.invert(xy);
   // console.log(value)
   // value = formatTime(value);
@@ -35,6 +44,7 @@ export const drawAxisAnnotation = (tagId, scale, xy, svg) => {
 };
 
 function setTagText(value, xy, tagId, svg) {
+
   let tagText = svg.select(`#${tagId}Text`);
 // console.log('st tag')
   tagText
@@ -50,6 +60,17 @@ function setTagText(value, xy, tagId, svg) {
 
   if (tagId.includes("top")) tagText.attr("y", 0 - 6).attr("x", xy);
   if (tagId.includes("bottom")) tagText.attr("y", +15).attr("x", xy);
+}
+
+
+export function addAxisAnnotationElements(axisG, ID){
+  axisG
+  .append("path")
+  .attr("id", `${ID}`)
+  // .attr("stroke", "blue")
+  .attr("stroke-width", 2);
+axisG.append("text").attr("id", `${ID}Text`);
+
 }
 
 export function removeAllAxisAnnotations(svg) {

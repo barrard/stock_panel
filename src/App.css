@@ -175,6 +175,10 @@ text{
 .hoveredRegressionLine{
   stroke-width: 4;
 }
+.hoveredSwingLine{
+  stroke-width: 5;
+  stroke: darkorchid;
+}
 
 
 .white{
@@ -189,7 +193,7 @@ text{
 
 
 .tick line{
-  stroke: white;
+  stroke:#777;
 }
 
 .importantLine{

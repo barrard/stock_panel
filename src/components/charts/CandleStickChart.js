@@ -35,7 +35,7 @@ import { addCandleSticks } from "./chartHelpers/candleStickUtils.js";
 // import { line } from "d3";
 import {
   drawAxisAnnotation,
-  removeAllAxisAnnotations,
+  removeAllAxisAnnotations, addAxisAnnotationElements
 } from "./chartHelpers/chartAxis.js";
 import { makeEMA, makeSTD, drawMALine } from "./chartHelpers/MA-lines.js";
 import { evaluateMinMaxPoints } from "./chartHelpers/evaluateMinMaxPoints.js";
@@ -55,6 +55,7 @@ let margin = {
 
 let MOUSEX = 0;
 let MOUSEY = 0;
+let prevMOUSEX = 0;
 let mouseDRAGSART = null;
 let dragStartData = [];
 let lastBarCount = null;
@@ -529,7 +530,7 @@ class CandleStickChart extends React.Component {
         if (
           timeframe !== "daily" &&
           timeframe !== "weekly" &&
-          timeframe !== "intraday" &&
+          timeframe !== "60Min" &&
           timeframe !== "5Min"
           /**
            * The timeframe is some minutely
@@ -562,7 +563,7 @@ class CandleStickChart extends React.Component {
         } else if (
           timeframe === "daily" ||
           timeframe === "weekly" ||
-          timeframe === "intraday" ||
+          timeframe === "60Min" ||
           timeframe === "5Min"
         ) {
           if (
@@ -787,20 +788,9 @@ class CandleStickChart extends React.Component {
       .call(priceAxis);
 
     //append the crosshair marker
-    timeAxisG
-      .append("path")
-      .attr("id", `bottomTimeTag`)
-      // .attr("stroke", "blue")
-      .attr("stroke-width", 2);
-    timeAxisG.append("text").attr("id", `bottomTimeTagText`);
+    addAxisAnnotationElements(timeAxisG, 'bottomTimeTag')
+    addAxisAnnotationElements(priceAxisG, 'rightPriceTag')
 
-    //append the crosshair marker
-    priceAxisG
-      .append("path")
-      .attr("id", `rightPriceTag`)
-      // .attr("stroke", "blue")
-      .attr("stroke-width", 2);
-    priceAxisG.append("text").attr("id", `rightPriceTagText`);
 
     let chartWindow = svg
       // .append('rect').attr('width', this.state.innerWidth).attr('height', this.state.innerHeight)
@@ -842,10 +832,21 @@ class CandleStickChart extends React.Component {
 
     function mousemove(otherThat, that) {
       let _mouse = mouse(that);
-      // console.log(_mouse)
-      // otherThat.setState({
-      MOUSEX = _mouse[0];
-      MOUSEY = _mouse[1];
+
+      //this enables the crosshair to move at the 
+      // timeframe interval
+      let {timeframe} = otherThat.state
+      let interval = getInterval(timeframe)
+
+        let MOUSETIME = new Date(otherThat.state.timeScale.invert(_mouse[0])).getTime()
+        MOUSETIME = Math.floor(MOUSETIME/interval)*interval
+
+        
+        MOUSEX = otherThat.state.timeScale(MOUSETIME);
+        MOUSEY = _mouse[1];
+
+      // if(!prevMOUSEX) prevMOUSEX  = MOUSEX 
+
       otherThat.appendAxisAnnotations(
         // otherThat.state.MOUSEX,
         // otherThat.state.MOUSEY,
@@ -917,8 +918,8 @@ priceScale:this.state.priceScale
   } //setupChart()
 
   appendAxisAnnotations(x, y, svg) {
-    drawAxisAnnotation("bottomTimeTag", this.state.timeScale, x, svg);
-    drawAxisAnnotation("rightPriceTag", this.state.priceScale, y, svg);
+    drawAxisAnnotation("bottomTimeTag", this.state.timeScale, x, svg, 'timeAxis');
+    drawAxisAnnotation("rightPriceTag", this.state.priceScale, y, svg, 'priceAxis');
   }
 
   zoomed() {
@@ -1723,8 +1724,7 @@ exitTime(pin):1585659963841
         >
           <option value="1Min">1 Min</option>
           <option value="5Min">5 Min</option>
-          <option value="15Min">15 Min</option>
-          <option value="intraday">Intraday</option>
+          <option value="60Min">60 Min</option>
 
           <option value="daily">Daily</option>
           <option value="weekly">Weekly</option>
@@ -1834,4 +1834,11 @@ function byDate(a, b) {
 function byX(a, b) {
   if (a.x > b.x) return 1;
   if (a.x < b.x) return -1;
+}
+
+function getInterval(timeframe){
+  if(timeframe === '1Min')return 1000*60*1
+  if(timeframe === '5Min')return 1000*60*5
+  if(timeframe === '60Min')return 1000*60*60
+  if(timeframe === 'daily')return 1000*60*60*24
 }

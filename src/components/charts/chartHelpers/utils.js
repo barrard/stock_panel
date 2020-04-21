@@ -1,5 +1,7 @@
 // import { select, event, mouse } from "d3-selection";
 
+import { ReactReduxContext } from "react-redux";
+
 // import extrema from "./extrema.js";
 
 export function formatData(data) {
@@ -224,6 +226,25 @@ export function doZoomOut({allOHLCdata, partialOHLCdata}) {
   return data;
 }
 
+/**
+ * 
+ * @param {Objecy} values object {x:time, y:price}
+ * we want to remove duplicate prices 
+ */
+export function dropDuplicateMinMax(values){
+  let valCheck = [];
+  let newValues = [];
+  values.forEach(v=>{
+    let index = valCheck.indexOf(v.y)
+    if(index < 0) {
+      valCheck.push(v.y)
+      newValues.push(v)
+    }
+  })
+
+return newValues
+}
+
 export function pythagorean(x1, x2, y1, y2){
   let sideA, sideB
   sideA = Math.abs(x1-x2)
@@ -232,7 +253,12 @@ export function pythagorean(x1, x2, y1, y2){
   return Math.sqrt(Math.pow(sideA, 2) + Math.pow(sideB, 2));
 }
 
-
+export function xOfY({m, b, y}){
+  
+  // y = m*x + b
+  let x = (y-b)/m
+  return x
+}
 export function slopeAndIntercept({x1, x2, y1, y2}){
   let m = slopeLine({ x1, x2, y1, y2 })
   let b = intercept({x:x1, y:y1}, m)

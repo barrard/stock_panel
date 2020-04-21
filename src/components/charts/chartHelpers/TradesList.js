@@ -33,7 +33,7 @@ class TradesList extends React.Component {
     let symbol = this.props.stock_data.search_symbol
     let prevTrades = prevProps.stock_data.commodityTrades[symbol]
     let trades = this.props.stock_data.commodityTrades[symbol] 
-    // console.log({prevTrades, trades})
+    console.log({prevTrades, trades})
     // console.log(prevTrades && prevTrades != trades && Array.isArray(trades))
     if(trades && prevTrades != trades && Array.isArray(trades)){
       this.setState({
