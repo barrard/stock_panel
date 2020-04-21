@@ -224,7 +224,23 @@ export function doZoomOut({allOHLCdata, partialOHLCdata}) {
   return data;
 }
 
+export function pythagorean(x1, x2, y1, y2){
+  let sideA, sideB
+  sideA = Math.abs(x1-x2)
+  sideB = Math.abs(y1 - y2)
 
+  return Math.sqrt(Math.pow(sideA, 2) + Math.pow(sideB, 2));
+}
+
+
+export function slopeAndIntercept({x1, x2, y1, y2}){
+  let m = slopeLine({ x1, x2, y1, y2 })
+  let b = intercept({x:x1, y:y1}, m)
+  let l = pythagorean(x1, x2, y1, y2)
+
+  return {b, m, l}
+
+}
 export function slopeLine({ x1, x2, y1, y2 }) {
   return slope({ x: x1, y: y1 }, { x: x2, y: y2 });
 }

@@ -17,7 +17,7 @@ class TickCharts extends React.Component {
       volumePriceProfile: {},
       LAST_PRICE: 0,
       currentTickData: {},
-      showTick:false
+      showTick:true
     };
   }
 

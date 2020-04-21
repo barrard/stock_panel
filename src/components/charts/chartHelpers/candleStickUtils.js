@@ -64,11 +64,11 @@ export function addCandleSticksBody(
     .merge(candleSticks)
     //   .on("mouseover", bubblyEvent)
     //   .on("mousemove", bubblyEvent)
-    .attr("x", d => {
+    .attr("x", (d,i) => {
       let t = timeScale(d.timestamp) - halfWidth
 
       if(isNaN(t)){
-        //console.log({d, halfWidth})
+        // console.log({d, halfWidth, i})
       }
       return  timeScale(d.timestamp) - halfWidth
     })

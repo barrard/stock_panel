@@ -1,15 +1,13 @@
-import { select } from "d3-selection";
 import { extent, max, min, mean } from "d3-array";
-
+import { slopeAndIntercept } from "../utils.js";
 import diff from "../extrema.js";
-
 import appendDot from "./Dot.js";
 import DrawLine from "./Line.js";
 
 const MIN_MAX_TOLERANCE = 75;
-const PRICE_MERGING_TOLERANCE = 10
+const PRICE_MERGING_TOLERANCE = 10;
 
-function makeFibonacciData(that) {
+export function makeFibonacciData(that, scales) {
   let { timeframe, highs, lows, timestamps } = that.state;
   // console.log(that.state);
   let { symbol, stock_data } = that.props;
@@ -52,7 +50,14 @@ function makeFibonacciData(that) {
       highToLow,
     } = determineSupportsAndResistances(maxValues, minValues);
 
-    // console.log({ supports, resistances });
+    let { supportFibs, resistanceFibs } = addFibsToSwings({
+      scales,
+      supports,
+      resistances,
+    });
+    lowToHigh.fibs = supportFibs;
+    highToLow.fibs = resistanceFibs;
+    console.log({ supports, resistances, lowToHigh, highToLow });
 
     return {
       maxValues,
@@ -61,6 +66,8 @@ function makeFibonacciData(that) {
       resistances,
       lowToHigh,
       highToLow,
+      supportFibs,
+resistanceFibs
     };
   }
 }
@@ -82,7 +89,7 @@ function determineSupportsAndResistances(highPoints, lowPoints) {
   //which one is newer
   let olderData = minDataPoint.x < maxDataPoint.x ? "low" : "high";
 
-  // console.log({ olderData });
+  console.log({ olderData });
 
   if (olderData === "low") {
     let x1 = maxDataPoint.x;
@@ -92,7 +99,12 @@ function determineSupportsAndResistances(highPoints, lowPoints) {
       (low) => low.x >= minDataPoint.x && low.x <= maxDataPoint.x
     );
 
-    swingLows.forEach(({ x, y }) => lowToHigh.push({ x1, y1, x2: x, y2: y }));
+    swingLows.forEach(({ x, y }) => {
+
+      let { m, b, l } = slopeAndIntercept({ x1, y1, x2:x, y2:y });
+
+      lowToHigh.push({ x1, y1, x2: x, y2: y, m, b, l })
+    });
 
     //after finding the support levels for main low to high swing.
     //we can now find the resistance levels form the max high forward
@@ -104,19 +116,29 @@ function determineSupportsAndResistances(highPoints, lowPoints) {
     let recentHighs = highPoints.slice(maxHighIndex);
 
     let recentLows = lowPoints.filter((low) => low.x > maxDataPoint.x);
-    let recentMin = min(recentLows, (low) => low.y);
-    let recentMinData = recentLows.filter((low) => low.y === recentMin)[0];
-    recentHighs = recentHighs.filter((high) => high.x < recentMinData.x);
+    if (recentLows.length) {
+      console.log(recentLows);
+      let recentMin = min(recentLows, (low) => low.y);
+      console.log({ recentMin });
+      let recentMinData = recentLows.filter((low) => low.y === recentMin)[0];
+      console.log(recentMinData);
 
-    // console.log({ recentLows, recentHighs, recentMin });
-    recentHighs.forEach((high) => {
-      highToLow.push({
-        x1: high.x,
-        y1: high.y,
-        x2: recentMinData.x,
-        y2: recentMinData.y,
+      if (recentMinData) {
+        recentHighs = recentHighs.filter((high) => high.x < recentMinData.x);
+      } else {
+        recentHighs = [];
+      }
+
+      // console.log({ recentLows, recentHighs, recentMin });
+      recentHighs.forEach((high) => {
+        let x1 = high.x;
+        let y1 = high.y;
+        let x2 = recentMinData.x;
+        let y2 = recentMinData.y;
+        let { m, b,l } = slopeAndIntercept({ x1, y1, x2, y2 });
+        highToLow.push({ m, b,l, x1, y1, x2, y2 });
       });
-    });
+    }
   } else if (olderData === "high") {
     //THIS situations is when the high is older
     // than the low, so it must have down trended
@@ -128,7 +150,10 @@ function determineSupportsAndResistances(highPoints, lowPoints) {
       (high) => high.x >= maxDataPoint.x && high.x <= minDataPoint.x
     );
     // console.log({swingHighs})
-    swingHighs.forEach(({ x, y }) => highToLow.push({ x1, y1, x2: x, y2: y }));
+    swingHighs.forEach(({ x, y }) => {
+      let { m, b,l } = slopeAndIntercept({ x1, y1, x2:x, y2:y });
+
+      highToLow.push({ x1, y1, x2: x, y2: y, m ,b,l })});
     // console.log({ maxDataPoint, swingHighs, highToLow });
     //filter the lows to only be after this high
     let minLowIndex = lowPoints.findIndex((low) => low.x === minDataPoint.x);
@@ -136,58 +161,83 @@ function determineSupportsAndResistances(highPoints, lowPoints) {
     let recentHighs = highPoints.filter((high) => high.x > minDataPoint.x);
     let recentMax = max(recentHighs, (high) => high.y);
     let recentMaxData = recentHighs.filter((high) => high.y === recentMax)[0];
+    // console.log({minLowIndex,
+    //   recentLows,
+    //   recentHighs,
+    //   recentMax,
+    //   recentMaxData})
+    if (recentMaxData) {
+      recentLows = recentLows.filter((low) => low.x < recentMaxData.x);
+    } else {
+      recentLows = [];
+    }
 
-    recentLows = recentLows.filter((low) => low.x < recentMaxData.x);
-
-    // console.log({ recentLows, recentHighs, recentMax });
+    console.log({ recentLows, recentHighs, recentMax });
     recentLows.forEach((low) => {
-      lowToHigh.push({
-        x1: low.x,
-        y1: low.y,
-        x2: recentMaxData.x,
-        y2: recentMaxData.y,
-      });
+      let x1 = low.x;
+      let y1 = low.y;
+      let x2 = recentMaxData.x;
+      let y2 = recentMaxData.y;
+      let { m, b } = slopeAndIntercept({ x1, y1, x2, y2 });
+      lowToHigh.push({ m, b, x1, y1, x2, y2 });
     });
   }
+  console.log({lowToHigh, highToLow})
 
-  let resistances = runFibCalculation(highToLow);
-  let supports = runFibCalculation(lowToHigh);
+  let resistances = runFibCalculation(highToLow,'down');
+  let supports = runFibCalculation(lowToHigh,'up');
 
   return { resistances, supports, lowToHigh, highToLow };
 }
 
-function runFibCalculation(lines) {
+function runFibCalculation(lines, direction) {
   // console.log(lines)
   let levels = [];
+  if (!lines.length) return levels;
 
   lines.forEach(({ x1, y1, x2, y2 }) => {
     let range = Math.abs(y1 - y2);
 
     let higher = y1 > y2 ? y1 : y2;
 
-    let A = higher - range * 0.38;
-    let B = higher - range * 0.5;
-    let C = higher - range * 0.62;
+    let A = higher - (range * 0.38);
+    let B = higher - (range * 0.5);
+    let C = higher - (range * 0.62);
     // console.log(({A,B,C}))
-    levels.push({ A, B, C });
+    if(direction==='up'){
+      levels.push({ '38':A, '50':B, '62':C });
+
+    }else if(direction==='down'){
+
+      levels.push({ '38':C, '50':B, '62':A });
+    }
   });
 
   // console.log({levels})
   return levels;
 }
+// let fibData = makeFibonacciData(that, scales);
+let maxValues,
+minValues,
+supports,
+resistances,
+lowToHigh,
+highToLow,
+supportFibs, 
+resistanceFibs
 
-export default function FibonacciLines(that, chartWindow, scales) {
+export function FibonacciLines(that, chartWindow, scales, fibData) {
   // console.log("FIBONACCI");
+  if(!fibData)return
   let { priceScale, timeScale } = scales;
-  let {
-    maxValues,
-    minValues,
-    supports,
-    resistances,
-    lowToHigh,
-    highToLow,
-  } = makeFibonacciData(that);
-
+  maxValues = fibData.maxValues 
+  minValues = fibData.minValues 
+  supports = fibData.supports 
+  resistances = fibData.resistances 
+  lowToHigh = fibData.lowToHigh 
+  highToLow = fibData.highToLow 
+  supportFibs = fibData.supportFibs 
+  resistanceFibs = fibData.resistanceFibs 
   // console.log({
   //   maxValues,
   //   minValues,
@@ -197,88 +247,83 @@ export default function FibonacciLines(that, chartWindow, scales) {
   //   highToLow,
   // });
   // return
-  if (!that.state.visibleIndicators.fibonacciLines)
-    return //console.log("fibonacciLines not turned on");
+  if (!that.state.visibleIndicators.fibonacciLines) return; //console.log("fibonacciLines not turned on");
 
   // let svg = select(that.state.chartRef.current);
   // let chartWindow = svg.select(".chartWindow");
   // console.log({ name });
 
+  //add the fib levels here so they can be drawn
+
+
   appendHighLowDots({ maxValues, minValues, scales, chartWindow });
   appendSwingLines({ that, lowToHigh, highToLow, scales, chartWindow });
   // console.log({scales})
-  appendSupportResistanceLines({
+  appendSupportResistanceFibs({
     that,
-    supports,
-    resistances,
+    supportFibs,
+    resistanceFibs,
     scales,
     chartWindow,
   });
 }
 
-function appendSupportResistanceLines({
+function appendSupportResistanceFibs({
   that,
-  supports,
-  resistances,
+  supportFibs,
+  resistanceFibs,
   scales,
   chartWindow,
 }) {
-  // console.log("append appendSupportResistanceLines");
-
+  console.log({  supportFibs,
+    resistanceFibs,})
+  // console.log("append appendSupportResistanceFibs");
+  let xMax = new Date(scales.timeScale.domain()[1]).getTime();
+console.log({xMax})
   // console.log({ supports, resistances });
-  let xMin = scales.timeScale.domain()[0];
-  let xMax = scales.timeScale.domain()[1];
-  let supportLines = [];
+
+  // console.log({supports})
+  let supports = diff.mergeImportantPriceLevels(
+    supportFibs,
+    PRICE_MERGING_TOLERANCE
+  );
+  supportFibs = [];
   supports.forEach((support) => {
-    for (let fib in support) {
-      supportLines.push({x:xMin, y:support[fib]})
-
-      }
+    console.log({support})
+    supportFibs.push({
+      x1: support.x,
+      y1: support.y,
+      x2: xMax,
+      y2: support.y,
     });
-    
-    // console.log({supports})
-    supports = diff.mergeImportantPriceLevels(supportLines, PRICE_MERGING_TOLERANCE)
-  supportLines = []
-    // console.log({supports})
-  supports.forEach(support=>{
-          supportLines.push({
-          x1: support.x,
-          y1: support.y,
-          x2: xMax,
-          y2: support.y,
-        });
+  });
+  console.log({supports, supportFibs})
 
-  })
-
-  let resistanceLines = []
+  // console.log({resistances})
+  let resistances = diff.mergeImportantPriceLevels(
+    resistanceFibs,
+    PRICE_MERGING_TOLERANCE
+  );
+  resistanceFibs = [];
+  // console.log({resistances})
   resistances.forEach((resistance) => {
-    for (let fib in resistance) {
-      resistanceLines.push({x:xMin, y:resistance[fib]})
-
-      }
+    console.log({resistance})
+    resistanceFibs.push({
+      x1: resistance.x,
+      y1: resistance.y,
+      x2: xMax,
+      y2: resistance.y,
     });
+  });
+  console.log({resistances, resistanceFibs})
 
-  
-    // console.log({resistances})
-    resistances = diff.mergeImportantPriceLevels(resistanceLines, PRICE_MERGING_TOLERANCE)
-  resistanceLines = []
-    // console.log({resistances})
-  resistances.forEach(resistance=>{
-          resistanceLines.push({
-          x1: resistance.x,
-          y1: resistance.y,
-          x2: xMax,
-          y2: resistance.y,
-        });
 
-  })
-
-  // console.log({ supportLines, resistanceLines });
+  console.log({ supportFibs, resistanceFibs });
   scales = { xScale: scales.timeScale, yScale: scales.priceScale };
   let options = { strokeWidth: 3, color: "green" };
   DrawLine({
     that,
-    dataPoints: supportLines,
+    dataPoints: supportFibs,
     chartWindow,
     markerClass: "fibPullbackSupport",
     name: "fibonacciLines",
@@ -288,7 +333,7 @@ function appendSupportResistanceLines({
   options = { strokeWidth: 3, color: "red" };
   DrawLine({
     that,
-    dataPoints: resistanceLines,
+    dataPoints: resistanceFibs,
     chartWindow,
     markerClass: "fibPullbackResistance",
     name: "fibonacciLines",
@@ -297,27 +342,47 @@ function appendSupportResistanceLines({
   });
 }
 
+function highlightFibLines(d, i, swings){
+  // console.log({d, i, swings})
+       //draw these lines?
+       let {fibs} = swings
+       fibs = fibs.filter(({lineIndex})=>lineIndex===i)
+       console.log({fibs,swing:d});
+}
 function appendSwingLines({ that, lowToHigh, highToLow, scales, chartWindow }) {
   // console.log("append swing lines");
 
   // console.log({ lowToHigh, highToLow });
   scales = { xScale: scales.timeScale, yScale: scales.priceScale };
-  let options = { strokeWidth: 3, color: "green" };
+  let options = {
+    strokeWidth: 3,
+    color: "green",
+    mouseover: (d, i) => {
+      highlightFibLines(d, i, lowToHigh)
+    },
+  };
   DrawLine({
     that,
     dataPoints: lowToHigh,
     chartWindow,
-    markerClass: "fibPullbackSupport",
+    markerClass: "fibSwingHigh",
     name: "fibonacciLines",
     scales,
     options,
   });
-  options = { strokeWidth: 3, color: "red" };
+
+  options = {
+    strokeWidth: 3,
+    color: "red",
+    mouseover: (d, i) => {
+      highlightFibLines(d, i, highToLow)
+    },
+  };
   DrawLine({
     that,
     dataPoints: highToLow,
     chartWindow,
-    markerClass: "fibPullbackResistance",
+    markerClass: "fibSwingLow",
     name: "fibonacciLines",
     scales,
     options,
@@ -344,4 +409,33 @@ function appendHighLowDots({ maxValues, minValues, scales, chartWindow }) {
     chartWindow,
     scales
   );
+}
+
+function addFibsToSwings({ scales, supports, resistances }) {
+  let xMax = new Date(scales.timeScale.domain()[0]).getTime();
+  let supportFibs = [];
+  supports.forEach((support, lineIndex) => {
+    for (let fib in support) {
+      // console.log({fib, support})
+      // console.log(support[fib])
+      supportFibs.push({ x: xMax, y: support[fib], fib , lineIndex});
+    }
+  });
+
+  let resistanceFibs = [];
+  resistances.forEach((resistance, lineIndex) => {
+    for (let fib in resistance) {
+      resistanceFibs.push({ x: xMax, y: resistance[fib], fib , lineIndex});
+    }
+  });
+
+  return { supportFibs, resistanceFibs };
+
+  // lowToHigh = lowToHigh.map(lth=>{
+
+  // })
+
+  // highToLow = highToLow.map(htl=>{
+
+  // })
 }

@@ -41,7 +41,7 @@ import { makeEMA, makeSTD, drawMALine } from "./chartHelpers/MA-lines.js";
 import { evaluateMinMaxPoints } from "./chartHelpers/evaluateMinMaxPoints.js";
 import API from "../API.js";
 import RegressionSettings from "./chartHelpers/regressionSettings.js";
-import FibonacciLines from './chartHelpers/ChartMarkers/FibonacciLines.js'
+import {FibonacciLines, makeFibonacciData} from './chartHelpers/ChartMarkers/FibonacciLines.js'
 
 import { set_data_view_params } from "../../redux/actions/Chart_Analysis_actions.js";
 
@@ -902,9 +902,16 @@ class CandleStickChart extends React.Component {
     svg.call(d3drag); //breaks if this is not first
     svg.call(d3zoom); //needs to be after drag
 
+    //Makeing data for later draws
+    console.log('MAKING FIBDATA')
+    let fibData = makeFibonacciData(this, {
+      timeScale:this.state.timeScale,
+priceScale:this.state.priceScale
+    })
+    console.log({fibData})
     this.setState({
       timeAxis,
-      priceAxis,
+      priceAxis,fibData
     });
     this.draw();
   } //setupChart()
@@ -985,22 +992,22 @@ class CandleStickChart extends React.Component {
       });
       data = [...dataStart, ...dataEnd];
     } else if (xDragPOS < mouseDRAGSART) {
-      console.log("left");
+      // console.log("left");
       let end = dragStartData[dragStartData.length - 1];
       let endIndex = this.state.allOHLCdata.findIndex(
         (d) => d.timestamp === end.timestamp
       );
       let dataStart = dragStartData.slice(barCount, dragStartData.length - 1);
       let dataEnd = this.state.allOHLCdata.slice(endIndex, endIndex + barCount);
-      console.log({
-        dataEnd,
-        dataStart,
-        dragStartData,
-        barCount,
-      });
+      // console.log({
+      //   dataEnd,
+      //   dataStart,
+      //   dragStartData,
+      //   barCount,
+      // });
       data = [...dataStart, ...dataEnd];
     }
-    console.log({ data });
+    // console.log({ data });
 
     // this.setState({
     partialOHLCdata = data;
@@ -1424,7 +1431,8 @@ exitTime(pin):1585659963841
   // appendImportantPriceLevel(data, minColor, `minPriceLevel`);
 
   appendFibonacciLines(that, chartWindow, { priceScale, timeScale }) {
-    FibonacciLines(that, chartWindow, { priceScale, timeScale })
+    let {fibData} = this.state
+    FibonacciLines(that, chartWindow, { priceScale, timeScale }, fibData)
 
   }
   appendImportantPriceLevel(that, chartWindow, { priceScale, timeScale }) {
