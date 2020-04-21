@@ -34,8 +34,8 @@ class App extends React.Component {
 
   componentDidMount() {
     let {dispatch}=this.props
-    // Socket.on("new_minutley_data", (newTickData)=>dispatch(updateCommodityData(newTickData, 'minute')));
-    // Socket.on("current_minute_data", (newTickData)=>dispatch(updateCommodityData(newTickData, 'tick')));
+    Socket.on("new_minutley_data", (newTickData)=>dispatch(updateCommodityData(newTickData, 'minute')));
+    Socket.on("current_minute_data", (newTickData)=>dispatch(updateCommodityData(newTickData, 'tick')));
     Socket.on("enterTrade", newTrade=>{
       console.log('ENTERING A TRADE')
       return dispatch(addCommodityTrade(newTrade, newTrade.symbol))
