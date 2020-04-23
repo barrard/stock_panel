@@ -44,8 +44,8 @@ class Landing_Page extends React.Component {
 
                 return (
                   <div className="full-width" key = {index}>
-                    <List_Stock_Data title={`${market} Up`} data={up} props={this.props} />
-                    <List_Stock_Data title={`${market} Down`} data={down} props={this.props} />
+                    {up.percent && up.value&& <List_Stock_Data title={`${market} Up`} data={up} props={this.props} />}
+                    {down.percent && down.value&&<List_Stock_Data title={`${market} Down`} data={down} props={this.props} />}
                   </div>
                 );
               })}

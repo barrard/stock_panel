@@ -186,7 +186,11 @@ text{
   color: white;
   /* fill: black; */
 }
-
+.littleWhiteLine{
+border-bottom: white solid 1px;
+  margin: 1em;
+  width: 90%;
+}
  .white{
   color: white !important;
   }

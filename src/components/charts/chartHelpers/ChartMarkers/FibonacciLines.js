@@ -4,8 +4,7 @@ import diff from "../extrema.js";
 import appendDot from "./Dot.js";
 import DrawLine from "./Line.js";
 
-const MIN_MAX_TOLERANCE = 75;
-const PRICE_MERGING_TOLERANCE = 10;
+
 
 export function makeFibonacciData(that, scales) {
   let { timeframe, highs, lows, timestamps } = that.state;
@@ -21,7 +20,7 @@ export function makeFibonacciData(that, scales) {
      * Run MinMax with 50-100 as the tolerance
      */
 
-    let tolerance = MIN_MAX_TOLERANCE;
+    let tolerance = that.state.fibonacciMinMax;
     var minMaxMostRecentData = true;
     var { maxValues } = diff.minMax(
       timestamps,
@@ -41,7 +40,7 @@ export function makeFibonacciData(that, scales) {
 
     minValues = dropDuplicateMinMax(minValues)
 
-    console.log({ maxValues, minValues });
+    // console.log({ maxValues, minValues });
     if (!maxValues.length || !minValues.length)
     return console.log("No points to work with ");
     /**
@@ -62,7 +61,7 @@ export function makeFibonacciData(that, scales) {
     });
     lowToHigh.fibs = supportFibs;
     highToLow.fibs = resistanceFibs;
-    console.log({ supports, resistances, lowToHigh, highToLow });
+    // console.log({ supports, resistances, lowToHigh, highToLow });
 
     return {
       maxValues,
@@ -85,7 +84,7 @@ function determineSupportsAndResistances(highPoints, lowPoints) {
   let lowToHigh = [];
   let highToLow = [];
 
-  console.log({ MIN, MAX, highPoints, lowPoints });
+  // console.log({ MIN, MAX, highPoints, lowPoints });
 
   let minDataPoint = lowPoints.filter((low) => low.y === MIN)[0];
   let maxDataPoint = highPoints.filter((high) => high.y === MAX)[0];
@@ -95,7 +94,7 @@ function determineSupportsAndResistances(highPoints, lowPoints) {
   //which one is newer
   let olderData = minDataPoint.x < maxDataPoint.x ? "low" : "high";
 
-  console.log({ olderData });
+  // console.log({ olderData });
 
   if (olderData === "low") {
     let x1 = maxDataPoint.x;
@@ -190,7 +189,7 @@ function determineSupportsAndResistances(highPoints, lowPoints) {
       lowToHigh.push({ m, b, l, x1, y1, x2, y2 });
     });
   }
-  console.log({ lowToHigh, highToLow });
+  // console.log({ lowToHigh, highToLow });
 
   let resistances = runFibCalculation(highToLow, "down");
   let supports = runFibCalculation(lowToHigh, "up");
@@ -290,7 +289,7 @@ function appendSupportResistanceFibs({
   // console.log({supports})
   let supports = diff.mergeImportantPriceLevels(
     supportFibs,
-    PRICE_MERGING_TOLERANCE
+    that.state.fibonacciSensitivity
   );
   supportFibs = [];
   supports.forEach((support) => {
@@ -307,7 +306,7 @@ function appendSupportResistanceFibs({
   // console.log({resistances})
   let resistances = diff.mergeImportantPriceLevels(
     resistanceFibs,
-    PRICE_MERGING_TOLERANCE
+    that.state.fibonacciSensitivity
   );
   resistanceFibs = [];
   // console.log({resistances})

@@ -17,8 +17,8 @@ export default {
   fetch_commodity_minutely_data,
   saveRegressionValues,
   getCommodityRegressionValues,
-  deleteRegressionValues,
-  setRegressionSettingsTimeframe,
+  // deleteRegressionValues,
+  setTimeframeActive,
   getAllCommodityTrades,
   closePosition, goLong, goShort
 };
@@ -90,17 +90,16 @@ async function getCommodityRegressionValues(symbol, props) {
   regressionData = await regressionData.json();
   // console.log(regressionData);
   props.dispatch(commodityRegressionData(regressionData));
+  return regressionData
 }
 
-async function setRegressionSettingsTimeframe(
-  id,
-  { timeframe, regressionLines, importantPriceLevels },
+async function setTimeframeActive(
+  id,timeframe,
   props
 ) {
   try {
     console.log({
-      regressionLines,
-      importantPriceLevels
+      id,timeframe,
     });
   
     let regressionData = await fetch(
@@ -137,11 +136,13 @@ async function setRegressionSettingsTimeframe(
 }
 
 async function saveRegressionValues({
-  symbol,
+  symbol,timeframe,
   minMaxTolerance,
   regressionErrorLimit,
   priceLevelMinMax,
   priceLevelSensitivity,
+  fibonacciMinMax,
+  fibonacciSensitivity,
   props
 }) {
   let regressionData = await fetch(
@@ -149,6 +150,9 @@ async function saveRegressionValues({
     {
       credentials: "include",
       ...POST({
+        timeframe,
+        fibonacciMinMax,
+        fibonacciSensitivity,
         symbol,
         minMaxTolerance,
         regressionErrorLimit,
@@ -165,20 +169,20 @@ async function saveRegressionValues({
   props.dispatch(commodityRegressionData([regressionData]));
 }
 
-async function deleteRegressionValues(id, props) {
-  let deletedData = await fetch(
-    `${LOCAL_SERVER}/API/commodityRegressionSettings`,
-    { credentials: "include", ...DELETE({ id }) }
-  );
-  deletedData = await deletedData.json();
-  console.log(deletedData)
-  if (!deletedData.symbol) return toastr.error("Error deleting data");
-  toastr.success("Regression data was  deleted");
-  console.log(deletedData);
-  console.log(props);
+// async function deleteRegressionValues(id, props) {
+//   let deletedData = await fetch(
+//     `${LOCAL_SERVER}/API/commodityRegressionSettings`,
+//     { credentials: "include", ...DELETE({ id }) }
+//   );
+//   deletedData = await deletedData.json();
+//   console.log(deletedData)
+//   if (!deletedData.symbol) return toastr.error("Error deleting data");
+//   toastr.success("Regression data was  deleted");
+//   console.log(deletedData);
+//   console.log(props);
 
-  props.dispatch(deleteCommodityRegressionData(id));
-}
+//   props.dispatch(deleteCommodityRegressionData(id));
+// }
 
 async function getMovers() {
   // console.log(API_SERVER);

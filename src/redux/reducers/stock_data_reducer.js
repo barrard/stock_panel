@@ -175,20 +175,12 @@ export default (state = initial_state, action) => {
       let { symbol } = commodityRegressionData[0];
       console.log({ commodityRegressionData, symbol });
       let currentData = { ...state.commodityRegressionData };
-      if (!currentData[symbol]) currentData[symbol] = [];
-      let index = currentData[symbol].findIndex(
-        d => d._id === commodityRegressionData[0]._id
-      );
-      console.log(index);
-      if (index !== -1) {
-        currentData[symbol][index] = commodityRegressionData[0];
-      } else {
-        currentData[symbol] = [
-          ...currentData[symbol],
-          ...commodityRegressionData
-        ];
-      }
-
+      if (!currentData[symbol]) currentData[symbol] = {};
+      commodityRegressionData.forEach((setting)=>{
+        let {timeframe} = setting
+       currentData[symbol][timeframe] = setting;
+      })
+      
       return { ...state, commodityRegressionData: { ...currentData } };
     }
 
