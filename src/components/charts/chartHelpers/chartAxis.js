@@ -7,6 +7,22 @@ import { timeParse, timeFormat } from "d3-time-format";
 //const formatTime = timeFormat("%X"); // "11:12:56 PM"
 const formatTime = timeFormat("%c"); // "11:12:56 PM"
 
+export const DrawCrossHair = (chartWindow)=>{
+  var crosshair = chartWindow.append("g").attr("class", "line");
+  // create horizontal line
+  crosshair
+    .append("line")
+    .attr("id", "crosshairX")
+    .attr("class", "crosshair");
+
+  // create vertical line
+  crosshair
+    .append("line")
+    .attr("id", "crosshairY")
+    .attr("class", "crosshair");
+
+    return crosshair
+}
 export const drawAxisAnnotation = (tagId, scale, xy, svg, axisClass) => {
 
   //Remove any first
@@ -70,7 +86,6 @@ export function addAxisAnnotationElements(axisG, ID){
   // .attr("stroke", "blue")
   .attr("stroke-width", 2);
 axisG.append("text").attr("id", `${ID}Text`);
-
 }
 
 export function removeAllAxisAnnotations(svg) {
@@ -85,6 +100,8 @@ export function removeAllAxisAnnotations(svg) {
     "#leftVolumeTagText",
     "#leftVolTag",
     "#leftVolTagText",
+    '#rightIndicatorTag',
+    '#rightIndicatorTagText',
     
     "#topTimeTag",
     "#topTimeTagText",

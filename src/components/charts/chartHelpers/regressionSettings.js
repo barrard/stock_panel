@@ -62,7 +62,6 @@ let Label = styled.span`
 
 const CollapsibleDiv = styled.div`
   height:${({isMinimized})=>{
-    console.log( isMinimized?'0px':'')
     return isMinimized?'0px':''
   }};
   transition: 0.5s all ease-in;

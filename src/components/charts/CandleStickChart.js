@@ -36,10 +36,9 @@ import { addCandleSticks } from "./chartHelpers/candleStickUtils.js";
 import {
   drawAxisAnnotation,
   removeAllAxisAnnotations,
-  addAxisAnnotationElements,
+  addAxisAnnotationElements, DrawCrossHair
 } from "./chartHelpers/chartAxis.js";
 import { makeEMA, makeSTD, drawMALine } from "./chartHelpers/MA-lines.js";
-import { evaluateMinMaxPoints } from "./chartHelpers/evaluateMinMaxPoints.js";
 import API from "../API.js";
 import RegressionSettings from "./chartHelpers/regressionSettings.js";
 import {
@@ -47,7 +46,6 @@ import {
   makeFibonacciData,
 } from "./chartHelpers/ChartMarkers/FibonacciLines.js";
 
-import { set_data_view_params } from "../../redux/actions/Chart_Analysis_actions.js";
 
 let wtfFlag = false;
 let margin = {
@@ -69,10 +67,12 @@ class CandleStickChart extends React.Component {
   constructor(props) {
     super(props);
     let { width, height, symbol } = props;
-    console.log({ symbol });
-    console.log({ symbol });
-    console.log({ symbol });
-    console.log({ symbol });
+    // console.log('WHATS THE WIDTH')
+    // console.log({width})
+    // console.log({ symbol });
+    // console.log({ symbol });
+    // console.log({ symbol });
+    // console.log({ symbol });
     let innerWidth = width - (margin.left + margin.right);
 
     let innerHeight = height - (margin.top + margin.bottom);
@@ -231,7 +231,25 @@ class CandleStickChart extends React.Component {
     this.handleTimeFrameChange(prevState, prevProps);
     this.handleSymbolChange(prevState, prevProps);
     this.handleNewTick(prevState, prevProps);
+    this.didWidthChange(prevProps);
+
   }
+
+  didWidthChange(prevPops) {
+    if (prevPops.width != this.props.width) {
+      console.log("Update width");
+      let { width } = this.props;
+      let innerWidth = width - (margin.left + margin.right);
+      let { timeScale } = this.state;
+      timeScale.range([0, innerWidth])
+      this.setState({
+        timeScale, innerWidth, width
+      });
+      setTimeout(() => this.setupChart(), 0);
+
+    }
+  }
+
   handleUpdatingOtherTimeframesOnTick(prevProps) {
     let { type, stock_data, symbol } = this.props;
     const timeframe = this.state.timeframe;
@@ -402,7 +420,7 @@ class CandleStickChart extends React.Component {
           }
           currentData.push(currentTickData);
           currentRawOHLCData.push(currentTickData);
-
+          console.log('New Bar')
           this.createPriceLevelsData();
         } else {
           // console.log("not pushing");
@@ -760,7 +778,7 @@ class CandleStickChart extends React.Component {
   }
 
   setupChart() {
-    // console.log("setupChart");
+    console.log("setupChart");
     let that = this;
     if (!this.state.chartRef.current) return;
     let svg = select(this.state.chartRef.current);
@@ -810,8 +828,8 @@ class CandleStickChart extends React.Component {
       .call(priceAxis);
 
     //append the crosshair marker
-    addAxisAnnotationElements(timeAxisG, "bottomTimeTag");
-    addAxisAnnotationElements(priceAxisG, "rightPriceTag");
+    // addAxisAnnotationElements(timeAxisG, "bottomTimeTag");
+    // addAxisAnnotationElements(priceAxisG, "rightPriceTag");
 
     let chartWindow = svg
       // .append('rect').attr('width', this.state.innerWidth).attr('height', this.state.innerHeight)
@@ -821,18 +839,8 @@ class CandleStickChart extends React.Component {
       .attr("fill", "black");
     /* CrossHair */
     // create crosshairs
-    var crosshair = chartWindow.append("g").attr("class", "line");
-    // create horizontal line
-    crosshair
-      .append("line")
-      .attr("id", "crosshairX")
-      .attr("class", "crosshair");
+    var crosshair  =DrawCrossHair(chartWindow)
 
-    // create vertical line
-    crosshair
-      .append("line")
-      .attr("id", "crosshairY")
-      .attr("class", "crosshair");
 
     chartWindow
       .append("rect")
@@ -1839,12 +1847,12 @@ exitTime(pin):1585659963841
         />
 
         {this.props.meta.is_loading && (
-          <Loader width={this.state.width} height={this.state.height} />
+          <Loader width={this.props.width} height={this.state.height} />
         )}
 
         <svg
           ref={this.state.chartRef}
-          width={this.state.width}
+          width={this.props.width}
           height={this.state.height}
           className="svgChart"
         ></svg>

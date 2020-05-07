@@ -7,58 +7,44 @@ import { fetch_selected_chart_data } from "./landingPageComponents/chart_data_ut
 import Canvas_Chart from "./charts/Canvas_Chart.js";
 import Analysis_Chart from "./charts/Analysis_Chart.js";
 import CandleStickChart from "./charts/CandleStickChart.js";
-import { view_selected_commodity, getMinutelyCommodityData } from "../components/landingPageComponents/chart_data_utils.js";
+import {
+  view_selected_commodity,
+  getMinutelyCommodityData,
+} from "../components/landingPageComponents/chart_data_utils.js";
 import { set_search_symbol } from "../redux/actions/stock_actions.js";
-import TickCharts from './charts/chartHelpers/TickCharts.js'
+import TickCharts from "./charts/chartHelpers/TickCharts.js";
+const CHART_WIDTH_REDUCER = 0.9;
 class CommodityChartPage extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {};
+    this.state = {
+      chartWidth: window.innerWidth * CHART_WIDTH_REDUCER,
+    };
   }
 
   componentDidMount() {
     this.props.dispatch(set_search_symbol(this.props.match.params.symbol));
-
-    // this.ensureData();
+    this.setChartWidth();
+    window.addEventListener("resize", this.setChartWidth.bind(this));
+  }
+  componentWillUnmount() {
+    window.removeEventListener("resize", this.setChartWidth);
   }
 
-  // ensureData() {
-  //   console.log('ENSURE DATA')
-  //   let { symbol } = this.props.match.params;
-  //   let commodityData = this.props.stock_data.commodity_data[symbol];
-  //   let minutely, intraday, daily, weekly;
-  //   if (commodityData) {
-  //     minutely = commodityData.minutely;
-  //     intraday = commodityData.intraday;
-  //     daily = commodityData.daily;
-  //     weekly = commodityData.weekly;
-  //   }
-  //   const props = this.props;
-  //   if (!minutely) {
-  //     let timeframe = "minutely";
-  //     console.log('GET COMMODITY DATA')
-  //     let date = new Date().toLocaleString().split(',')[0].replace('/','-').replace('/','-')
-  //     date = '3-13-2020'
-  //     getMinutelyCommodityData({date , symbol, props });
-  //   }
-  //   if (!intraday) {
-  //     let timeframe = "intraday";
-  //     view_selected_commodity({ timeframe, symbol, props });
-  //   }
-  //   if (!daily) {
-  //     let timeframe = "daily";
-  //     view_selected_commodity({ timeframe, symbol, props });
-  //   }
-  //   if (!weekly) {
-  //     let timeframe = "weekly";
-  //     view_selected_commodity({ timeframe, symbol, props });
-  //   }
-  // }
+  setChartWidth() {
+    console.log("setChartWidth");
+    console.log(window.innerWidth);
+    this.setState({
+      chartWidth: window.innerWidth * CHART_WIDTH_REDUCER,
+    });
+  }
 
   render() {
+    console.log("COMMODITY CHARTS PAGE RENDER");
+    console.log(this.state.chartWidth);
     let { stock_data } = this.props;
     let { symbol } = this.props.match.params;
-    let commodityData = stock_data.commodity_data
+    let commodityData = stock_data.commodity_data;
     //[symbol];
     // console.log({stock_data, commodityData, symbol})
     let intradayCommodityData;
@@ -80,14 +66,14 @@ class CommodityChartPage extends React.Component {
 
     return (
       <div className="p-5">
-        <div className='row flex_center'>
-        <TickCharts symbol={symbol}/>
+        <div className="row">
+          <TickCharts width={this.state.chartWidth} symbol={symbol} />
         </div>
         <div className="row ">
           <CandleStickChart
-          type="commodity"
+            type="commodity"
             symbol={symbol}
-            width={1000}
+            width={this.state.chartWidth}
             height={400}
           />
           {/* <CandleStickChart

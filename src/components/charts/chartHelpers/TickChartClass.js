@@ -15,13 +15,13 @@ import { line } from "d3-shape";
 
 import { doZoomIn, doZoomOut } from "./utils.js";
 import { drawAxisAnnotation, removeAllAxisAnnotations } from "./chartAxis.js";
-import {appendMinMaxMarkers, runMinMax} from './ChartMarkers/HighLowMarks.js'
-import {appendRegressionLines} from './ChartMarkers/RegressionLines.js'
+import { appendMinMaxMarkers, runMinMax } from "./ChartMarkers/HighLowMarks.js";
+import { appendRegressionLines } from "./ChartMarkers/RegressionLines.js";
 const margin = {
   top: 35,
   right: 60,
   bottom: 20,
-  left: 100,
+  left: 50,
 };
 
 let MOUSEX = 0;
@@ -52,9 +52,10 @@ class TickChart extends React.Component {
       data,
       timestamps: [],
       volumePriceProfile,
-      visibleIndicators:{
-        minMaxMarkers:true, regressionLines:true
-      }
+      visibleIndicators: {
+        minMaxMarkers: true,
+        regressionLines: true,
+      },
     };
   }
 
@@ -71,38 +72,54 @@ class TickChart extends React.Component {
     //   console.log(prevPops)
     this.didDataUpdate(prevPops);
     this.didTickDataUpdate(prevPops);
+    this.didWidthChange(prevPops);
+  }
+
+  didWidthChange(prevPops) {
+    if (prevPops.width != this.props.width) {
+      console.log("Update width");
+      let { width } = this.props;
+      let innerWidth = width - (margin.left + margin.right);
+      let { timeScale, volProfileScale } = this.state;
+      timeScale.range([0, innerWidth])
+      volProfileScale.range([0, innerWidth])
+      this.setState({
+        timeScale, volProfileScale, innerWidth
+      });
+      setTimeout(() => this.setupChart(), 0);
+
+    }
   }
 
   didTickDataUpdate(prevPops) {
-    if(!partialOHLCdata.length)return
+    if (!partialOHLCdata.length) return;
     //FIRST CHECK IF NEW TICK DATA IS HERE
     if (prevPops.currentTickData != this.props.currentTickData) {
-      
       // let currentTickData = this.props.currentTickData.priceChangeData;
       let { priceChangeData, volumePriceProfile } = this.props.currentTickData;
-      
+
       /**
-       * this is to check the state ofthe full data 
+       * this is to check the state ofthe full data
        * compared to tha partial data (draw data)
        * so we know if we shoudl also append the data to the drawData
        */
       // console.log({partialOHLCdata})
       let lastPartialDataTickTime = partialOHLCdata.slice(-1)[0].timestamp;
-      let lastDataTickTime = this.state.data[this.state.data.length - 1].timestamp;
+      let lastDataTickTime = this.state.data[this.state.data.length - 1]
+        .timestamp;
 
-      
       //FIND INDEX WHERE WE NEED TO GET CURRENT TICK DATA
       let newTickDataIndex = priceChangeData.findIndex((tickData) => {
         return tickData.timestamp === lastDataTickTime;
       });
       let newData;
-      let newTicks
+      let newTicks;
       //EITHER ADD ALL
       if (newTickDataIndex < 0) {
         newTicks = priceChangeData;
         // console.log({newTicks})
         this.appendNewTicksToVolProfile(newTicks);
-        
+
         // partialOHLCdata = [...partialOHLCdata, ...newTicks];
         // newData = [...this.state.data, ...priceChangeData]
         //OR ADD SLICED
@@ -114,18 +131,17 @@ class TickChart extends React.Component {
         // newData= [...this.state.data, ...newTicks]
       }
       // console.log({lastPartialDataTickTime, lastDataTickTime})
-      if(lastPartialDataTickTime === lastDataTickTime){
+      if (lastPartialDataTickTime === lastDataTickTime) {
         // console.log('also add to partial')
         partialOHLCdata = [...partialOHLCdata, ...newTicks];
-
       }
-      let timestamps = partialOHLCdata.map(d => d.timestamp);
+      let timestamps = partialOHLCdata.map((d) => d.timestamp);
 
-      newData = [...this.state.data, ...newTicks]
-          this.setState({
-            timestamps,
-            data:newData
-          });
+      newData = [...this.state.data, ...newTicks];
+      this.setState({
+        timestamps,
+        data: newData,
+      });
       setTimeout(() => this.draw(), 0);
     }
   }
@@ -191,12 +207,31 @@ class TickChart extends React.Component {
   appendAxisAnnotations(x, y, svg) {
     /* Candle stick is the top candleStickWindowHeight */
     // drawAxisAnnotation(topOpts, x);
-    drawAxisAnnotation("topVolProfileTag", this.state.volProfileScale, x, svg);
-    drawAxisAnnotation("bottomTimeTag", this.state.timeScale, x, svg);
+
+    drawAxisAnnotation(
+      "topVolProfileTag",
+      this.state.volProfileScale,
+      x,
+      svg,
+      "volProfileAxis"
+    );
+    drawAxisAnnotation(
+      "bottomTimeTag",
+      this.state.timeScale,
+      x,
+      svg,
+      "timeAxis"
+    );
     // if (y < candleStickWindowHeight) {
     // drawAxisAnnotation(leftOpts, y);
-    drawAxisAnnotation("rightPriceTag", this.state.priceScale, y, svg);
-    drawAxisAnnotation("leftVolTag", this.state.volScale, y, svg);
+    drawAxisAnnotation(
+      "rightPriceTag",
+      this.state.priceScale,
+      y,
+      svg,
+      "priceAxis"
+    );
+    drawAxisAnnotation("leftVolTag", this.state.volScale, y, svg, "volAxis");
     // removeVolumeAxisAnnotations();
     // } else if (y > candleStickWindowHeight) {
     //   y = y - candleStickWindowHeight;
@@ -698,7 +733,7 @@ TOTAL_DOWN_VOL: 174893
       })
       .attr("stroke", "black")
       .attr("stroke-width", strokeWidth);
-// console.log(this.state.data)
+    // console.log(this.state.data)
     //Draw tick line
     let tickLinePath = chartWindow
       .selectAll(".tickPriceLine")
@@ -716,22 +751,24 @@ TOTAL_DOWN_VOL: 174893
       .attr("class", "tickPriceLine") // Assign a class for styling
       .attr("d", this.lineFn()); // 11. Calls the line generator
 
-        let xKey = 'timestamp'
-        let yKey = 'price'
-        let tolerance = 2
-        let minMaxMostRecentData = true
-        let {timeScale, priceScale} = this.state
-        let scales = {timeScale, priceScale}
-      let MinMaxValues = runMinMax(partialOHLCdata,
-        xKey,
-        yKey,
-        tolerance)
-        // console.log({MinMaxValues})
-      // appendMinMaxMarkers(this, MinMaxValues, scales)
-      appendRegressionLines(this, chartWindow,
-        this.state.data, {xKey:'timestamp',yKey:'price'},
-        200, {xScale:timeScale, yScale:priceScale}, {}
-         )
+    let xKey = "timestamp";
+    let yKey = "price";
+    let tolerance = 2;
+    let minMaxMostRecentData = true;
+    let { timeScale, priceScale } = this.state;
+    let scales = { timeScale, priceScale };
+    let MinMaxValues = runMinMax(partialOHLCdata, xKey, yKey, tolerance);
+    // console.log({MinMaxValues})
+    // appendMinMaxMarkers(this, MinMaxValues, scales)
+    appendRegressionLines(
+      this,
+      chartWindow,
+      this.state.data,
+      { xKey: "timestamp", yKey: "price" },
+      200,
+      { xScale: timeScale, yScale: priceScale },
+      {}
+    );
   }
   render() {
     return (

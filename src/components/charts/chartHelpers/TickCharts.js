@@ -187,7 +187,8 @@ class TickCharts extends React.Component {
 
       </div>;
     } else {
-      // console.log(this.state.priceChangeData)
+      console.log("FUCKING TICK CHARTS")
+      console.log(this.props.width)
       return (
         <DivContainer>
         <ToggleTickButton onClick={()=>this.setState({showTick:!showTick})}>Hide Tick Chart</ToggleTickButton>
@@ -199,7 +200,7 @@ class TickCharts extends React.Component {
             tickSize={tickSize}
             //   localMinMax={allMinMaxValues}
             data={this.state.priceChangeData}
-            width={1000}
+            width={this.props.width}
             height={400}
           />
 
@@ -207,7 +208,7 @@ class TickCharts extends React.Component {
             data={this.state.priceChangeData}
             currentTickData={this.state.currentTickData}
 
-            width={1000}
+            width={this.props.width}
             height={150}
           />
         </DivContainer>

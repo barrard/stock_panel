@@ -21,7 +21,7 @@ const margin = {
   top: 15,
   right: 60,
   bottom: 20,
-  left: 100,
+  left: 50,
 };
 
 let MOUSEX = 0;
@@ -103,16 +103,32 @@ neutral: 0
 
  */
 
-  componentDidUpdate(prevPops, prevState) {
-    this.checkIfDataUpdated(prevPops);
+  componentDidUpdate(prevProps, prevState) {
+    this.checkIfDataUpdated(prevProps);
 
-    this.didTickDataUpdate(prevPops);
+    this.didTickDataUpdate(prevProps);
+    this.didWidthChange(prevProps);
   }
 
-  didTickDataUpdate(prevPops) {
+  didWidthChange(prevProps) {
+    if (prevProps.width != this.props.width) {
+      console.log("Update width");
+      let { width } = this.props;
+      let innerWidth = width - (margin.left + margin.right);
+      let { timeScale } = this.state;
+      timeScale.range([0, innerWidth])
+      this.setState({
+        timeScale, innerWidth
+      });
+      setTimeout(() => this.setupChart(), 0);
+
+    }
+  }
+
+  didTickDataUpdate(prevProps) {
     if(!partialOHLCdata.length)return
     //FIRST CHECK IF NEW TICK DATA IS HERE
-    if (prevPops.currentTickData != this.props.currentTickData) {
+    if (prevProps.currentTickData != this.props.currentTickData) {
       let { data } = this.props;
       // console.log(this.state)
       // console.log(this.props)
@@ -158,8 +174,8 @@ neutral: 0
     }
   }
 
-  checkIfDataUpdated(prevPops) {
-    let prevData = prevPops.data;
+  checkIfDataUpdated(prevProps) {
+    let prevData = prevProps.data;
     let data = this.props.data;
     if (prevData != data) {
       // console.log("TICK CHART UPDATE DATA");
@@ -188,7 +204,24 @@ neutral: 0
   }
 
   appendAxisAnnotations(x, y, svg) {
-    drawAxisAnnotation("bottomTimeTag", this.state.timeScale, x, svg);
+    drawAxisAnnotation("bottomTimeTag", this.state.timeScale, x, svg,'timeAxis');
+    let { indicators, innerHeight, innerWidth } = this.state;
+
+    Object.keys(this.state.indicatorYScales).forEach((indicatorName, index) => {
+
+      let indicatorHeight = innerHeight / indicators.length;
+
+      let addedHeight = indicatorHeight * index;
+
+      let scale = this.state.indicatorYScales[indicatorName];
+      // let yAxis = axisRight(scale).ticks(4);
+      // indicatorYAxes[indicatorName] = yAxis;
+      drawAxisAnnotation(`right${indicatorName}Tag`, scale, y+addedHeight, svg,`${indicatorName}YAxis`);
+
+      //   .tickSize(-this.state.innerHeight);
+    });
+
+    
     //     drawAxisAnnotation("rightPriceTag", this.state.priceScale, y, svg);
     //     drawAxisAnnotation("leftVolTag", this.state.volScale, y, svg);
   }
@@ -317,12 +350,12 @@ neutral: 0
       )
       .call(timeAxis);
 
-    timeAxisG
-      .append("path")
-      .attr("id", `bottomTimeTag`)
-      // .attr("stroke", "blue")
-      .attr("stroke-width", 2);
-    timeAxisG.append("text").attr("id", `bottomTimeTagText`);
+    // timeAxisG
+    //   .append("path")
+    //   .attr("id", `bottomTimeTag`)
+    //   // .attr("stroke", "blue")
+    //   .attr("stroke-width", 2);
+    // timeAxisG.append("text").attr("id", `bottomTimeTagText`);
 
     let chartWindow = svg
       .append("g")
