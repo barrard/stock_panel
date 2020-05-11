@@ -187,8 +187,6 @@ class TickCharts extends React.Component {
 
       </div>;
     } else {
-      console.log("FUCKING TICK CHARTS")
-      console.log(this.props.width)
       return (
         <DivContainer>
         <ToggleTickButton onClick={()=>this.setState({showTick:!showTick})}>Hide Tick Chart</ToggleTickButton>

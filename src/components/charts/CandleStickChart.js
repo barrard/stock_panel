@@ -1322,6 +1322,15 @@ exitTime(pin):1585659963841
   }
 
   appendRegressionLines(that, chartWindow, { priceScale, timeScale }) {
+    // function parseLineLength(lineLength) {
+    //   return (lineLength / 10000).toFixed(2);
+    // }
+    // function formatSlopes(slope) {
+    //   /**
+    //    * Slopes are usually between 1x10-5 - 1x10-8
+    //    */
+    //   return (slope * 1000000).toFixed(4);
+    // }
     if (!this.state.visibleIndicators.regressionLines) return; //console.log('importantPriceLevel not turned on');
     // console.log(this.state.regressionLines);
     let { regressionLines } = this.state;
@@ -1349,7 +1358,16 @@ exitTime(pin):1585659963841
         return "yellow";
       })
       .attr("class", `regressionLines`)
-      .style("opacity", 0.5)
+      .style("opacity", (d)=>{
+        //display shorter lines with more opacity
+        let length=d.length/10000
+        if(length>2000) return .9
+        if(length>1500)return .7
+        if(length>1000)return .5
+        if(length>500)return .3
+        return .2
+
+      })
       .on("click", function (d) {
         console.log("click");
       })

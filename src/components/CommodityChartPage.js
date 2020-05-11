@@ -32,16 +32,14 @@ class CommodityChartPage extends React.Component {
   }
 
   setChartWidth() {
-    console.log("setChartWidth");
-    console.log(window.innerWidth);
+
     this.setState({
       chartWidth: window.innerWidth * CHART_WIDTH_REDUCER,
     });
   }
 
   render() {
-    console.log("COMMODITY CHARTS PAGE RENDER");
-    console.log(this.state.chartWidth);
+
     let { stock_data } = this.props;
     let { symbol } = this.props.match.params;
     let commodityData = stock_data.commodity_data;
