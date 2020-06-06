@@ -30,7 +30,7 @@ const Socket = {
     }
 }
 
-// Socket.connect()
+Socket.connect()
 Socket.on('connect', ()=>console.log('Websocket connected'))
 
 export default Socket
