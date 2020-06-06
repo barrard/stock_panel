@@ -19,8 +19,9 @@ export function appendRegressionLines(
 //    errLimit = errLimit * dataPoints.slice(-1)[0].y
     // console.log({errLimit})
    let regressionLines = diff.regressionAnalysis(dataPoints, errLimit);
-   if(!regressionLines)return
+   if(!regressionLines || !regressionLines.length)return
   //  console.log({regressionLines})
+    // debugger
    let {m, length } = regressionLines.slice(-1)[0]
    let lastSlope = m
    let lastLength = length

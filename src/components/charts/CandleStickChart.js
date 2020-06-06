@@ -16,6 +16,7 @@ import { extent, max, min, mean } from "d3-array";
 import { select, event, mouse } from "d3-selection";
 import { drag } from "d3-drag";
 import ToggleIndicators from "./chartHelpers/ToggleIndicators.js";
+import MomoIndicator from "./chartHelpers/indicators/MomoIndicator.js";
 import Loader from "../smallComponents/LoadingSpinner.js";
 import {
   priceRangeGreen,
@@ -63,6 +64,9 @@ let dragStartData = [];
 let lastBarCount = null;
 let partialOHLCdata = [];
 let zoomState = 1;
+let waitForDrag = false
+let waitForDragTimer//holdsTimer reference
+let waitForZoom = false
 class CandleStickChart extends React.Component {
   constructor(props) {
     super(props);
@@ -916,17 +920,28 @@ class CandleStickChart extends React.Component {
     const d3zoom = zoom()
       // .scaleExtent([1, 40])
       .on("zoom", function () {
+        // if(waitForZoom)return
+        // waitForZoom = true
+        // setTimeout(()=>waitForZoom=false)
         return that.zoomed();
       });
+      // isDragging = false
 
     const d3drag = drag()
       .on("start", function () {
+        // if(isDragging)return//already dragging
+        // isDragging = true
+       
         return that.dragStart();
       })
       .on("drag", function () {
+        // if(waitForDrag)return
+        // waitForDrag = true
+        // waitForDragTimer = setInterval(()=>waitForDrag=false, 100)
         return that.dragged();
       })
       .on("end", function () {
+        // clearInterval(waitForDragTimer)
         return that.dragEnd();
       });
 
@@ -1014,27 +1029,27 @@ class CandleStickChart extends React.Component {
     if (barCount < 1) return;
     if (lastBarCount === barCount) return;
     lastBarCount = barCount;
-    console.log("dragged");
+    // console.log("dragged");
     let data;
     if (xDragPOS > mouseDRAGSART) {
-      console.log("right");
+      // console.log("right");
       let start = dragStartData[0];
       let startIndex = this.state.allOHLCdata.findIndex(
         (d) => d.timestamp === start.timestamp
       );
-      console.log({ startIndex, barCount });
+      // console.log({ startIndex, barCount });
       let dataEnd = dragStartData.slice(0, dragStartData.length - 1 - barCount);
       let zeroOrGreater = startIndex - barCount < 0 ? 0 : startIndex - barCount;
       let dataStart = this.state.allOHLCdata.slice(zeroOrGreater, startIndex);
-      console.log({
-        dataEnd,
-        zeroOrGreater,
-        dataStart,
-        dragStartData,
-        barCount,
-        startIndex,
-        start,
-      });
+      // console.log({
+      //   dataEnd,
+      //   zeroOrGreater,
+      //   dataStart,
+      //   dragStartData,
+      //   barCount,
+      //   startIndex,
+      //   start,
+      // });
       data = [...dataStart, ...dataEnd];
     } else if (xDragPOS < mouseDRAGSART) {
       // console.log("left");
@@ -1867,6 +1882,12 @@ exitTime(pin):1585659963841
         {this.props.meta.is_loading && (
           <Loader width={this.props.width} height={this.state.height} />
         )}
+        <MomoIndicator
+            symbol={this.state.symbol}
+            timeframe={this.state.timeframe}
+            width={this.props.width}
+            height={150}
+          />
 
         <svg
           ref={this.state.chartRef}

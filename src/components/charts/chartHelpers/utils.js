@@ -209,15 +209,15 @@ export function doZoomIn({partialOHLCdata}, mouseZoomPOS) {
   return data;
 }
 
-export function doZoomOut({allOHLCdata, partialOHLCdata}) {
+export function doZoomOut({allOHLCdata, partialOHLCdata, xName='timestamp'}) {
   if(!allOHLCdata || !partialOHLCdata)return
   let candleZoom = parseInt(partialOHLCdata.length * 0.05) || 1;
 
   let first = partialOHLCdata[0];
   let last = partialOHLCdata[partialOHLCdata.length - 1];
   if (!first || !last) return; //fail safe?
-  let firstIndex = allOHLCdata.findIndex(d => d.timestamp === first.timestamp);
-  let lastIndex = allOHLCdata.findIndex(d => d.timestamp === last.timestamp);
+  let firstIndex = allOHLCdata.findIndex(d => d[xName] === first[xName]);
+  let lastIndex = allOHLCdata.findIndex(d => d[xName] === last[xName]);
   // console.log({firstIndex, lastIndex})
   let newFirstData = allOHLCdata.slice(firstIndex - candleZoom, firstIndex);
   let newLastData = allOHLCdata.slice(lastIndex, lastIndex + candleZoom);

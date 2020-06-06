@@ -17,7 +17,7 @@ export default {
   fetch_commodity_minutely_data,
   saveRegressionValues,
   getCommodityRegressionValues,
-  // deleteRegressionValues,
+  getIndicatorValues,
   setTimeframeActive,
   getAllCommodityTrades,
   closePosition, goLong, goShort
@@ -169,20 +169,20 @@ async function saveRegressionValues({
   props.dispatch(commodityRegressionData([regressionData]));
 }
 
-// async function deleteRegressionValues(id, props) {
-//   let deletedData = await fetch(
-//     `${LOCAL_SERVER}/API/commodityRegressionSettings`,
-//     { credentials: "include", ...DELETE({ id }) }
-//   );
-//   deletedData = await deletedData.json();
-//   console.log(deletedData)
-//   if (!deletedData.symbol) return toastr.error("Error deleting data");
-//   toastr.success("Regression data was  deleted");
-//   console.log(deletedData);
-//   console.log(props);
+async function getIndicatorValues({indicator, timeframe, symbol}, props) {
+  let data = await fetch(
+    `${LOCAL_SERVER}/API/indicator/${indicator}/${timeframe}/${symbol}`
+  );
+    console.log(data)
+  data = await data.json();
+  console.log(data)
 
-//   props.dispatch(deleteCommodityRegressionData(id));
-// }
+  toastr.success(`Indicator ${indicator} data loaded`);
+  // console.log(deletedData);
+  // console.log(props);
+    return data
+  // props.dispatch(addIndicatorData(id));
+}
 
 async function getMovers() {
   // console.log(API_SERVER);
@@ -202,21 +202,27 @@ async function getAllSymbolsData(dispatch) {
 }
 
 async function fetch_commodity_minutely_data({ date, symbol }) {
+  // date = '6-5-2020'
+  let msg = (data, date, symbol)=> `${data.length} bars loaded for ${date} ${symbol}`
   try {
     symbol = settleSymbol(symbol);
     //TD_data/dailyParsedTickData
+    let API_SERVER = 'https://chartsapi.raveaboutdave.com'
     let data = await csv(
       `${API_SERVER}/TD_data/dailyParsedTickData/${date}/${symbol}-${date}.csv`,
-      { withCredentials: true }
+      { mode: 'cors', withCredentials: true }
     );
     // data = await data.json();
-    // console.log({data})
+    // debugger
+    console.log({data})
     // console.log('TOASTR')
-    toastr.success(`Data loaded`, `${data.length} bars loaded for ${symbol}`);
+    toastr.success(`Data loaded`, msg(data, date, symbol));
     return data;
   } catch (err) {
+    console.log(err)
+    // debugger
     let data = [];
-    toastr.success(`Data loaded`, `${data.length} bars loaded for ${symbol}`);
+    toastr.success(`No Data loaded`, msg(data, date, symbol) );
     return data;
   }
 }

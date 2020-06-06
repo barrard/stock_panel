@@ -22,6 +22,7 @@ export async function getMinutelyCommodityData({
   tryGetOneMoreDay
 }) {
   console.log(date)
+  // debugger
   if(!date){
     date = new Date()
     .toLocaleString()
@@ -29,18 +30,11 @@ export async function getMinutelyCommodityData({
     .replace("/", "-")
     .replace("/", "-");
   }
-  console.log(date)
-  // console.log(props);
   const { dispatch } = props;
-  // console.log(dispatch);
-  // console.log(symbol);
   // /* Set the search symbol aas selected */
   dispatch(set_search_symbol(symbol));
   // /* set show filtered list false */
   dispatch(show_filter_list(false));
-
-  // console.log('GOT CURRENT REALTIME DATA')
-  // console.log(  {current_data})
   /**
    * Fiure out what minutley data we have,
    * and what the time frame is (1min, 5 min, etc..)
@@ -218,10 +212,7 @@ export function appendMinutelyCommodityDataAsNeeded(
     if(timeframe === 'weekly'){
       console.log(`We need more daily`)
     }
-    console.log(minuteData[0])
 
-    console.log(new Date(minuteData[0].timestamp).toLocaleString())
-    console.log(new Date(minuteData.slice(-1)[0].timestamp).toLocaleString())
   }else{
 
     minuteData = minuteData.slice(miniuteDataIndex);
@@ -239,6 +230,7 @@ export function appendMinutelyCommodityDataAsNeeded(
 
 function consolidateMinutelyData(minuteData, timeFrameMinutes) {
   let consolidatedData = [];
+  if(minuteData.length<1)return consolidatedData
   let timeInMiliseconds = timeFrameMinutes * 60 * 1000;
 
   let start = null;
@@ -253,7 +245,7 @@ function consolidateMinutelyData(minuteData, timeFrameMinutes) {
 
   minuteData.forEach((d, i) => {
     if(d.close === 0 ){
-      console.log('THIS IS AN EERRROOR')
+      console.error('THIS IS AN EERRROOR')
       console.log({d, i})
     }
     if (!start) start = d.timestamp;

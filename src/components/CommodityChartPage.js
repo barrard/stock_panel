@@ -7,6 +7,7 @@ import { fetch_selected_chart_data } from "./landingPageComponents/chart_data_ut
 import Canvas_Chart from "./charts/Canvas_Chart.js";
 import Analysis_Chart from "./charts/Analysis_Chart.js";
 import CandleStickChart from "./charts/CandleStickChart.js";
+
 import {
   view_selected_commodity,
   getMinutelyCommodityData,
@@ -32,41 +33,20 @@ class CommodityChartPage extends React.Component {
   }
 
   setChartWidth() {
-
     this.setState({
       chartWidth: window.innerWidth * CHART_WIDTH_REDUCER,
     });
   }
 
   render() {
-
-    let { stock_data } = this.props;
     let { symbol } = this.props.match.params;
-    let commodityData = stock_data.commodity_data;
-    //[symbol];
-    // console.log({stock_data, commodityData, symbol})
-    let intradayCommodityData;
-    let dailyCommodityData;
-    let weeklyCommodityData;
-    let minutelyCommodityData;
-    // if (commodityData) {
-    //   console.log('got commodities data')
-    //   minutelyCommodityData = commodityData['minutely']
-    //   intradayCommodityData = commodityData["intraday"];
-    //   dailyCommodityData = commodityData["daily"];
-    //   weeklyCommodityData = commodityData["weekly"];
-    // }
-    // console.log({minutelyCommodityData, intradayCommodityData,
-    //   dailyCommodityData,
-    //   weeklyCommodityData})
-
-    let canvas_width = this.state.canvas_width;
 
     return (
       <div className="p-5">
         <div className="row">
           <TickCharts width={this.state.chartWidth} symbol={symbol} />
         </div>
+  
         <div className="row ">
           <CandleStickChart
             type="commodity"
@@ -74,25 +54,8 @@ class CommodityChartPage extends React.Component {
             width={this.state.chartWidth}
             height={400}
           />
-          {/* <CandleStickChart
-            symbol={symbol}
-            data={intradayCommodityData}
-            width={950}
-            height={400}
-          />
-          <CandleStickChart
-          symbol={symbol}  
-          data={dailyCommodityData}
-            width={950}
-            height={400}
-          />
-          <CandleStickChart
-          symbol={symbol}  
-          data={weeklyCommodityData}
-            width={950}
-            height={400}
-          /> */}
         </div>
+
       </div>
     );
   }
@@ -104,3 +67,4 @@ function mapStateToProps(state) {
 }
 
 export default connect(mapStateToProps)(withRouter(CommodityChartPage));
+
