@@ -210,7 +210,7 @@ async function fetch_commodity_minutely_data({ date, symbol }) {
     let API_SERVER = 'https://chartsapi.raveaboutdave.com'
     let data = await csv(
       `${API_SERVER}/TD_data/dailyParsedTickData/${date}/${symbol}-${date}.csv`,
-      { mode: 'cors', withCredentials: true }
+      // {  withCredentials: true }
     );
     // data = await data.json();
     // debugger
