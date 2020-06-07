@@ -31,8 +31,8 @@ export async function getMinutelyCommodityData({
     .replace("/", "-")
     .replace("/", "-");
   }
-  // console.log({date})
-  date = '6-7-2020'
+  // date = '6-7-2020'
+  console.log({date})
   const { dispatch } = props;
   // /* Set the search symbol aas selected */
   dispatch(set_search_symbol(symbol));
@@ -53,10 +53,9 @@ export async function getMinutelyCommodityData({
     .split(",")[0]
     .replace("/", "-")
     .replace("/", "-");
-    // console.log({date})
     
-    date = '6-5-2020'
-    // console.log(date);
+    // date = '6-5-2020'
+    console.log(date);
 
     const maybeMostRecentDay = await API.fetch_commodity_minutely_data({
       date,
@@ -71,9 +70,8 @@ export async function getMinutelyCommodityData({
       .split(",")[0]
       .replace("/", "-")
       .replace("/", "-");
-      // console.log({date})
-
-      date = '6-4-2020'
+      // date = '6-4-2020'
+      console.log({date})
 
     const prevousDay = await API.fetch_commodity_minutely_data({
       date,
