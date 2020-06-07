@@ -200,21 +200,21 @@ async function getAllSymbolsData(dispatch) {
   dispatch(set_symbols_data(all_stock_symbols, all_commodity_symbols));
   return;
 }
-
+console.log()
 async function fetch_commodity_minutely_data({ date, symbol }) {
   // date = '6-5-2020'
   let msg = (data, date, symbol)=> `${data.length} bars loaded for ${date} ${symbol}`
+  console.log(`Fetching data for ${date} ${symbol}`)
   try {
     symbol = settleSymbol(symbol);
     //TD_data/dailyParsedTickData
     let API_SERVER = 'https://chartsapi.raveaboutdave.com'
-    let data = await csv(
-      `${API_SERVER}/TD_data/dailyParsedTickData/${date}/${symbol}-${date}.csv`,
-      { mode: 'cors', withCredentials: true }
+    let data = await fetch(
+      `${API_SERVER}/TD_data/dailyParsedTickData/${date}/${symbol}`
     );
-    // data = await data.json();
+    data = await data.json();
     // debugger
-    console.log({data})
+    console.log({data, date, symbol})
     // console.log('TOASTR')
     toastr.success(`Data loaded`, msg(data, date, symbol));
     return data;
