@@ -17,6 +17,8 @@ import { doZoomIn, doZoomOut } from "./utils.js";
 import { drawAxisAnnotation, removeAllAxisAnnotations } from "./chartAxis.js";
 import { appendMinMaxMarkers, runMinMax } from "./ChartMarkers/HighLowMarks.js";
 import { appendRegressionLines } from "./ChartMarkers/RegressionLines.js";
+import Loader from "../../smallComponents/LoadingSpinner.js";
+
 const margin = {
   top: 35,
   right: 60,
@@ -692,6 +694,7 @@ class TickChart extends React.Component {
         return this.getAttribute("height") / 10;
       });
 
+
     let barWidth = this.state.innerWidth / partialOHLCdata.length;
     let strokeWidth = barWidth / 10;
     let volRects = chartWindow.selectAll(".tickVolume").data(this.state.data);
@@ -733,8 +736,9 @@ TOTAL_DOWN_VOL: 174893
       })
       .attr("stroke", "black")
       .attr("stroke-width", strokeWidth);
-    // console.log(this.state.data)
-    //Draw tick line
+
+
+      //Draw tick line
     let tickLinePath = chartWindow
       .selectAll(".tickPriceLine")
       .data([this.state.data]);
@@ -773,6 +777,9 @@ TOTAL_DOWN_VOL: 174893
   render() {
     return (
       <div className={this.props.redGreenClass}>
+                {this.props.meta.is_loading && (
+          <Loader width={this.props.width} height={this.props.height} />
+        )}
         <svg
           ref={this.state.chartRef}
           width={this.props.width}

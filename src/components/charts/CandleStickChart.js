@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from "react";
 import { connect } from "react-redux";
 import { Link, withRouter } from "react-router-dom";
 import styled from "styled-components";
-import { axisBottom, axisRight } from "d3-axis";
+import { axisBottom, axisRight, axisLeft, axisTop } from "d3-axis";
 // import { useDispatch, useSelector } from "react-redux";
 import {
   view_selected_stock,
@@ -46,6 +46,8 @@ import {
   FibonacciLines,
   makeFibonacciData,
 } from "./chartHelpers/ChartMarkers/FibonacciLines.js";
+
+import VolumeBars from './chartHelpers/ChartMarkers/VolumeBars.js'
 
 
 let wtfFlag = false;
@@ -152,8 +154,12 @@ class CandleStickChart extends React.Component {
       innerHeight: height - (margin.top + margin.bottom),
 
       timeScale: scaleTime().range([0, innerWidth]),
-
+      volProfileScale: scaleLinear().range([0, innerWidth]),
       priceScale: scaleLinear().range([innerHeight, 0]),
+      volScale: scaleLinear().range([innerHeight, 0]).nice(),
+
+      priceChangeData: [], //for time and sales
+      volumePriceProfile: {},
 
       candleHeightScale: scaleLinear().range([0, innerHeight]),
 
@@ -803,6 +809,10 @@ class CandleStickChart extends React.Component {
       .ticks(8)
       .tickSize(-this.state.innerWidth);
 
+      let volAxis = axisLeft(this.state.volScale).ticks(4);
+
+      let volProfileAxis = axisTop(this.state.volProfileScale).ticks(4);
+
     //Set up some data
     this.createPriceLevelsData();
 
@@ -830,6 +840,35 @@ class CandleStickChart extends React.Component {
         `translate(${this.state.width - margin.right}, ${margin.top})`
       )
       .call(priceAxis);
+
+        //appand volAxis
+    let volAxisG = svg
+    .append("g")
+    .attr("class", "white volAxis")
+    .attr("transform", `translate(${margin.left}, ${margin.top})`)
+    .call(volAxis);
+
+  //append the crosshair marker
+  volAxisG
+    .append("path")
+    .attr("id", `leftVolTag`)
+    // .attr("stroke", "blue")
+    .attr("stroke-width", 2);
+  volAxisG.append("text").attr("id", `leftVolTagText`);
+
+      //append volProfileAxis group
+      let volProfileAxisG = svg
+      .append("g")
+      .attr("class", "white volProfileAxis")
+      .attr("transform", `translate(${margin.left}, ${margin.top})`)
+
+      .call(volProfileAxis);
+    volProfileAxisG
+      .append("path")
+      .attr("id", `topVolProfileTag`)
+      // .attr("stroke", "blue")
+      .attr("stroke-width", 2);
+    volProfileAxisG.append("text").attr("id", `topVolProfileTagText`);
 
     //append the crosshair marker
     // addAxisAnnotationElements(timeAxisG, "bottomTimeTag");
@@ -960,11 +999,21 @@ class CandleStickChart extends React.Component {
       timeAxis,
       priceAxis,
       fibData,
+      volAxis,
+      volProfileAxis,
+
     });
     this.draw();
   } //setupChart()
 
   appendAxisAnnotations(x, y, svg) {
+    drawAxisAnnotation(
+      "topVolProfileTag",
+      this.state.volProfileScale,
+      x,
+      svg,
+      "volProfileAxis"
+    );
     drawAxisAnnotation(
       "bottomTimeTag",
       this.state.timeScale,
@@ -979,6 +1028,8 @@ class CandleStickChart extends React.Component {
       svg,
       "priceAxis"
     );
+    drawAxisAnnotation("leftVolTag", this.state.volScale, y, svg, "volAxis");
+
   }
 
   zoomed() {
@@ -1092,13 +1143,30 @@ class CandleStickChart extends React.Component {
     }
     if (!drawData || !drawData.length || drawData.length < 2) return;
 
+    let volPriceKeys = Array.from(Object.keys(this.state.volumePriceProfile));
+    let volValues = drawData.map((d) => d.volume);
+    let [volMin, volMax] = extent(volValues);
+    
+    debugger
+
+    volPriceKeys = volPriceKeys.filter((v) => v >= priceMin && v <= priceMax);
+    volPriceKeys = volPriceKeys.map((v) => +v);
+    let volProfileValues = volPriceKeys.map(
+      (volPriceKey) => this.state.volumePriceProfile[volPriceKey]
+    );
+    // console.log({ volProfileValues });
+    let rawVolProfileValues = volProfileValues.map(
+      ({ up, down, neutral }) => up + down + neutral
+    );
+    let [volProfileMin, volProfileMax] = extent(rawVolProfileValues);
+    
+    
     let priceMax = max(drawData, (d) => d.high);
     let priceMin = min(drawData, (d) => d.low);
     // priceMax = priceMax+(priceMax*.1);
     // priceMin = priceMin+(priceMin*.1);
 
     let [timeMin, timeMax] = extent(drawData.map(({ timestamp }) => timestamp));
-    // this.setState({ timeMin, timeMax });
     const priceRange = priceMax - priceMin;
     let timeframe = drawData[1].timestamp - drawData[0].timestamp;
     //  This helps the bars at the ends line up with the edge of the chart
@@ -1109,14 +1177,20 @@ class CandleStickChart extends React.Component {
       // timeMin ,
       // timeMax
     ]);
+    
     this.state.candleHeightScale.domain([0, priceRange]);
     this.state.priceScale.domain([priceMin, priceMax]);
+    this.state.volScale.domain([0, volMax]);
+    this.state.volProfileScale.domain([volProfileMax, 0]);
 
     // get the SVG element
     let svg = select(this.state.chartRef.current);
 
     svg.select(".timeAxis").call(this.state.timeAxis);
     svg.select(".priceAxis").call(this.state.priceAxis);
+    svg.select(".volAxis").call(this.state.volAxis);
+    svg.select(".volProfileAxis").call(this.state.volProfileAxis);
+
 
     let chartWindow = svg.select(".chartWindow");
     let candleWidth = this.state.innerWidth / drawData.length;
@@ -1135,6 +1209,8 @@ class CandleStickChart extends React.Component {
     let scales = {
       timeScale: this.state.timeScale,
       priceScale: this.state.priceScale,
+      volScale:this.state.volScale,
+      volProfileScale:this.state.volProfileScale
     };
     this.appendEMA(chartWindow, scales);
     this.appendSTD();
@@ -1144,7 +1220,9 @@ class CandleStickChart extends React.Component {
     this.appendPriceLevelRanges(this, chartWindow, scales);
     this.appendRegressionLines(this, chartWindow, scales);
     this.appendTrades(this, chartWindow, scales);
+    this.drawVolumeBars(this, chartWindow, scales)
   }
+
 
   appendEMA(chartWindow, { timeScale, priceScale }) {
     if (this.state.visibleIndicators.ema20) {
@@ -1431,6 +1509,18 @@ exitTime(pin):1585659963841
       .attr("fill", "blue")
       .attr("stroke", "white")
       .attr("class", `regressionNearbyPoint`);
+  }
+
+  drawVolumeBars(that, chartWindow, scales) {
+    // debugger
+    let dataPoints = partialOHLCdata
+    let options = {
+      innerHeight:this.state.innerHeight,
+      innerWidth:this.state.innerWidth
+    }
+    let markerClass = 'volBar'
+    VolumeBars({that, chartWindow, dataPoints, scales, options, markerClass})
+
   }
 
   appendPriceLevelRanges(that, chartWindow, { priceScale, timeScale }) {

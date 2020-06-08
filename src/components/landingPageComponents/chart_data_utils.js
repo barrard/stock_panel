@@ -31,7 +31,7 @@ export async function getMinutelyCommodityData({
     .replace("/", "-")
     .replace("/", "-");
   }
-  // date = '6-7-2020'
+  // date = '6-4-2020'
   console.log({date})
   const { dispatch } = props;
   // /* Set the search symbol aas selected */
@@ -83,6 +83,10 @@ export async function getMinutelyCommodityData({
     }
   }
   // let timeframe = 'minutely'
+  if(!chart_data.length){
+    debugger
+    console.log('WE GIOT NOGTIIHIN')
+  }
   dispatch(add_commodity_minutely_data({ symbol, chart_data }));
   dispatch(is_loading(false));
 }

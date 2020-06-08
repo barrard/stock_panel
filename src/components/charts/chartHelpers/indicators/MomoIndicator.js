@@ -17,6 +17,8 @@ import { doZoomIn, doZoomOut } from "../utils.js";
 import { drawAxisAnnotation, removeAllAxisAnnotations } from "../chartAxis.js";
 import { appendRegressionLines } from "../ChartMarkers/RegressionLines.js";
 import API from "../../../API.js";
+import Loader from "../../../smallComponents/LoadingSpinner.js";
+
 const margin = {
   top: 15,
   right: 60,
@@ -49,7 +51,7 @@ class IndicatorChart extends React.Component {
       timestamps: [],
       indicator: "MOMO", //momentum
       selectedWindows: [10],
-      availableWindows: [1, 2, 5, 10],
+      availableWindows: [1, 2, 5, 10, 20, 40],
       indicatorYAxes: {},
       indicatorsData: {},
       data: [],
@@ -60,35 +62,33 @@ class IndicatorChart extends React.Component {
     };
   }
 
-  async loadIndicatorData({ indicator, timeframe, symbol }) {
+  async loadIndicatorData() {
+    let { indicator, innerHeight } = this.state;
+    let { timeframe, symbol } = this.props;
     console.log({ indicator, timeframe, symbol });
     let indicatorData = await API.getIndicatorValues(
       { indicator, timeframe, symbol },
       this.props
     );
     console.log(indicatorData);
+
+
+    let momoData = this.getMomoData(indicatorData);
+
+    partialOHLCdata = momoData;
+    let timestamps = partialOHLCdata.map((d) => d.x);
+    this.setState({
+      timestamps,
+      indicatorData,
+      momoData,
+    });
+    setTimeout(() => this.setupChart(), 0);
     return indicatorData;
   }
 
   async componentDidMount() {
-    let { indicator, innerHeight } = this.state;
-    let { timeframe, symbol } = this.props;
-    let indicatorData = await this.loadIndicatorData({
-      indicator,
-      timeframe,
-      symbol,
-    });
-    let momoData = this.getMomoData(indicatorData)
-    
-    
-    partialOHLCdata = momoData;
-    let timestamps = partialOHLCdata.map(d => d.x);
-    this.setState({
-      timestamps,
-      indicatorData,
-      momoData
-    });
-    setTimeout(() => this.setupChart(), 0);
+    await this.loadIndicatorData();
+
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -100,9 +100,20 @@ class IndicatorChart extends React.Component {
     //   console.log({indicatorsData})
     //   console.log(currentIndicatorsData)
     // }
+    this.handleTimeFrameChange(prevState, prevProps);
+
     // this.checkIfDataUpdated(prevProps);
     // this.didTickDataUpdate(prevProps);
     // this.didWidthChange(prevProps);
+  }
+
+  async handleTimeFrameChange(prevState, prevProps) {
+    let prevTimeframe = prevProps.timeframe;
+    let currentTimeframe = this.props.timeframe;
+    if (prevTimeframe !== currentTimeframe) {
+      console.log("NEW TIME FRAME MOMOMOMOOOOO");
+      this.loadIndicatorData()
+    }
   }
 
   //   didWidthChange(prevProps) {
@@ -185,20 +196,18 @@ class IndicatorChart extends React.Component {
   //     }
   //   }
 
-
-  getMomoData(data){
-    let momoData = []
-    for(let momoVal in data){
-      let momoValData = data[momoVal]
+  getMomoData(data) {
+    let momoData = [];
+    for (let momoVal in data) {
+      let momoValData = data[momoVal];
       momoValData.forEach((valData, i) => {
-        if(!momoData[i])momoData[i]={x:valData.timestamp}
-        momoData[i][`momo${momoVal}`]=valData.momo
-        momoData[i][`highLow${momoVal}`]=valData.highLow
-        momoData[i][`volume${momoVal}`]=valData.volume
-        
+        if (!momoData[i]) momoData[i] = { x: valData.timestamp };
+        momoData[i][`momo${momoVal}`] = valData.momo;
+        momoData[i][`highLow${momoVal}`] = valData.highLow;
+        momoData[i][`volume${momoVal}`] = valData.volume;
       });
     }
-    return momoData
+    return momoData;
   }
 
   lineFn(scale, xName, yName) {
@@ -263,7 +272,7 @@ class IndicatorChart extends React.Component {
         data = doZoomOut({
           allOHLCdata: this.state.momoData,
           partialOHLCdata: partialOHLCdata,
-          xName:'x'
+          xName: "x",
         });
       }
       // console.log(data);
@@ -292,9 +301,7 @@ class IndicatorChart extends React.Component {
     if (xDragPOS > mouseDRAGSTART) {
       // console.log('right')
       let start = dragStartData[0];
-      let startIndex = this.state.momoData.findIndex(
-        (d) => d.x === start.x
-      );
+      let startIndex = this.state.momoData.findIndex((d) => d.x === start.x);
       // console.log({startIndex, barCount})
       let dataEnd = dragStartData.slice(0, dragStartData.length - 1 - barCount);
       let zeroOrGreater = startIndex - barCount < 0 ? 0 : startIndex - barCount;
@@ -312,9 +319,7 @@ class IndicatorChart extends React.Component {
     } else if (xDragPOS < mouseDRAGSTART) {
       //console.log("left");
       let end = dragStartData[dragStartData.length - 1];
-      let endIndex = this.state.momoData.findIndex(
-        (d) => d.x === end.x
-      );
+      let endIndex = this.state.momoData.findIndex((d) => d.x === end.x);
       let dataStart = dragStartData.slice(barCount, dragStartData.length - 1);
       let dataEnd = this.state.momoData.slice(endIndex, endIndex + barCount);
       data = [...dataStart, ...dataEnd];
@@ -341,7 +346,7 @@ class IndicatorChart extends React.Component {
     svg.selectAll("*").remove();
 
     let timeAxis = axisBottom(this.state.timeScale)
-      .ticks(4)
+      .ticks(5)
       .tickSize(-this.state.innerHeight);
 
     //Make and store the indicator Axis from the scale objects keys
@@ -429,7 +434,7 @@ class IndicatorChart extends React.Component {
 
       //this enables the crosshair to move at the
       // timeframe interval
-      
+
       let { timeframe } = otherThat.props;
       let interval = getInterval(timeframe);
 
@@ -499,6 +504,7 @@ class IndicatorChart extends React.Component {
     } else {
       drawData = partialOHLCdata;
     }
+    // debugger
     if (!drawData || !drawData.length || drawData.length < 2) return;
     // console.log(drawData)
     // let volProfileValues = Array.from(
@@ -510,16 +516,23 @@ class IndicatorChart extends React.Component {
     // let volValues = drawData.map(d => d.volumeChange);
     let { indicator } = this.state;
     let [timeMin, timeMax] = extent(drawData.map(({ x }) => x));
-    let [momoMin, momoMax] = extent(drawData.map(({ momo2 }) => momo2));
-    // let [volMin, volMax] = extent(volValues);
+    let allMomo = []
+     drawData.forEach(d=>{
+      // debugger
+      for (let key in d){
 
+        if(String(key).startsWith('momo')) allMomo.push(d[key])
+          }
+    })
+    let [momoMin, momoMax] = extent(allMomo.map((m) => m));
+    // let [volMin, volMax] = extent(volValues);
     // let [priceMin, priceMax] = extent(prices);
 
     //TODO make the indicator data
 
     this.state.timeScale.domain([timeMin, timeMax]);
 
-    this.state.yScale.domain(([  momoMin,momoMax]));
+    this.state.yScale.domain([momoMin, momoMax]);
 
     let svg = select(this.state.chartRef.current);
 
@@ -530,24 +543,19 @@ class IndicatorChart extends React.Component {
 
     let chartWindow = svg.select(".chartWindow");
 
-    chartWindow.selectAll(`.${indicator}Line`).remove();
+    /*
+     *this has 1,2,5,10, 40, 40 as options
+     */
+    //MOMO  'momo'
+    let indicatorKey = 'momo' //'highLow', 'volume'
+    let colors = ['white', 'blue','red','green','yellow','orange']
+    this.state.availableWindows.map((windowVal, index)=>{
+      let yVal = `${indicatorKey}${windowVal}`;
+      let xVal = "x";
+      let color = colors[index%colors.length];
+      this.drawLine({ chartWindow, drawData, xVal, yVal, color });
+    })
 
-    let tickLinePath = chartWindow
-      .selectAll(`.${indicator}Line`)
-      .data([drawData]);
-    tickLinePath.exit().remove();
-
-    tickLinePath
-      .enter()
-      .append("path")
-      .merge(tickLinePath)
-      .attr("stroke", "white")
-      .attr("stroke-width", "2")
-      .attr("pointer-events", "none")
-      .attr("fill", "none")
-
-      .attr("class", `${indicator}Line`) // Assign a class for styling
-      .attr("d", this.lineFn(this.state.yScale, "x", "momo2"));
 
     // XYdata.forEach((d) => (d.y === 0 ? (d.y = 1) : (d.y = d.y)));
     // let yScale = this.state.yScale[indicatorName];
@@ -563,9 +571,32 @@ class IndicatorChart extends React.Component {
     // );
   }
 
+  drawLine({ chartWindow, yVal, xVal, drawData, color }) {
+    chartWindow.selectAll(`.${yVal}Line`).remove();
+
+    let tickLinePath = chartWindow.selectAll(`.${yVal}Line`).data([drawData]);
+    tickLinePath.exit().remove();
+
+    tickLinePath
+      .enter()
+      .append("path")
+      .merge(tickLinePath)
+      .attr("stroke", color)
+      .attr("stroke-width", "2")
+      .attr("pointer-events", "none")
+      .attr("fill", "none")
+
+      .attr("class", `${yVal}Line`) // Assign a class for styling
+      .attr("d", this.lineFn(this.state.yScale, xVal, yVal));
+  }
+
+
   render() {
     return (
       <>
+        {/* {this.props.meta.is_loading && (
+          <Loader width={this.props.width} height={this.state.height} />
+        )} */}
         <svg
           ref={this.state.chartRef}
           width={this.props.width}
@@ -582,8 +613,6 @@ function mapStateToProps(state) {
 }
 
 export default connect(mapStateToProps)(withRouter(IndicatorChart));
-
-
 
 function getInterval(timeframe) {
   if (timeframe === "1Min") return 1000 * 60 * 1;

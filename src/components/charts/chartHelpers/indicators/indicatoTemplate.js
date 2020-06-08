@@ -15,6 +15,8 @@ import { line } from "d3-shape";
 
 import { doZoomIn, doZoomOut } from "../utils.js";
 import { drawAxisAnnotation, removeAllAxisAnnotations } from "../chartAxis.js";
+
+import Loader from "../smallComponents/LoadingSpinner.js";
 import { appendRegressionLines } from "../ChartMarkers/RegressionLines.js";
 import API from "../../../API.js";
 const margin = {
@@ -558,7 +560,10 @@ class IndicatorChart extends React.Component {
 
   render() {
     return (
-      <>
+      <> 
+        {/* {this.props.meta.is_loading && (
+          <Loader width={this.props.width} height={this.state.height} />
+        )} */}
         <svg
           ref={this.state.chartRef}
           width={this.props.width}
