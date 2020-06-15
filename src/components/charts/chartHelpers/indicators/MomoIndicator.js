@@ -63,15 +63,16 @@ class IndicatorChart extends React.Component {
   }
 
   async loadIndicatorData() {
+    // debugger
     let { indicator, innerHeight } = this.state;
     let { timeframe, symbol } = this.props;
+    let date = new Date().getTime();
     console.log({ indicator, timeframe, symbol });
     let indicatorData = await API.getIndicatorValues(
-      { indicator, timeframe, symbol },
+      { indicator, timeframe, symbol, date },
       this.props
     );
     console.log(indicatorData);
-
 
     let momoData = this.getMomoData(indicatorData);
 
@@ -88,7 +89,6 @@ class IndicatorChart extends React.Component {
 
   async componentDidMount() {
     await this.loadIndicatorData();
-
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -112,7 +112,7 @@ class IndicatorChart extends React.Component {
     let currentTimeframe = this.props.timeframe;
     if (prevTimeframe !== currentTimeframe) {
       console.log("NEW TIME FRAME MOMOMOMOOOOO");
-      this.loadIndicatorData()
+      this.loadIndicatorData();
     }
   }
 
@@ -395,7 +395,7 @@ class IndicatorChart extends React.Component {
       .attr("font-color", "white")
       .attr("text-anchor", "middle");
     // });
-
+    chartWindow.append("line").attr("id", "zeroLine");
     /* CrossHair */
     // create crosshairs
     var crosshair = chartWindow.append("g").attr("class", "line");
@@ -516,14 +516,13 @@ class IndicatorChart extends React.Component {
     // let volValues = drawData.map(d => d.volumeChange);
     let { indicator } = this.state;
     let [timeMin, timeMax] = extent(drawData.map(({ x }) => x));
-    let allMomo = []
-     drawData.forEach(d=>{
+    let allMomo = [];
+    drawData.forEach((d) => {
       // debugger
-      for (let key in d){
-
-        if(String(key).startsWith('momo')) allMomo.push(d[key])
-          }
-    })
+      for (let key in d) {
+        if (String(key).startsWith("momo")) allMomo.push(d[key]);
+      }
+    });
     let [momoMin, momoMax] = extent(allMomo.map((m) => m));
     // let [volMin, volMax] = extent(volValues);
     // let [priceMin, priceMax] = extent(prices);
@@ -547,15 +546,14 @@ class IndicatorChart extends React.Component {
      *this has 1,2,5,10, 40, 40 as options
      */
     //MOMO  'momo'
-    let indicatorKey = 'momo' //'highLow', 'volume'
-    let colors = ['white', 'blue','red','green','yellow','orange']
-    this.state.availableWindows.map((windowVal, index)=>{
+    let indicatorKey = "momo"; //'highLow', 'volume'
+    let colors = ["white", "blue", "red", "green", "yellow", "orange"];
+    this.state.availableWindows.map((windowVal, index) => {
       let yVal = `${indicatorKey}${windowVal}`;
       let xVal = "x";
-      let color = colors[index%colors.length];
+      let color = colors[index % colors.length];
       this.drawLine({ chartWindow, drawData, xVal, yVal, color });
-    })
-
+    });
 
     // XYdata.forEach((d) => (d.y === 0 ? (d.y = 1) : (d.y = d.y)));
     // let yScale = this.state.yScale[indicatorName];
@@ -569,6 +567,19 @@ class IndicatorChart extends React.Component {
     //   { xScale, yScale },
     //   { addedHeight }
     // );
+
+    //Draw zero line
+    chartWindow
+      .select("#zeroLine")
+      .attr("stroke", "pink")
+      .attr("stroke-width", "2")
+      .attr("pointer-events", "none")
+      .attr("fill", "none")
+      .attr("x1", this.state.timeScale(timeMin))
+      .attr("y1", 0)
+
+      .attr("x2", this.state.timeScale(timeMax))
+      .attr("y2", 0);
   }
 
   drawLine({ chartWindow, yVal, xVal, drawData, color }) {
@@ -589,7 +600,6 @@ class IndicatorChart extends React.Component {
       .attr("class", `${yVal}Line`) // Assign a class for styling
       .attr("d", this.lineFn(this.state.yScale, xVal, yVal));
   }
-
 
   render() {
     return (

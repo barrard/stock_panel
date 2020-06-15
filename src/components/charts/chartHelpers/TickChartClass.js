@@ -534,14 +534,14 @@ class TickChart extends React.Component {
     }
     if (!drawData || !drawData.length || drawData.length < 2) return;
 
-    let volPriceKeys = Array.from(Object.keys(this.state.volumePriceProfile));
     // console.log({volPriceKeys})
     let prices = drawData.map((d) => d.price);
     let volValues = drawData.map((d) => d.volumeChange);
     let [timeMin, timeMax] = extent(drawData.map(({ timestamp }) => timestamp));
     let [volMin, volMax] = extent(volValues);
-
     let [priceMin, priceMax] = extent(prices);
+
+    let volPriceKeys = Array.from(Object.keys(this.state.volumePriceProfile));
     // console.log(volPriceKeys.length)
 
     volPriceKeys = volPriceKeys.filter((v) => v >= priceMin && v <= priceMax);

@@ -20,11 +20,13 @@ export default {
   getIndicatorValues,
   setTimeframeActive,
   getAllCommodityTrades,
-  closePosition, goLong, goShort
+  closePosition, goLong, goShort, getFiveDaysVolProfTick
 };
 
 const API_SERVER = process.env.REACT_APP_STOCK_DATA_URL;
 const LOCAL_SERVER = process.env.REACT_APP_LOCAL_DATA;
+
+
 
 
 
@@ -166,12 +168,14 @@ async function saveRegressionValues({
   console.log(props);
   //use an array becasue thats what the actions is expecting
   toastr.success("Regression settings saved");
+
   props.dispatch(commodityRegressionData([regressionData]));
 }
 
-async function getIndicatorValues({indicator, timeframe, symbol}, props) {
+async function getIndicatorValues({indicator, timeframe, symbol, date}, props) {
+  if(!indicator ||!timeframe ||!symbol ||!date) throw 'Misssing params'
   let data = await fetch(
-    `${LOCAL_SERVER}/API/indicator/${indicator}/${timeframe}/${symbol}`
+    `${LOCAL_SERVER}/API/indicator/${indicator}/${timeframe}/${symbol}/${date}`
   );
     console.log(data)
   data = await data.json();
@@ -190,6 +194,17 @@ async function getMovers() {
   return movers;
 }
 
+async function getFiveDaysVolProfTick({symbol, date, props}) {
+  // console.log(API_SERVER);
+  if(!date)date = new Date().getTime()
+  else date = new Date(date).getTime()
+  let volProfTick = await fetch(`${API_SERVER}/API/indicator/VolProfile/1Min/${symbol}/${date}`);
+  volProfTick = await volProfTick.json()
+  return volProfTick;
+}
+
+
+
 async function getAllSymbolsData(dispatch) {
   // console.log('getAllSymbolsData')
   let data = await fetch(`${API_SERVER}/API/get_symbols_data`);
@@ -203,12 +218,12 @@ async function getAllSymbolsData(dispatch) {
 console.log()
 async function fetch_commodity_minutely_data({ date, symbol }) {
   // date = '6-5-2020'
-  let msg = (data, date, symbol)=> `${data.length} bars loaded for ${date} ${symbol}`
+  let msg = (data, date, symbol)=> `${data.length} bars loaded for ${new Date(date).toLocaleString()} ${symbol}`
   console.log(`Fetching data for ${date} ${symbol}`)
   try {
     symbol = settleSymbol(symbol);
     //TD_data/dailyParsedTickData
-    let API_SERVER = 'https://chartsapi.raveaboutdave.com'
+    // let API_SERVER = 'https://chartsapi.raveaboutdave.com'
     let data = await fetch(
       `${API_SERVER}/TD_data/dailyParsedTickData/${date}/${symbol}`
     );
@@ -239,6 +254,7 @@ async function fetchCommodityData({ timeframe, symbol }) {
     toastr.error(`Data Not loaded`, `An error occurred for ${symbol}`);  
   else
     toastr.success(`Data loaded`, `${data.length} bars loaded for ${symbol}`);
+  // debugger
   return data;
 }
 

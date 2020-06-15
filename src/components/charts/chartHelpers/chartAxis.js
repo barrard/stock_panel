@@ -68,7 +68,7 @@ function setTagText(value, xy, tagId, svg) {
     .attr("font-size", "1.3em")
     .style("display", "block");
 
-  if (tagId.includes("left")) tagText.attr("y", xy + 4).attr("x",-25);
+  if (tagId.includes("left")) tagText.attr("y", xy + 4).attr("x",-15);
   if (tagId.includes("right")) tagText.attr("y", xy + 4).attr("x", 15);
 
   //   case "top":

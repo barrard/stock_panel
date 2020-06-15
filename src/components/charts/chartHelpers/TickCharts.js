@@ -6,7 +6,7 @@ import { Link, withRouter } from "react-router-dom";
 import styled from "styled-components";
 import TickChart from "./TickChartClass.js";
 import IndicatorsChart from "./IndicatorsChart.js";
-
+import {TICKS} from '../chartHelpers/utils.js'
 //import Main_Layout from '../layouts/Main_Layout.js';
 class TickCharts extends React.Component {
   constructor(props) {
@@ -228,66 +228,3 @@ let DivContainer = styled.div`
   position: relative;
 `
 
-export const TICKS = {
-  ZT: 0.0039,
-  ZF: 0.0078,
-  ZN: 0.0156,
-  TN: 0.0156,
-  ZB: 0.0313,
-  GE: 0.005,
-  ZQ: 0.0025,
-  GLB: 0.0025,
-  UB: 0.0313,
-  SIL: 0.01,
-  GC: 0.1,
-  SI: 0.005,
-  HG: 0.0005,
-  MGC: 0.1,
-  PL: 0.1,
-  PA: 0.1,
-  "6A": 0.0001,
-  "6B": 0.0001,
-  "6C": 0.0001,
-  M6A: 0.0001,
-  M6B: 0.0001,
-  M6E: 0.0001,
-  J7: 0,
-  "6E": 0.0001,
-  "6J": 0,
-  "6M": 0,
-  E7: 0.0001,
-  "6N": 0.0001,
-  "6S": 0.0001,
-  ZC: 0.25,
-  XC: 0.125,
-  XW: 0.125,
-  XK: 0.125,
-  KE: 0.25,
-  ZO: 0.25,
-  ZS: 0.25,
-  ZM: 0.1,
-  ZL: 0.01,
-  ZW: 0.25,
-  NQ: 0.25,
-  RTY: 0.1,
-  ES: 0.25,
-  EMD: 0.1,
-  YM: 1,
-  NKD: 5,
-  BTC: 5,
-  MES: 0.25,
-  MNQ: 0.25,
-  M2K: 0.1,
-  MYM: 1,
-  BZ: 0.01,
-  QG: 0.005,
-  RB: 0.0001,
-  HO: 0.0001,
-  CL: 0.01,
-  NG: 0.001,
-  QM: 0.025,
-  LBS: 0.1,
-  GF: 0.025,
-  HE: 0.025,
-  LE: 0.025,
-};

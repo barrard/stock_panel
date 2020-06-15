@@ -37,7 +37,8 @@ import { addCandleSticks } from "./chartHelpers/candleStickUtils.js";
 import {
   drawAxisAnnotation,
   removeAllAxisAnnotations,
-  addAxisAnnotationElements, DrawCrossHair
+  addAxisAnnotationElements,
+  DrawCrossHair,
 } from "./chartHelpers/chartAxis.js";
 import { makeEMA, makeSTD, drawMALine } from "./chartHelpers/MA-lines.js";
 import API from "../API.js";
@@ -47,15 +48,18 @@ import {
   makeFibonacciData,
 } from "./chartHelpers/ChartMarkers/FibonacciLines.js";
 
-import VolumeBars from './chartHelpers/ChartMarkers/VolumeBars.js'
-
+import {
+  VolumeBars,
+  VolumeProfileBars,
+} from "./chartHelpers/ChartMarkers/VolumeBars.js";
+import { TICKS } from "./chartHelpers/utils.js";
 
 let wtfFlag = false;
 let margin = {
   top: 15,
   right: 60,
   bottom: 20,
-  left: 35,
+  left: 85,
 };
 
 let MOUSEX = 0;
@@ -66,9 +70,9 @@ let dragStartData = [];
 let lastBarCount = null;
 let partialOHLCdata = [];
 let zoomState = 1;
-let waitForDrag = false
-let waitForDragTimer//holdsTimer reference
-let waitForZoom = false
+let waitForDrag = false;
+let waitForDragTimer; //holdsTimer reference
+let waitForZoom = false;
 class CandleStickChart extends React.Component {
   constructor(props) {
     super(props);
@@ -147,6 +151,8 @@ class CandleStickChart extends React.Component {
         ema200: false,
         ema50: false,
         fibonacciLines: false,
+        volumeBars:false,
+        volumeProfile:false
       },
       chartRef: React.createRef(),
       innerWidth: width - (margin.left + margin.right),
@@ -158,8 +164,8 @@ class CandleStickChart extends React.Component {
       priceScale: scaleLinear().range([innerHeight, 0]),
       volScale: scaleLinear().range([innerHeight, 0]).nice(),
 
-      priceChangeData: [], //for time and sales
-      volumePriceProfile: {},
+      // priceChangeData: [], //for time and sales
+      volProfile: {},
 
       candleHeightScale: scaleLinear().range([0, innerHeight]),
 
@@ -195,7 +201,10 @@ class CandleStickChart extends React.Component {
         this.setNewData(symbol, timeframe);
       }
     } else if (this.props.type === "commodity") {
-      let regressionData= await API.getCommodityRegressionValues(this.props.symbol, this.props);
+      let regressionData = await API.getCommodityRegressionValues(
+        this.props.symbol,
+        this.props
+      );
       API.getAllCommodityTrades(this.props.symbol, this.props);
       if (!this.props.stock_data.commodity_data[symbol]) {
         // console.log("loadCommodityData");
@@ -207,21 +216,24 @@ class CandleStickChart extends React.Component {
         // console.log("WTF WE ALREADY HAVE DATA>!");
         this.setNewData(symbol, timeframe);
       }
-      console.log({regressionData})
-      let {fibonacciMinMax,
-        fibonacciSensitivity,
-        minMaxTolerance,
-        priceLevelMinMax,
-        priceLevelSensitivity,
-        regressionErrorLimit,} = this.props.stock_data.commodityRegressionData[symbol][timeframe]
-
-        this.setState({
+      console.log({ regressionData });
+      let {
         fibonacciMinMax,
         fibonacciSensitivity,
         minMaxTolerance,
         priceLevelMinMax,
         priceLevelSensitivity,
-        regressionErrorLimit      })
+        regressionErrorLimit,
+      } = this.props.stock_data.commodityRegressionData[symbol][timeframe];
+
+      this.setState({
+        fibonacciMinMax,
+        fibonacciSensitivity,
+        minMaxTolerance,
+        priceLevelMinMax,
+        priceLevelSensitivity,
+        regressionErrorLimit,
+      });
     }
   }
   componentDidUpdate(prevProps, prevState) {
@@ -242,7 +254,6 @@ class CandleStickChart extends React.Component {
     this.handleSymbolChange(prevState, prevProps);
     this.handleNewTick(prevState, prevProps);
     this.didWidthChange(prevProps);
-
   }
 
   didWidthChange(prevPops) {
@@ -251,12 +262,13 @@ class CandleStickChart extends React.Component {
       let { width } = this.props;
       let innerWidth = width - (margin.left + margin.right);
       let { timeScale } = this.state;
-      timeScale.range([0, innerWidth])
+      timeScale.range([0, innerWidth]);
       this.setState({
-        timeScale, innerWidth, width
+        timeScale,
+        innerWidth,
+        width,
       });
       setTimeout(() => this.setupChart(), 0);
-
     }
   }
 
@@ -430,7 +442,7 @@ class CandleStickChart extends React.Component {
           }
           currentData.push(currentTickData);
           currentRawOHLCData.push(currentTickData);
-          console.log('New Bar')
+          console.log("New Bar");
           this.createPriceLevelsData();
         } else {
           // console.log("not pushing");
@@ -446,7 +458,7 @@ class CandleStickChart extends React.Component {
           allOHLCdata: [...currentData],
           rawOHLCData: [...currentRawOHLCData],
         });
-      
+
         setTimeout(() => this.setupChart(), 0);
       }
     } else if (type == "stock") {
@@ -596,11 +608,9 @@ class CandleStickChart extends React.Component {
             !this.props.stock_data.commodity_data[symbol]["1Min"]
           ) {
             let props = this.props;
-            let tryGetOneMoreDay = true;
             await getMinutelyCommodityData({
               symbol,
               props,
-              tryGetOneMoreDay,
             });
           } else {
             if (!this.props.stock_data.commodity_data[symbol][timeframe]) {
@@ -616,16 +626,15 @@ class CandleStickChart extends React.Component {
           timeframe === "60Min" ||
           timeframe === "5Min"
         ) {
+          //If we get a timeframe other than 1min, lets also just get the 1Min
           if (
             !this.props.stock_data.commodity_data[symbol] ||
             !this.props.stock_data.commodity_data[symbol]["1Min"]
           ) {
             let props = this.props;
-            let tryGetOneMoreDay = true;
             await getMinutelyCommodityData({
               symbol,
               props,
-              tryGetOneMoreDay,
             });
           }
           if (
@@ -713,23 +722,26 @@ class CandleStickChart extends React.Component {
       timeframe !== "weekly" &&
       timeframe !== "intraday"
     ) {
-      console.log("getMinutelyCommodityData");
-      let tryGetOneMoreDay = true;
-      await getMinutelyCommodityData({ symbol, props, tryGetOneMoreDay });
-    } else {
-      if (
-        !this.props.stock_data.commodity_data[symbol] ||
-        !this.props.stock_data.commodity_data[symbol]["1Min"]
-      ) {
-        let tryGetOneMoreDay = true;
-        await getMinutelyCommodityData({ symbol, props, tryGetOneMoreDay });
-        setTimeout(async () => {
-          let props = this.props;
-          await view_selected_commodity({ timeframe, symbol, props });
-        }, 2000);
-      } else {
-        await view_selected_commodity({ timeframe, symbol, props });
+      if (timeframe === "1Min") {
+        console.log("getMinutelyCommodityData");
+        let volProfile = await API.getFiveDaysVolProfTick({ symbol });
+        this.setState({ volProfile });
+        await getMinutelyCommodityData({ symbol, props });
       }
+    } else {
+      // if (
+      //   !this.props.stock_data.commodity_data[symbol] ||
+      //   !this.props.stock_data.commodity_data[symbol]["1Min"]
+      // ) {
+      //   let tryGetOneMoreDay = true;
+      //   await getMinutelyCommodityData({ symbol, props, tryGetOneMoreDay });
+      //   setTimeout(async () => {
+      //     let props = this.props;
+      //     await view_selected_commodity({ timeframe, symbol, props });
+      //   }, 2000);
+      // } else {
+      await view_selected_commodity({ timeframe, symbol, props });
+      // }
     }
   }
 
@@ -809,9 +821,9 @@ class CandleStickChart extends React.Component {
       .ticks(8)
       .tickSize(-this.state.innerWidth);
 
-      let volAxis = axisLeft(this.state.volScale).ticks(4);
+    let volAxis = axisLeft(this.state.volScale).ticks(4);
 
-      let volProfileAxis = axisTop(this.state.volProfileScale).ticks(4);
+    let volProfileAxis = axisTop(this.state.volProfileScale).ticks(4);
 
     //Set up some data
     this.createPriceLevelsData();
@@ -841,23 +853,23 @@ class CandleStickChart extends React.Component {
       )
       .call(priceAxis);
 
-        //appand volAxis
+    //appand volAxis
     let volAxisG = svg
-    .append("g")
-    .attr("class", "white volAxis")
-    .attr("transform", `translate(${margin.left}, ${margin.top})`)
-    .call(volAxis);
+      .append("g")
+      .attr("class", "white volAxis")
+      .attr("transform", `translate(${margin.left}, ${margin.top})`)
+      .call(volAxis);
 
-  //append the crosshair marker
-  volAxisG
-    .append("path")
-    .attr("id", `leftVolTag`)
-    // .attr("stroke", "blue")
-    .attr("stroke-width", 2);
-  volAxisG.append("text").attr("id", `leftVolTagText`);
+    //append the crosshair marker
+    volAxisG
+      .append("path")
+      .attr("id", `leftVolTag`)
+      // .attr("stroke", "blue")
+      .attr("stroke-width", 2);
+    volAxisG.append("text").attr("id", `leftVolTagText`);
 
-      //append volProfileAxis group
-      let volProfileAxisG = svg
+    //append volProfileAxis group
+    let volProfileAxisG = svg
       .append("g")
       .attr("class", "white volProfileAxis")
       .attr("transform", `translate(${margin.left}, ${margin.top})`)
@@ -882,8 +894,7 @@ class CandleStickChart extends React.Component {
       .attr("fill", "black");
     /* CrossHair */
     // create crosshairs
-    var crosshair  =DrawCrossHair(chartWindow)
-
+    var crosshair = DrawCrossHair(chartWindow);
 
     chartWindow
       .append("rect")
@@ -964,13 +975,13 @@ class CandleStickChart extends React.Component {
         // setTimeout(()=>waitForZoom=false)
         return that.zoomed();
       });
-      // isDragging = false
+    // isDragging = false
 
     const d3drag = drag()
       .on("start", function () {
         // if(isDragging)return//already dragging
         // isDragging = true
-       
+
         return that.dragStart();
       })
       .on("drag", function () {
@@ -992,16 +1003,14 @@ class CandleStickChart extends React.Component {
     let fibData = makeFibonacciData(this, {
       timeScale: this.state.timeScale,
       priceScale: this.state.priceScale,
-
     });
-    console.log({fibData})
+    console.log({ fibData });
     this.setState({
       timeAxis,
       priceAxis,
       fibData,
       volAxis,
       volProfileAxis,
-
     });
     this.draw();
   } //setupChart()
@@ -1029,7 +1038,6 @@ class CandleStickChart extends React.Component {
       "priceAxis"
     );
     drawAxisAnnotation("leftVolTag", this.state.volScale, y, svg, "volAxis");
-
   }
 
   zoomed() {
@@ -1142,27 +1150,11 @@ class CandleStickChart extends React.Component {
       drawData = partialOHLCdata;
     }
     if (!drawData || !drawData.length || drawData.length < 2) return;
-
-    let volPriceKeys = Array.from(Object.keys(this.state.volumePriceProfile));
     let volValues = drawData.map((d) => d.volume);
     let [volMin, volMax] = extent(volValues);
-    
-    debugger
-
-    volPriceKeys = volPriceKeys.filter((v) => v >= priceMin && v <= priceMax);
-    volPriceKeys = volPriceKeys.map((v) => +v);
-    let volProfileValues = volPriceKeys.map(
-      (volPriceKey) => this.state.volumePriceProfile[volPriceKey]
-    );
-    // console.log({ volProfileValues });
-    let rawVolProfileValues = volProfileValues.map(
-      ({ up, down, neutral }) => up + down + neutral
-    );
-    let [volProfileMin, volProfileMax] = extent(rawVolProfileValues);
-    
-    
     let priceMax = max(drawData, (d) => d.high);
     let priceMin = min(drawData, (d) => d.low);
+
     // priceMax = priceMax+(priceMax*.1);
     // priceMin = priceMin+(priceMin*.1);
 
@@ -1177,12 +1169,11 @@ class CandleStickChart extends React.Component {
       // timeMin ,
       // timeMax
     ]);
-    
+
     this.state.candleHeightScale.domain([0, priceRange]);
     this.state.priceScale.domain([priceMin, priceMax]);
     this.state.volScale.domain([0, volMax]);
-    this.state.volProfileScale.domain([volProfileMax, 0]);
-
+    // debugger
     // get the SVG element
     let svg = select(this.state.chartRef.current);
 
@@ -1191,9 +1182,28 @@ class CandleStickChart extends React.Component {
     svg.select(".volAxis").call(this.state.volAxis);
     svg.select(".volProfileAxis").call(this.state.volProfileAxis);
 
-
     let chartWindow = svg.select(".chartWindow");
     let candleWidth = this.state.innerWidth / drawData.length;
+
+    this.addHighLowMarkers(this.state.minMaxValues);
+    // appendFutureLines();
+    let scales = {
+      timeScale: this.state.timeScale,
+      priceScale: this.state.priceScale,
+      volScale: this.state.volScale,
+      volProfileScale: this.state.volProfileScale,
+    };
+    let moreData = { priceMax, priceMin };
+    this.appendEMA(chartWindow, scales);
+    this.appendSTD();
+    this.appendImportantPriceLevel(this, chartWindow, scales);
+    this.appendFibonacciLines(this, chartWindow, scales);
+
+    this.appendPriceLevelRanges(this, chartWindow, scales);
+    this.appendRegressionLines(this, chartWindow, scales);
+    this.appendTrades(this, chartWindow, scales);
+    this.drawVolumeBars(this, chartWindow, scales);
+    this.drawVolumeProfile(this, chartWindow, scales, moreData);
 
     addCandleSticks(
       drawData,
@@ -1203,26 +1213,7 @@ class CandleStickChart extends React.Component {
       this.state.priceScale,
       this.state.candleHeightScale
     );
-
-    this.addHighLowMarkers(this.state.minMaxValues);
-    // appendFutureLines();
-    let scales = {
-      timeScale: this.state.timeScale,
-      priceScale: this.state.priceScale,
-      volScale:this.state.volScale,
-      volProfileScale:this.state.volProfileScale
-    };
-    this.appendEMA(chartWindow, scales);
-    this.appendSTD();
-    this.appendImportantPriceLevel(this, chartWindow, scales);
-    this.appendFibonacciLines(this, chartWindow, scales);
-
-    this.appendPriceLevelRanges(this, chartWindow, scales);
-    this.appendRegressionLines(this, chartWindow, scales);
-    this.appendTrades(this, chartWindow, scales);
-    this.drawVolumeBars(this, chartWindow, scales)
   }
-
 
   appendEMA(chartWindow, { timeScale, priceScale }) {
     if (this.state.visibleIndicators.ema20) {
@@ -1451,15 +1442,14 @@ exitTime(pin):1585659963841
         return "yellow";
       })
       .attr("class", `regressionLines`)
-      .style("opacity", (d)=>{
+      .style("opacity", (d) => {
         //display shorter lines with more opacity
-        let length=d.length/10000
-        if(length>2000) return .9
-        if(length>1500)return .7
-        if(length>1000)return .5
-        if(length>500)return .3
-        return .2
-
+        let length = d.length / 10000;
+        if (length > 2000) return 0.9;
+        if (length > 1500) return 0.7;
+        if (length > 1000) return 0.5;
+        if (length > 500) return 0.3;
+        return 0.2;
       })
       .on("click", function (d) {
         console.log("click");
@@ -1511,16 +1501,41 @@ exitTime(pin):1585659963841
       .attr("class", `regressionNearbyPoint`);
   }
 
-  drawVolumeBars(that, chartWindow, scales) {
-    // debugger
-    let dataPoints = partialOHLCdata
-    let options = {
-      innerHeight:this.state.innerHeight,
-      innerWidth:this.state.innerWidth
-    }
-    let markerClass = 'volBar'
-    VolumeBars({that, chartWindow, dataPoints, scales, options, markerClass})
+  drawVolumeProfile(that, chartWindow, scales, { priceMax, priceMin }) {
+    if (!this.state.visibleIndicators.volumeProfile)return
 
+    let dataPoints = this.state.volProfile;
+    const tickSize = TICKS[this.state.symbol];
+
+    let options = {
+      tickSize,
+      opacity: 0.2,
+      innerHeight: this.state.innerHeight,
+      innerWidth: this.state.innerWidth,
+      priceMax,
+      priceMin,
+    };
+    let markerClass = "volProfileBar";
+    VolumeProfileBars({
+      that,
+      chartWindow,
+      dataPoints,
+      scales,
+      options,
+      markerClass,
+    });
+  }
+  drawVolumeBars(that, chartWindow, scales) {
+    if (!this.state.visibleIndicators.volumeBars)return
+    let dataPoints = partialOHLCdata;
+    let options = {
+      opacity: 0.2,
+      innerHeight: this.state.innerHeight,
+      innerWidth: this.state.innerWidth,
+    };
+    let markerClass = "volBar";
+    // debugger
+    VolumeBars({ that, chartWindow, dataPoints, scales, options, markerClass });
   }
 
   appendPriceLevelRanges(that, chartWindow, { priceScale, timeScale }) {
@@ -1704,23 +1719,18 @@ exitTime(pin):1585659963841
     return minMaxValues;
   }
 
-
   removeLine() {
     return console.log("test");
   }
 
   toggleIndicators(indicator) {
-    console.log(this);
-    console.log({ indicator, minMaxValues: this.state.minMaxValues });
     let svg = select(this.state.chartRef.current);
     let markers = svg.selectAll(`.${indicator}`);
     markers.remove();
     let temp = this.state.visibleIndicators;
-    console.log(temp);
     let val = temp[indicator];
     val = !val;
     temp[indicator] = val;
-    console.log(temp);
     this.setState({
       visibleIndicators: temp,
     });
@@ -1762,7 +1772,7 @@ exitTime(pin):1585659963841
   }
 
   createPriceLevelsData() {
-    console.log('createPriceLevelsData ')
+    console.log("createPriceLevelsData ");
     // console.log(this.state.minMaxTolerance);
     if (!this.state.rawOHLCData) return;
     // console.log(this.state.rawOHLCData)
@@ -1803,24 +1813,24 @@ exitTime(pin):1585659963841
       let fibData = makeFibonacciData(this, {
         timeScale: this.state.timeScale,
         priceScale: this.state.priceScale,
-  
       });
 
       this.setState({
         minMaxValues: minMaxValues,
         // consolidatedMinMaxPoints: newConsolidatedPoints,
         regressionLines: { highLines, lowLines },
-        fibData
+        fibData,
       });
     }, 0);
     setTimeout(() => this.draw(), 0);
   }
-  setTimeframeActive(){
-    let {timeframe, symbol} = this.state
-    let {_id} = this.props.stock_data.commodityRegressionData[symbol][timeframe]
-    console.log(_id)
-    API.setTimeframeActive(_id, timeframe, this.props)
-
+  setTimeframeActive() {
+    let { timeframe, symbol } = this.state;
+    let { _id } = this.props.stock_data.commodityRegressionData[symbol][
+      timeframe
+    ];
+    console.log(_id);
+    API.setTimeframeActive(_id, timeframe, this.props);
   }
 
   saveRegressionSettings() {
@@ -1833,7 +1843,7 @@ exitTime(pin):1585659963841
       priceLevelSensitivity,
       fibonacciMinMax,
       fibonacciSensitivity,
-      timeframe
+      timeframe,
     } = this.state;
     let { props } = this;
     API.saveRegressionValues({
@@ -1864,7 +1874,7 @@ exitTime(pin):1585659963841
       fibonacciMinMax,
       fibonacciSensitivity,
     } = stock_data.commodityRegressionData[symbol][timeframe];
-    console.log(stock_data.commodityRegressionData[symbol][timeframe])
+    console.log(stock_data.commodityRegressionData[symbol][timeframe]);
     this.setState({
       timeframe,
       priceLevelMinMax,
@@ -1876,70 +1886,67 @@ exitTime(pin):1585659963841
     });
   }
 
-  runRegressionAnalysis(){
-      //Run regrerssion lines
-      console.log('running regression lines analysis ')
+  runRegressionAnalysis() {
+    //Run regrerssion lines
+    console.log("running regression lines analysis ");
 
-      let minMaxMostRecentData = true;
-      let minMaxValues = this.runMinMax(
-        this.state.minMaxTolerance,
-        minMaxMostRecentData
-      );
-      // console.log({minMaxValues, lows})
-      // let highPoints = [...minMaxValues.high.maxValues, ...minMaxValues.close.maxValues].sort(byDate)
-      // let lowPoints = [...minMaxValues.low.minValues, ...minMaxValues.close.minValues].sort(byDate)
-      let highPoints = [...minMaxValues.high.maxValues];
-      let lowPoints = [...minMaxValues.low.minValues];
-      //run a cool regression function with the min max values
-      let errLimit = this.state.regressionErrorLimit;
-      // console.log({highPoints,
-      //   lowPoints})
-      let highLines = diff.regressionAnalysis(highPoints, errLimit);
-      let lowLines = diff.regressionAnalysis(lowPoints, errLimit);
-      this.setState({
-        minMaxValues: minMaxValues,
-        regressionLines: { highLines, lowLines },
-      })
+    let minMaxMostRecentData = true;
+    let minMaxValues = this.runMinMax(
+      this.state.minMaxTolerance,
+      minMaxMostRecentData
+    );
+    // console.log({minMaxValues, lows})
+    // let highPoints = [...minMaxValues.high.maxValues, ...minMaxValues.close.maxValues].sort(byDate)
+    // let lowPoints = [...minMaxValues.low.minValues, ...minMaxValues.close.minValues].sort(byDate)
+    let highPoints = [...minMaxValues.high.maxValues];
+    let lowPoints = [...minMaxValues.low.minValues];
+    //run a cool regression function with the min max values
+    let errLimit = this.state.regressionErrorLimit;
+    // console.log({highPoints,
+    //   lowPoints})
+    let highLines = diff.regressionAnalysis(highPoints, errLimit);
+    let lowLines = diff.regressionAnalysis(lowPoints, errLimit);
+    this.setState({
+      minMaxValues: minMaxValues,
+      regressionLines: { highLines, lowLines },
+    });
   }
 
   updateSettingsValue(e, value) {
     this.setState({
       [value]: parseFloat(e.target.value),
     });
-  
-   this.runNewSettings(value)
+
+    this.runNewSettings(value);
   }
 
   runNewSettings(settingName) {
-    console.log({settingName})
-    if( settingName=== 'minMaxTolerance'||
-    settingName === 'regressionErrorLimit'){
-
-      this.runRegressionAnalysis()
-
-    }else if(
-      settingName ==="priceLevelMinMax"||
-      settingName === 'priceLevelSensitivity'
-    ){
+    console.log({ settingName });
+    if (
+      settingName === "minMaxTolerance" ||
+      settingName === "regressionErrorLimit"
+    ) {
+      this.runRegressionAnalysis();
+    } else if (
+      settingName === "priceLevelMinMax" ||
+      settingName === "priceLevelSensitivity"
+    ) {
       //Run price levels
-      console.log('running runPriceLevels ')
+      console.log("running runPriceLevels ");
 
       this.runPriceLevels();
-
-    }else if(
-      settingName === 'fibonacciMinMax'||
+    } else if (
+      settingName === "fibonacciMinMax" ||
       settingName === '"fibonacciSensitivity"'
-    ){
-      console.log('running makeFibonacciData ')
+    ) {
+      console.log("running makeFibonacciData ");
       let fibData = makeFibonacciData(this, {
         timeScale: this.state.timeScale,
         priceScale: this.state.priceScale,
-  
       });
-      this.setState({fibData})
+      this.setState({ fibData });
     }
     setTimeout(() => this.draw(), 0);
-
   }
   render() {
     // console.log("RENDERING??");
@@ -1973,11 +1980,11 @@ exitTime(pin):1585659963841
           <Loader width={this.props.width} height={this.state.height} />
         )}
         <MomoIndicator
-            symbol={this.state.symbol}
-            timeframe={this.state.timeframe}
-            width={this.props.width}
-            height={150}
-          />
+          symbol={this.state.symbol}
+          timeframe={this.state.timeframe}
+          width={this.props.width}
+          height={150}
+        />
 
         <svg
           ref={this.state.chartRef}
@@ -2007,8 +2014,6 @@ exitTime(pin):1585659963841
             saveRegressionSettings={() => this.saveRegressionSettings()}
             //tells stock bot its active
             setActive={() => this.setTimeframeActive()}
-         
-    
           />
         </RegressionSettingsContainer>
 

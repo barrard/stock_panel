@@ -79,22 +79,24 @@ export function set_sector_data(sector, data) {
 
 
 export function add_commodity_minutely_data({symbol, chart_data}) {
+
   // console.log({chart_data})
-  chart_data.forEach(r => {
-    r.timestamp = new Date(parseInt(r.start_timestamp)).getTime()
-    r.open = +r.open
-    r.close = +r.close
-    r.high = +r.high
-    r.low = +r.low
-    r.volume= +r.volume
-    r.sample_times = JSON.parse(r.sample_times)
-    r.bid_prices = JSON.parse(r.bid_prices)
-    r.ask_prices = JSON.parse(r.ask_prices)
-    r.bid_sizes = JSON.parse(r.bid_sizes)
-    r.ask_sizes = JSON.parse(r.ask_sizes)
-    r.prices = JSON.parse(r.prices)
-    r.vols = JSON.parse(r.vols)
-  })
+  // debugger
+  // chart_data.forEach(r => {
+  //   r.timestamp = new Date(parseInt(r.start_timestamp)).getTime()
+  //   r.open = +r.open
+  //   r.close = +r.close
+  //   r.high = +r.high
+  //   r.low = +r.low
+  //   r.volume= +r.volume
+  //   r.sample_times = JSON.parse(r.sample_times)
+  //   r.bid_prices = JSON.parse(r.bid_prices)
+  //   r.ask_prices = JSON.parse(r.ask_prices)
+  //   r.bid_sizes = JSON.parse(r.bid_sizes)
+  //   r.ask_sizes = JSON.parse(r.ask_sizes)
+  //   r.prices = JSON.parse(r.prices)
+  //   r.vols = JSON.parse(r.vols)
+  // })
   let rawCommodityChartData = [...chart_data]
   let timeframe = '1Min'
   return {

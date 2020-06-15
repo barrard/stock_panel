@@ -21,6 +21,18 @@ class Contracts extends React.Component {
           TRADES
         </ToggleIndicatorButton>
         <ToggleIndicatorButton
+          onClick={() => this.props.toggleIndicators("volumeBars")}
+          isSet={this.props.visibleIndicators.volumeBars}
+        >
+          Vol
+        </ToggleIndicatorButton>
+        <ToggleIndicatorButton
+          onClick={() => this.props.toggleIndicators("volumeProfile")}
+          isSet={this.props.visibleIndicators.volumeProfile}
+        >
+          Vol Profile
+        </ToggleIndicatorButton>
+        <ToggleIndicatorButton
           onClick={() => this.props.toggleIndicators("minMaxMarkers")}
           isSet={this.props.visibleIndicators.minMaxMarkers}
         >
@@ -46,7 +58,6 @@ class Contracts extends React.Component {
         >
           Fibonacci Lines
         </ToggleIndicatorButton>
-
 
         <ToggleIndicatorButton
           onClick={() => this.props.toggleIndicators("ema20")}

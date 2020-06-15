@@ -63,10 +63,10 @@ class IndicatorChart extends React.Component {
     };
   }
 
-  async loadIndicatorData({ indicator, timeframe, symbol }) {
+  async loadIndicatorData({ indicator, timeframe, symbol, date }) {
     console.log({ indicator, timeframe, symbol });
     let indicatorData = await API.getIndicatorValues(
-      { indicator, timeframe, symbol },
+      { indicator, timeframe, symbol, date },
       this.props
     );
     console.log(indicatorData);
@@ -79,8 +79,9 @@ class IndicatorChart extends React.Component {
     let indicatorData = await this.loadIndicatorData({
       indicator,
       timeframe,
-      symbol,
+      symbol, date
     });
+    
     let momoData = this.getMomoData(indicatorData)
 
     let yScale = scaleLinear().range([innerHeight, 0]);
