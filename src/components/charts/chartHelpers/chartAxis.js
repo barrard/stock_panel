@@ -33,7 +33,22 @@ export const drawAxisAnnotation = (tagId, scale, xy, svg, axisClass) => {
   let axisG = svg.select(`.${axisClass}`)
   addAxisAnnotationElements(axisG, tagId)
 
-  let value = scale.invert(xy);
+  let value
+  //current means this will be a price and not a px val
+  if(tagId.includes("current")){
+    
+    //the current value is already a price
+    //so no need to invert
+    value = xy
+    xy = scale(xy)
+  }
+
+  else{
+    //this will be a px value so must
+    //invert to a price value
+    value = scale.invert(xy);
+
+  }
   // console.log(value)
   // value = formatTime(value);
   // console.log(value)
@@ -68,14 +83,14 @@ function setTagText(value, xy, tagId, svg) {
     .attr("font-size", "1.3em")
     .style("display", "block");
 
-  if (tagId.includes("left")) tagText.attr("y", xy + 4).attr("x",-15);
-  if (tagId.includes("right")) tagText.attr("y", xy + 4).attr("x", 15);
+  if (tagId.toLowerCase().includes("left")) tagText.attr("y", xy + 4).attr("x",-15);
+  if (tagId.toLowerCase().includes("right")) tagText.attr("y", xy + 4).attr("x", 15);
 
   //   case "top":
   //     tagText.attr("y", 0 - 6).attr("x", xy);
 
-  if (tagId.includes("top")) tagText.attr("y", 0 - 6).attr("x", xy);
-  if (tagId.includes("bottom")) tagText.attr("y", +15).attr("x", xy);
+  if (tagId.toLowerCase().includes("top")) tagText.attr("y", 0 - 6).attr("x", xy);
+  if (tagId.toLowerCase().includes("bottom")) tagText.attr("y", +15).attr("x", xy);
 }
 
 
@@ -116,15 +131,15 @@ export const hideElements = (svg, elements) => {
 };
 
 function getAccessorPathData(tagId, xy) {
-  if (tagId.includes("left"))
+  if (tagId.toLowerCase().includes("left"))
     return axisMarkerTagAccessor(leftAxisMarkerTagLine(xy));
-  if (tagId.includes("right"))
+  if (tagId.toLowerCase().includes("right"))
     return axisMarkerTagAccessor(rightAxisMarkerTagLine(xy));
 
-    if (tagId.includes("bottom"))
+    if (tagId.toLowerCase().includes("bottom"))
     return axisMarkerTagAccessor(bottomAxisMarkerTagLine(xy));
 
-    if (tagId.includes("top"))
+    if (tagId.toLowerCase().includes("top"))
     return axisMarkerTagAccessor(topAxisMarkerTagLine(xy));
   }
 

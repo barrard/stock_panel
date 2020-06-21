@@ -13,7 +13,7 @@ class RegressionSettings extends React.Component {
     };
   }
   render() {
-    let {timeframe, stock_data}= this.props
+    let {timeframe, stock_data, updateVolProfile}= this.props
     // console.log(this.props)
     let symbol = this.props.stock_data.search_symbol;
     let active 
@@ -32,7 +32,7 @@ class RegressionSettings extends React.Component {
       <CollapsibleDiv isMinimized={this.state.isMinimized}>
 
         <div className=" ">
-          <SettingsInputs settingsData={this.props} />
+          <SettingsInputs updateVolProfile={updateVolProfile} settingsData={this.props} />
         </div>
         <br />
         <ToggleActiveBtn 
@@ -86,37 +86,58 @@ const ToggleActiveBtn = ({toggle, active})=>{
 }
 
 function SettingsInputs(props) {
-  let { settingsData } = props;
+  let { settingsData, updateVolProfile } = props;
   return (
-    <div className="row flex_center">
+    <div className="">
+      <div className='col-sm-12'>
+        
       <SettingsUI
-        title="Regression Line Settings"
-        headings={["MinMax Regression", "Regression RMS error limit"]}
+        title="Regression"
+        headings={["MinMax", "error limit"]}
         inputs={["minMaxTolerance", "regressionErrorLimit"]}
         settingsData={settingsData}
-      />
+        />
+        </div>
+        <div className='col-sm-12'>
+          
       <SettingsUI
-        title="Price Level Settings"
-        headings={["Price Level MinMax", "Price level tolerance"]}
+        title="Price Level"
+        headings={["MinMax", "tolerance"]}
         inputs={["priceLevelMinMax", "priceLevelSensitivity"]}
         settingsData={settingsData}
-      />
+        />
+        </div>
+        <div className='col-sm-12'>
+          
       <SettingsUI
-        title="Fibonacci Settings"
-        headings={["Fibonacci MinMax", "Fibonacci Sensitivity"]}
+        title="Fibonacci"
+        headings={["MinMax", "Sensitivity"]}
         inputs={["fibonacciMinMax", "fibonacciSensitivity"]}
         settingsData={settingsData}
-      />
+        />
+        </div>
+        <div className='col-sm-12'>
+          
+      <SettingsUI
+        title="Vol Profile"
+        headings={["Binning", "Bar Count"]}
+        inputs={["volProfileBins", "volProfileBarCount"]}
+        settingsData={settingsData}
+        action={{onClick:updateVolProfile, name:"Update Profile"}}
+        />
+        </div>
     </div>
   );
 }
 
-const SettingsUI = ({ title, headings, inputs, settingsData }) => {
+const SettingsUI = ({ title, headings, inputs, settingsData, action }) => {
   let { updateSettingsValue } = settingsData;
   return (
-    <>
+    <div className='row flex_center'>
+      <div className='col-sm-3 flex_center'>
       <Title title={title} />
-      <div className="col-sm-8 ">
+      </div>
+      <div className="col-sm-5">
         {inputs &&
           inputs.map((input, index) => (
             <div className="row flex_center" key={input}>
@@ -134,27 +155,34 @@ const SettingsUI = ({ title, headings, inputs, settingsData }) => {
               />
             </div>
           ))}
-      </div>
+                </div>
+                <div className='col-sm-2 flex_center'>
+                  
+              {action&&
+              
+                <button onClick={action.onClick}>{action.name}</button>
+              }
+              </div>
         <hr className="littleWhiteLine" />
-    </>
+        </div>
   );
 };
 
 
 const Title = ({ title }) => (
-  <div className="col-sm-4 flex_end ">
+  <div>
     <Label>{title}</Label>
   </div>
 );
 
 const Heading = ({ heading }) => (
-  <div className="col-sm-4 flex_center">
+  <div className="col-sm-6 flex_center">
     <Label>{heading}</Label>
   </div>
 );
 
 const SettingsInput = ({ value, onChange, step }) => (
-  <div className="col-sm-3 flex_start">
+  <div className="col-sm-6 flex_center">
     <input
       className="small_input"
       value={value}

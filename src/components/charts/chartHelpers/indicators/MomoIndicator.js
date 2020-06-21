@@ -18,12 +18,14 @@ import { drawAxisAnnotation, removeAllAxisAnnotations } from "../chartAxis.js";
 import { appendRegressionLines } from "../ChartMarkers/RegressionLines.js";
 import API from "../../../API.js";
 import Loader from "../../../smallComponents/LoadingSpinner.js";
+import {CenterLabel} from '../ChartMarkers/Labels.js'
+
 
 const margin = {
   top: 15,
   right: 60,
   bottom: 20,
-  left: 35,
+  left: 65,
 };
 
 let MOUSEX = 0;
@@ -62,36 +64,39 @@ class IndicatorChart extends React.Component {
     };
   }
 
-  async loadIndicatorData() {
-    // debugger
-    let { indicator, innerHeight } = this.state;
-    let { timeframe, symbol } = this.props;
-    let date = new Date().getTime();
-    console.log({ indicator, timeframe, symbol });
-    let indicatorData = await API.getIndicatorValues(
-      { indicator, timeframe, symbol, date },
-      this.props
-    );
-    console.log(indicatorData);
+  // async loadIndicatorData() {
+  //   // debugger
+  //   let { indicator, innerHeight } = this.state;
+  //   let { timeframe, symbol } = this.props;
+  //   let date = new Date().getTime();
+  //   console.log({ indicator, timeframe, symbol });
+  //   // let indicatorData = await API.getIndicatorValues(
+  //   //   { indicator, timeframe, symbol, date },
+  //   //   this.props
+  //   // );
+  //   console.log(indicatorData);
 
-    let momoData = this.getMomoData(indicatorData);
+  //   let momoData = this.getMomoData(indicatorData);
 
-    partialOHLCdata = momoData;
-    let timestamps = partialOHLCdata.map((d) => d.x);
-    this.setState({
-      timestamps,
-      indicatorData,
-      momoData,
-    });
-    setTimeout(() => this.setupChart(), 0);
-    return indicatorData;
-  }
+  //   partialOHLCdata = momoData;
+  //   let timestamps = partialOHLCdata.map((d) => d.x);
+  //   this.setState({
+  //     timestamps,
+  //     indicatorData,
+  //     momoData,
+  //   });
+  //   setTimeout(() => this.setupChart(), 0);
+  //   return indicatorData;
+  // }
 
   async componentDidMount() {
-    await this.loadIndicatorData();
+    console.log(this.props)
+    console.log(this.state)
+    // await this.loadIndicatorData();
   }
 
   componentDidUpdate(prevProps, prevState) {
+
     // console.log({prevProps, prevState})
     // let {indicatorsData} = prevState
     // let currentIndicatorsData = this.state.indicatorsData
@@ -102,9 +107,9 @@ class IndicatorChart extends React.Component {
     // }
     this.handleTimeFrameChange(prevState, prevProps);
 
-    // this.checkIfDataUpdated(prevProps);
+    this.checkIfDataUpdated(prevProps);
     // this.didTickDataUpdate(prevProps);
-    // this.didWidthChange(prevProps);
+    this.didWidthChange(prevProps);
   }
 
   async handleTimeFrameChange(prevState, prevProps) {
@@ -112,24 +117,24 @@ class IndicatorChart extends React.Component {
     let currentTimeframe = this.props.timeframe;
     if (prevTimeframe !== currentTimeframe) {
       console.log("NEW TIME FRAME MOMOMOMOOOOO");
-      this.loadIndicatorData();
+      // this.loadIndicatorData();
     }
   }
 
-  //   didWidthChange(prevProps) {
-  //     if (prevProps.width != this.props.width) {
-  //       console.log("Update width");
-  //       let { width } = this.props;
-  //       let innerWidth = width - (margin.left + margin.right);
-  //       let { timeScale } = this.state;
-  //       timeScale.range([0, innerWidth])
-  //       this.setState({
-  //         timeScale, innerWidth
-  //       });
-  //       setTimeout(() => this.setupChart(), 0);
+    didWidthChange(prevProps) {
+      if (prevProps.width != this.props.width) {
+        console.log("Update width");
+        let { width } = this.props;
+        let innerWidth = width - (margin.left + margin.right);
+        let { timeScale } = this.state;
+        timeScale.range([0, innerWidth])
+        this.setState({
+          timeScale, innerWidth
+        });
+        setTimeout(() => this.setupChart(), 0);
 
-  //     }
-  //   }
+      }
+    }
 
   //   didTickDataUpdate(prevProps) {
   //     if(!partialOHLCdata.length)return
@@ -179,36 +184,38 @@ class IndicatorChart extends React.Component {
   //     }
   //   }
 
-  //   checkIfDataUpdated(prevProps) {
-  //     let prevData = prevProps.data;
-  //     let data = this.props.data;
-  //     if (prevData != data) {
-  //       // console.log("TICK CHART UPDATE DATA");
-  //       // console.log(data);
-  //       partialOHLCdata = data;
-  //       let timestamps = data.map((d) => d.timestamp);
-  //       // console.log({ timestamps });
-  //       this.setState({
-  //         data,
-  //         timestamps,
-  //       });
-  //       setTimeout(() => this.setupChart(), 0);
-  //     }
-  //   }
-
-  getMomoData(data) {
-    let momoData = [];
-    for (let momoVal in data) {
-      let momoValData = data[momoVal];
-      momoValData.forEach((valData, i) => {
-        if (!momoData[i]) momoData[i] = { x: valData.timestamp };
-        momoData[i][`momo${momoVal}`] = valData.momo;
-        momoData[i][`highLow${momoVal}`] = valData.highLow;
-        momoData[i][`volume${momoVal}`] = valData.volume;
-      });
+    checkIfDataUpdated(prevProps) {
+      let symbol = this.props.symbol
+      if(!this.props.stock_data.commodity_data[symbol])return
+      let timeframe = this.props.timeframe
+      let data = this.props.stock_data.commodity_data[symbol][timeframe];
+      let prevData
+      if(!prevProps.stock_data.commodity_data[symbol]) prevData=undefined
+      else prevData = prevProps.stock_data.commodity_data[symbol][timeframe];
+      
+      if(data === prevData )return
+      console.log(this.props)
+      console.log(this.state)
+      console.log(this.props.stock_data.commodity_data[symbol][timeframe])
+      // if (prevData != data) {
+        // console.log("TICK CHART UPDATE DATA");
+        // console.log(data);
+        
+        let availableWindows = Object.keys(data.slice(-1)[0].momentum).map(key=>parseInt(key.split('momentum').slice(-1)[0]))
+        partialOHLCdata = data.map((d)=> {return {x:d.timestamp, momentum:d.momentum}})
+        let timestamps = data.map((d) => d.timestamp);
+        // console.log({ timestamps });
+        this.setState({
+          availableWindows,
+          data,
+          timestamps,
+          momoData:[...partialOHLCdata]
+        });
+        setTimeout(() => this.setupChart(), 0);
+      // }
     }
-    return momoData;
-  }
+
+
 
   lineFn(scale, xName, yName) {
     let that = this;
@@ -217,7 +224,8 @@ class IndicatorChart extends React.Component {
         return that.state.timeScale(d[xName]);
       })
       .y(function (d) {
-        return scale(d[yName]);
+        if(!d.momentum)return 0
+        return scale(d.momentum[yName].momo);
       });
   }
 
@@ -283,7 +291,6 @@ class IndicatorChart extends React.Component {
   }
 
   dragStart() {
-    console.log(partialOHLCdata);
     if (!partialOHLCdata) return console.log("FUUCK NO PARTIAL DAATT?");
     mouseDRAGSTART = event.x - margin.left;
     dragStartData = [...partialOHLCdata];
@@ -372,7 +379,7 @@ class IndicatorChart extends React.Component {
       .attr("class", "chartWindow")
       .attr("transform", `translate(${margin.left},${margin.top})`)
       .attr("fill", "black");
-    console.log("cher is setting up");
+    // console.log("chart is setting up");
 
     let { indicator, innerHeight, innerWidth } = this.state;
     // Object.keys(indicatorYAxes).forEach((yAxisName, index) => {
@@ -385,16 +392,12 @@ class IndicatorChart extends React.Component {
       )
       .call(yAxis);
 
-    chartWindow
-      .append("text")
-      .text(indicator)
-      .attr("x", "50%")
-      .attr("y", margin.top + innerHeight / 2)
-      .attr("font-size", "5.3em")
-      .attr("opacity", "0.3")
-      .attr("font-color", "white")
-      .attr("text-anchor", "middle");
-    // });
+      CenterLabel({
+        symbol:indicator, 
+        chartWindow, x:'45%', 
+        y:(margin.top + this.state.innerHeight / 2),
+      })
+
     chartWindow.append("line").attr("id", "zeroLine");
     /* CrossHair */
     // create crosshairs
@@ -441,7 +444,7 @@ class IndicatorChart extends React.Component {
       let MOUSETIME = new Date(
         otherThat.state.timeScale.invert(_mouse[0])
       ).getTime();
-      MOUSETIME = Math.floor(MOUSETIME / interval) * interval;
+      MOUSETIME = Math.round(MOUSETIME / interval) * interval;
 
       MOUSEX = otherThat.state.timeScale(MOUSETIME);
       MOUSEY = _mouse[1];
@@ -504,7 +507,6 @@ class IndicatorChart extends React.Component {
     } else {
       drawData = partialOHLCdata;
     }
-    // debugger
     if (!drawData || !drawData.length || drawData.length < 2) return;
     // console.log(drawData)
     // let volProfileValues = Array.from(
@@ -518,9 +520,9 @@ class IndicatorChart extends React.Component {
     let [timeMin, timeMax] = extent(drawData.map(({ x }) => x));
     let allMomo = [];
     drawData.forEach((d) => {
-      // debugger
-      for (let key in d) {
-        if (String(key).startsWith("momo")) allMomo.push(d[key]);
+      for (let key in d.momentum) {
+        //data.momentum.momentumN.momo
+         allMomo.push(d.momentum[key].momo);
       }
     });
     let [momoMin, momoMax] = extent(allMomo.map((m) => m));
@@ -546,10 +548,10 @@ class IndicatorChart extends React.Component {
      *this has 1,2,5,10, 40, 40 as options
      */
     //MOMO  'momo'
-    let indicatorKey = "momo"; //'highLow', 'volume'
+    let indicatorKey = (window)=>`${window}`; //'highLow', 'volume'
     let colors = ["white", "blue", "red", "green", "yellow", "orange"];
     this.state.availableWindows.map((windowVal, index) => {
-      let yVal = `${indicatorKey}${windowVal}`;
+      let yVal = `${indicatorKey(windowVal)}`;
       let xVal = "x";
       let color = colors[index % colors.length];
       this.drawLine({ chartWindow, drawData, xVal, yVal, color });
@@ -569,23 +571,27 @@ class IndicatorChart extends React.Component {
     // );
 
     //Draw zero line
-    chartWindow
-      .select("#zeroLine")
-      .attr("stroke", "pink")
-      .attr("stroke-width", "2")
-      .attr("pointer-events", "none")
-      .attr("fill", "none")
-      .attr("x1", this.state.timeScale(timeMin))
-      .attr("y1", 0)
+    this.drawZeroLine('zeroLine',{chartWindow,timeMax, timeMin, yVal:0})
+  }
 
-      .attr("x2", this.state.timeScale(timeMax))
-      .attr("y2", 0);
+  drawZeroLine(id, {chartWindow,timeMax, timeMin, yVal}){
+    chartWindow
+    .select(`#${id}`)
+    .attr("stroke", "orange")
+    .attr("stroke-width", "5")
+    .attr("pointer-events", "none")
+    .attr("fill", "none")
+    .attr("x1", this.state.timeScale(timeMin))
+    .attr("y1", this.state.yScale(yVal))
+
+    .attr("x2", this.state.timeScale(timeMax))
+    .attr("y2", this.state.yScale(yVal));
   }
 
   drawLine({ chartWindow, yVal, xVal, drawData, color }) {
-    chartWindow.selectAll(`.${yVal}Line`).remove();
+    chartWindow.selectAll(`.momo${yVal}Line`).remove();
 
-    let tickLinePath = chartWindow.selectAll(`.${yVal}Line`).data([drawData]);
+    let tickLinePath = chartWindow.selectAll(`.momo${yVal}Line`).data([drawData]);
     tickLinePath.exit().remove();
 
     tickLinePath
@@ -597,7 +603,7 @@ class IndicatorChart extends React.Component {
       .attr("pointer-events", "none")
       .attr("fill", "none")
 
-      .attr("class", `${yVal}Line`) // Assign a class for styling
+      .attr("class", `momo${yVal}Line`) // Assign a class for styling
       .attr("d", this.lineFn(this.state.yScale, xVal, yVal));
   }
 

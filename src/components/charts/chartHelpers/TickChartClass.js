@@ -14,10 +14,15 @@ import { select, event, mouse } from "d3-selection";
 import { line } from "d3-shape";
 
 import { doZoomIn, doZoomOut } from "./utils.js";
-import { drawAxisAnnotation, removeAllAxisAnnotations } from "./chartAxis.js";
+import { drawAxisAnnotation, removeAllAxisAnnotations, DrawCrossHair } from "./chartAxis.js";
 import { appendMinMaxMarkers, runMinMax } from "./ChartMarkers/HighLowMarks.js";
 import { appendRegressionLines } from "./ChartMarkers/RegressionLines.js";
 import Loader from "../../smallComponents/LoadingSpinner.js";
+import {appendVolProfileBar} from './ChartMarkers/VolProfileBar.js'
+import {VolumeBars} from '../chartHelpers/ChartMarkers/VolumeBars.js'
+import { color } from "d3";
+import {CenterLabel} from './ChartMarkers/Labels.js'
+import {TradeMarker} from './ChartMarkers/TradeMarker.js'
 
 const margin = {
   top: 35,
@@ -402,6 +407,15 @@ class TickChart extends React.Component {
       .attr("stroke-width", 2);
     priceAxisG.append("text").attr("id", `rightPriceTagText`);
 
+    //appendAxisLabel(id//TODO)
+    //append a current price tag
+    priceAxisG
+    .append("path")
+    .attr("id", `currentRightPriceTag`)
+    // .attr("stroke", "blue")
+    .attr("stroke-width", 2);
+  priceAxisG.append("text").attr("id", `currentRightPriceTagText`);
+
     //appand volAxis
     let volAxisG = svg
       .append("g")
@@ -423,20 +437,14 @@ class TickChart extends React.Component {
       .attr("transform", `translate(${margin.left},${margin.top})`)
       .attr("fill", "black");
 
-    /* CrossHair */
-    // create crosshairs
-    var crosshair = chartWindow.append("g").attr("class", "line");
-    // create vertical line
-    crosshair
-      .append("line")
-      .attr("id", "crosshairX")
-      .attr("class", "crosshair");
+      CenterLabel({
+          symbol:this.props.stock_data.search_symbol, 
+          timeframe:'tick', chartWindow, x:'45%', 
+          y:(margin.top + this.state.innerHeight / 2),
+        })
 
-    // create horizontal line
-    crosshair
-      .append("line")
-      .attr("id", "crosshairY")
-      .attr("class", "crosshair");
+
+      var crosshair = DrawCrossHair(chartWindow);
 
     chartWindow
       .append("rect")
@@ -524,6 +532,75 @@ class TickChart extends React.Component {
     // setTimeout(() => , 0);
   }
 
+  drawVolProfile({volProfileValues,chartWindow, scales, volPriceKeys }){
+              //NEUTRAL VOLUME PROFILE
+   appendVolProfileBar({
+    data:volProfileValues, 
+    color:{fill:'gray',stroke:'black'}, 
+    className:'volProfile', 
+    classItem:'volProfileBarNeutral', 
+    chartWindow, 
+    scales,
+    x:({ up, down, neutral }) =>
+    this.state.volProfileScale(up + down + neutral),
+    y:(_, i) =>
+    this.state.priceScale(volPriceKeys[i] + this.props.tickSize / 2),
+    height:(_, i) => 
+    this.state.priceScale(volPriceKeys[i]) -
+    this.state.priceScale(volPriceKeys[i] + this.props.tickSize),
+    width: ({ up, down, neutral }) =>
+    this.state.innerWidth -
+    this.state.volProfileScale(up + down + neutral)
+   }) 
+
+
+    //NEUTRAL VOLUME PROFILE
+    appendVolProfileBar({
+      data:volProfileValues, 
+      color:{fill:'red',stroke:'black'}, 
+      className:'volProfile', 
+      classItem:'volProfileBarDown', 
+      chartWindow, 
+      scales,
+      x:({ up, down }) =>
+      this.state.volProfileScale(up + down ),
+      y:(_, i) =>
+      this.state.priceScale(volPriceKeys[i] + this.props.tickSize / 2),
+      height:(_, i) => 
+      this.state.priceScale(volPriceKeys[i]) -
+      this.state.priceScale(volPriceKeys[i] + this.props.tickSize),
+      width: ({ up, down }) =>
+      this.state.innerWidth -
+      this.state.volProfileScale(up + down )
+
+
+    }) 
+    //UP VOL PROFILE
+
+      appendVolProfileBar({
+        options:{opacity:0.6},
+        data:volProfileValues, 
+        color:{fill:'green',stroke:'black'}, 
+        className:'volProfile', 
+        classItem:'volProfileBarUp', 
+        chartWindow, 
+        scales,
+        x:({ up }) =>
+        this.state.volProfileScale(up  ),
+        y:(_, i) =>
+        this.state.priceScale(volPriceKeys[i] + this.props.tickSize / 2),
+        height:(_, i) => 
+        this.state.priceScale(volPriceKeys[i]) -
+        this.state.priceScale(volPriceKeys[i] + this.props.tickSize),
+        width: ({ up, }) =>
+        this.state.innerWidth -
+        this.state.volProfileScale(up  )
+  
+      }) 
+
+
+  }
+
   draw(data) {
     // console.log("Heavy tick chart redraw");
     let drawData;
@@ -574,7 +651,6 @@ class TickChart extends React.Component {
     svg.select(".timeAxis").call(this.state.timeAxis);
     //append priceAxis group
     svg.select(".priceAxis").call(this.state.priceAxis);
-
     //append volAxis
     svg.select(".volAxis").call(this.state.volAxis);
     svg.select(".volProfileAxis").call(this.state.volProfileAxis);
@@ -583,130 +659,36 @@ class TickChart extends React.Component {
     //ensure we draw a new line to be on top da other lines
     chartWindow.selectAll(".tickPriceLine").remove();
 
-    //NEUTRAL VOLUME PROFILE
-    let volProfileBarsNeutral = chartWindow
-      .selectAll(".volProfileBarNeutral")
-      .data(volProfileValues);
-    // console.log({ volProfileValues });
-    volProfileBarsNeutral.exit().remove();
-    volProfileBarsNeutral
-      .enter()
-      .append("rect")
-      .merge(volProfileBarsNeutral)
-      .attr("class", "volProfileBarNeutral")
-      .attr("x", ({ up, down, neutral }) =>
-        this.state.volProfileScale(up + down + neutral)
-      )
-      .attr("y", (_, i) =>
-        this.state.priceScale(volPriceKeys[i] + this.props.tickSize / 2)
-      )
-      .attr("height", (_, i) => {
-        let h =
-          this.state.priceScale(volPriceKeys[i]) -
-          this.state.priceScale(volPriceKeys[i] + this.props.tickSize);
-        if (h < 0)
-          console.log(`${volPriceKeys[i]} is less that 0 at index ${i}`);
-        return h;
-      })
-      .attr("pointer-events", "none")
-
-      .attr("opacity", 0.3)
-      .attr(
-        "width",
-        ({ up, down, neutral }) =>
-          this.state.innerWidth -
-          this.state.volProfileScale(up + down + neutral)
-      )
-      .attr("fill", "grey")
-      .attr("stroke", "black")
-      .attr("stroke-width", function () {
-        return this.getAttribute("height") / 10;
-      });
-
-    //DOWN VOLUME PROFILE
-    let volProfileBarsDown = chartWindow
-      .selectAll(".volProfileBarDown")
-      .data(volProfileValues);
-    //   console.log({volProfileValues})
-    volProfileBarsDown.exit().remove();
-    volProfileBarsDown
-      .enter()
-      .append("rect")
-      .merge(volProfileBarsDown)
-      .attr("class", "volProfileBarDown")
-      .attr("x", ({ up, down }) => this.state.volProfileScale(up + down))
-      .attr("y", (_, i) =>
-        this.state.priceScale(volPriceKeys[i] + this.props.tickSize / 2)
-      )
-      .attr(
-        "height",
-        (_, i) =>
-          this.state.priceScale(volPriceKeys[i]) -
-          this.state.priceScale(volPriceKeys[i] + this.props.tickSize)
-      )
-      .attr("pointer-events", "none")
-
-      .attr("opacity", 0.3)
-      .attr(
-        "width",
-        ({ up, down }, i) =>
-          this.state.innerWidth - this.state.volProfileScale(up + down)
-      )
-      .attr("fill", "red")
-      .attr("stroke", "black")
-      .attr("stroke-width", function () {
-        return this.getAttribute("height") / 10;
-      });
-
-    //UP VOL PROFILE
-    let volProfileBarsUp = chartWindow
-      .selectAll(".volProfileBarUp")
-      .data(volProfileValues);
-    //   console.log({volProfileValues})
-    volProfileBarsUp.exit().remove();
-    volProfileBarsUp
-      .enter()
-      .append("rect")
-      .merge(volProfileBarsUp)
-      .attr("class", "volProfileBarUp")
-      .attr("x", ({ up }) => this.state.volProfileScale(up))
-      .attr("y", (_, i) =>
-        this.state.priceScale(volPriceKeys[i] + this.props.tickSize / 2)
-      )
-      .attr("height", (_, i) => {
-        let h =
-          this.state.priceScale(volPriceKeys[i]) -
-          this.state.priceScale(volPriceKeys[i] + this.props.tickSize);
-        if (h < 0)
-          console.log(`${volPriceKeys[i]} is less that 0 at index ${i}`);
-        return h;
-      })
-      .attr("pointer-events", "none")
-
-      .attr("opacity", 0.6)
-      .attr(
-        "width",
-        ({ up }) => this.state.innerWidth - this.state.volProfileScale(up)
-      )
-      .attr("fill", "green")
-      .attr("stroke", "black")
-      .attr("stroke-width", function () {
-        return this.getAttribute("height") / 10;
-      });
-
+      let scales = {
+        priceScale:this.state.priceScale,
+        timeScale:this.state.timeScale,
+        volProfileScale:this.state.volProfileScale,
+        volScale:this.state.volScale,
+      }
+      this.drawVolProfile({volProfileValues,chartWindow, scales, volPriceKeys})
 
     let barWidth = this.state.innerWidth / partialOHLCdata.length;
     let strokeWidth = barWidth / 10;
-    let volRects = chartWindow.selectAll(".tickVolume").data(this.state.data);
-    /**
-     * volumeChange: 42
-price: 2479
-timestamp: 1585947527586
-priceChange: -0.25
-TOTAL_NEUTRAL_VOLUME: 45752
-TOTAL_UP_VOL: 187350
-TOTAL_DOWN_VOL: 174893
-     */
+   let volRects = chartWindow.selectAll(".tickVolume").data(this.state.data);
+
+    // VolumeBars({ that:this, chartWindow, dataPoints:this.state.data, scales, 
+    //   options:{
+    //   innerWidth:this.state.innerWidth, 
+    //   fill: (d, i) => {
+    //     if (d.priceChange > 0) return "green";
+    //     if (d.priceChange < 0) return "red";
+    //     else return "grey";
+    //   }, 
+    //   y:(d) => this.state.volScale(d.volumeChange),
+    //   height:(d, i) => {
+    //     let h = this.state.innerHeight - this.state.volScale(d.volumeChange);
+    //     if (h < 0) h = 0;
+    //     return h;
+    //   },
+    //   strokeWidth,
+    // }, markerClass:'tickVolume' });
+
+    // VolumeBars
     volRects.exit().remove();
     volRects
       .enter()
@@ -760,8 +742,8 @@ TOTAL_DOWN_VOL: 174893
     let tolerance = 2;
     let minMaxMostRecentData = true;
     let { timeScale, priceScale } = this.state;
-    let scales = { timeScale, priceScale };
-    let MinMaxValues = runMinMax(partialOHLCdata, xKey, yKey, tolerance);
+    // let scales = { timeScale, priceScale };
+    // let MinMaxValues = runMinMax(partialOHLCdata, xKey, yKey, tolerance);
     // console.log({MinMaxValues})
     // appendMinMaxMarkers(this, MinMaxValues, scales)
     appendRegressionLines(
@@ -773,6 +755,30 @@ TOTAL_DOWN_VOL: 174893
       { xScale: timeScale, yScale: priceScale },
       {}
     );
+
+
+
+    this.appendTrades(this, chartWindow, scales);
+
+
+    drawAxisAnnotation(
+      "currentRightPriceTag", 
+      this.state.priceScale,
+      partialOHLCdata.slice(-1)[0].price,
+      svg,
+      "priceAxis"
+    );
+  }
+
+
+  appendTrades(that, chartWindow, { timeScale, priceScale }) {
+    let scales = {
+      priceScale,
+      timeScale
+    };
+
+    TradeMarker({that, partialOHLCdata, scales, chartWindow })
+   
   }
   render() {
     return (

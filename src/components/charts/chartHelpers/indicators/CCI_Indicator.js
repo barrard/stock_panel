@@ -19,11 +19,13 @@ import { drawAxisAnnotation, removeAllAxisAnnotations } from "../chartAxis.js";
 import Loader from "../../../smallComponents/LoadingSpinner.js";
 import { appendRegressionLines } from "../ChartMarkers/RegressionLines.js";
 import API from "../../../API.js";
+import {CenterLabel} from '../ChartMarkers/Labels.js'
+
 const margin = {
   top: 15,
   right: 60,
   bottom: 20,
-  left: 35,
+  left: 65,
 };
 
 let MOUSEX = 0;
@@ -50,11 +52,10 @@ class IndicatorChart extends React.Component {
       yScale: scaleLinear().range([innerHeight, 0]),
 
       timestamps: [],
-      indicator: "stochastic", //momentum
+      indicator: "CCI",
       selectedWindows: [],
       availableWindows: [],
-      indicatorYAxes: {},
-      indicatorsData: {},
+      CCI_Data: {},
       data: [],
       visibleIndicators: {
         minMaxMarkers: true,
@@ -74,7 +75,7 @@ class IndicatorChart extends React.Component {
   // }
 
   async componentDidMount() {
-
+    
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -174,21 +175,22 @@ class IndicatorChart extends React.Component {
     else prevData = prevProps.stock_data.commodity_data[symbol][timeframe];
     
     if(data === prevData )return
+    // debugger
     console.log(this.props)
     console.log(this.state)
     console.log(this.props.stock_data.commodity_data[symbol][timeframe])
     // if (prevData != data) {
       // console.log("TICK CHART UPDATE DATA");
       // console.log(data);
-      let availableWindows = Object.keys(data.slice(-1)[0].momentum).map(key=>parseInt(key.split('momentum').slice(-1)[0]))
-      partialOHLCdata = data.map((d)=> {return {x:d.timestamp, momentum:d.momentum}})
+      let availableWindows = Object.keys(data.slice(-1)[0].CCI).map(key=>parseInt(key.split('CCI').slice(-1)[0]))
+      partialOHLCdata = data.map((d)=> {return {x:d.timestamp, CCI:d.CCI}})
       let timestamps = data.map((d) => d.timestamp);
       // console.log({ timestamps });
       this.setState({
         availableWindows,
         data,
         timestamps,
-        stochasticData:[...partialOHLCdata]
+        CCI_Data:[...partialOHLCdata]
       });
       setTimeout(() => this.setupChart(), 0);
     // }
@@ -202,7 +204,8 @@ class IndicatorChart extends React.Component {
         return that.state.timeScale(d[xName]);
       })
       .y(function (d) {
-        return scale(d[yName]);
+        if(!d[that.state.indicator])return 0
+        return scale(d[that.state.indicator][yName]);
       });
   }
 
@@ -217,12 +220,12 @@ class IndicatorChart extends React.Component {
     let { indicator, innerHeight, innerWidth } = this.state;
 
     // Object.keys(this.state.yScale).forEach((indicatorName, index) => {
-    let {yScale} = this.state;
+    // let {yScale} = this.state;
     // let yAxis = axisRight(scale).ticks(4);
     // indicatorYAxes[indicator] = yAxis;
     drawAxisAnnotation(
       `right${indicator}Tag`,
-      yScale,
+      this.state.yScale,
       y,
       svg,
       `${indicator}YAxis`
@@ -256,7 +259,7 @@ class IndicatorChart extends React.Component {
         data = doZoomIn({ partialOHLCdata: partialOHLCdata }, mouseZoomPOS);
       } else if (kScale < zoomState) {
         data = doZoomOut({
-          allOHLCdata: this.state.stochasticData,
+          allOHLCdata: this.state.CCI_Data,
           partialOHLCdata: partialOHLCdata,
           xName:'x'
         });
@@ -287,13 +290,13 @@ class IndicatorChart extends React.Component {
     if (xDragPOS > mouseDRAGSTART) {
       // console.log('right')
       let start = dragStartData[0];
-      let startIndex = this.state.stochasticData.findIndex(
+      let startIndex = this.state.CCI_Data.findIndex(
         (d) => d.x === start.x
       );
       // console.log({startIndex, barCount})
       let dataEnd = dragStartData.slice(0, dragStartData.length - 1 - barCount);
       let zeroOrGreater = startIndex - barCount < 0 ? 0 : startIndex - barCount;
-      let dataStart = this.state.stochasticData.slice(zeroOrGreater, startIndex);
+      let dataStart = this.state.CCI_Data.slice(zeroOrGreater, startIndex);
       //   console.log({
       //     dataEnd,
       //     zeroOrGreater,
@@ -307,11 +310,11 @@ class IndicatorChart extends React.Component {
     } else if (xDragPOS < mouseDRAGSTART) {
       //console.log("left");
       let end = dragStartData[dragStartData.length - 1];
-      let endIndex = this.state.stochasticData.findIndex(
+      let endIndex = this.state.CCI_Data.findIndex(
         (d) => d.x === end.x
       );
       let dataStart = dragStartData.slice(barCount, dragStartData.length - 1);
-      let dataEnd = this.state.stochasticData.slice(endIndex, endIndex + barCount);
+      let dataEnd = this.state.CCI_Data.slice(endIndex, endIndex + barCount);
       data = [...dataStart, ...dataEnd];
     }
     // console.log({ data });
@@ -347,6 +350,13 @@ class IndicatorChart extends React.Component {
     //   .tickSize(-this.state.innerHeight);
     // });
 
+    let chartWindow = svg
+      .append("g")
+      .attr("class", "chartWindow")
+      .attr("transform", `translate(${margin.left},${margin.top})`)
+      .attr("fill", "black");
+    console.log("cher is setting up");
+
     //append timeAxis group
     let timeAxisG = svg
       .append("g")
@@ -357,12 +367,6 @@ class IndicatorChart extends React.Component {
       )
       .call(timeAxis);
 
-    let chartWindow = svg
-      .append("g")
-      .attr("class", "chartWindow")
-      .attr("transform", `translate(${margin.left},${margin.top})`)
-      .attr("fill", "black");
-    console.log("cher is setting up");
 
     let { indicator, innerHeight, innerWidth } = this.state;
     // Object.keys(indicatorYAxes).forEach((yAxisName, index) => {
@@ -375,18 +379,19 @@ class IndicatorChart extends React.Component {
       )
       .call(yAxis);
 
-    chartWindow
-      .append("text")
-      .text(indicator)
-      .attr("x", "50%")
-      .attr("y", margin.top + innerHeight / 2)
-      .attr("font-size", "3.3em")
-      .attr("opacity", "0.3")
-      .attr("font-color", "white")
-      .attr("text-anchor", "middle");
-    // });
+
+
+      CenterLabel({
+        symbol:indicator, 
+        chartWindow, x:'45%', 
+        y:(margin.top + this.state.innerHeight / 2),
+      })
+
+
         //If needed??
-    chartWindow.append("line").attr("id", "zeroLine");
+    chartWindow.append("line").attr("id", "overBoughtLine");
+    chartWindow.append("line").attr("id", "overSoldLine");
+
 
     /* CrossHair */
     // create crosshairs
@@ -435,7 +440,8 @@ class IndicatorChart extends React.Component {
       ).getTime();
       MOUSETIME = Math.round(MOUSETIME / interval) * interval;
 
-      MOUSEX = otherThat.state.timeScale(MOUSETIME);      MOUSEY = _mouse[1];
+      MOUSEX = otherThat.state.timeScale(MOUSETIME);
+      MOUSEY = _mouse[1];
       otherThat.appendAxisAnnotations(MOUSEX, MOUSEY, svg);
 
       crosshair
@@ -506,8 +512,15 @@ class IndicatorChart extends React.Component {
     // let volValues = drawData.map(d => d.volumeChange);
     let { indicator } = this.state;
     let [timeMin, timeMax] = extent(drawData.map(({ x }) => x));
-    debugger
-    let [stochasticMax, stochasticMin] = extent(drawData.map(({ stochastic2 }) => stochastic2));
+    // debugger
+    let allCCI = [];
+    drawData.forEach((d) => {
+      for (let key in d.CCI) {
+        //data.CCI.momentumN.momo
+         allCCI.push(d.CCI[key]);
+      }
+    });    
+    let [CCI_Max, CCI_Min] = extent(allCCI.map((cci) => cci));
     // let [volMin, volMax] = extent(volValues);
 
     // let [priceMin, priceMax] = extent(prices);
@@ -516,50 +529,69 @@ class IndicatorChart extends React.Component {
 
     this.state.timeScale.domain([timeMin, timeMax]);
 
-    let yScale = this.state.yScale;
 
-    yScale.domain(extent([stochasticMin, stochasticMax]));
+    this.state.yScale.domain(([ CCI_Max, CCI_Min]));
 
     let svg = select(this.state.chartRef.current);
 
     //append timeAxis group
     svg.select(".timeAxis").call(this.state.timeAxis);
     //append All the y indicator axis
-    svg.select(`.${indicator}YAxis`).call(yScale);
+    svg.select(`.${indicator}YAxis`).call(this.state.yAxis);
 
     let chartWindow = svg.select(".chartWindow");
 
     chartWindow.selectAll(`.${indicator}Line`).remove();
 
-    let tickLinePath = chartWindow
-      .selectAll(`.${indicator}Line`)
-      .data([drawData]);
+    /*
+     *this has 1,2,5,10, 40, 40 as options
+     */
+    //MOMO  'momo'
+    let indicatorKey = (window)=>`${window}`;
+    let colors = ["white", "blue", "red", "green", "yellow", "orange"];
+    this.state.availableWindows.map((windowVal, index) => {
+      let yVal = `${indicatorKey(windowVal)}`;
+      let xVal = "x";
+      let color = colors[index % colors.length];
+      this.drawLine({ chartWindow, drawData, xVal, yVal, color });
+    });
+    let overBoughtLine = 100
+    this.drawHorizontalLine('overBoughtLine',{chartWindow, timeMin, timeMax, yVal:overBoughtLine})
+    let overSoldLine = -100
+    this.drawHorizontalLine('overSoldLine',{chartWindow, timeMin, timeMax, yVal:overSoldLine})
+  }
+
+  drawHorizontalLine(id, {chartWindow,timeMax, timeMin, yVal}){
+    chartWindow
+    .select(`#${id}`)
+    .attr("stroke", "orange")
+    .attr("stroke-width", "5")
+    .attr("pointer-events", "none")
+    .attr("fill", "none")
+    .attr("x1", this.state.timeScale(timeMin))
+    .attr("y1", this.state.yScale(yVal))
+
+    .attr("x2", this.state.timeScale(timeMax))
+    .attr("y2", this.state.yScale(yVal));
+  }
+
+  drawLine({ chartWindow, yVal, xVal, drawData, color }) {
+    chartWindow.selectAll(`.stochastic${yVal}Line`).remove();
+
+    let tickLinePath = chartWindow.selectAll(`.stochastic${yVal}Line`).data([drawData]);
     tickLinePath.exit().remove();
 
     tickLinePath
       .enter()
       .append("path")
       .merge(tickLinePath)
-      .attr("stroke", "white")
+      .attr("stroke", color)
       .attr("stroke-width", "2")
       .attr("pointer-events", "none")
       .attr("fill", "none")
 
-      .attr("class", `${indicator}Line`) // Assign a class for styling
-      .attr("d", this.lineFn(this.state.yScale, "x", "momo2"));
-
-    // XYdata.forEach((d) => (d.y === 0 ? (d.y = 1) : (d.y = d.y)));
-    // let yScale = this.state.yScale[indicatorName];
-    // let xScale = this.state.timeScale;
-    // appendRegressionLines(
-    //   this,
-    //   chartWindow,
-    //   XYdata,
-    //   { xKey: "x", yKey: "y" },
-    //   20000,
-    //   { xScale, yScale },
-    //   { addedHeight }
-    // );
+      .attr("class", `stochastic${yVal}Line`) // Assign a class for styling
+      .attr("d", this.lineFn(this.state.yScale, xVal, yVal));
   }
 
   render() {
@@ -584,7 +616,6 @@ function mapStateToProps(state) {
 }
 
 export default connect(mapStateToProps)(withRouter(IndicatorChart));
-
 
 function getInterval(timeframe) {
   if (timeframe === "1Min") return 1000 * 60 * 1;

@@ -10,7 +10,7 @@ const Socket = {
 
     },
     connected:false,
-    emit:(event, data)=>{
+    emit:function (event, data){
         this.socket.emit(event, data)
     },
     on:(event, fn)=>{

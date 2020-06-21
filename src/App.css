@@ -214,7 +214,8 @@ body{
 }
 
 .small_input{
-  width:3em;
+  width:5em;
+  text-align: center;
 }
 
 .clickable.highlightOnHover :hover{

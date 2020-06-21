@@ -5,7 +5,7 @@ import {
   set_symbols_data,
   commodityRegressionData,
   deleteCommodityRegressionData,
-  addAllCommodityTrades
+  addAllCommodityTrades,
   // set_search_symbol,
   // add_chart_data
 } from "../redux/actions/stock_actions.js";
@@ -17,66 +17,72 @@ export default {
   fetch_commodity_minutely_data,
   saveRegressionValues,
   getCommodityRegressionValues,
-  getIndicatorValues,
+  // getIndicatorValues,
   setTimeframeActive,
   getAllCommodityTrades,
-  closePosition, goLong, goShort, getFiveDaysVolProfTick
+  closePosition,
+  goLong,
+  goShort,
+  getVolProfile,
 };
 
 const API_SERVER = process.env.REACT_APP_STOCK_DATA_URL;
 const LOCAL_SERVER = process.env.REACT_APP_LOCAL_DATA;
 
+function handleTradeError(direction, err){
+  if(err.toLowerCase().includes('not admin')){
+    toastr.error("Not allowed...")
+  }else{
+    toastr.error(`Error Going ${direction}`)
+  }
+}
 
-
-
-
-async function goLong(symbol){
-  let data = await fetch(`${LOCAL_SERVER}/API/goLong/${symbol}`, { credentials: "include"});
+async function goLong(symbol) {
+  let data = await fetch(`${LOCAL_SERVER}/API/goLong/${symbol}`, {
+    credentials: "include",
+  });
   data = await data.json();
-  console.log(data)
-  if(!data.resp || data.err)toastr.error('Error Going Long')
+  console.log(data);
+  if (!data.resp || data.err) handleTradeError('Long', data.err);
   return;
 }
 
-async function goShort(symbol){
-  let data = await fetch(`${LOCAL_SERVER}/API/goShort/${symbol}`, { credentials: "include"});
+async function goShort(symbol) {
+  let data = await fetch(`${LOCAL_SERVER}/API/goShort/${symbol}`, {
+    credentials: "include",
+  });
   data = await data.json();
-  console.log(data)
-  if(!data.resp || data.err)toastr.error('Error Going Short')
+  console.log(data);
+  if (!data.resp || data.err) handleTradeError('Short', data.err);
   return;
 }
 async function closePosition(id) {
   // console.log('getAllSymbolsData')
-  let data = await fetch(`${LOCAL_SERVER}/API/close-position/${id}`, { credentials: "include"});
+  let data = await fetch(`${LOCAL_SERVER}/API/close-position/${id}`, {
+    credentials: "include",
+  });
   data = await data.json();
-  console.log(data)
-  if(!data.resp || data.err)toastr.error('Error Closing Position')
+  console.log(data);
+  if (!data.resp || data.err) toastr.error("Error Closing Position");
   return data;
 }
 
-
 async function getAllCommodityTrades(symbol, props) {
-  let trades
-try {
-  console.log({symbol})
-  if(symbol){
-
-    trades = await fetch(
-      `${LOCAL_SERVER}/API/commodityTrades/${symbol}`
-      );
-    }else{
-      trades = await fetch(
-        `${LOCAL_SERVER}/API/commodityTrades`
-        );
+  let trades;
+  try {
+    console.log({ symbol });
+    if (symbol) {
+      trades = await fetch(`${LOCAL_SERVER}/API/commodityTrades/${symbol}`);
+    } else {
+      trades = await fetch(`${LOCAL_SERVER}/API/commodityTrades`);
     }
-    trades = await trades.json()
-    console.log(trades)
-    props.dispatch(addAllCommodityTrades(trades, symbol))
-} catch (err) {
-  console.log({err})
-  return console.log('ERROR')
-  
-}
+    trades = await trades.json();
+    console.log(trades);
+    props.dispatch(addAllCommodityTrades(trades, symbol));
+  } catch (err) {
+    console.log({ err });
+    return console.log("ERROR");
+  }
 }
 
 async function getCommodityRegressionValues(symbol, props) {
@@ -86,40 +92,36 @@ async function getCommodityRegressionValues(symbol, props) {
     return console.log("Already have the commodityRegressionData");
   }
   let regressionData = await fetch(
-    `${LOCAL_SERVER}/API/commodityRegressionSettings/${symbol}`,
+    `${LOCAL_SERVER}/API/commodityRegressionSettings/${symbol}`
     // { credentials: "include" }
   );
   regressionData = await regressionData.json();
   // console.log(regressionData);
   props.dispatch(commodityRegressionData(regressionData));
-  return regressionData
+  return regressionData;
 }
 
-async function setTimeframeActive(
-  id,timeframe,
-  props
-) {
+async function setTimeframeActive(id, timeframe, props) {
   try {
     console.log({
-      id,timeframe,
+      id,
+      timeframe,
     });
-  
+
     let regressionData = await fetch(
       `${LOCAL_SERVER}/API/commodityRegressionSettings`,
       { credentials: "include", ...PUT({ id, timeframe }) }
     );
     regressionData = await regressionData.json();
     console.log(regressionData);
-    if(regressionData.err)throw regressionData.err
+    if (regressionData.err) throw regressionData.err;
     console.log(props);
     //use an array becasue thats what the actions is expecting
     props.dispatch(commodityRegressionData([regressionData]));
-      let {symbol} = regressionData
-    toastr.success(`Success`, `Settings saved for ${symbol} ${timeframe}!`);  
-
+    let { symbol } = regressionData;
+    toastr.success(`Success`, `Settings saved for ${symbol} ${timeframe}!`);
   } catch (err) {
-    toastr.error(`Error`, ` ${err}`);  
-    
+    toastr.error(`Error`, ` ${err}`);
   }
 
   // if(!regressionLines ||
@@ -134,18 +136,20 @@ async function setTimeframeActive(
   // regressionLines.highLines.map(({ m, b }) => slopeInts.push({ m, b }));
   // regressionLines.lowLines.map(({ m, b }) => slopeInts.push({ m, b }));
   // console.log({ slopeInts });
-
 }
 
 async function saveRegressionValues({
-  symbol,timeframe,
+  symbol,
+  timeframe,
   minMaxTolerance,
   regressionErrorLimit,
   priceLevelMinMax,
   priceLevelSensitivity,
   fibonacciMinMax,
   fibonacciSensitivity,
-  props
+  volProfileBins,
+  volProfileBarCount,
+  props,
 }) {
   let regressionData = await fetch(
     `${LOCAL_SERVER}/API/commodityRegressionSettings`,
@@ -159,8 +163,10 @@ async function saveRegressionValues({
         minMaxTolerance,
         regressionErrorLimit,
         priceLevelMinMax,
-        priceLevelSensitivity
-      })
+        priceLevelSensitivity,
+        volProfileBins,
+        volProfileBarCount,
+      }),
     }
   );
   regressionData = await regressionData.json();
@@ -172,21 +178,31 @@ async function saveRegressionValues({
   props.dispatch(commodityRegressionData([regressionData]));
 }
 
-async function getIndicatorValues({indicator, timeframe, symbol, date}, props) {
-  if(!indicator ||!timeframe ||!symbol ||!date) throw 'Misssing params'
-  let data = await fetch(
-    `${LOCAL_SERVER}/API/indicator/${indicator}/${timeframe}/${symbol}/${date}`
-  );
-    console.log(data)
-  data = await data.json();
-  console.log(data)
+// async function getIndicatorValues(
+//   { indicator, timeframe, symbol, date },
+//   props
+// ) {
+//   if (!indicator || !timeframe || !symbol || !date) throw "Misssing params";
+//   let data = await fetch(
+//     `${LOCAL_SERVER}/API/indicator/${indicator}/${timeframe}/${symbol}/${date}`
+//   );
+//   console.log(data);
+//   try {
 
-  toastr.success(`Indicator ${indicator} data loaded`);
-  // console.log(deletedData);
-  // console.log(props);
-    return data
-  // props.dispatch(addIndicatorData(id));
-}
+//     data = await data.json();
+//   } catch (err) {
+//     toastr.err(`Indicator ${indicator} data Not loaded`);
+//     return [];
+
+//   }
+//   console.log(data);
+
+//   toastr.success(`Indicator ${indicator} data loaded`);
+//   // console.log(deletedData);
+//   // console.log(props);
+//   return data;
+//   // props.dispatch(addIndicatorData(id));
+// }
 
 async function getMovers() {
   // console.log(API_SERVER);
@@ -194,16 +210,16 @@ async function getMovers() {
   return movers;
 }
 
-async function getFiveDaysVolProfTick({symbol, date, props}) {
+async function getVolProfile({ symbol, date, bars, bins }) {
   // console.log(API_SERVER);
-  if(!date)date = new Date().getTime()
-  else date = new Date(date).getTime()
-  let volProfTick = await fetch(`${API_SERVER}/API/indicator/VolProfile/1Min/${symbol}/${date}`);
-  volProfTick = await volProfTick.json()
+  if (!date) date = new Date().getTime();
+  else date = new Date(date).getTime();
+  let volProfTick = await fetch(
+    `${API_SERVER}/API/VolProfile/${symbol}/${date}/${bars}/${bins}`
+  );
+  volProfTick = await volProfTick.json();
   return volProfTick;
 }
-
-
 
 async function getAllSymbolsData(dispatch) {
   // console.log('getAllSymbolsData')
@@ -215,11 +231,14 @@ async function getAllSymbolsData(dispatch) {
   dispatch(set_symbols_data(all_stock_symbols, all_commodity_symbols));
   return;
 }
-console.log()
+console.log();
 async function fetch_commodity_minutely_data({ date, symbol }) {
   // date = '6-5-2020'
-  let msg = (data, date, symbol)=> `${data.length} bars loaded for ${new Date(date).toLocaleString()} ${symbol}`
-  console.log(`Fetching data for ${date} ${symbol}`)
+  let msg = (data, date, symbol) =>
+    `${data.length} bars loaded for ${new Date(
+      date
+    ).toLocaleString()} ${symbol}`;
+  console.log(`Fetching data for ${date} ${symbol}`);
   try {
     symbol = settleSymbol(symbol);
     //TD_data/dailyParsedTickData
@@ -228,30 +247,30 @@ async function fetch_commodity_minutely_data({ date, symbol }) {
       `${API_SERVER}/TD_data/dailyParsedTickData/${date}/${symbol}`
     );
     data = await data.json();
-    // debugger
-    console.log({data, date, symbol})
+    //the data is newest to oldest, better fix that
+    data = data.sort((a, b) => a.timestamp - b.timestamp);
+
+    console.log({ data, date, symbol });
     // console.log('TOASTR')
     toastr.success(`Data loaded`, msg(data, date, symbol));
     return data;
   } catch (err) {
-    console.log(err)
+    console.log(err);
     // debugger
     let data = [];
-    toastr.success(`No Data loaded`, msg(data, date, symbol) );
+    toastr.success(`No Data loaded`, msg(data, date, symbol));
     return data;
   }
 }
 
 async function fetchCommodityData({ timeframe, symbol }) {
-  console.log(LOCAL_SERVER)
-  let data = await fetch(
-    `${LOCAL_SERVER}/back_data/${timeframe}/${symbol}`
-  );
+  console.log(LOCAL_SERVER);
+  let data = await fetch(`${LOCAL_SERVER}/back_data/${timeframe}/${symbol}`);
   data = await data.json();
-  console.log({data})
+  console.log({ data });
   // console.log('TOASTR')
-  if(data.err)
-    toastr.error(`Data Not loaded`, `An error occurred for ${symbol}`);  
+  if (data.err)
+    toastr.error(`Data Not loaded`, `An error occurred for ${symbol}`);
   else
     toastr.success(`Data loaded`, `${data.length} bars loaded for ${symbol}`);
   // debugger
@@ -277,9 +296,9 @@ function POST(body) {
     method: "POST",
     headers: {
       Accept: "application/json",
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   };
 }
 
@@ -288,9 +307,9 @@ function PUT(body) {
     method: "PUT",
     headers: {
       Accept: "application/json",
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   };
 }
 
@@ -299,9 +318,9 @@ function DELETE(body) {
     method: "DELETE",
     headers: {
       Accept: "application/json",
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   };
 }
 
