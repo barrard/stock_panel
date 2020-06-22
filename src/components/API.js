@@ -240,7 +240,7 @@ async function fetch_commodity_minutely_data({ date, symbol }) {
     ).toLocaleString()} ${symbol}`;
   console.log(`Fetching data for ${date} ${symbol}`);
   try {
-    symbol = settleSymbol(symbol);
+    // symbol = settleSymbol(symbol);
     //TD_data/dailyParsedTickData
     // let API_SERVER = 'https://chartsapi.raveaboutdave.com'
     let data = await fetch(

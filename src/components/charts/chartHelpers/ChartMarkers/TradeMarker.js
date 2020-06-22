@@ -2,7 +2,7 @@ export const TradeMarker = ({that, partialOHLCdata, scales, chartWindow })=>{
 
 
 let {timeScale, priceScale} = scales
-debugger
+
 
      /**
      * id(pin):"5e833a02a693dc4122d7355f"

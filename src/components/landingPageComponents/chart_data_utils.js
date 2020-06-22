@@ -43,42 +43,7 @@ export async function getMinutelyCommodityData({ date, symbol, props }) {
   let chart_data = await API.fetch_commodity_minutely_data({ date, symbol });
 
   console.log(chart_data);
-  // if (tryGetOneMoreDay) {
-  //   date = new Date(new Date(date).setDate(new Date(date).getDate() + 1))
-  //   .toLocaleString()
-  //   .split(",")[0]
-  //   .replace("/", "-")
-  //   .replace("/", "-");
 
-  //   // date = '6-5-2020'
-  //   console.log(date);
-
-  //   const maybeMostRecentDay = await API.fetch_commodity_minutely_data({
-  //     date,
-  //     symbol
-  //   });
-  //   console.log({ maybeMostRecentDay });
-  //   if (maybeMostRecentDay.length) {
-  //     chart_data = [...chart_data, ...maybeMostRecentDay];
-  //   }
-  //   date = new Date(new Date(date).setDate(new Date(date).getDate() - 2))
-  //     .toLocaleString()
-  //     .split(",")[0]
-  //     .replace("/", "-")
-  //     .replace("/", "-");
-  //     // date = '6-4-2020'
-  //     console.log({date})
-
-  //   const prevousDay = await API.fetch_commodity_minutely_data({
-  //     date,
-  //     symbol
-  //   });
-  //   console.log({ prevousDay });
-  //   if (prevousDay.length) {
-  //     chart_data = [...prevousDay, ...chart_data];
-  //   }
-  // }
-  // let timeframe = 'minutely'
   if (!chart_data.length) {
     console.log("WE GIOT NOGTIIHIN");
   }

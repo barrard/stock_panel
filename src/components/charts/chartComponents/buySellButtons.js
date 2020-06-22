@@ -10,26 +10,32 @@ import Socket from '../../Socket.js'
 class BuySellButtons extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {};
+    this.state = {
+        size:1
+    };
   }
 
-  async goLong() {
+  async goLong(size) {
     let symbol = this.props.stock_data.search_symbol;
-    Socket.emit('userGoLong', symbol)
+    Socket.emit('userGoLong', {symbol, size})
     // let resp = await API.goLong(symbol);
   }
-  async goShort() {
+  async goShort(size) {
     let symbol = this.props.stock_data.search_symbol;
-    Socket.emit('userGoShort', symbol)
+    Socket.emit('userGoShort', {symbol, size})
     // let resp = await API.goShort(symbol);
   }
   render() {
+      let {size}=this.state
     return (
       <>
-        <OpenLongPosition onClick={() => this.goLong()}>BUY</OpenLongPosition>
-        <OpenShortPosition onClick={() => this.goShort()}>
+        <OpenLongPosition onClick={() => this.goLong(size)}>BUY</OpenLongPosition>
+        <OpenShortPosition onClick={() => this.goShort(size)}>
           SHORT
         </OpenShortPosition>
+        <input value={this.state.size} 
+        onInput={(e)=>this.setState({size:e.target.value})}
+        type="number"/>
       </>
     );
   }
