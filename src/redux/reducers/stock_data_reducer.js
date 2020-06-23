@@ -41,9 +41,10 @@ export default (state = initial_state, action) => {
       let {symbol} = trade
       let commodityTrades = { ...state.commodityTrades };
       console.log({trade})
+      console.log(!commodityTrades[symbol])
       console.log(commodityTrades[symbol])
 
-      if(!commodityTrades[symbol]){
+      if(!commodityTrades[symbol] || !commodityTrades[symbol].length){
         commodityTrades[symbol] = [trade]
       }else{
         let commodityTradeIndex = commodityTrades[symbol].findIndex(t=>t._id === trade._id)

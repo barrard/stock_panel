@@ -14,15 +14,20 @@ import { select, event, mouse } from "d3-selection";
 import { line } from "d3-shape";
 
 import { doZoomIn, doZoomOut } from "./utils.js";
-import { drawAxisAnnotation, removeAllAxisAnnotations, DrawCrossHair } from "./chartAxis.js";
+import {
+  drawAxisAnnotation,
+  removeAllAxisAnnotations,
+  DrawCrossHair,
+} from "./chartAxis.js";
 import { appendMinMaxMarkers, runMinMax } from "./ChartMarkers/HighLowMarks.js";
 import { appendRegressionLines } from "./ChartMarkers/RegressionLines.js";
 import Loader from "../../smallComponents/LoadingSpinner.js";
-import {appendVolProfileBar} from './ChartMarkers/VolProfileBar.js'
-import {VolumeBars} from '../chartHelpers/ChartMarkers/VolumeBars.js'
+import { appendVolProfileBar } from "./ChartMarkers/VolProfileBar.js";
+import { VolumeBars } from "../chartHelpers/ChartMarkers/VolumeBars.js";
 import { color } from "d3";
-import {CenterLabel} from './ChartMarkers/Labels.js'
-import {TradeMarker} from './ChartMarkers/TradeMarker.js'
+import { CenterLabel } from "./ChartMarkers/Labels.js";
+import { TradeMarker } from "./ChartMarkers/TradeMarker.js";
+import BuySellButtons from "../chartComponents/buySellButtons.js";
 
 const margin = {
   top: 35,
@@ -88,13 +93,14 @@ class TickChart extends React.Component {
       let { width } = this.props;
       let innerWidth = width - (margin.left + margin.right);
       let { timeScale, volProfileScale } = this.state;
-      timeScale.range([0, innerWidth])
-      volProfileScale.range([0, innerWidth])
+      timeScale.range([0, innerWidth]);
+      volProfileScale.range([0, innerWidth]);
       this.setState({
-        timeScale, volProfileScale, innerWidth
+        timeScale,
+        volProfileScale,
+        innerWidth,
       });
       setTimeout(() => this.setupChart(), 0);
-
     }
   }
 
@@ -410,11 +416,11 @@ class TickChart extends React.Component {
     //appendAxisLabel(id//TODO)
     //append a current price tag
     priceAxisG
-    .append("path")
-    .attr("id", `currentRightPriceTag`)
-    // .attr("stroke", "blue")
-    .attr("stroke-width", 2);
-  priceAxisG.append("text").attr("id", `currentRightPriceTagText`);
+      .append("path")
+      .attr("id", `currentRightPriceTag`)
+      // .attr("stroke", "blue")
+      .attr("stroke-width", 2);
+    priceAxisG.append("text").attr("id", `currentRightPriceTagText`);
 
     //appand volAxis
     let volAxisG = svg
@@ -437,14 +443,15 @@ class TickChart extends React.Component {
       .attr("transform", `translate(${margin.left},${margin.top})`)
       .attr("fill", "black");
 
-      CenterLabel({
-          symbol:this.props.stock_data.search_symbol, 
-          timeframe:'tick', chartWindow, x:'45%', 
-          y:(margin.top + this.state.innerHeight / 2),
-        })
+    CenterLabel({
+      symbol: this.props.stock_data.search_symbol,
+      timeframe: "tick",
+      chartWindow,
+      x: "45%",
+      y: margin.top + this.state.innerHeight / 2,
+    });
 
-
-      var crosshair = DrawCrossHair(chartWindow);
+    var crosshair = DrawCrossHair(chartWindow);
 
     chartWindow
       .append("rect")
@@ -532,73 +539,61 @@ class TickChart extends React.Component {
     // setTimeout(() => , 0);
   }
 
-  drawVolProfile({volProfileValues,chartWindow, scales, volPriceKeys }){
-              //NEUTRAL VOLUME PROFILE
-   appendVolProfileBar({
-    data:volProfileValues, 
-    color:{fill:'gray',stroke:'black'}, 
-    className:'volProfile', 
-    classItem:'volProfileBarNeutral', 
-    chartWindow, 
-    scales,
-    x:({ up, down, neutral }) =>
-    this.state.volProfileScale(up + down + neutral),
-    y:(_, i) =>
-    this.state.priceScale(volPriceKeys[i] + this.props.tickSize / 2),
-    height:(_, i) => 
-    this.state.priceScale(volPriceKeys[i]) -
-    this.state.priceScale(volPriceKeys[i] + this.props.tickSize),
-    width: ({ up, down, neutral }) =>
-    this.state.innerWidth -
-    this.state.volProfileScale(up + down + neutral)
-   }) 
-
+  drawVolProfile({ volProfileValues, chartWindow, scales, volPriceKeys }) {
+    //NEUTRAL VOLUME PROFILE
+    appendVolProfileBar({
+      data: volProfileValues,
+      color: { fill: "gray", stroke: "black" },
+      className: "volProfile",
+      classItem: "volProfileBarNeutral",
+      chartWindow,
+      scales,
+      x: ({ up, down, neutral }) =>
+        this.state.volProfileScale(up + down + neutral),
+      y: (_, i) =>
+        this.state.priceScale(volPriceKeys[i] + this.props.tickSize / 2),
+      height: (_, i) =>
+        this.state.priceScale(volPriceKeys[i]) -
+        this.state.priceScale(volPriceKeys[i] + this.props.tickSize),
+      width: ({ up, down, neutral }) =>
+        this.state.innerWidth - this.state.volProfileScale(up + down + neutral),
+    });
 
     //NEUTRAL VOLUME PROFILE
     appendVolProfileBar({
-      data:volProfileValues, 
-      color:{fill:'red',stroke:'black'}, 
-      className:'volProfile', 
-      classItem:'volProfileBarDown', 
-      chartWindow, 
+      data: volProfileValues,
+      color: { fill: "red", stroke: "black" },
+      className: "volProfile",
+      classItem: "volProfileBarDown",
+      chartWindow,
       scales,
-      x:({ up, down }) =>
-      this.state.volProfileScale(up + down ),
-      y:(_, i) =>
-      this.state.priceScale(volPriceKeys[i] + this.props.tickSize / 2),
-      height:(_, i) => 
-      this.state.priceScale(volPriceKeys[i]) -
-      this.state.priceScale(volPriceKeys[i] + this.props.tickSize),
-      width: ({ up, down }) =>
-      this.state.innerWidth -
-      this.state.volProfileScale(up + down )
-
-
-    }) 
-    //UP VOL PROFILE
-
-      appendVolProfileBar({
-        options:{opacity:0.6},
-        data:volProfileValues, 
-        color:{fill:'green',stroke:'black'}, 
-        className:'volProfile', 
-        classItem:'volProfileBarUp', 
-        chartWindow, 
-        scales,
-        x:({ up }) =>
-        this.state.volProfileScale(up  ),
-        y:(_, i) =>
+      x: ({ up, down }) => this.state.volProfileScale(up + down),
+      y: (_, i) =>
         this.state.priceScale(volPriceKeys[i] + this.props.tickSize / 2),
-        height:(_, i) => 
+      height: (_, i) =>
         this.state.priceScale(volPriceKeys[i]) -
         this.state.priceScale(volPriceKeys[i] + this.props.tickSize),
-        width: ({ up, }) =>
-        this.state.innerWidth -
-        this.state.volProfileScale(up  )
-  
-      }) 
+      width: ({ up, down }) =>
+        this.state.innerWidth - this.state.volProfileScale(up + down),
+    });
+    //UP VOL PROFILE
 
-
+    appendVolProfileBar({
+      options: { opacity: 0.6 },
+      data: volProfileValues,
+      color: { fill: "green", stroke: "black" },
+      className: "volProfile",
+      classItem: "volProfileBarUp",
+      chartWindow,
+      scales,
+      x: ({ up }) => this.state.volProfileScale(up),
+      y: (_, i) =>
+        this.state.priceScale(volPriceKeys[i] + this.props.tickSize / 2),
+      height: (_, i) =>
+        this.state.priceScale(volPriceKeys[i]) -
+        this.state.priceScale(volPriceKeys[i] + this.props.tickSize),
+      width: ({ up }) => this.state.innerWidth - this.state.volProfileScale(up),
+    });
   }
 
   draw(data) {
@@ -659,26 +654,31 @@ class TickChart extends React.Component {
     //ensure we draw a new line to be on top da other lines
     chartWindow.selectAll(".tickPriceLine").remove();
 
-      let scales = {
-        priceScale:this.state.priceScale,
-        timeScale:this.state.timeScale,
-        volProfileScale:this.state.volProfileScale,
-        volScale:this.state.volScale,
-      }
-      this.drawVolProfile({volProfileValues,chartWindow, scales, volPriceKeys})
+    let scales = {
+      priceScale: this.state.priceScale,
+      timeScale: this.state.timeScale,
+      volProfileScale: this.state.volProfileScale,
+      volScale: this.state.volScale,
+    };
+    this.drawVolProfile({
+      volProfileValues,
+      chartWindow,
+      scales,
+      volPriceKeys,
+    });
 
     let barWidth = this.state.innerWidth / partialOHLCdata.length;
     let strokeWidth = barWidth / 10;
-   let volRects = chartWindow.selectAll(".tickVolume").data(this.state.data);
+    let volRects = chartWindow.selectAll(".tickVolume").data(this.state.data);
 
-    // VolumeBars({ that:this, chartWindow, dataPoints:this.state.data, scales, 
+    // VolumeBars({ that:this, chartWindow, dataPoints:this.state.data, scales,
     //   options:{
-    //   innerWidth:this.state.innerWidth, 
+    //   innerWidth:this.state.innerWidth,
     //   fill: (d, i) => {
     //     if (d.priceChange > 0) return "green";
     //     if (d.priceChange < 0) return "red";
     //     else return "grey";
-    //   }, 
+    //   },
     //   y:(d) => this.state.volScale(d.volumeChange),
     //   height:(d, i) => {
     //     let h = this.state.innerHeight - this.state.volScale(d.volumeChange);
@@ -719,8 +719,7 @@ class TickChart extends React.Component {
       .attr("stroke", "black")
       .attr("stroke-width", strokeWidth);
 
-
-      //Draw tick line
+    //Draw tick line
     let tickLinePath = chartWindow
       .selectAll(".tickPriceLine")
       .data([this.state.data]);
@@ -756,13 +755,10 @@ class TickChart extends React.Component {
       {}
     );
 
-
-
     this.appendTrades(this, chartWindow, scales);
 
-
     drawAxisAnnotation(
-      "currentRightPriceTag", 
+      "currentRightPriceTag",
       this.state.priceScale,
       partialOHLCdata.slice(-1)[0].price,
       svg,
@@ -770,20 +766,18 @@ class TickChart extends React.Component {
     );
   }
 
-
   appendTrades(that, chartWindow, { timeScale, priceScale }) {
     let scales = {
       priceScale,
-      timeScale
+      timeScale,
     };
 
-    TradeMarker({that, partialOHLCdata, scales, chartWindow })
-   
+    TradeMarker({ that, partialOHLCdata, scales, chartWindow });
   }
   render() {
     return (
       <div className={this.props.redGreenClass}>
-                {this.props.meta.is_loading && (
+        {this.props.meta.is_loading && (
           <Loader width={this.props.width} height={this.props.height} />
         )}
         <svg
@@ -792,6 +786,7 @@ class TickChart extends React.Component {
           height={this.props.height}
           className="svgChart"
         ></svg>
+        <BuySellButtons />
       </div>
     );
   }

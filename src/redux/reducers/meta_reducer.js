@@ -2,7 +2,9 @@
 
 const initial_state = {
   csrf:'', is_loading:false,
-  api_server:'', show_filter_list:false
+  api_server:'', show_filter_list:false,
+  opening_long:false,opening_short:false, position_size:1,
+  closing_position:false
 }
 
 export default (state = initial_state, action) => {
@@ -12,9 +14,34 @@ export default (state = initial_state, action) => {
         ...state, show_filter_list:action.show_filter_list
       }
     }
+    case 'SET_POSITION_SIZE':{
+      return{
+        ...state, position_size:action.position_size
+      }
+    }
     case "IS_LOADING":{
       return{
         ...state, is_loading:action.is_loading
+      }
+    }
+    case "OPENING_LONG":{
+      return{
+        ...state, opening_long:action.opening_long
+      }
+    }
+    case "CLOSING_POSITION":{
+      return{
+        ...state, closing_position:action.closing_position
+      }
+    }
+    case "OPENING_SHORT":{
+      return{
+        ...state, opening_short:action.opening_short
+      }
+    }
+    case "CLOSING_POSITION":{
+      return{
+        ...state, closing_position:action.closing_position
       }
     }
     case "SET_CSRF": {

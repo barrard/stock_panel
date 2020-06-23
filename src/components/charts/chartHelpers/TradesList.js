@@ -6,6 +6,10 @@ import { Link, withRouter } from "react-router-dom";
 import styled from "styled-components";
 import API from "../../API";
 import BuySellButtons from "../chartComponents/buySellButtons.js";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSpinner } from "@fortawesome/free-solid-svg-icons";
+import {updateCommodityTrade} from '../../../redux/actions/stock_actions.js'
+import {closing_position} from '../../../redux/actions/meta_actions.js'
 
 class TradesList extends React.Component {
   constructor(props) {
@@ -100,7 +104,20 @@ class TradesList extends React.Component {
   }
 
   async closePosition(id) {
-    let closedTrade = await API.closePosition(id);
+    try {
+      this.props.dispatch(closing_position(true));
+
+      let closedTrade = await API.closePosition(id);
+      if(closedTrade.resp){
+        closedTrade = closedTrade.resp
+        this.props.dispatch(updateCommodityTrade(closedTrade, closedTrade.symbol));
+        this.props.dispatch(closing_position(false));
+      }else if(closedTrade.err)throw closedTrade.err
+
+    } catch (err) {
+      console.log({err})
+    }
+
   }
 
   render() {
@@ -245,9 +262,7 @@ function Display_Stock_Row({
       {/* exitTime */}
       <div className="col-2 flex_center white">
         {!exitTime && (
-          <ClosePositionButton onClick={() => closePosition(_id)}>
-            Close Position
-          </ClosePositionButton>
+          <ClosePosition closePosition={()=>closePosition(_id)} />
         )}
         <DateTime date={exitTime} />
       </div>
@@ -382,6 +397,21 @@ const BuyOrSell = ({ buyOrSell }) => {
 };
 
 const Symbol = ({ symbol }) => <span className="ticker_symbol">{symbol}</span>;
+
+const ClosePosition = ({closePosition, closingPosition})=>(
+  <ClosePositionButton onClick={closePosition}>
+        {closingPosition && (
+      <>
+        {" "}
+        <FontAwesomeIcon icon={faSpinner} spin />
+        Closing...
+      </>
+    )}
+        {!closingPosition && "Close Position"}
+
+            
+          </ClosePositionButton>
+)
 
 const ClosePositionButton = styled.button`
   color: white;

@@ -29,32 +29,60 @@ export default {
 const API_SERVER = process.env.REACT_APP_STOCK_DATA_URL;
 const LOCAL_SERVER = process.env.REACT_APP_LOCAL_DATA;
 
-function handleTradeError(direction, err){
-  if(err.toLowerCase().includes('not admin')){
-    toastr.error("Not allowed...")
-  }else{
-    toastr.error(`Error Going ${direction}`)
+function handleTradeError(direction, err) {
+  console.log(err);
+  console.log(err);
+  console.log(err);
+
+  ;
+  if (!err) {
+    toastr.error(`Error Going ${direction},  not sure why, ${err}`);
+  } else if (typeof err === "string") {
+    toastr.error(err);
+  } else if (err.message) {
+    if (err.message.toLowerCase().includes("not admin")) {
+      toastr.error("Not allowed...  Not Admin, or not signed in.");
+    } else if (err.message.includes("Failed to fetch")) {
+      toastr.error("API server error.");
+    } else {
+      toastr.error(err.message);
+    }
+  } else {
+    toastr.error(
+      `Error Going ${direction}, sorry i can't be more helpful ${err}`
+    );
   }
 }
 
-async function goLong(symbol) {
-  let data = await fetch(`${LOCAL_SERVER}/API/goLong/${symbol}`, {
-    credentials: "include",
-  });
-  data = await data.json();
-  console.log(data);
-  if (!data.resp || data.err) handleTradeError('Long', data.err);
-  return;
+async function goLong({ symbol, size }) {
+  try {
+    let data = await fetch(`${LOCAL_SERVER}/API/goLong/${symbol}/${size}`, {
+      credentials: "include",
+    });
+    data = await data.json();
+    console.log(data);
+    if (!data.resp || data.err) handleTradeError("Long", data.err);
+    toastr.success(`New Long trade in ${symbol} @${data.resp.entryPrice}`)
+    return data.resp;
+  } catch (err) {
+    handleTradeError("Long", err);
+  }
 }
 
-async function goShort(symbol) {
-  let data = await fetch(`${LOCAL_SERVER}/API/goShort/${symbol}`, {
-    credentials: "include",
-  });
-  data = await data.json();
-  console.log(data);
-  if (!data.resp || data.err) handleTradeError('Short', data.err);
-  return;
+async function goShort({ symbol, size }) {
+  try {
+    let data = await fetch(`${LOCAL_SERVER}/API/goShort/${symbol}/${size}`, {
+      credentials: "include",
+    });
+    data = await data.json();
+    console.log(data);
+    if (!data.resp || data.err) handleTradeError("Short", data.err);
+    toastr.success(`New Short trade in ${symbol} @${data.resp.entryPrice}`)
+    
+    return data.resp;
+  } catch (err) {
+    handleTradeError("Short", err);
+  }
 }
 async function closePosition(id) {
   // console.log('getAllSymbolsData')
@@ -63,6 +91,7 @@ async function closePosition(id) {
   });
   data = await data.json();
   console.log(data);
+  
   if (!data.resp || data.err) toastr.error("Error Closing Position");
   return data;
 }

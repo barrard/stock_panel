@@ -195,6 +195,9 @@ border-bottom: white solid 1px;
   color: white !important;
   }
 
+  .inline{
+    display: inline;
+  }
 
 .tick line{
   stroke:#777;

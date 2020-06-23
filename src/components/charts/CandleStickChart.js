@@ -1043,11 +1043,10 @@ class CandleStickChart extends React.Component {
       debugger;
       console.log("WHAA");
     }
-    if (!svg.select()) {
+    if (!svg.select()  || !this.state.priceAxis) {
       debugger;
       console.log("WHAA");
     }
-
     if (!svg.select(".timeAxis").call(this.state.priceAxis)) {
       debugger;
       console.log("WHAA");
