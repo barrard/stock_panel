@@ -9,6 +9,7 @@ import {
 } from "../redux/actions/stock_actions.js";
 import { view_selected_stock, view_selected_commodity, getMinutelyCommodityData } from "./landingPageComponents/chart_data_utils.js";
 import { is_loading, show_filter_list } from "../redux/actions/meta_actions.js";
+import {logout_user} from '../redux/actions/user_actions.js'
 import API from "./API.js";
 class Main_Nav extends React.Component {
   constructor(props) {
@@ -25,6 +26,7 @@ class Main_Nav extends React.Component {
     this.make_filter_list = this.make_filter_list.bind(this);
     this.highlight_search_letters = this.highlight_search_letters.bind(this);
     this.filtered_stock_list_item = this.filtered_stock_list_item.bind(this);
+    this.handleLogout = this.handleLogout.bind(this)
   }
   async componentDidMount() {
     // const { api_server } = location.origin;
@@ -217,10 +219,16 @@ class Main_Nav extends React.Component {
     return { __html: name };
   }
 
-  render() {
-    let is_loggedin = this.props.user.is_loggedin;
-    let { pathname } = this.props.location;
+  handleLogout(e){
+    debugger
+    e.preventDefault()
+    this.props.dispatch(logout_user(this.props))
 
+  }
+  render() {
+    let isLoggedIn = this.props.user.isLoggedIn;
+    let { pathname } = this.props.location;
+    debugger
 
     return (
       <nav className="navbar navbar-expand-lg navbar-dark bg-dark relative ">
@@ -242,17 +250,17 @@ class Main_Nav extends React.Component {
 
         {/* <div className="collapse navbar-collapse" id="navbarSupportedContent"> */}
         <ul className="nav-bar-links">
-          {!is_loggedin && <Register_Login_Links pathname={pathname} />}
-          {is_loggedin && <Logout_Link pathname={pathname} />}
+          {!isLoggedIn && <Register_Login_Links pathname={pathname} />}
+          {isLoggedIn && <Logout_Link pathname={pathname} handleLogout={this.handleLogout} />}
 
           <Charts_Dropdown
             pathname={pathname}
             charts={this.props.stock_data.charts}
           />
-          {is_loggedin && <MA_Analysis_Link />}
+          {isLoggedIn && <MA_Analysis_Link />}
 
-          {is_loggedin && <Commodity_Page_Link />}
-          {is_loggedin && <Chart_Analysis_Link />}
+          {isLoggedIn && <Commodity_Page_Link />}
+          {isLoggedIn && <Chart_Analysis_Link />}
         </ul>
         <Navbar_Search
           /* Let the list stay long enough to click */
@@ -346,15 +354,15 @@ const Chart_Analysis_Link = ({ pathname }) => (
   />
 );
 
-const Logout_Link = ({ pathname }) => (
+const Logout_Link = ({ pathname, handleLogout }) => (
   <>
     <Navbar_Links
       name="Profile"
       path={"/account-profile"}
       pathname={pathname}
     />
-
-    <Navbar_Links name="Logout" path={"/auth/logout"} pathname={pathname} />
+  <LogOutBtn handleLogout={handleLogout}/>
+    {/* <Navbar_Links name="Logout" path={`${}/auth/logout`} pathname={pathname} /> */}
   </>
 );
 
@@ -368,10 +376,23 @@ const Register_Login_Links = ({ pathname }) => {
   );
 };
 
+const LogOutBtn = ({handleLogout})=>(
+  <li className="nav-item clickable">
+  <Link
+    to={'/h'}
+    onClick={handleLogout}
+    className={`nav-link white`}
+    href={`${process.env.REACT_APP_API_SERVER}/auth/logout`}
+  >
+    {"Logout"}
+  </Link>
+</li>
+)
+
 const Navbar_Links = ({ path, pathname, name }) => (
   <li className="nav-item">
     <Link
-      className={`${pathname == path ? "active " : " "} nav-link dropdown-item white`}
+      className={`${pathname == path ? "active " : " "} nav-link white`}
       to={path}
     >
       {name}

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Route, BrowserRouter as Router } from "react-router-dom";
+import { Route, BrowserRouter as Router, Redirect } from "react-router-dom";
 import styled from "styled-components";
 import { connect } from "react-redux";
 
@@ -20,6 +20,7 @@ import {
   updateCommodityTrade,
 } from "./redux/actions/stock_actions.js";
 import TradeBot from "./components/TradeBot/TradeBot.js";
+import API from "./components/API.js";
 let allData = { ES: [], CL: [], GC: [] };
 let i = 0;
 let prices_timer;
@@ -38,12 +39,14 @@ class App extends React.Component {
 
   componentDidMount() {
     let { dispatch } = this.props;
+    //check if logged in?
+    API.isLoggedIn(dispatch);
+
     // Socket.on("new_minutley_data", (newTickData)=>dispatch(updateCommodityData(newTickData, 'minute')));
 
-    Socket.on('err', (err)=>{
-      debugger
-      console.log(err)
-    })
+    Socket.on("err", (err) => {
+      console.log(err);
+    });
     // Socket.on("tradeConfirm", (newTrade) => {
     //   //dispatch(updateCommodityData(newTickData, 'tick'))
     //   console.log('tradeConfirm');
@@ -54,7 +57,7 @@ class App extends React.Component {
       dispatch(updateCommodityData(newTickData, "tick"))
     );
     Socket.on("stockBotEnterTrade", (newTrade) => {
-      debugger
+      debugger;
 
       console.log("stockBotEnterTrade ENTERING A TRADE");
       return dispatch(addCommodityTrade(newTrade, newTrade.symbol));
@@ -73,8 +76,7 @@ class App extends React.Component {
 
         <div>
           <Route exact path="/" component={LandingPage} />
-          <Route path="/sign-up" component={SignupPage} />
-          <Route path="/login" component={LoginPage} />
+
           <Route
             exact
             path="/commodities"
@@ -92,6 +94,12 @@ class App extends React.Component {
               <CommodityChartPage {...props} Socket={Socket} />
             )}
           />
+
+          {/* Keep at bottom */}
+            <Route exact path="/sign-up" component={SignupPage} />
+         
+            <Route path="/login" component={LoginPage} />
+     
         </div>
       </Router>
     );

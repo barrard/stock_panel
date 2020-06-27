@@ -1,20 +1,18 @@
-// import * as meta_actions from "../actions/meta_actions.js";
-
 const initial_state = {
   user: {},
   username: "",
   password: "",
-  is_loggedin:false
-
+  isLoggedIn: false,
 };
 
 export default (state = initial_state, action) => {
   switch (action.type) {
-    case "SET_USER": {
-      console.log('setting user loggedin')
-      return { ...state, user:action.user, is_loggedin:true };
+    case "SET_USER_IS_LOGGED_IN": {
+      return { ...state, user: action.user, isLoggedIn: true };
     }
-
+    case "LOGOUT_USER": {
+      return { ...state, user: {}, isLoggedIn: false };
+    }
 
     default:
       return state;

@@ -105,7 +105,8 @@ class TickChart extends React.Component {
   }
 
   didTickDataUpdate(prevPops) {
-    if (!partialOHLCdata.length) return;
+    if (!partialOHLCdata || !partialOHLCdata.length || !this.state.data.length) return;
+    
     //FIRST CHECK IF NEW TICK DATA IS HERE
     if (prevPops.currentTickData != this.props.currentTickData) {
       // let currentTickData = this.props.currentTickData.priceChangeData;

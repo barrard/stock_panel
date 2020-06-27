@@ -9,6 +9,8 @@ import {
   // set_search_symbol,
   // add_chart_data
 } from "../redux/actions/stock_actions.js";
+import { login_success, login_attempt} from '../redux/actions/user_actions.js'
+
 export default {
   getMovers,
   getAllSymbolsData,
@@ -23,8 +25,27 @@ export default {
   closePosition,
   goLong,
   goShort,
-  getVolProfile,
+  getVolProfile,isLoggedIn
 };
+
+
+
+async function isLoggedIn(dispatch){
+  debugger
+  try {
+    let user = await fetch(`${process.env.REACT_APP_API_SERVER}/auth/isLoggedIn`, {
+      method:'GET',
+      credentials: "include",
+    })
+    user = await user.json()
+    if(user){
+      dispatch(login_success(user))
+    }
+  } catch (err) {
+    console.log({err})
+  }
+}
+
 
 const API_SERVER = process.env.REACT_APP_STOCK_DATA_URL;
 const LOCAL_SERVER = process.env.REACT_APP_LOCAL_DATA;
@@ -54,16 +75,29 @@ function handleTradeError(direction, err) {
   }
 }
 
-async function goLong({ symbol, size }) {
+async function goLong({ symbol,position_size,
+        order_type,
+        order_target_size,
+      order_stop_size,
+        order_limit 
+       }) {
   try {
-    let data = await fetch(`${LOCAL_SERVER}/API/goLong/${symbol}/${size}`, {
+    debugger
+    let orderLong = await fetch(`${LOCAL_SERVER}/API/goLong`, {
+      ...POST({symbol,position_size,
+        order_type,
+        order_target_size,
+        order_stop_size,
+        order_limit 
+      }),
       credentials: "include",
     });
-    data = await data.json();
-    console.log(data);
-    if (!data.resp || data.err) handleTradeError("Long", data.err);
-    toastr.success(`New Long trade in ${symbol} @${data.resp.entryPrice}`)
-    return data.resp;
+    orderLong = await orderLong.json();
+    console.log(orderLong);
+    debugger
+    if (!orderLong.resp || orderLong.err) return handleTradeError("Long", orderLong.err);
+    toastr.success(`New Long trade in ${symbol} @${orderLong.resp.entryPrice}`)
+    return orderLong.resp;
   } catch (err) {
     handleTradeError("Long", err);
   }
@@ -76,7 +110,7 @@ async function goShort({ symbol, size }) {
     });
     data = await data.json();
     console.log(data);
-    if (!data.resp || data.err) handleTradeError("Short", data.err);
+    if (!data.resp || data.err) return handleTradeError("Short", data.err);
     toastr.success(`New Short trade in ${symbol} @${data.resp.entryPrice}`)
     
     return data.resp;
@@ -86,7 +120,7 @@ async function goShort({ symbol, size }) {
 }
 async function closePosition(id) {
   // console.log('getAllSymbolsData')
-  let data = await fetch(`${LOCAL_SERVER}/API/close-position/${id}`, {
+  let data = await fetch(`${LOCAL_SERVER}/API/closePosition/${id}`, {
     credentials: "include",
   });
   data = await data.json();

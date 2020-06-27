@@ -5,6 +5,42 @@ export function set_api_server(api_server) {
     iex_server: "https://cloud.iexapis.com/stable",
   };
 }
+
+
+
+
+
+export function set_order_limit(order_limit) {
+  return {
+    type: "SET_ORDER_LIMIT",
+    order_limit,
+  };
+}
+
+
+export function set_order_stop(order_stop_size) {
+  return {
+    type: "SET_ORDER_STOP",
+    order_stop_size,
+  };
+}
+
+
+export function set_order_target(order_target_size) {
+  return {
+    type: "SET_ORDER_TARGET",
+    order_target_size,
+  };
+}
+
+
+export function set_order_type(order_type) {
+  return {
+    type: "SET_ORDER_TYPE",
+    order_type,
+  };
+}
+
 export function set_csrf(csrf) {
   return {
     type: "SET_CSRF",

@@ -17,7 +17,7 @@ class Signup extends React.Component {
       email: "",
       password: "",
       confirm_password:'',
-      csrf:props.meta.csrf
+      // csrf:props.meta.csrf //TODO
     };
     this.handle_signup = this.handle_signup.bind(this)
     this.handle_signup_resp = this.handle_signup_resp.bind(this)
@@ -55,7 +55,7 @@ class Signup extends React.Component {
       const _csrf = this.props.meta.csrf
 
       const {email, password, confirm_password} = data
-      let resp = await fetch('/auth/signup', {
+      let resp = await fetch(`${process.env.REACT_APP_API_SERVER}/auth/signup`, {
         method:'POST',
         headers: {
           "Content-Type": "application/json",

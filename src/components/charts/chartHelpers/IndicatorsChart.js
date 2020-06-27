@@ -126,7 +126,7 @@ neutral: 0
   }
 
   didTickDataUpdate(prevProps) {
-    if(!partialOHLCdata.length)return
+    if(!partialOHLCdata.length || !this.state.data.length)return
     //FIRST CHECK IF NEW TICK DATA IS HERE
     if (prevProps.currentTickData != this.props.currentTickData) {
       let { data } = this.props;

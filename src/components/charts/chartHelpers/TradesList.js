@@ -112,9 +112,12 @@ class TradesList extends React.Component {
         closedTrade = closedTrade.resp
         this.props.dispatch(updateCommodityTrade(closedTrade, closedTrade.symbol));
         this.props.dispatch(closing_position(false));
-      }else if(closedTrade.err)throw closedTrade.err
-
+      }else if(closedTrade.err){
+        this.props.dispatch(closing_position(false));
+        throw closedTrade.err
+      }
     } catch (err) {
+      this.props.dispatch(closing_position(false));
       console.log({err})
     }
 

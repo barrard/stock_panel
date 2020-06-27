@@ -10,7 +10,7 @@ class Login_Form extends React.Component {
     // console.log(props)
     this.state = {
 
-      email: "111@gg.com",
+      email: "123@gg.com",
       password: "1",
       _csrf:props.csrf
     };
