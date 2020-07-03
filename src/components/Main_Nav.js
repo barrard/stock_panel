@@ -29,9 +29,7 @@ class Main_Nav extends React.Component {
     this.handleLogout = this.handleLogout.bind(this)
   }
   async componentDidMount() {
-    // const { api_server } = location.origin;
-    // console.log(location);
-    // console.log(api_server);
+
     try {
       const { has_symbols_data } = this.props.stock_data;
       console.log({has_symbols_data})
@@ -220,7 +218,7 @@ class Main_Nav extends React.Component {
   }
 
   handleLogout(e){
-    debugger
+    
     e.preventDefault()
     this.props.dispatch(logout_user(this.props))
 
@@ -228,7 +226,7 @@ class Main_Nav extends React.Component {
   render() {
     let isLoggedIn = this.props.user.isLoggedIn;
     let { pathname } = this.props.location;
-    debugger
+    
 
     return (
       <nav className="navbar navbar-expand-lg navbar-dark bg-dark relative ">
@@ -257,6 +255,7 @@ class Main_Nav extends React.Component {
             pathname={pathname}
             charts={this.props.stock_data.charts}
           />
+    
           {isLoggedIn && <MA_Analysis_Link />}
 
           {isLoggedIn && <Commodity_Page_Link />}
@@ -343,6 +342,7 @@ const MA_Analysis_Link = ({ pathname }) => (
     pathname={pathname}
   />
 );
+
 const Commodity_Page_Link = ({ pathname }) => (
   <Navbar_Links name="Commodities" path={"/commodities"} pathname={pathname} />
 );

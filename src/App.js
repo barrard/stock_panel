@@ -11,6 +11,7 @@ import LandingPage from "./components/landingPage.js";
 import SignupPage from "./components/SignupPage.js";
 import LoginPage from "./components/LoginPage.js";
 import StockChart from "./components/StockChartPage.js";
+
 import CommodityChartPage from "./components/CommodityChartPage.js";
 import defaultFilterList from "./components/QuoteComponents/DefaultFilterList.js";
 import Main_Nav from "./components/Main_Nav.js";

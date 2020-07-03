@@ -122,10 +122,15 @@ export async function view_selected_stock({ timeframe, end, symbol, props }) {
   // /* fetch data and add to the store/charts array */
   dispatch(is_loading(true));
   // props.history.push(`/chart/${symbol}`);
+ try {
   const stockData = await API.fetchStockData({ timeframe, symbol, end });
   console.log({ stockData });
   dispatch(add_chart_data(symbol, stockData[symbol], tf));
   dispatch(is_loading(false));
+ } catch (err) {
+  dispatch(is_loading(false));
+   
+ }
 }
 
 /* HELPER METHOD */

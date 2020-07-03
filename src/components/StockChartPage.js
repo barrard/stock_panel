@@ -8,11 +8,14 @@ import Canvas_Chart from "./charts/Canvas_Chart.js";
 import Analysis_Chart from "./charts/Analysis_Chart.js";
 import CandleStickChart from "./charts/CandleStickChart.js";
 import {set_search_symbol} from '../redux/actions/stock_actions.js'
+import SEC_Fillings from './SEC_Fillings.js'
+const CHART_WIDTH_REDUCER = 0.9;
 
 class Account_Profile extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
+      chartWidth: window.innerWidth * CHART_WIDTH_REDUCER,
 
       canvas_width: 12
     };
@@ -24,8 +27,21 @@ class Account_Profile extends React.Component {
     let symbol = this.props.match.params.symbol
 
     this.props.dispatch(set_search_symbol(symbol))
+    this.setChartWidth();
+    window.addEventListener("resize", this.setChartWidth.bind(this));
 
 
+
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("resize", this.setChartWidth);
+  }
+
+  setChartWidth() {
+    this.setState({
+      chartWidth: window.innerWidth * CHART_WIDTH_REDUCER,
+    });
   }
   componentDidUpdate(prevProps){
     let currentURL = this.props.match.url
@@ -55,11 +71,15 @@ class Account_Profile extends React.Component {
 
     return (
       <div className="p-5">
+          <SEC_Fillings 
+                   symbol={symbol}
+                   width={this.state.chartWidth}
+          />
         <div className="row ">
           <CandleStickChart
           type="stock"
            symbol={symbol}
-            width={950}
+            width={this.state.chartWidth}
             height={400}
           />
 

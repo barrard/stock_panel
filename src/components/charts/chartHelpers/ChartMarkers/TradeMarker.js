@@ -3,7 +3,10 @@ export const TradeMarker = ({that, partialOHLCdata, scales, chartWindow })=>{
 
 let {timeScale, priceScale} = scales
 
-
+let symbol = that.props.stock_data.search_symbol;
+let trades = that.props.stock_data.commodityTrades[symbol];
+//don't do anything if there aren't any trades
+if(!trades)return
      /**
      * id(pin):"5e833a02a693dc4122d7355f"
 buyOrSell(pin):"Buy"
@@ -61,8 +64,6 @@ exitTime(pin):1585659963841
       else return "red";
     }
 
-    let symbol = that.props.stock_data.search_symbol;
-    let trades = that.props.stock_data.commodityTrades[symbol];
     //All trades must have these
     trades = trades.filter(d=>{
         let { entryTime, exitTime, exitPrice, entryPrice } = d;

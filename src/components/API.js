@@ -9,7 +9,7 @@ import {
   // set_search_symbol,
   // add_chart_data
 } from "../redux/actions/stock_actions.js";
-import { login_success, login_attempt} from '../redux/actions/user_actions.js'
+import { login_success, login_attempt } from "../redux/actions/user_actions.js";
 
 export default {
   getMovers,
@@ -25,27 +25,56 @@ export default {
   closePosition,
   goLong,
   goShort,
-  getVolProfile,isLoggedIn
+  getVolProfile,
+  isLoggedIn,
+  fetchSEC_Filings,
 };
 
-
-
-async function isLoggedIn(dispatch){
-  debugger
+async function handleResponse(res) {
   try {
-    let user = await fetch(`${process.env.REACT_APP_API_SERVER}/auth/isLoggedIn`, {
-      method:'GET',
-      credentials: "include",
-    })
-    user = await user.json()
-    if(user){
-      dispatch(login_success(user))
-    }
+    let res = await res.json();
+    console.log("returning API response");
+    if (res.err) throw res.err;
+    return res;
   } catch (err) {
-    console.log({err})
+    toastr.error("API error", err);
+    return false;
   }
 }
 
+async function fetchSEC_Filings(symbol) {
+  try {
+    let fillingsData = await fetch(
+      `${process.env.REACT_APP_API_SERVER}/sec-filings/${symbol}`,
+      {
+        method: "GET",
+      }
+    );
+    fillingsData = await fillingsData.json();
+    if (fillingsData.err) throw fillingsData.err;
+    return fillingsData;
+  } catch (err) {
+    toastr.err(`Error loading Fillings for ${symbol}`, err);
+  }
+}
+
+async function isLoggedIn(dispatch) {
+  try {
+    let user = await fetch(
+      `${process.env.REACT_APP_API_SERVER}/auth/isLoggedIn`,
+      {
+        method: "GET",
+        credentials: "include",
+      }
+    );
+    user = await user.json();
+    if (user) {
+      dispatch(login_success(user));
+    }
+  } catch (err) {
+    console.log({ err });
+  }
+}
 
 const API_SERVER = process.env.REACT_APP_STOCK_DATA_URL;
 const LOCAL_SERVER = process.env.REACT_APP_LOCAL_DATA;
@@ -55,7 +84,6 @@ function handleTradeError(direction, err) {
   console.log(err);
   console.log(err);
 
-  ;
   if (!err) {
     toastr.error(`Error Going ${direction},  not sure why, ${err}`);
   } else if (typeof err === "string") {
@@ -75,28 +103,32 @@ function handleTradeError(direction, err) {
   }
 }
 
-async function goLong({ symbol,position_size,
-        order_type,
-        order_target_size,
-      order_stop_size,
-        order_limit 
-       }) {
+async function goLong({
+  symbol,
+  position_size,
+  order_type,
+  order_target_size,
+  order_stop_size,
+  order_limit,
+}) {
   try {
-    debugger
     let orderLong = await fetch(`${LOCAL_SERVER}/API/goLong`, {
-      ...POST({symbol,position_size,
+      ...POST({
+        symbol,
+        position_size,
         order_type,
         order_target_size,
         order_stop_size,
-        order_limit 
+        order_limit,
       }),
       credentials: "include",
     });
     orderLong = await orderLong.json();
     console.log(orderLong);
-    debugger
-    if (!orderLong.resp || orderLong.err) return handleTradeError("Long", orderLong.err);
-    toastr.success(`New Long trade in ${symbol} @${orderLong.resp.entryPrice}`)
+
+    if (!orderLong.resp || orderLong.err)
+      return handleTradeError("Long", orderLong.err);
+    toastr.success(`New Long trade in ${symbol} @${orderLong.resp.entryPrice}`);
     return orderLong.resp;
   } catch (err) {
     handleTradeError("Long", err);
@@ -111,8 +143,8 @@ async function goShort({ symbol, size }) {
     data = await data.json();
     console.log(data);
     if (!data.resp || data.err) return handleTradeError("Short", data.err);
-    toastr.success(`New Short trade in ${symbol} @${data.resp.entryPrice}`)
-    
+    toastr.success(`New Short trade in ${symbol} @${data.resp.entryPrice}`);
+
     return data.resp;
   } catch (err) {
     handleTradeError("Short", err);
@@ -125,7 +157,7 @@ async function closePosition(id) {
   });
   data = await data.json();
   console.log(data);
-  
+
   if (!data.resp || data.err) toastr.error("Error Closing Position");
   return data;
 }
@@ -319,7 +351,6 @@ async function fetch_commodity_minutely_data({ date, symbol }) {
     return data;
   } catch (err) {
     console.log(err);
-    // debugger
     let data = [];
     toastr.success(`No Data loaded`, msg(data, date, symbol));
     return data;
@@ -328,6 +359,7 @@ async function fetch_commodity_minutely_data({ date, symbol }) {
 
 async function fetchCommodityData({ timeframe, symbol }) {
   console.log(LOCAL_SERVER);
+
   let data = await fetch(`${LOCAL_SERVER}/back_data/${timeframe}/${symbol}`);
   data = await data.json();
   console.log({ data });
@@ -336,7 +368,6 @@ async function fetchCommodityData({ timeframe, symbol }) {
     toastr.error(`Data Not loaded`, `An error occurred for ${symbol}`);
   else
     toastr.success(`Data loaded`, `${data.length} bars loaded for ${symbol}`);
-  // debugger
   return data;
 }
 
@@ -344,9 +375,10 @@ async function fetchStockData({ timeframe, symbol, end }) {
   let data = await fetch(
     `${API_SERVER}/alpacaData/${symbol}/${timeframe}/${end}`
   );
-  data = await data.json();
-  // console.log({data})
-  // console.log('TOASTR')
+  data = await data.json()
+  if(data.err)throw data.err
+  console.log(data);
+  if (!data) return [];
   toastr.success(
     `Data loaded`,
     `${data[symbol].length} bars loaded for ${symbol}`
