@@ -149,13 +149,11 @@ class CandleStickChart extends React.Component {
       },
       visibleIndicators: {
         swingLines: false,
-        minMaxMarkers: false,
+        // minMaxMarkers: false,
         showTrades: false,
         importantPriceLevel: false,
         regressionLines: false,
-        ema20: false,
-        ema200: false,
-        ema50: false,
+        emaLine: false,
         fibonacciLines: false,
         volumeBars: false,
         volumeProfile: false,
@@ -166,7 +164,7 @@ class CandleStickChart extends React.Component {
       innerHeight: height - (margin.top + margin.bottom),
 
       timeScale: scaleTime().range([0, innerWidth]),
-      volProfileScale: scaleLinear().range([0, innerWidth]),
+      volProfileScale: scaleLinear().range([innerWidth/2, innerWidth]),
       priceScale: scaleLinear().range([innerHeight, 0]),
       volScale: scaleLinear().range([innerHeight, 0]).nice(),
 
@@ -185,7 +183,7 @@ class CandleStickChart extends React.Component {
   }
 
   async componentDidMount() {
-    // console.log("mounted");
+
     let { symbol } = this.props.match.params;
     const timeframe = this.state.timeframe;
     const props = this.props;
@@ -451,7 +449,7 @@ class CandleStickChart extends React.Component {
           rawOHLCData: [...currentRawOHLCData],
         });
 
-        setTimeout(() => this.setupChart(), 0);
+        setTimeout(() => this.draw(), 0);
       }
     } else if (type == "stock") {
       console.log("//TODO!!!");
@@ -894,8 +892,8 @@ class CandleStickChart extends React.Component {
         return that.dragEnd();
       });
 
-    svg.call(d3drag); //breaks if this is not first
-    svg.call(d3zoom); //needs to be after drag
+    chartWindow.call(d3drag); //breaks if this is not first
+    chartWindow.call(d3zoom); //needs to be after drag
 
     //Making data for later draws
     let fibData = makeFibonacciData(this, {
@@ -1009,6 +1007,7 @@ class CandleStickChart extends React.Component {
   }
 
   draw(data) {
+    console.log('Draw CandleStick')
     let drawData;
     if (data) {
       drawData = data;
@@ -1026,7 +1025,7 @@ class CandleStickChart extends React.Component {
         ({ up, down, neutral }) => up + down + neutral
       );
       let [volProfileMin, volProfileMax] = extent(rawVolProfileValues);
-      this.state.volProfileScale.domain([0, volProfileMax]);
+      this.state.volProfileScale.domain([volProfileMax, 0]);
     }
 
     let [timeMin, timeMax] = extent(drawData.map(({ timestamp }) => timestamp));
@@ -1039,23 +1038,26 @@ class CandleStickChart extends React.Component {
     this.state.volScale.domain([0, volMax]);
     // get the SVG element
     let svg = select(this.state.chartRef.current);
-    if (!svg) {
-      debugger;
-      console.log("WHAA");
-    }
-    if (!svg.select()  || !this.state.priceAxis) {
-      debugger;
-      console.log("WHAA");
-    }
-    if (!svg.select(".timeAxis").call(this.state.priceAxis)) {
-      debugger;
-      console.log("WHAA");
-    }
-    if (typeof this.state.priceAxis != "function") {
-      console.log(typeof this.state.priceAxis);
-      debugger;
-      console.log("WHAA");
-    }
+    //trying to catch the source of this strange error, that only happens in dev...
+    (()=>{
+      if (!svg) {
+        debugger;
+        console.log("WHAA");
+      }
+      if (!svg.select() || !this.state.priceAxis) {
+        debugger;
+        console.log("WHAA");
+      }
+      if (!svg.select(".timeAxis").call(this.state.priceAxis)) {
+        debugger;
+        console.log("WHAA");
+      }
+      if (typeof this.state.priceAxis != "function") {
+        console.log(typeof this.state.priceAxis);
+        debugger;
+        console.log("WHAA");
+      }
+    })()
 
     svg.select(".timeAxis").call(this.state.timeAxis);
     svg.select(".priceAxis").call(this.state.priceAxis);
@@ -1094,6 +1096,7 @@ class CandleStickChart extends React.Component {
       this.state.candleHeightScale
     );
 
+    //  Adds an axis annotation to show the most recent value
     drawAxisAnnotation(
       "currentRightPriceTag",
       this.state.priceScale,
@@ -1101,24 +1104,26 @@ class CandleStickChart extends React.Component {
       svg,
       "priceAxis"
     );
-  }
+  }//end of draw
 
   appendEMA(chartWindow, { timeScale, priceScale }) {
-    if (this.state.visibleIndicators.ema20) {
+    if (this.state.visibleIndicators.emaLine) {
+      chartWindow.selectAll(".emaLine").remove();
+
       //show 20 EMA
       drawMALine(chartWindow, this.state.EMA_data, 20, {
         timeScale,
         priceScale,
       });
-    }
-    if (this.state.visibleIndicators.ema50) {
+    // }
+    // if (this.state.visibleIndicators.ema50) {
       //show 50 EMA
       drawMALine(chartWindow, this.state.EMA_data, 50, {
         timeScale,
         priceScale,
       });
-    }
-    if (this.state.visibleIndicators.ema200) {
+    // }
+    // if (this.state.visibleIndicators.ema200) {
       //show 200 EMA
       drawMALine(chartWindow, this.state.EMA_data, 200, {
         timeScale,
@@ -1474,6 +1479,7 @@ class CandleStickChart extends React.Component {
 
   toggleIndicators(indicator) {
     let svg = select(this.state.chartRef.current);
+    debugger
     let markers = svg.selectAll(`.${indicator}`);
     markers.remove();
     let temp = this.state.visibleIndicators;
@@ -1488,6 +1494,9 @@ class CandleStickChart extends React.Component {
 
   runPriceLevels() {
     let priceLevelMinMax = this.state.priceLevelMinMax;
+    //this is used to decide if the minMax setting 
+    // will get reduced as the window gets smaller
+    //towards the more recent data
     let minMaxMostRecentData = false;
     let importantMinMaxValues = this.runMinMax(
       priceLevelMinMax,
@@ -1551,15 +1560,16 @@ class CandleStickChart extends React.Component {
     }, 0);
     setTimeout(() => this.draw(), 0);
   }
+  //tells the stock bot to watch certain stock
   setTimeframeActive() {
     let { timeframe, symbol } = this.state;
     let { _id } = this.props.stock_data.commodityRegressionData[symbol][
       timeframe
     ];
-    console.log(_id);
     API.setTimeframeActive(_id, timeframe, this.props);
   }
-
+//sets the settings in the api server
+//TODO add user id
   saveRegressionSettings() {
     let { symbol } = this.props;
     let {
@@ -1659,7 +1669,6 @@ class CandleStickChart extends React.Component {
       <div>
         <h3>{this.state.timeframe}</h3>
 
-
         {this.props.meta.is_loading && (
           <Loader width={this.props.width} height={this.state.height} />
         )}
@@ -1692,7 +1701,7 @@ class CandleStickChart extends React.Component {
           height={this.state.height}
           className="svgChart"
         ></svg>
-                <select
+        <select
           onChange={(e) => this.setTimeframe(e)}
           className="form-control"
           name=""
@@ -1705,7 +1714,7 @@ class CandleStickChart extends React.Component {
           <option value="daily">Daily</option>
           <option value="weekly">Weekly</option>
         </select>
-        
+
         {currentTickData && <Timers lastTick={currentTickData} />}
         <RegressionSettingsContainer>
           {/* RegressionLine settings */}

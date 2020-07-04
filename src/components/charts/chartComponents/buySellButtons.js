@@ -81,18 +81,35 @@ class BuySellButtons extends React.Component {
       this.props.dispatch(addCommodityTrade(newTrade, newTrade.symbol));
     } catch (err) {
       this.props.dispatch(opening_long(false));
-      //TODO
-      //dispatch some error
+
       console.error({ err });
     }
   }
   async goShort(size) {
     let symbol = this.props.stock_data.search_symbol;
-    // Socket.emit("userGoShort", { symbol, size });
+    let { dispatch, meta, stock_data } = this.props;
+
+
+    let {
+      position_size,
+      order_type,
+      order_target_size,
+      order_stop_size,
+      order_limit,
+    } = meta;
+debugger
+    this.props.dispatch(opening_short(true));
     try {
-      this.props.dispatch(opening_short(true));
-      let newTrade = await API.goShort({ symbol, size });
+      let newTrade = await API.goShort({ symbol,
+        position_size,
+        order_type,
+        order_target_size,
+        order_stop_size,
+        order_limit });
       console.log({ newTrade });
+      if(!newTrade )throw 'Didnt get a new trade back from API'
+      else if(newTrade.err) throw newTrade.err
+
       this.props.dispatch(opening_short(false));
       this.props.dispatch(addCommodityTrade(newTrade, newTrade.symbol));
     } catch (err) {

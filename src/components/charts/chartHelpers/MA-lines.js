@@ -43,14 +43,12 @@ export function makeEMA(EMA_val, data) {
     } else {
       let prevEMA = EMAdata[EMAdata.length - 1].y;
       let close = d.close;
-    //   console.log({ close, prevEMA, multiplier, i, EMA_val });
       let emaCalc = (close - prevEMA) * multiplier + prevEMA;
       emaCalc = parseFloat(emaCalc.toFixed(3))
 
       EMAdata.push({x: d.timestamp,y:emaCalc});
     }
   });
-//   console.log(EMAdata);
   return EMAdata;
 }
 
@@ -63,7 +61,7 @@ export function drawMALine(
 ) {
 //   console.log(emaData);
 //   console.log({ MA_value, emaData });
-  let MA_className = `ema${MA_value}`;
+  let MA_className = `ema${MA_value} emaLine`;
   let scales = { priceScale, timeScale };
 
   drawLine(chartWindow, emaData[MA_value], MA_className, scales);

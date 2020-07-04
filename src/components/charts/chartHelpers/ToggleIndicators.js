@@ -13,7 +13,8 @@ class Contracts extends React.Component {
   }
   render() {
     return (
-      <>
+      <div className='row flex_center'>
+        
         <ToggleIndicatorButton
           onClick={() => this.props.toggleIndicators("tradeMarkers")}
           isSet={this.props.visibleIndicators.tradeMarkers}
@@ -60,12 +61,12 @@ class Contracts extends React.Component {
         </ToggleIndicatorButton>
 
         <ToggleIndicatorButton
-          onClick={() => this.props.toggleIndicators("ema20")}
-          isSet={this.props.visibleIndicators.ema20}
+          onClick={() => this.props.toggleIndicators("emaLine")}
+          isSet={this.props.visibleIndicators.emaLine}
         >
-          20 EMA
+          EMA 20/50/200
         </ToggleIndicatorButton>
-
+{/* 
         <ToggleIndicatorButton
           onClick={() => this.props.toggleIndicators("ema50")}
           isSet={this.props.visibleIndicators.ema50}
@@ -77,8 +78,8 @@ class Contracts extends React.Component {
           isSet={this.props.visibleIndicators.ema200}
         >
           200 EMA
-        </ToggleIndicatorButton>
-      </>
+        </ToggleIndicatorButton> */}
+        </div>
     );
   }
 }

@@ -59,7 +59,7 @@ class TickChart extends React.Component {
       timeScale: scaleTime().range([0, innerWidth]),
 
       priceScale: scaleLinear().range([innerHeight, 0]).nice(),
-      volProfileScale: scaleLinear().range([0, innerWidth]),
+      volProfileScale: scaleLinear().range([innerWidth/2, innerWidth]),
       volScale: scaleLinear().range([innerHeight, 0]).nice(),
       data,
       timestamps: [],
@@ -72,11 +72,6 @@ class TickChart extends React.Component {
   }
 
   componentDidMount() {
-    console.log("TICK CHART");
-    // console.log(this.state)
-    // let svg = select(this.state.chartRef.current);
-
-    // console.log(svg.select(".timeAxis"))
     this.setupChart();
   }
 
@@ -109,7 +104,6 @@ class TickChart extends React.Component {
     
     //FIRST CHECK IF NEW TICK DATA IS HERE
     if (prevPops.currentTickData != this.props.currentTickData) {
-      // let currentTickData = this.props.currentTickData.priceChangeData;
       let { priceChangeData, volumePriceProfile } = this.props.currentTickData;
 
       /**
@@ -423,7 +417,7 @@ class TickChart extends React.Component {
       .attr("stroke-width", 2);
     priceAxisG.append("text").attr("id", `currentRightPriceTagText`);
 
-    //appand volAxis
+    //append volAxis
     let volAxisG = svg
       .append("g")
       .attr("class", "white volAxis")
@@ -464,7 +458,7 @@ class TickChart extends React.Component {
         crosshair.style("display", null);
       })
       .on("mouseout", function () {
-        // crosshair.style("display", "none");
+        crosshair.style("display", "none");
         removeAllAxisAnnotations(svg);
       })
       .on("mousemove", function () {
@@ -507,7 +501,7 @@ class TickChart extends React.Component {
             otherThat.state.timestamps[otherThat.state.timestamps.length - 1]
           )
         )
-        .attr("y2", () => MOUSEY);
+        .attr("y2", MOUSEY);
       // .attr("y2", otherThat.state.MOUSEY);
     }
 
@@ -598,7 +592,8 @@ class TickChart extends React.Component {
   }
 
   draw(data) {
-    // console.log("Heavy tick chart redraw");
+    console.log('Draw tick')
+
     let drawData;
     if (data) {
       drawData = data;
@@ -607,7 +602,6 @@ class TickChart extends React.Component {
     }
     if (!drawData || !drawData.length || drawData.length < 2) return;
 
-    // console.log({volPriceKeys})
     let prices = drawData.map((d) => d.price);
     let volValues = drawData.map((d) => d.volumeChange);
     let [timeMin, timeMax] = extent(drawData.map(({ timestamp }) => timestamp));
@@ -615,23 +609,17 @@ class TickChart extends React.Component {
     let [priceMin, priceMax] = extent(prices);
 
     let volPriceKeys = Array.from(Object.keys(this.state.volumePriceProfile));
-    // console.log(volPriceKeys.length)
 
     volPriceKeys = volPriceKeys.filter((v) => v >= priceMin && v <= priceMax);
     volPriceKeys = volPriceKeys.map((v) => +v);
     let volProfileValues = volPriceKeys.map(
       (volPriceKey) => this.state.volumePriceProfile[volPriceKey]
     );
-    // console.log({ volProfileValues });
     let rawVolProfileValues = volProfileValues.map(
       ({ up, down, neutral }) => up + down + neutral
     );
     let [volProfileMin, volProfileMax] = extent(rawVolProfileValues);
-    // console.log({ rawVolProfileValues, volProfileMax });
 
-    // console.log({volPriceKeys, volProfileValues, volProfileMax})
-    // let [volPriceKeysMin, volPriceKeysMax] = extent(volPriceKeys);
-    // console.log({prices})
     this.state.timeScale.domain([timeMin, timeMax]);
 
     this.state.priceScale.domain([
@@ -643,11 +631,8 @@ class TickChart extends React.Component {
     this.state.volProfileScale.domain([volProfileMax, 0]);
     let svg = select(this.state.chartRef.current);
 
-    //append timeAxis group
     svg.select(".timeAxis").call(this.state.timeAxis);
-    //append priceAxis group
     svg.select(".priceAxis").call(this.state.priceAxis);
-    //append volAxis
     svg.select(".volAxis").call(this.state.volAxis);
     svg.select(".volProfileAxis").call(this.state.volProfileAxis);
 
@@ -758,6 +743,7 @@ class TickChart extends React.Component {
 
     this.appendTrades(this, chartWindow, scales);
 
+        //  Adds an axis annotation to show the most recent value
     drawAxisAnnotation(
       "currentRightPriceTag",
       this.state.priceScale,
@@ -765,7 +751,7 @@ class TickChart extends React.Component {
       svg,
       "priceAxis"
     );
-  }
+  }// End of draw
 
   appendTrades(that, chartWindow, { timeScale, priceScale }) {
     let scales = {

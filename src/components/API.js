@@ -135,17 +135,30 @@ async function goLong({
   }
 }
 
-async function goShort({ symbol, size }) {
+async function goShort({   symbol,
+  position_size,
+  order_type,
+  order_target_size,
+  order_stop_size,
+  order_limit, }) {
   try {
-    let data = await fetch(`${LOCAL_SERVER}/API/goShort/${symbol}/${size}`, {
+    let orderShort = await fetch(`${LOCAL_SERVER}/API/goShort`, {
+      ...POST({
+        symbol,
+        position_size,
+        order_type,
+        order_target_size,
+        order_stop_size,
+        order_limit,
+      }),
       credentials: "include",
     });
-    data = await data.json();
-    console.log(data);
-    if (!data.resp || data.err) return handleTradeError("Short", data.err);
-    toastr.success(`New Short trade in ${symbol} @${data.resp.entryPrice}`);
+    orderShort = await orderShort.json();
+    console.log(orderShort);
+    if (!orderShort.resp || orderShort.err) return handleTradeError("Short", orderShort.err);
+    toastr.success(`New Short trade in ${symbol} @${orderShort.resp.entryPrice}`);
 
-    return data.resp;
+    return orderShort.resp;
   } catch (err) {
     handleTradeError("Short", err);
   }
