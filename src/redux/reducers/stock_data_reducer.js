@@ -149,13 +149,9 @@ export default (state = initial_state, action) => {
 
     case "ADD_NEW_TICK": {
       let { new_tick_data } = action;
-      // console.log({new_tick_data})
       let currentTickData = { ...state.currentTickData };
-      for (let symbol in state.commodity_data) {
-        // console.log(state.commodity_data)
-        // console.log({symbol})
+      for (let symbol in state.commodity_data) { 
         if (!currentTickData[symbol]) currentTickData[symbol] = {};
-        // console.log(currentTickData[symbol])
         currentTickData[symbol] = new_tick_data[symbol];
         currentTickData[symbol].timestamp = new Date(
           currentTickData[symbol].start_timestamp
@@ -169,7 +165,6 @@ export default (state = initial_state, action) => {
     }
 
     case "SET_COMMODITY_REGRESSION_DATA": {
-      // console.log({action})
       let { commodityRegressionData } = action;
       if (!commodityRegressionData.length) return state;
       console.log(commodityRegressionData[0]);

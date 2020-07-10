@@ -77,6 +77,12 @@ export default (state = initial_state, action) => {
         opening_short: action.opening_short,
       };
     }
+    case "CANCELING_ORDER": {
+      return {
+        ...state,
+        canceling_order: action.canceling_order,
+      };
+    }
     case "CLOSING_POSITION": {
       return {
         ...state,

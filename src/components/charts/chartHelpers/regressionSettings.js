@@ -9,7 +9,7 @@ class RegressionSettings extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      isMinimized:false
+      isMinimized:true
     };
   }
   render() {

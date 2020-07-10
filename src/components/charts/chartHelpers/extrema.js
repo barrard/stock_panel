@@ -11,25 +11,18 @@ function pythagorean(x1, x2, y1, y2){
 }
 
 function minMax(xArray, yArray, tolerance = 1, minMaxMostRecentData = false) {
-  // console.log({ tolerance, minMaxMostRecentData });
   //xArray is time, yArray is price
-  // console.log(`CALC MIN MAX array size ${xArray.length}`);
   let minValues = [];
   let maxValues = [];
   let totalLength = yArray.length;
-  // console.log({xArray, yArray, tolerance})
   yArray.forEach((value, index) => {
-    // console.log({index, tolerance})
     if (index - tolerance < 0) {
       return;
     }
     if(index + tolerance > totalLength && minMaxMostRecentData){
-      // tolerance = parseInt(tolerance/4)
       tolerance = parseInt(tolerance/2)
     
     } else if(index + tolerance > totalLength) return
-      // console.log({index, tolerance})
-
       let minima = false;
       let maxima = false;
       let same = [];
@@ -43,12 +36,9 @@ function minMax(xArray, yArray, tolerance = 1, minMaxMostRecentData = false) {
         } else {
           same.pop();
         }
-
         let indexVal = yArray[index];
         let checkVal = yArray[x];
-
       }
-
       if (!minima && maxima && same.length < tolerance) {
         maxValues.push({ x: xArray[index], y: yArray[index] });
       }
@@ -67,7 +57,6 @@ function consolidateMinMaxValues(allPoints, allOHLCdata) {
     if (a.x > b.x) return 1;
     if (a.x < b.x) return -1;
   });
-  // console.log(allPoints);
   //hmm figure out the time for each bar
   let timeframe = 0;
   let timeFrameFlag = 0;
@@ -89,32 +78,24 @@ function consolidateMinMaxValues(allPoints, allOHLCdata) {
       }
     }
   });
-  // console.log(
-  //   `OK so we know that the timeframe = ${timeframe} and it only took ${loopCount} loops`
-  // );
+
   //look for consolidated points
   let consolidatedPoints = [];
-  // console.log(allPoints.length);
   allPoints.forEach((point, pointIndex) => {
-    // console.log({ pointIndex, point });
     let { x } = point;
     if (pointIndex === 0) {
-      // console.log(`First round see index is ${pointIndex}`);
       return consolidatedPoints.push([point]);
     }
     //find group index where this market should go
     let groupIndex = consolidatedPoints.findIndex(group => {
       let flag = false;
       group.forEach(p => {
-        // console.log({ x, timeframe, pT: p.x });
-        // console.log(x - p.x <= timeframe);
         if (x - p.x <= timeframe) {
           flag = true;
         }
       });
       return flag;
     });
-    // console.log({ groupIndex });
     if (groupIndex < 0) {
       consolidatedPoints.push([point]);
     } else {
@@ -125,36 +106,25 @@ function consolidateMinMaxValues(allPoints, allOHLCdata) {
       }
     }
   });
-  // console.log({ consolidatedPoints });
 
   let finalConsolidatedMarkers = consolidatedPoints.map(group => {
     let x = mean(group, d => d.x);
     let y = mean(group, d => d.y);
     return { x, y };
   });
-  // console.log({finalConsolidatedMarkers})
   return finalConsolidatedMarkers;
 }
 
 function mergeImportantPriceLevels(priceLevels, priceLevelSensitivity) {
   let mergedPrices = {};
-  // console.log({ priceLevels, priceLevelSensitivity });
   priceLevels.sort((a,b)=>a.y-b.y)
-
-  // console.log(priceLevels)
 
   priceLevels.map(priceLevel => {
     let similar = false;
 
     for (let mergedPriceLevel in mergedPrices) {
       if(similar)return
-      // console.log(mergedPriceLevel);
-      // console.log({ mergedPriceLevel, priceLevel: priceLevel.y });
-      // console.log(mergedPriceLevel / priceLevel.y);
       let absDiff = Math.abs((priceLevel.y / mergedPriceLevel) - 1);
-      // console.log({ absDiff });
-      // console.log({priceLevelSensitivity})
-      // console.log(priceLevelSensitivity/10000)
       if (absDiff < priceLevelSensitivity/10000) {
         similar = true;
         mergedPrices[mergedPriceLevel].push(priceLevel);
@@ -165,7 +135,6 @@ function mergeImportantPriceLevels(priceLevels, priceLevelSensitivity) {
     }
   });
   let groupedPoints = []
-  // console.log({mergedPrices})
   for(let price in mergedPrices){
     let avgPrice = mean(mergedPrices[price], ({y})=>y)
     avgPrice = parseFloat(avgPrice.toFixed(4))
@@ -173,29 +142,14 @@ function mergeImportantPriceLevels(priceLevels, priceLevelSensitivity) {
     let points = mergedPrices[price]
     groupedPoints.push({x:minTime , y:avgPrice, points })
   }
-  // console.log(groupedPoints)
   return groupedPoints
 
 }
 
 function regressionAnalysis(points, errLimit, lines = [], count = 2) {
-  // if(points.length) return lines
-
-  // console.log(points);
-  // points.forEach(p=>console.log(new Date(p.x).toLocaleString()))
-
   //Make two line and compare
-  /**
-   * this will have several items
-   * {
-   *  pointsArray, line1, line2, count
-    
-   * }
-   */
   let { line1, line2, current_count, pointsArray } = RMSerror(points, count);
-  // console.log({line1, line2, current_count, pointsArray})
   //compare the error
-
   let error = line2.results_error;
   /**
    * If the RMS error is too high
@@ -244,10 +198,6 @@ function regressionAnalysis(points, errLimit, lines = [], count = 2) {
        * else we can just take the last good line (line2)
        * and return all the lines.
        */
-      // console.log({line1, line2})
-      // console.log('Returning lines')
-
-      // console.log({pointsArray, line1, line2})
       if(badLine2)return
       line2.nearbyPoints = pointsArray;
       lines.push(line2);

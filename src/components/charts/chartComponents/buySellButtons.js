@@ -31,11 +31,11 @@ class BuySellButtons extends React.Component {
     super(props);
     this.state = {
       size: 1,
-      last_price:0
+      last_price: 0,
     };
   }
 
-  componentDidUpdate(prevProps){
+  componentDidUpdate(prevProps) {
     // this.handleTickUpdates()
   }
 
@@ -55,7 +55,6 @@ class BuySellButtons extends React.Component {
     let symbol = this.props.stock_data.search_symbol;
     let { dispatch, meta, stock_data } = this.props;
 
-
     let {
       position_size,
       order_type,
@@ -64,19 +63,19 @@ class BuySellButtons extends React.Component {
       order_limit,
     } = meta;
 
-    
     this.props.dispatch(opening_long(true));
     try {
-      let newTrade = await API.goLong({ 
+      let newTrade = await API.goLong({
         symbol,
         position_size,
         order_type,
         order_target_size,
         order_stop_size,
-        order_limit });
+        order_limit,
+      });
       console.log({ newTrade });
-      if(!newTrade )throw 'Didnt get a new trade back from API'
-      else if(newTrade.err) throw newTrade.err
+      if (!newTrade) throw "Didnt get a new trade back from API";
+      else if (newTrade.err) throw newTrade.err;
       this.props.dispatch(opening_long(false));
       this.props.dispatch(addCommodityTrade(newTrade, newTrade.symbol));
     } catch (err) {
@@ -85,10 +84,10 @@ class BuySellButtons extends React.Component {
       console.error({ err });
     }
   }
+
   async goShort(size) {
     let symbol = this.props.stock_data.search_symbol;
     let { dispatch, meta, stock_data } = this.props;
-
 
     let {
       position_size,
@@ -97,18 +96,19 @@ class BuySellButtons extends React.Component {
       order_stop_size,
       order_limit,
     } = meta;
-debugger
     this.props.dispatch(opening_short(true));
     try {
-      let newTrade = await API.goShort({ symbol,
+      let newTrade = await API.goShort({
+        symbol,
         position_size,
         order_type,
         order_target_size,
         order_stop_size,
-        order_limit });
+        order_limit,
+      });
       console.log({ newTrade });
-      if(!newTrade )throw 'Didnt get a new trade back from API'
-      else if(newTrade.err) throw newTrade.err
+      if (!newTrade) throw "Didnt get a new trade back from API";
+      else if (newTrade.err) throw newTrade.err;
 
       this.props.dispatch(opening_short(false));
       this.props.dispatch(addCommodityTrade(newTrade, newTrade.symbol));
@@ -121,7 +121,7 @@ debugger
   render() {
     let { dispatch, meta, stock_data } = this.props;
     let { currentTickData, search_symbol } = stock_data;
-    let currentPrice
+    let currentPrice;
 
     let {
       opening_long,
@@ -133,28 +133,25 @@ debugger
       order_limit,
     } = meta;
 
-    if(currentTickData[search_symbol]){
-      currentPrice = currentTickData[search_symbol].close
-      if(!order_limit){
-        dispatch(set_order_limit(currentPrice))
+    if (currentTickData[search_symbol]) {
+      currentPrice = currentTickData[search_symbol].close;
+      if (!order_limit) {
+        dispatch(set_order_limit(currentPrice));
       }
     }
 
-
     return (
       <>
-
         <div className="row flex_center">
           <div className="col-sm-6 flex_center">
-
-          <OrderType
+            <OrderType
               value={order_type}
               setOrder={(e) => dispatch(set_order_type(e.target.value))}
             />
 
             <OrderPriceInputs
-            tickSize={TICKS[search_symbol]}
-            currentPrice={currentPrice}
+              tickSize={TICKS[search_symbol]}
+              currentPrice={currentPrice}
               position_size={position_size}
               order_Limit={order_limit}
               order_target={order_target}
@@ -165,7 +162,6 @@ debugger
           </div>
           <div className="col-sm-6 flex_center">
             <PriceBidAsk currentTick={currentTickData[search_symbol]} />
-    
           </div>
         </div>
         <div className="row">
@@ -201,7 +197,7 @@ const OrderPriceInputs = ({
   order_target,
   order_stop,
   order_type,
-  dispatch
+  dispatch,
 }) => {
   return (
     <div className="row flex_center">
@@ -213,25 +209,25 @@ const OrderPriceInputs = ({
       </div>
       <div className="col-sm-12 flex_center">
         {order_type !== "Market" && (
-          <LimitPrice         tickSize={tickSize}
-
+          <LimitPrice
+            tickSize={tickSize}
             limit={order_Limit}
             setLimit={(e) => dispatch(set_order_limit(e.target.value))}
           />
         )}
       </div>
       <div className="col-sm-12 flex_center">
-        <TargetInput         tickSize={tickSize}
-
+        <TargetInput
+          tickSize={tickSize}
           target={order_target}
           setTarget={(e) => dispatch(set_order_target(e.target.value))}
         />
       </div>
       <div className="col-sm-12 flex_center">
-        <StopInput         tickSize={tickSize}
-
+        <StopInput
+          tickSize={tickSize}
           stop={order_stop}
-          setTarget={(e) => dispatch(set_order_stop(e.target.value))}
+          setStop={(e) => dispatch(set_order_stop(e.target.value))}
         />
       </div>
     </div>
@@ -242,16 +238,18 @@ const PriceBidAsk = ({ currentTick }) => {
   if (!currentTick) {
     return <p className="white">...waiting for data</p>;
   } else {
-
     let { close, bid_prices, ask_prices, bid_sizes, ask_sizes } = currentTick;
 
     let currentAskPrice = ask_prices.slice(-1)[0];
     let currentBidPrice = bid_prices.slice(-1)[0];
     let currentAskSize = ask_sizes.slice(-1)[0];
     let currentBidSize = bid_sizes.slice(-1)[0];
-    let upDownTick = close === currentBidPrice ? 'red':
-                    close === currentAskPrice ? 'green':
-                    'grey'
+    let upDownTick =
+      close === currentBidPrice
+        ? "red"
+        : close === currentAskPrice
+        ? "green"
+        : "grey";
 
     return (
       <div style={{ width: "inherit" }}>
@@ -283,11 +281,12 @@ const PriceBidAsk = ({ currentTick }) => {
 
 const Price = ({ price, name, background }) => {
   return (
-    <div style={{background:background||''}}>
+    <div style={{ background: background || "" }}>
       <span className="white">
-        {name}{":  "}
+        {name}
+        {":  "}
       </span>
-      
+
       <DisplayPrice>{price}</DisplayPrice>
     </div>
   );
@@ -301,11 +300,12 @@ const LimitPrice = ({ limit, setLimit, tickSize }) => {
   return (
     <div className="input-group">
       <div className="input-group-prepend">
-        <span style={{width:'6em'}} className="flex_center input-group-text">LIMIT</span>
+        <span style={{ width: "6em" }} className="flex_center input-group-text">
+          LIMIT
+        </span>
       </div>
       <input
-              step={tickSize}
-
+        step={tickSize}
         value={limit}
         onChange={setLimit}
         type="number"
@@ -318,15 +318,17 @@ const LimitPrice = ({ limit, setLimit, tickSize }) => {
   );
 };
 
-const TargetInput = ({ target, setTarget,tickSize }) => {
+const TargetInput = ({ target, setTarget, tickSize }) => {
   return (
     <div className="input-group">
       <div className="input-group-prepend">
-        <span style={{width:'6em'}} className="flex_center input-group-text">TARGET</span>
+        <span style={{ width: "6em" }} className="flex_center input-group-text">
+          TARGET
+        </span>
       </div>
       <input
-            step={tickSize}
-
+        step={tickSize}
+        min="0"
         value={target}
         onChange={setTarget}
         type="number"
@@ -343,10 +345,13 @@ const StopInput = ({ stop, setStop, tickSize }) => {
   return (
     <div className="input-group">
       <div className="input-group-prepend">
-        <span style={{width:'6em'}} className="flex_center input-group-text">STOP</span>
+        <span style={{ width: "6em" }} className="flex_center input-group-text">
+          STOP
+        </span>
       </div>
       <input
-      step={tickSize}
+        step={tickSize}
+        min="0"
         value={stop}
         onChange={setStop}
         type="number"
@@ -360,7 +365,7 @@ const StopInput = ({ stop, setStop, tickSize }) => {
 };
 
 const OrderType = ({ value, setOrder }) => {
-  let types = ["Market", "Limit", "Limit Stop"];
+  let types = ["Market", "Limit", "Stop Limit"];
   let RadioButtons = types.map((type, iType) => {
     return (
       <div className="form-check flex align_items_center pb-1" key={iType}>
@@ -435,7 +440,9 @@ const PositionSize = ({ value, onChange }) => {
   return (
     <div className="input-group">
       <div className="input-group-prepend">
-        <span style={{width:'6em'}} className="flex_center input-group-text">SIZE</span>
+        <span style={{ width: "6em" }} className="flex_center input-group-text">
+          SIZE
+        </span>
       </div>
       <input
         value={value}

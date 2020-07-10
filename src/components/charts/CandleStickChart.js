@@ -468,8 +468,8 @@ class CandleStickChart extends React.Component {
         this.getStockDataSetUp(symbol, timeframe);
       } else if (this.props.type === "commodity") {
         let { props } = this;
-        API.getCommodityRegressionValues(this.props.symbol, this.props);
-        API.getAllCommodityTrades(this.props.symbol, this.props);
+        await API.getCommodityRegressionValues(this.props.symbol, this.props);
+        await API.getAllCommodityTrades(this.props.symbol, this.props);
         await this.loadCommodityData({ timeframe, symbol, props });
         this.setNewData(symbol, timeframe);
       }
@@ -1007,7 +1007,7 @@ class CandleStickChart extends React.Component {
   }
 
   draw(data) {
-    console.log('Draw CandleStick')
+    // console.log('Draw CandleStick')
     let drawData;
     if (data) {
       drawData = data;

@@ -592,7 +592,7 @@ class TickChart extends React.Component {
   }
 
   draw(data) {
-    console.log('Draw tick')
+    // console.log('Draw tick')
 
     let drawData;
     if (data) {

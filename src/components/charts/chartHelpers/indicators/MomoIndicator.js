@@ -192,19 +192,13 @@ class IndicatorChart extends React.Component {
       let prevData
       if(!prevProps.stock_data.commodity_data[symbol]) prevData=undefined
       else prevData = prevProps.stock_data.commodity_data[symbol][timeframe];
-      
-      if(data === prevData )return
+      if(data === prevData || !data ||!data.length )return
       console.log(this.props)
       console.log(this.state)
       console.log(this.props.stock_data.commodity_data[symbol][timeframe])
-      // if (prevData != data) {
-        // console.log("TICK CHART UPDATE DATA");
-        // console.log(data);
-        
         let availableWindows = Object.keys(data.slice(-1)[0].momentum).map(key=>parseInt(key.split('momentum').slice(-1)[0]))
         partialOHLCdata = data.map((d)=> {return {x:d.timestamp, momentum:d.momentum}})
         let timestamps = data.map((d) => d.timestamp);
-        // console.log({ timestamps });
         this.setState({
           availableWindows,
           data,
@@ -212,7 +206,6 @@ class IndicatorChart extends React.Component {
           momoData:[...partialOHLCdata]
         });
         setTimeout(() => this.setupChart(), 0);
-      // }
     }
 
 

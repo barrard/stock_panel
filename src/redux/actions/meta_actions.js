@@ -76,6 +76,13 @@ export function closing_position(closing_position) {
   };
 }
 
+export function canceling_order(canceling_order) {
+  return {
+    type: "CANCELING_ORDER",
+    canceling_order,
+  };
+}
+
 export function opening_short(opening_short) {
   return {
     type: "OPENING_SHORT",

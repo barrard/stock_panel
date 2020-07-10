@@ -54,19 +54,20 @@ class App extends React.Component {
     //   console.log('tradeConfirm');
     //   console.log(newTrade);
     // });
-    Socket.on("current_minute_data", (newTickData) =>
+    Socket.on("current_minute_data", (newTickData) =>{
       dispatch(updateCommodityData(newTickData, "tick"))
+    }
     );
     Socket.on("stockBotEnterTrade", (newTrade) => {
-      debugger;
+      // debugger;
 
       console.log("stockBotEnterTrade ENTERING A TRADE");
       return dispatch(addCommodityTrade(newTrade, newTrade.symbol));
     });
-    // Socket.on("updateTrade", (updateTrade) => {
-    //   debugger
-    //   console.log("updateTrade");
-    // });
+    Socket.on("updateTrade", (updateTrade) => {
+      debugger
+      dispatch(updateCommodityTrade(updateTrade))
+    });
   }
 
   render() {

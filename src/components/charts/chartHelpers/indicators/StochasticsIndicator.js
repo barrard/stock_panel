@@ -174,7 +174,7 @@ class IndicatorChart extends React.Component {
     if(!prevProps.stock_data.commodity_data[symbol]) prevData=undefined
     else prevData = prevProps.stock_data.commodity_data[symbol][timeframe];
     
-    if(data === prevData )return
+    if(data === prevData || !data ||!data.length )return
     // debugger
     console.log(this.props)
     console.log(this.state)

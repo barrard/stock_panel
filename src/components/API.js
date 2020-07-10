@@ -22,7 +22,7 @@ export default {
   // getIndicatorValues,
   setTimeframeActive,
   getAllCommodityTrades,
-  closePosition,
+  closePosition,cancelOrder,
   goLong,
   goShort,
   getVolProfile,
@@ -111,6 +111,7 @@ async function goLong({
   order_stop_size,
   order_limit,
 }) {
+
   try {
     let orderLong = await fetch(`${LOCAL_SERVER}/API/goLong`, {
       ...POST({
@@ -128,7 +129,7 @@ async function goLong({
 
     if (!orderLong.resp || orderLong.err)
       return handleTradeError("Long", orderLong.err);
-    toastr.success(`New Long trade in ${symbol} @${orderLong.resp.entryPrice}`);
+    toastr.success(`New Long trade in ${symbol} @${orderLong.resp.entryPrice || orderLong.resp.order_limit }`);
     return orderLong.resp;
   } catch (err) {
     handleTradeError("Long", err);
@@ -156,7 +157,7 @@ async function goShort({   symbol,
     orderShort = await orderShort.json();
     console.log(orderShort);
     if (!orderShort.resp || orderShort.err) return handleTradeError("Short", orderShort.err);
-    toastr.success(`New Short trade in ${symbol} @${orderShort.resp.entryPrice}`);
+    toastr.success(`New Short trade in ${symbol} @${orderShort.resp.entryPrice || orderShort.resp.order_limit}`);
 
     return orderShort.resp;
   } catch (err) {
@@ -166,6 +167,19 @@ async function goShort({   symbol,
 async function closePosition(id) {
   // console.log('getAllSymbolsData')
   let data = await fetch(`${LOCAL_SERVER}/API/closePosition/${id}`, {
+    credentials: "include",
+  });
+  data = await data.json();
+  console.log(data);
+
+  if (!data.resp || data.err) toastr.error("Error Closing Position");
+  return data;
+}
+
+
+async function cancelOrder(id) {
+  // console.log('getAllSymbolsData')
+  let data = await fetch(`${LOCAL_SERVER}/API/cancelOrder/${id}`, {
     credentials: "include",
   });
   data = await data.json();
