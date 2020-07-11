@@ -354,7 +354,6 @@ class IndicatorChart extends React.Component {
     let chartWindow = svg.select(".chartWindow");
 
     chartWindow.selectAll(`.${filingItem}Line`).remove();
-debugger
     let tickLinePath = chartWindow
       .selectAll(`.${filingItem}Line`)
       .data([filingData]);

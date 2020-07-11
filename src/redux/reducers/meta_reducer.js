@@ -11,8 +11,8 @@ const initial_state = {
   closing_position: false,
   order_type: "Market",
   order_limit:0,
-  order_target_size:0,
-  order_stop_size:0
+  order_target_size:5,
+  order_stop_size:1
 };
 
 export default (state = initial_state, action) => {

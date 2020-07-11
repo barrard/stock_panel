@@ -122,6 +122,7 @@ export default (state = initial_state, action) => {
       };
     }
     case "ADD_NEW_MINUTE": {
+      
       let { new_minute_data } = action;
       console.log({ new_minute_data });
       // console.log({ state });
@@ -156,6 +157,8 @@ export default (state = initial_state, action) => {
         currentTickData[symbol].timestamp = new Date(
           currentTickData[symbol].start_timestamp
         ).getTime();
+        
+
       }
 
       return {
@@ -238,23 +241,16 @@ export default (state = initial_state, action) => {
     }
 
     case "ADD_CHART_DATA": {
-      let { timeframe, chart_data, symbol, rawData } = action;
+      let { chartData, timeframe, symbol } = action;
       let charts = {
         ...state.charts
       };
       if (!charts[symbol]) charts[symbol] = {};
-      charts[symbol][timeframe] = chart_data;
+      charts[symbol][timeframe] = chartData;
 
-      let rawCharts = {
-        ...state.rawCharts
-      };
-
-      if (!rawCharts[symbol]) rawCharts[symbol] = {};
-      rawCharts[symbol][timeframe] = rawData;
       return {
         ...state,
         charts,
-        rawCharts
       };
     }
 

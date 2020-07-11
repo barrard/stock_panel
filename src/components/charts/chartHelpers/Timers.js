@@ -36,7 +36,7 @@ class Timers extends React.Component {
     let { lastTick } = this.props;
     let lastTickTime = lastTick.timestamp;
     let prevTickTime = prevProps.lastTick.timestamp;
-
+    
     // console.log({lastTickTime, prevTickTime})
     if (lastTickTime != prevTickTime) {
       console.log("Got a new Minute");
@@ -53,9 +53,12 @@ class Timers extends React.Component {
       prevProps.lastTick.sample_times.slice(-1)[0]
     ).getTime();
 
-    // console.log({lastTickSampleTime, prevTickSampleTime})
     if (lastTickSampleTime != prevTickSampleTime) {
+      console.log({lastTick})
+      console.log({lastTickSampleTime, prevTickSampleTime})
     //   console.log("Got a new Tick");
+    
+
     //   console.log({lastTickSampleTime, prevTickSampleTime})
       let tickDelta = lastTickSampleTime - prevTickSampleTime
     //   console.log({tickDelta})
@@ -73,7 +76,7 @@ class Timers extends React.Component {
     let avgTickTime = (tickTimes.reduce((a,b)=>a+b,0)/tickTimes.length)
     avgTickTime = avgTickTime/1000
     avgTickTime = avgTickTime.toFixed(1)
-    // console.log({avgTickTime})
+    console.log({avgTickTime})
     this.setState({
         avgTickTime
     })

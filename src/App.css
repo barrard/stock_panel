@@ -216,6 +216,13 @@ body{
   background: #333;
 }
 
+.tradesListMinHeight{
+  overflow: hidden;
+  min-height: 10vh;
+  max-height: 50vh;
+}
+
+
 .small_input{
   width:5em;
   text-align: center;

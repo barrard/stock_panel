@@ -1,8 +1,11 @@
 {
     "cSpell.words": [
+        "btns",
         "component",
         "crosshairs",
         "data",
+        "filter",
+        "filter radio btns",
         "firstname",
         "handle",
         "histo",
@@ -15,7 +18,9 @@
         "on",
         "other",
         "pv",
+        "radio",
         "rects",
+        "royalblue",
         "tdata",
         "tick",
         "timeframes",

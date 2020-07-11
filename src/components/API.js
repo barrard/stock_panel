@@ -405,10 +405,11 @@ async function fetchStockData({ timeframe, symbol, end }) {
   data = await data.json()
   if(data.err)throw data.err
   console.log(data);
-  if (!data) return [];
+  debugger
+  if (!data.length) return [];
   toastr.success(
     `Data loaded`,
-    `${data[symbol].length} bars loaded for ${symbol}`
+    `${data.length} bars loaded for ${symbol}`
   );
   return data;
 }

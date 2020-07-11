@@ -188,6 +188,7 @@ class CandleStickChart extends React.Component {
     const timeframe = this.state.timeframe;
     const props = this.props;
     if (this.props.type === "stock") {
+      debugger
       if (
         !this.props.stock_data.charts[symbol] ||
         !this.props.stock_data.charts[symbol][timeframe]
@@ -195,8 +196,10 @@ class CandleStickChart extends React.Component {
         // console.log("fetching data");
         const end = new Date().getTime();
         await view_selected_stock({ timeframe, end, symbol, props });
-        // console.log("SET NEW DATA???");
+        console.log("SET NEW DATA???");
+        debugger
         this.setNewData(symbol, timeframe);
+        console.log('DONE!!!!!!MM<<<<<')
       } else {
         // console.log("WTF WE ALREADY HAVE DATA>!");
         this.setNewData(symbol, timeframe);
@@ -455,6 +458,7 @@ class CandleStickChart extends React.Component {
       console.log("//TODO!!!");
     }
   }
+  
   async handleSymbolChange(prevState, prevProps) {
     let prevSymbol = prevProps.symbol;
     let currentSymbol = this.props.symbol;
@@ -478,13 +482,14 @@ class CandleStickChart extends React.Component {
 
   async getStockDataSetUp(symbol, timeframe) {
     let props = this.props;
-
+debugger
     if (
       !this.props.stock_data.charts[symbol] ||
       !this.props.stock_data.charts[symbol][timeframe]
     ) {
       const end = new Date().getTime();
       await view_selected_stock({ timeframe, end, symbol, props });
+      partialOHLCdata = this.props.stock_data.charts[symbol][timeframe]
       this.setState({
         allOHLCdata: this.props.stock_data.charts[symbol][timeframe],
       });
@@ -492,6 +497,8 @@ class CandleStickChart extends React.Component {
       this.setState({
         allOHLCdata: this.props.stock_data.charts[symbol][timeframe],
       });
+      partialOHLCdata = this.props.stock_data.charts[symbol][timeframe]
+
     }
   }
 
@@ -557,10 +564,14 @@ class CandleStickChart extends React.Component {
           this.setState({
             allOHLCdata: this.props.stock_data.charts[symbol][timeframe],
           });
+          partialOHLCdata = this.props.stock_data.charts[symbol][timeframe]
+
         } else {
           this.setState({
             allOHLCdata: this.props.stock_data.charts[symbol][timeframe],
           });
+          partialOHLCdata = this.props.stock_data.charts[symbol][timeframe]
+
         }
       } else if (this.props.type === "commodity") {
         if (
@@ -621,18 +632,19 @@ class CandleStickChart extends React.Component {
 
   setNewData(symbol, timeframe, onlyAddNewBar) {
     let { type, stock_data } = this.props;
-    if (!stock_data.commodity_data[symbol]) return "new bugg?";
     let currentData;
     let currentRawData;
-
+    
     if (type === "commodity") {
+      if (!stock_data.commodity_data[symbol]) return console.log("new bugg?");
       currentData = stock_data.commodity_data[symbol][timeframe];
       currentRawData = stock_data.rawCommodityCharts[symbol][timeframe];
     } else if (type === "stock") {
       //TODO get Stock regression values
+      debugger
       console.log(stock_data.charts);
       currentData = stock_data.charts[symbol][timeframe];
-      currentRawData = stock_data.rawCharts[symbol][timeframe];
+      // currentRawData = stock_data.rawCharts[symbol][timeframe];
     }
 
     /**
@@ -1479,7 +1491,7 @@ class CandleStickChart extends React.Component {
 
   toggleIndicators(indicator) {
     let svg = select(this.state.chartRef.current);
-    debugger
+
     let markers = svg.selectAll(`.${indicator}`);
     markers.remove();
     let temp = this.state.visibleIndicators;

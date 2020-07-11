@@ -22,6 +22,11 @@ class TradesList extends React.Component {
     let trades = props.trades || [];
     console.log(trades);
     this.state = {
+      filters: {
+        Open: true,
+        Closed: false,
+        Orders: true,
+      },
       cancelOrders: [],
       closePositions: [],
       sorted_prop: "entryTime",
@@ -75,7 +80,7 @@ class TradesList extends React.Component {
 
   sort_by(prop) {
     let { sorted_prop, sort_state } = this.state;
-
+    console.log(this.state.all_data)
     if (sort_state) {
       this.setState({
         sort_state: false,
@@ -119,7 +124,7 @@ class TradesList extends React.Component {
           updateCommodityTrade(canceledOrder, canceledOrder.symbol)
         );
         this.setState({
-          cancelOrders: [...cancelOrders.filter((_id ) => _id !== id)],
+          cancelOrders: [...cancelOrders.filter((_id) => _id !== id)],
         });
       } else if (canceledOrder.err) {
         this.setState({
@@ -163,11 +168,52 @@ class TradesList extends React.Component {
     }
   }
 
+  addFilter = (e) => {
+    let val = e.target.value;
+    let { filters } = this.state;
+    let filterValue = filters[val];
+    filters[val] = !filterValue;
+    this.setState({ filters });
+  };
+
+  filterRadioBtns = ({ filters }) => {
+    let types = ["Closed", "Open", "Orders"];
+    let RadioButtons = types.map((type, iType) => {
+      return (
+        <div className="form-check inline align_items_center" key={iType}>
+          <label
+            style={{ marginRight: "1.5em" }}
+            className="form-check-label white"
+            htmlFor={"Trade Filters"}
+          >
+            {type}
+          </label>
+          <input
+            style={{ width: "25px", height: "25px", marginTop: "-0.2em" }}
+            onChange={this.addFilter}
+            className="form-check-input"
+            type="checkbox"
+            checked={filters[type]}
+            value={type}
+            disabled={false} //TODO make order sending thing
+          />
+        </div>
+      );
+    });
+
+    return RadioButtons;
+  };
+
   render() {
     let { all_data, sorted_prop } = this.state;
-    let data = [...all_data]
-      // .sort((a, b) => this.high_to_low(a, b, sorted_prop))
-      .slice(0, 30); //This could be customizable //TODO
+    let data = [...all_data];
+    // .sort((a, b) => this.high_to_low(a, b, sorted_prop))
+    // .slice(0, 30); //This could be customizable //TODO
+    let { Closed, Open, Orders } = this.state.filters;
+    if (!Closed) data = data.filter((d) => d.orderStatus !== "Closed");
+    if (!Open) data = data.filter((d) => d.orderStatus !== "Filled");
+    if (!Orders) data = data.filter((d) => d.orderStatus !== "Open");
+    // data = data.
     let symbol = this.props.stock_data.search_symbol;
     let currentQuote = this.props.stock_data.currentTickData[symbol];
 
@@ -179,34 +225,46 @@ class TradesList extends React.Component {
       }
     });
     // console.log(data)
+    let filters = this.state.filters;
+    let filterRadioBtns = this.filterRadioBtns({ filters });
 
     return (
       <>
         <BuySellButtons />
         {/* <div>No Trades</div>; */}
         {/* Avoid rendering if data array is empty */}
-        {data && data.length > 0 && (
-          <div className="col2">
-            <div className="row flex_center">
-              <div className="col-sm-3 flex_center">
-                <h5 className="white">{symbol}</h5>
-              </div>
-              <div className="col-sm-3 flex_center">
-                <h5 className="white">Total PL {totalPL}</h5>
-              </div>
+        <div className="col2">
+          <div className="row flex_center">
+            <div className="col-sm-3 flex_center">
+              <h5 className="white">{symbol}</h5>
             </div>
-            <Stock_List_Header
-              sorted_prop={this.state.sorted_prop}
-              sort_state={this.state.sort_state}
-              sort_by={(prop) => this.sort_by(prop)}
-              // on_sort={this}
-            />
+            <div className="col-sm-3 flex_center">
+              <h5 className="white">Total PL {totalPL}</h5>
+            </div>
+            <div className="col-sm-6 flex_center">
+              <FilterRadioContainer>{filterRadioBtns}</FilterRadioContainer>
+            </div>
+          </div>
+          <Stock_List_Header
+            sorted_prop={this.state.sorted_prop}
+            sort_state={this.state.sort_state}
+            sort_by={(prop) => this.sort_by(prop)}
+            // on_sort={this}
+          />
+<div className='container-fluid tradesListMinHeight scroll_y'>
+            {data && data.length == 0 && (
+              <div className='col flex_center'>
+                
+              <h1>NO TRADES TO DISPLAY</h1>
+              </div>
+            )}
 
-            <div className="row_container">
+          {data && data.length > 0 && (
+            <div>
               {data.map((trade_data, index) => {
                 let day = new Date(trade_data.orderTime)
-                  .toLocaleString()
-                  .split(",")[0];
+                .toLocaleString()
+                .split(",")[0];
                 let DAY; //undefined unless a new Day(date)
                 if (!tradingDay) {
                   tradingDay = day;
@@ -228,13 +286,15 @@ class TradesList extends React.Component {
                       closePositions={this.state.closePositions}
                       cancelOrder={this.cancelOrder}
                       cancelOrders={this.state.cancelOrders}
-                    />
+                      />
                   </div>
                 );
               })}
             </div>
+          )}
           </div>
-        )}
+
+        </div>
       </>
     );
   }
@@ -256,7 +316,6 @@ function Display_Stock_Row({
   cancelOrders,
   closePositions,
 }) {
-
   const {
     PL,
     buyOrSell,
@@ -289,18 +348,9 @@ function Display_Stock_Row({
       }}
     >
       {/* SYMBOL */}
-      <div className="col flex_center">
+      {/* <div className="col flex_center">
         <Symbol symbol={symbol} />
-      </div>
-      {/* TYPE / STATUS */}
-      <div className="col-2 flex_center">
-        <StatusAndType order_type={order_type} orderStatus={orderStatus} />
-      </div>
-
-      {/* BUYorSell Long or Short*/}
-      <div className="col flex_center">
-        <BuyOrSell buyOrSell={buyOrSell} />
-      </div>
+      </div> */}
 
       {/* entryTime */}
       <div className="col flex_center white">
@@ -311,8 +361,23 @@ function Display_Stock_Row({
         />
       </div>
 
+      {/* TYPE  */}
+      <div className="col flex_center">
+        <OrderType order_type={order_type} />
+      </div>
+
+      {/* STATUS */}
+      <div className="col flex_center">
+        <OrderStatus orderStatus={orderStatus} />
+      </div>
+
+      {/* BUYorSell Long or Short*/}
+      <div className="col flex_center">
+        <BuyOrSell buyOrSell={buyOrSell} />
+      </div>
+
       {/* entryPrice */}
-      <EntryPrice price={entryPrice} />
+      <EntryPrice price={entryPrice} orderTime={orderTime} />
 
       {/* exitPrice */}
       <div className="col-2 flex_center">
@@ -380,10 +445,12 @@ const CancelClosePosition = ({
     </div>
   );
 };
-const EntryPrice = ({ price }) => {
+const EntryPrice = ({ price, orderTime }) => {
+  let el = price ? <Price price={price} /> : <DateTime date={orderTime} />;
+  let title = price ? "Entry Price" : "Order Date";
   return (
-    <div className="col flex_center">
-      <Price price={price} />
+    <div title={title} className="col flex_center white">
+      {el}
     </div>
   );
 };
@@ -391,12 +458,14 @@ const EntryTimeLimit = ({ entryTime, orderLimit, currentQuote }) => {
   if (entryTime) return <DateTime date={entryTime} />;
   else if (orderLimit && currentQuote) {
     let { close } = currentQuote;
-    let distanceToEntry = close - orderLimit;
+    let distanceToEntry = (close - orderLimit).toFixed(2);
     return (
-      <>
+      <div
+        title={`Current Price is ${distanceToEntry} away from your limit order of ${orderLimit}`}
+      >
         <Price price={orderLimit} />
         <DistanceToEntry price={distanceToEntry} />
-      </>
+      </div>
     );
   } else return "";
 };
@@ -429,8 +498,14 @@ const HeaderTitle = ({
 }) => {
   col = col || "col";
   return (
-    <div style={{    }} className={`align_items_center ${col} flex_center clickable`}>
-      <h6 style={{fontSize:'12px'  , textAlign: "center" }} onClick={() => sort_by(name)}>
+    <div
+      style={{}}
+      className={`align_items_center ${col} flex_center clickable`}
+    >
+      <h6
+        style={{ fontSize: "12px", textAlign: "center" }}
+        onClick={() => sort_by(name)}
+      >
         {title}
       </h6>
       <ArrowUpDown isSortedProp={sorted_prop == name} sort_state={sort_state} />
@@ -442,9 +517,19 @@ const Stock_List_Header = ({ sort_by, sort_state, sorted_prop }) => {
   return (
     <div className="row white">
       {/* SYMBOL */}
-      <HeaderTitle
+      {/* <HeaderTitle
         name="symbol"
         title="Sym."
+        sort_by={sort_by}
+        sorted_prop={sorted_prop}
+        sort_state={sort_state}
+        col={"col"}
+      /> */}
+
+      {/* entryTime */}
+      <HeaderTitle
+        name="entryTime"
+        title="Entry Time"
         sort_by={sort_by}
         sorted_prop={sorted_prop}
         sort_state={sort_state}
@@ -454,11 +539,20 @@ const Stock_List_Header = ({ sort_by, sort_state, sorted_prop }) => {
       {/* Type / Status */}
       <HeaderTitle
         name="order_type"
-        title="Type/Status"
+        title="Type"
         sort_by={sort_by}
         sorted_prop={sorted_prop}
         sort_state={sort_state}
-        col={"col-2"}
+        col={"col"}
+      />
+      {/* Type / Status */}
+      <HeaderTitle
+        name="orderStatus"
+        title="Status"
+        sort_by={sort_by}
+        sorted_prop={sorted_prop}
+        sort_state={sort_state}
+        col={"col"}
       />
 
       {/* BUYorSell */}
@@ -471,15 +565,6 @@ const Stock_List_Header = ({ sort_by, sort_state, sorted_prop }) => {
         col={"col"}
       />
 
-      {/* entryTime */}
-      <HeaderTitle
-        name="entryTime"
-        title="Entry Time"
-        sort_by={sort_by}
-        sorted_prop={sorted_prop}
-        sort_state={sort_state}
-        col={"col"}
-      />
       {/* entryPrice */}
       <HeaderTitle
         name="entryPrice"
@@ -521,53 +606,76 @@ const Stock_List_Header = ({ sort_by, sort_state, sorted_prop }) => {
 };
 
 const DateTime = ({ date }) => {
-  if (!date) return <p style={{fontSize:'12px'}}>N/A</p>;
+  if (!date) return <p style={{ fontSize: "12px" }}>N/A</p>;
   // if(!new Date(date))
-return <p style={{fontSize:'12px'}}>{new Date(date).toLocaleString().split(",")[1]}</p>
+  return (
+    <p style={{ fontSize: "12px" }}>
+      {new Date(date).toLocaleString().split(",")[1]}
+    </p>
+  );
 };
 const ProfitLoss = ({ PL, currentQuote, entryPrice, buyOrSell }) => {
   // console.log({PL, currentQuote, entryPrice, buyOrSell})
   if (!entryPrice)
-    return <div style={{fontSize:'12px'}} className="white text_center">Unfilled Order</div>;
+    return (
+      <div style={{ fontSize: "12px" }} className="white text_center">
+        Unfilled Order
+      </div>
+    );
   if (!PL && currentQuote && currentQuote.close) {
     let close = currentQuote.close;
     PL = buyOrSell === "Buy" ? close - entryPrice : entryPrice - close;
   }
-  return <Price price={PL} />;
+  let PnL_Color = PL > 0 ? "green" : PL < 0 ? "red" : "white";
+  return (
+    <ColoredSpan borderColor={PnL_Color}>
+      <Price price={PL} />
+    </ColoredSpan>
+  );
 };
 
 const Price = ({ price }) => (
-  <span style={{fontSize:'12px'}} className="ticker_price">
+  <span style={{ fontSize: "12px" }} className="ticker_price">
     ${parseFloat(price).toFixed(2).toLocaleString("en-US")}
   </span>
 );
 
-const StatusAndType = ({ orderStatus, order_type }) => {
-  let statusColor = orderStatus === "Filled" ? "green" : "red";
+const OrderStatus = ({ orderStatus }) => {
+  let statusColor =
+    orderStatus === "Filled"
+      ? "green"
+      : orderStatus === "Closed"
+      ? "red"
+      : "royalblue";
+  return (
+    <TypeStatusDiv>
+      <ColoredSpan borderColor={statusColor}>{orderStatus}</ColoredSpan>
+    </TypeStatusDiv>
+  );
+};
+
+const OrderType = ({ order_type }) => {
   let typeColor =
-    order_type === "Market" ? "green" : order_type === "Limit" ? "red" : "blue";
+    order_type === "Market"
+      ? "green"
+      : order_type === "Limit"
+      ? "red"
+      : "royalblue";
 
   return (
     <TypeStatusDiv>
-      <span style={{ background: typeColor }} className="mr-2 text_center">
-        {order_type}
-      </span>
-      <span style={{ background: statusColor }} className="ml-2 text_center">
-        {orderStatus}
-      </span>
+      <ColoredSpan borderColor={typeColor}>{order_type}</ColoredSpan>
     </TypeStatusDiv>
   );
 };
 
 const BuyOrSell = ({ buyOrSell }) => {
   let longOrShort = buyOrSell === "Buy" ? "Long" : "Short";
-  let backGroundColor = longOrShort === "Long" ? "green" : "red";
+  let borderColor = longOrShort === "Long" ? "green" : "red";
 
   return (
     <div style={{ fontSize: "12px" }}>
-      <span style={{ background: backGroundColor }} className={`white`}>
-        {longOrShort}
-      </span>
+      <ColoredSpan borderColor={borderColor}>{longOrShort}</ColoredSpan>
     </div>
   );
 };
@@ -576,7 +684,7 @@ const Symbol = ({ symbol }) => <span className="ticker_symbol">{symbol}</span>;
 
 const ClosePositionBtn = ({ closePosition, closingPosition }) => {
   return (
-    <ClosePositionButton onClick={closePosition}>
+    <ClosePositionButton onClick={closePosition} border={"goldenrod"}>
       {closingPosition && (
         <>
           {" "}
@@ -591,7 +699,7 @@ const ClosePositionBtn = ({ closePosition, closingPosition }) => {
 
 const CancelOrderBtn = ({ cancelOrder, cancelingOrder }) => {
   return (
-    <ClosePositionButton onClick={cancelOrder}>
+    <ClosePositionButton onClick={cancelOrder} border="royalblue">
       {cancelingOrder && (
         <>
           {" "}
@@ -607,8 +715,9 @@ const CancelOrderBtn = ({ cancelOrder, cancelingOrder }) => {
 const ClosePositionButton = styled.button`
   color: white;
   background: red;
-  position: absolute;
+  /* position: absolute; */
   font-size: 10px;
+  border: ${({ border }) => `2px solid ${border}`};
 `;
 
 const TargetStopDiv = styled.div`
@@ -622,4 +731,18 @@ const TypeStatusDiv = styled.div`
   display: inline-flex;
   color: white;
   font-size: 12px;
+`;
+
+const ColoredSpan = styled.span`
+  border-top: ${({ borderColor }) => `2px solid ${borderColor}`};
+  border-bottom: ${({ borderColor }) => `2px solid ${borderColor}`};
+  padding-top: 1px;
+  padding-bottom: 1px;
+  border-radius: 5px;
+  color: white;
+  text-align: center;
+`;
+
+const FilterRadioContainer = styled.div`
+  margin-top;0.2em;
 `;

@@ -128,11 +128,10 @@ class BuySellButtons extends React.Component {
       opening_short,
       position_size,
       order_type,
-      order_target,
-      order_stop,
+      order_target_size,
+      order_stop_size,
       order_limit,
     } = meta;
-
     if (currentTickData[search_symbol]) {
       currentPrice = currentTickData[search_symbol].close;
       if (!order_limit) {
@@ -154,8 +153,8 @@ class BuySellButtons extends React.Component {
               currentPrice={currentPrice}
               position_size={position_size}
               order_Limit={order_limit}
-              order_target={order_target}
-              order_stop={order_stop}
+              order_target={order_target_size}
+              order_stop={order_stop_size}
               order_type={order_type}
               dispatch={this.props.dispatch}
             />

@@ -101,33 +101,33 @@ export async function view_selected_commodity({ timeframe, symbol, props }) {
 }
 
 export async function view_selected_stock({ timeframe, end, symbol, props }) {
-  console.log("view_selected_stock");
-  let tf = timeframe;
-  // if(timeframe === '1Min') timeframe = 'minute'
-  // if(timeframe === '5Min') timeframe = '5Min'
-  // if(timeframe === '15minutely') timeframe = '15Min'
-  // if(timeframe === '30minutely') timeframe = '30Min'
-  if (timeframe === "daily") timeframe = "day";
-  if (timeframe === "weekly") {
-    console.log("TODO make weekly function");
-    timeframe = "day";
-  }
+  // console.log("view_selected_stock");
+  // let tf = timeframe;
+  // // if(timeframe === '1Min') timeframe = 'minute'
+  // // if(timeframe === '5Min') timeframe = '5Min'
+  // // if(timeframe === '15minutely') timeframe = '15Min'
+  // // if(timeframe === '30minutely') timeframe = '30Min'
+  // if (timeframe === "daily") timeframe = "day";
+  // if (timeframe === "weekly") {
+  //   console.log("TODO make weekly function");
+  //   timeframe = "day";
+  // } 
   const { dispatch } = props;
-  // console.log(dispatch);
-  // console.log(symbol);
+
   // /* Set the search symbol aas selected */
   dispatch(set_search_symbol(symbol));
   // /* set show filtered list false */
   dispatch(show_filter_list(false));
   // /* fetch data and add to the store/charts array */
   dispatch(is_loading(true));
-  // props.history.push(`/chart/${symbol}`);
  try {
-  const stockData = await API.fetchStockData({ timeframe, symbol, end });
-  console.log({ stockData });
-  dispatch(add_chart_data(symbol, stockData[symbol], tf));
+  const chartData = await API.fetchStockData({ timeframe, symbol, end });
+  console.log({ chartData });
+  
+  dispatch(add_chart_data({symbol, chartData, timeframe}));
   dispatch(is_loading(false));
  } catch (err) {
+   console.log(err)
   dispatch(is_loading(false));
    
  }

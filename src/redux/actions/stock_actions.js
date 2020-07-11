@@ -81,7 +81,6 @@ export function set_sector_data(sector, data) {
 export function add_commodity_minutely_data({symbol, chart_data}) {
 
   // console.log({chart_data})
-  // debugger
   // chart_data.forEach(r => {
   //   r.timestamp = new Date(parseInt(r.start_timestamp)).getTime()
   //   r.open = +r.open
@@ -153,17 +152,11 @@ export function deleteCommodityRegressionData(id){
 
 }
 
-export function add_chart_data(symbol, chart_data, timeframe) {
+export function add_chart_data({symbol, chartData, timeframe}) {
   console.log('ADD_CHART_DATA')
-  console.log(symbol)
-  console.log(chart_data)
-    chart_data = formatData(chart_data);
-    let rawData = [...chart_data]
-
-    chart_data = forwardFill(chart_data);
   return {
     type: "ADD_CHART_DATA",
-    chart_data, timeframe, symbol, rawData
+    chartData, timeframe, symbol
   };
 }
 

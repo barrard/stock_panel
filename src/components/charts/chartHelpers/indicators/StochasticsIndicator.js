@@ -175,7 +175,7 @@ class IndicatorChart extends React.Component {
     else prevData = prevProps.stock_data.commodity_data[symbol][timeframe];
     
     if(data === prevData || !data ||!data.length )return
-    // debugger
+    if(!data.slice(-1)[0].stochastics)return
     console.log(this.props)
     console.log(this.state)
     console.log(this.props.stock_data.commodity_data[symbol][timeframe])

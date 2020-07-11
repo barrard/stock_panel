@@ -195,6 +195,7 @@ class IndicatorChart extends React.Component {
       if(data === prevData || !data ||!data.length )return
       console.log(this.props)
       console.log(this.state)
+      if(!data.slice(-1)[0].momentum)return console.log('No MOM data here')
       console.log(this.props.stock_data.commodity_data[symbol][timeframe])
         let availableWindows = Object.keys(data.slice(-1)[0].momentum).map(key=>parseInt(key.split('momentum').slice(-1)[0]))
         partialOHLCdata = data.map((d)=> {return {x:d.timestamp, momentum:d.momentum}})
