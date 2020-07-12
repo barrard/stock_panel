@@ -19,6 +19,7 @@ import {
   updateCommodityData,
   addCommodityTrade,
   updateCommodityTrade,
+  updateStockData
 } from "./redux/actions/stock_actions.js";
 import TradeBot from "./components/TradeBot/TradeBot.js";
 import API from "./components/API.js";
@@ -48,12 +49,13 @@ class App extends React.Component {
     Socket.on("err", (err) => {
       console.log(err);
     });
-    // Socket.on("tradeConfirm", (newTrade) => {
-    //   //dispatch(updateCommodityData(newTickData, 'tick'))
-    //   console.log('tradeConfirm');
-    //   console.log('tradeConfirm');
-    //   console.log(newTrade);
-    // });
+    Socket.on("stock_quotes", (stockQuotes) => {
+      //dispatch(updateCommodityData(newTickData, 'tick'))
+      console.log('stockQuotes');
+      console.log(stockQuotes);
+      dispatch(updateStockData(stockQuotes, "tick"))
+
+    });
     Socket.on("current_minute_data", (newTickData) =>{
       console.log('New Tick?')
       dispatch(updateCommodityData(newTickData, "tick"))

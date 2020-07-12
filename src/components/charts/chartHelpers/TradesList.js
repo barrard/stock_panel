@@ -230,7 +230,7 @@ class TradesList extends React.Component {
 
     return (
       <>
-        <BuySellButtons />
+        <BuySellButtons instrumentType={this.props.instrumentType} />
         {/* <div>No Trades</div>; */}
         {/* Avoid rendering if data array is empty */}
         <div className="col2">

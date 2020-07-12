@@ -154,6 +154,8 @@ export function deleteCommodityRegressionData(id){
 
 export function add_chart_data({symbol, chartData, timeframe}) {
   console.log('ADD_CHART_DATA')
+  chartData = forwardFill(chartData);
+
   return {
     type: "ADD_CHART_DATA",
     chartData, timeframe, symbol
@@ -167,3 +169,20 @@ export function add_MA_data_action(MA_data, symbol){
 
 }
 
+
+
+export function updateStockData(newData, type){
+  if(type === 'minute'){
+
+    return {
+      type:"ADD_NEW_STOCK_MINUTE",
+      new_minute_data : newData
+    }
+  }else if(type === 'tick'){
+
+    return {
+      type:"ADD_NEW_STOCK_TICK",
+      new_tick_data : newData
+    }
+  }
+}

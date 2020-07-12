@@ -10,7 +10,7 @@ class SEC_Filings extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      show: true,
+      show: false,
       filings: [],
     };
     this.showHideSEC_Filings = this.showHideSEC_Filings.bind(this);

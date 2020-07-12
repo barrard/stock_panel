@@ -773,7 +773,7 @@ class TickChart extends React.Component {
           height={this.props.height}
           className="svgChart"
         ></svg>
-        <BuySellButtons />
+        <BuySellButtons instrumentType={this.props.instrumentType} />
       </div>
     );
   }

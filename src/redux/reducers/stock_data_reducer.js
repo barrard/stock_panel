@@ -13,6 +13,7 @@ const initial_state = {
   commodityRegressionData: {},
   stockRegressionData: {},
   currentTickData: {},
+  currentStockTickData:{},
   newestMinuteData: {},
   commodityPriceLevelSettings: {},
   commodityTrades: {}
@@ -157,15 +158,26 @@ export default (state = initial_state, action) => {
         currentTickData[symbol].timestamp = new Date(
           currentTickData[symbol].start_timestamp
         ).getTime();
-        
-
       }
-
       return {
         ...state,
         currentTickData
       };
     }
+
+    case "ADD_NEW_STOCK_TICK": {
+      let { new_tick_data } = action;
+      let currentStockTickData = { ...state.currentStockTickData };
+      for (let symbol in new_tick_data) { 
+        if (!currentStockTickData[symbol]) currentStockTickData[symbol] = {};
+        currentStockTickData[symbol] = new_tick_data[symbol];
+      }
+      return {
+        ...state,
+        currentStockTickData
+      };
+    }
+    
 
     case "SET_COMMODITY_REGRESSION_DATA": {
       let { commodityRegressionData } = action;

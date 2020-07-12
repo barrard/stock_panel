@@ -103,7 +103,7 @@ function handleTradeError(direction, err) {
   }
 }
 
-async function goLong({
+async function goLong({instrumentType,
   symbol,
   position_size,
   order_type,
@@ -114,7 +114,7 @@ async function goLong({
 
   try {
     let orderLong = await fetch(`${LOCAL_SERVER}/API/goLong`, {
-      ...POST({
+      ...POST({instrumentType,
         symbol,
         position_size,
         order_type,
@@ -136,7 +136,7 @@ async function goLong({
   }
 }
 
-async function goShort({   symbol,
+async function goShort({   symbol,instrumentType,
   position_size,
   order_type,
   order_target_size,
@@ -145,7 +145,7 @@ async function goShort({   symbol,
   try {
     let orderShort = await fetch(`${LOCAL_SERVER}/API/goShort`, {
       ...POST({
-        symbol,
+        symbol,instrumentType,
         position_size,
         order_type,
         order_target_size,

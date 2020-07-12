@@ -1757,7 +1757,7 @@ debugger
         </RegressionSettingsContainer>
 
         <TradesListContainer>
-          <TradesList trades={trades} />
+          <TradesList trades={trades} instrumentType={this.props.type} />
         </TradesListContainer>
       </div>
     );

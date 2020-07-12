@@ -51,7 +51,7 @@ class BuySellButtons extends React.Component {
   //   }
   // }
 
-  async goLong() {
+  async goLong(instrumentType) {
     let symbol = this.props.stock_data.search_symbol;
     let { dispatch, meta, stock_data } = this.props;
 
@@ -72,6 +72,7 @@ class BuySellButtons extends React.Component {
         order_target_size,
         order_stop_size,
         order_limit,
+        instrumentType,
       });
       console.log({ newTrade });
       if (!newTrade) throw "Didnt get a new trade back from API";
@@ -85,7 +86,7 @@ class BuySellButtons extends React.Component {
     }
   }
 
-  async goShort(size) {
+  async goShort(instrumentType) {
     let symbol = this.props.stock_data.search_symbol;
     let { dispatch, meta, stock_data } = this.props;
 
@@ -105,6 +106,7 @@ class BuySellButtons extends React.Component {
         order_target_size,
         order_stop_size,
         order_limit,
+        instrumentType,
       });
       console.log({ newTrade });
       if (!newTrade) throw "Didnt get a new trade back from API";
@@ -119,9 +121,10 @@ class BuySellButtons extends React.Component {
     }
   }
   render() {
-    let { dispatch, meta, stock_data } = this.props;
-    let { currentTickData, search_symbol } = stock_data;
+    let { dispatch, meta, stock_data, instrumentType } = this.props;
+    let { currentTickData, search_symbol, currentStockTickData } = stock_data;
     let currentPrice;
+    let bidAskData;
 
     let {
       opening_long,
@@ -132,12 +135,24 @@ class BuySellButtons extends React.Component {
       order_stop_size,
       order_limit,
     } = meta;
-    if (currentTickData[search_symbol]) {
-      currentPrice = currentTickData[search_symbol].close;
-      if (!order_limit) {
-        dispatch(set_order_limit(currentPrice));
+    //****   Ugly code****** */
+    if (instrumentType === "commodity") {
+      if (currentTickData[search_symbol]) {
+        bidAskData = currentTickData[search_symbol]
+        currentPrice = bidAskData.close;
+        if (!order_limit) {
+          dispatch(set_order_limit(currentPrice));
+        }
       }
-    }
+    } else if (instrumentType === "stock") {
+      if (currentStockTickData[search_symbol]) {
+        bidAskData = currentStockTickData[search_symbol]
+        currentPrice = bidAskData.close;
+        if (!order_limit) {
+          dispatch(set_order_limit(currentPrice));
+        }
+      }
+    } //****   Ugly code****** */
 
     return (
       <>
@@ -160,7 +175,7 @@ class BuySellButtons extends React.Component {
             />
           </div>
           <div className="col-sm-6 flex_center">
-            <PriceBidAsk currentTick={currentTickData[search_symbol]} />
+            <PriceBidAsk currentTick={bidAskData} />
           </div>
         </div>
         <div className="row">
@@ -168,12 +183,12 @@ class BuySellButtons extends React.Component {
             <BuyBtn
               currentTick={currentTickData[search_symbol]}
               opening_long={opening_long}
-              goLong={() => this.goLong()}
+              goLong={() => this.goLong(this.props.instrumentType)}
             />
             <SellBtn
               currentTick={currentTickData[search_symbol]}
               opening_short={opening_short}
-              goShort={() => this.goShort()}
+              goShort={() => this.goShort(this.props.instrumentType)}
             />
           </div>
         </div>

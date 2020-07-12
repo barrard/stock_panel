@@ -44,9 +44,13 @@ class CommodityChartPage extends React.Component {
     return (
       <div className="p-5">
         <div className="row">
-          <TickCharts width={this.state.chartWidth} symbol={symbol} />
+          <TickCharts
+            type="commodity"
+            width={this.state.chartWidth}
+            symbol={symbol}
+          />
         </div>
-  
+
         <div className="row ">
           <CandleStickChart
             type="commodity"
@@ -55,7 +59,6 @@ class CommodityChartPage extends React.Component {
             height={400}
           />
         </div>
-
       </div>
     );
   }
@@ -67,4 +70,3 @@ function mapStateToProps(state) {
 }
 
 export default connect(mapStateToProps)(withRouter(CommodityChartPage));
-
