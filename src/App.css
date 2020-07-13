@@ -218,7 +218,7 @@ body{
 
 .tradesListMinHeight{
   overflow: hidden;
-  min-height: 10vh;
+  min-height: 50vh;
   max-height: 50vh;
 }
 

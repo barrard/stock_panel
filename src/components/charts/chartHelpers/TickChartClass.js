@@ -762,6 +762,8 @@ class TickChart extends React.Component {
     TradeMarker({ that, partialOHLCdata, scales, chartWindow });
   }
   render() {
+    console.log(this.props)
+    debugger
     return (
       <div className={this.props.redGreenClass}>
         {this.props.meta.is_loading && (
@@ -773,7 +775,7 @@ class TickChart extends React.Component {
           height={this.props.height}
           className="svgChart"
         ></svg>
-        <BuySellButtons instrumentType={this.props.instrumentType} />
+        <BuySellButtons instrumentType={this.props.type} />
       </div>
     );
   }

@@ -80,7 +80,7 @@ class TradesList extends React.Component {
 
   sort_by(prop) {
     let { sorted_prop, sort_state } = this.state;
-    console.log(this.state.all_data)
+    console.log(this.state.all_data);
     if (sort_state) {
       this.setState({
         sort_state: false,
@@ -177,7 +177,7 @@ class TradesList extends React.Component {
   };
 
   filterRadioBtns = ({ filters }) => {
-    let types = ["Closed", "Open", "Orders"];
+    let types = ["Closed", "Open", "Orders", "Canceled"];
     let RadioButtons = types.map((type, iType) => {
       return (
         <div className="form-check inline align_items_center" key={iType}>
@@ -209,10 +209,11 @@ class TradesList extends React.Component {
     let data = [...all_data];
     // .sort((a, b) => this.high_to_low(a, b, sorted_prop))
     // .slice(0, 30); //This could be customizable //TODO
-    let { Closed, Open, Orders } = this.state.filters;
+    let { Closed, Open, Orders, Canceled } = this.state.filters;
     if (!Closed) data = data.filter((d) => d.orderStatus !== "Closed");
     if (!Open) data = data.filter((d) => d.orderStatus !== "Filled");
     if (!Orders) data = data.filter((d) => d.orderStatus !== "Open");
+    if (!Canceled) data = data.filter((d) => d.orderStatus !== "Canceled");
     // data = data.
     let symbol = this.props.stock_data.search_symbol;
     let currentQuote = this.props.stock_data.currentTickData[symbol];
@@ -227,7 +228,7 @@ class TradesList extends React.Component {
     // console.log(data)
     let filters = this.state.filters;
     let filterRadioBtns = this.filterRadioBtns({ filters });
-
+    let noTrades = data && data.length == 0;
     return (
       <>
         <BuySellButtons instrumentType={this.props.instrumentType} />
@@ -251,49 +252,51 @@ class TradesList extends React.Component {
             sort_by={(prop) => this.sort_by(prop)}
             // on_sort={this}
           />
-<div className='container-fluid tradesListMinHeight scroll_y'>
-            {data && data.length == 0 && (
-              <div className='col flex_center'>
-                
-              <h1>NO TRADES TO DISPLAY</h1>
+          <div
+            className={`container-fluid tradesListMinHeight scroll_y ${
+              noTrades ? "flex_center" : " "
+            }`}
+          >
+            {noTrades && (
+              <div className="col flex_center">
+                <h1>NO TRADES TO DISPLAY</h1>
               </div>
             )}
 
-          {data && data.length > 0 && (
-            <div>
-              {data.map((trade_data, index) => {
-                let day = new Date(trade_data.orderTime)
-                .toLocaleString()
-                .split(",")[0];
-                let DAY; //undefined unless a new Day(date)
-                if (!tradingDay) {
-                  tradingDay = day;
-                  DAY = day;
-                } else if (tradingDay != day) {
-                  tradingDay = day;
-                  DAY = day;
-                }
-                return (
-                  <div key={trade_data._id}>
-                    {/* Only render if date is new and defined */}
-                    {DAY && <p className="white">{DAY}</p>}
-                    <Display_Stock_Row
-                      currentQuote={currentQuote}
-                      index={index}
-                      trade_data={trade_data}
-                      props={this.props}
-                      closePosition={this.closePosition}
-                      closePositions={this.state.closePositions}
-                      cancelOrder={this.cancelOrder}
-                      cancelOrders={this.state.cancelOrders}
+            {data && data.length > 0 && (
+              <div>
+                {data.map((trade_data, index) => {
+                  let day = new Date(trade_data.orderTime)
+                    .toLocaleString()
+                    .split(",")[0];
+                  let DAY; //undefined unless a new Day(date)
+                  if (!tradingDay) {
+                    tradingDay = day;
+                    DAY = day;
+                  } else if (tradingDay != day) {
+                    tradingDay = day;
+                    DAY = day;
+                  }
+                  return (
+                    <div key={trade_data._id}>
+                      {/* Only render if date is new and defined */}
+                      {DAY && <p className="white">{DAY}</p>}
+                      <Display_Stock_Row
+                        currentQuote={currentQuote}
+                        index={index}
+                        trade_data={trade_data}
+                        props={this.props}
+                        closePosition={this.closePosition}
+                        closePositions={this.state.closePositions}
+                        cancelOrder={this.cancelOrder}
+                        cancelOrders={this.state.cancelOrders}
                       />
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-
         </div>
       </>
     );

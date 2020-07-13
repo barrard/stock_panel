@@ -191,6 +191,7 @@ class TickCharts extends React.Component {
         <DivContainer>
         <ToggleTickButton onClick={()=>this.setState({showTick:!showTick})}>Hide Tick Chart</ToggleTickButton>
           <TickChart
+          type={this.props.type}
           showTick={showTick}
           redGreenClass={this.state.redGreenClass}
             volumePriceProfile={this.state.volumePriceProfile}

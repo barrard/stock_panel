@@ -7,7 +7,7 @@ import Login_Form from "../components/forms/Login_Form.js";
 import * as user_actions from "../redux/actions/user_actions.js";
 // import {ensure_not_loggedin} from '../components/utils/auth.js'
 
-const { login_success, login_attempt } = user_actions;
+const { login_success } = user_actions;
 
 class Login extends React.Component {
   constructor(props) {

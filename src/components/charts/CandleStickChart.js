@@ -57,8 +57,8 @@ import {
 import { TICKS } from "./chartHelpers/utils.js";
 import { CenterLabel } from "./chartHelpers/ChartMarkers/Labels.js";
 import { TradeMarker } from "./chartHelpers/ChartMarkers/TradeMarker.js";
+import { DefaultRegressionSettings } from "./chartHelpers/indicators/IndicatorRegressionSettings.js";
 
-let wtfFlag = false;
 let margin = {
   top: 15,
   right: 60,
@@ -164,7 +164,7 @@ class CandleStickChart extends React.Component {
       innerHeight: height - (margin.top + margin.bottom),
 
       timeScale: scaleTime().range([0, innerWidth]),
-      volProfileScale: scaleLinear().range([innerWidth/2, innerWidth]),
+      volProfileScale: scaleLinear().range([innerWidth / 2, innerWidth]),
       priceScale: scaleLinear().range([innerHeight, 0]),
       volScale: scaleLinear().range([innerHeight, 0]).nice(),
 
@@ -183,12 +183,10 @@ class CandleStickChart extends React.Component {
   }
 
   async componentDidMount() {
-
     let { symbol } = this.props.match.params;
     const timeframe = this.state.timeframe;
     const props = this.props;
     if (this.props.type === "stock") {
-      debugger
       if (
         !this.props.stock_data.charts[symbol] ||
         !this.props.stock_data.charts[symbol][timeframe]
@@ -197,14 +195,18 @@ class CandleStickChart extends React.Component {
         const end = new Date().getTime();
         await view_selected_stock({ timeframe, end, symbol, props });
         console.log("SET NEW DATA???");
-        debugger
+
         this.setNewData(symbol, timeframe);
-        console.log('DONE!!!!!!MM<<<<<')
+        console.log("DONE!!!!!!MM<<<<<");
       } else {
         // console.log("WTF WE ALREADY HAVE DATA>!");
         this.setNewData(symbol, timeframe);
       }
+      //Setting default regression settings, this is a work in progress
+      // and likely not the final solution
+      this.setState({ ...DefaultRegressionSettings });
     } else if (this.props.type === "commodity") {
+      //TODO this needs to be set as commodity in the request
       let regressionData = await API.getCommodityRegressionValues(
         this.props.symbol,
         this.props
@@ -221,26 +223,10 @@ class CandleStickChart extends React.Component {
         this.setNewData(symbol, timeframe);
       }
       console.log({ regressionData });
-      let {
-        fibonacciMinMax,
-        fibonacciSensitivity,
-        minMaxTolerance,
-        priceLevelMinMax,
-        priceLevelSensitivity,
-        regressionErrorLimit,
-        volProfileBins,
-        volProfileBarCount,
-      } = this.props.stock_data.commodityRegressionData[symbol][timeframe];
-
+      //HArd to read, but this spreads all the regression settings into state
+      // this is subject to changing however and should go away
       this.setState({
-        fibonacciMinMax,
-        fibonacciSensitivity,
-        minMaxTolerance,
-        priceLevelMinMax,
-        priceLevelSensitivity,
-        volProfileBins,
-        volProfileBarCount,
-        regressionErrorLimit,
+        ...this.props.stock_data.commodityRegressionData[symbol][timeframe],
       });
     }
   }
@@ -409,7 +395,6 @@ class CandleStickChart extends React.Component {
     const timeframe = this.state.timeframe;
     let currentData;
     let currentRawOHLCData;
-
     if (type === "commodity") {
       let currentTickData = stock_data.currentTickData[symbol];
       let lastTickData = prevProps.stock_data.currentTickData[symbol];
@@ -455,10 +440,10 @@ class CandleStickChart extends React.Component {
         setTimeout(() => this.draw(), 0);
       }
     } else if (type == "stock") {
-      console.log("//TODO!!!");
+      // console.log("//TODO!!!");
     }
   }
-  
+
   async handleSymbolChange(prevState, prevProps) {
     let prevSymbol = prevProps.symbol;
     let currentSymbol = this.props.symbol;
@@ -482,14 +467,13 @@ class CandleStickChart extends React.Component {
 
   async getStockDataSetUp(symbol, timeframe) {
     let props = this.props;
-debugger
     if (
       !this.props.stock_data.charts[symbol] ||
       !this.props.stock_data.charts[symbol][timeframe]
     ) {
       const end = new Date().getTime();
       await view_selected_stock({ timeframe, end, symbol, props });
-      partialOHLCdata = this.props.stock_data.charts[symbol][timeframe]
+      partialOHLCdata = this.props.stock_data.charts[symbol][timeframe];
       this.setState({
         allOHLCdata: this.props.stock_data.charts[symbol][timeframe],
       });
@@ -497,8 +481,7 @@ debugger
       this.setState({
         allOHLCdata: this.props.stock_data.charts[symbol][timeframe],
       });
-      partialOHLCdata = this.props.stock_data.charts[symbol][timeframe]
-
+      partialOHLCdata = this.props.stock_data.charts[symbol][timeframe];
     }
   }
 
@@ -547,32 +530,38 @@ debugger
   async handleTimeFrameChange(prevState, prevProps) {
     let prevTimeframe = prevState.timeframe;
     let currentTimeframe = this.state.timeframe;
+    console.log({ prevTimeframe, currentTimeframe });
     if (prevTimeframe !== currentTimeframe) {
       console.log("NEW TIME FRAME");
+      debugger
       console.log({ prevTimeframe, currentTimeframe });
 
       let { symbol } = this.props.match.params;
       const timeframe = currentTimeframe;
       const props = this.props;
       if (this.props.type === "stock") {
+        debugger
+        console.log("TIM FRAME CHGANGE");
         if (
           !this.props.stock_data.charts[symbol] ||
           !this.props.stock_data.charts[symbol][timeframe]
         ) {
+          debugger;
           const end = new Date().getTime();
           await view_selected_stock({ timeframe, end, symbol, props });
           this.setState({
             allOHLCdata: this.props.stock_data.charts[symbol][timeframe],
           });
-          partialOHLCdata = this.props.stock_data.charts[symbol][timeframe]
-
+          partialOHLCdata = this.props.stock_data.charts[symbol][timeframe];
         } else {
           this.setState({
             allOHLCdata: this.props.stock_data.charts[symbol][timeframe],
           });
-          partialOHLCdata = this.props.stock_data.charts[symbol][timeframe]
-
+          partialOHLCdata = this.props.stock_data.charts[symbol][timeframe];
         }
+        //this is just a temporary fix
+        // this data may come from elsewhere
+        this.setState({ ...DefaultRegressionSettings });
       } else if (this.props.type === "commodity") {
         if (
           timeframe !== "daily" &&
@@ -634,14 +623,14 @@ debugger
     let { type, stock_data } = this.props;
     let currentData;
     let currentRawData;
-    
+
     if (type === "commodity") {
       if (!stock_data.commodity_data[symbol]) return console.log("new bugg?");
       currentData = stock_data.commodity_data[symbol][timeframe];
       currentRawData = stock_data.rawCommodityCharts[symbol][timeframe];
     } else if (type === "stock") {
-      //TODO get Stock regression values
-      debugger
+      //TODO get Stock regression values??
+
       console.log(stock_data.charts);
       currentData = stock_data.charts[symbol][timeframe];
       // currentRawData = stock_data.rawCharts[symbol][timeframe];
@@ -1051,7 +1040,7 @@ debugger
     // get the SVG element
     let svg = select(this.state.chartRef.current);
     //trying to catch the source of this strange error, that only happens in dev...
-    (()=>{
+    (() => {
       if (!svg) {
         debugger;
         console.log("WHAA");
@@ -1069,7 +1058,7 @@ debugger
         debugger;
         console.log("WHAA");
       }
-    })()
+    })();
 
     svg.select(".timeAxis").call(this.state.timeAxis);
     svg.select(".priceAxis").call(this.state.priceAxis);
@@ -1116,7 +1105,7 @@ debugger
       svg,
       "priceAxis"
     );
-  }//end of draw
+  } //end of draw
 
   appendEMA(chartWindow, { timeScale, priceScale }) {
     if (this.state.visibleIndicators.emaLine) {
@@ -1127,15 +1116,15 @@ debugger
         timeScale,
         priceScale,
       });
-    // }
-    // if (this.state.visibleIndicators.ema50) {
+      // }
+      // if (this.state.visibleIndicators.ema50) {
       //show 50 EMA
       drawMALine(chartWindow, this.state.EMA_data, 50, {
         timeScale,
         priceScale,
       });
-    // }
-    // if (this.state.visibleIndicators.ema200) {
+      // }
+      // if (this.state.visibleIndicators.ema200) {
       //show 200 EMA
       drawMALine(chartWindow, this.state.EMA_data, 200, {
         timeScale,
@@ -1506,7 +1495,7 @@ debugger
 
   runPriceLevels() {
     let priceLevelMinMax = this.state.priceLevelMinMax;
-    //this is used to decide if the minMax setting 
+    //this is used to decide if the minMax setting
     // will get reduced as the window gets smaller
     //towards the more recent data
     let minMaxMostRecentData = false;
@@ -1580,8 +1569,8 @@ debugger
     ];
     API.setTimeframeActive(_id, timeframe, this.props);
   }
-//sets the settings in the api server
-//TODO add user id
+  //sets the settings in the api server
+  //TODO add user id
   saveRegressionSettings() {
     let { symbol } = this.props;
     let {
@@ -1615,9 +1604,17 @@ debugger
     let timeframe = e.target.value;
     let { stock_data } = this.props;
     let symbol = stock_data.search_symbol;
-
-    //also setting the regression indicators settings
-    this.setState({ ...stock_data.commodityRegressionData[symbol][timeframe] });
+    //TODO subject to change
+    //this data should come from somewhere?
+    if (this.props.type === "commodity") {
+      //also setting the regression indicators settings
+      this.setState({
+        timeframe,
+        ...stock_data.commodityRegressionData[symbol][timeframe],
+      });
+    } else if (this.props.type === "stock") {
+      this.setState({ ...DefaultRegressionSettings });
+    }
   }
 
   runRegressionAnalysis() {

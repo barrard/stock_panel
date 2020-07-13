@@ -9,7 +9,7 @@ import {
   // set_search_symbol,
   // add_chart_data
 } from "../redux/actions/stock_actions.js";
-import { login_success, login_attempt } from "../redux/actions/user_actions.js";
+import { login_success } from "../redux/actions/user_actions.js";
 
 export default {
   getMovers,
@@ -405,7 +405,7 @@ async function fetchStockData({ timeframe, symbol, end }) {
   data = await data.json()
   if(data.err)throw data.err
   console.log(data);
-  debugger
+  
   if (!data.length) return [];
   toastr.success(
     `Data loaded`,

@@ -45,6 +45,7 @@ class CommodityChartPage extends React.Component {
       <div className="p-5">
         <div className="row">
           <TickCharts
+          test='fail'
             type="commodity"
             width={this.state.chartWidth}
             symbol={symbol}

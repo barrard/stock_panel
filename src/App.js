@@ -57,7 +57,6 @@ class App extends React.Component {
 
     });
     Socket.on("current_minute_data", (newTickData) =>{
-      console.log('New Tick?')
       dispatch(updateCommodityData(newTickData, "tick"))
     }
     );
