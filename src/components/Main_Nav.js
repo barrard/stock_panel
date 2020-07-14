@@ -15,18 +15,20 @@ class Main_Nav extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      // search_symbol: "",
+      search_symbol: "",
       filtered_stock_list: [],
+      highlightedSymbolListIndex:0
       // searching: true,
       // stock_selected: false
       // show_filter_list: false
     };
 
-    this.handle_seach_symbol_input = this.handle_seach_symbol_input.bind(this);
+    this.handle_search_symbol_input = this.handle_search_symbol_input.bind(this);
     this.make_filter_list = this.make_filter_list.bind(this);
     this.highlight_search_letters = this.highlight_search_letters.bind(this);
     this.filtered_stock_list_item = this.filtered_stock_list_item.bind(this);
     this.handleLogout = this.handleLogout.bind(this)
+    this.arrowKeyListSelect = this.arrowKeyListSelect.bind(this)
   }
   async componentDidMount() {
 
@@ -42,12 +44,57 @@ class Main_Nav extends React.Component {
     }
   }
 
-  handle_seach_symbol_input(e) {
+  componentDidUpdate(prevProps){
+    this.handleSetSymbol(prevProps)
+  }
+
+  handleSetSymbol(prevProps){
+    let currentSymbol = this.props.stock_data.search_symbol
+    let prevSymbol = prevProps.stock_data.search_symbol
+    if(currentSymbol !== prevSymbol){
+      console.log('YES?')
+      this.setState({search_symbol:currentSymbol})
+    }
+  }
+
+  arrowKeyListSelect(e){
+    console.log(e.key)
+    console.log(e.target.keycode)
+    let {highlightedSymbolListIndex} = this.state
+    if(e.key === 'ArrowDown'){
+      //acess the list?
+      highlightedSymbolListIndex++
+      console.log(this.state.filtered_stock_list)
+      this.setState({
+        highlightedSymbolListIndex
+      })
+    }else if(e.key ==='ArrowUp'){
+      highlightedSymbolListIndex--
+      if(highlightedSymbolListIndex < -1)highlightedSymbolListIndex = -1
+      this.setState({
+        highlightedSymbolListIndex
+      })
+
+    }else if(e.key === 'Enter'){
+      let el = document.querySelectorAll('.selectedSymbolListItem')[0]
+      if(!el)return console.log('No symbol selected')
+      el.dispatchEvent(
+        new MouseEvent('click', {
+          view: window,
+          bubbles: true,
+          cancelable: true,
+          buttons: 1
+        })
+      )
+    }
+  }
+  handle_search_symbol_input(e) {
     if (!this.props.meta.show_filter_list){
       this.props.dispatch(show_filter_list(true));
     }
-    this.props.dispatch(set_search_symbol(e.target.value));
+    // this.props.dispatch(set_search_symbol(e.target.value));
     this.make_filter_list(e.target.value);
+    this.setState({search_symbol:e.target.value})
   }
 
   /* On input makes the list */
@@ -147,9 +194,10 @@ class Main_Nav extends React.Component {
     let props= this.props
     let timeframe = 'day'
     let end = new Date().getTime()
+    let isSelected = index === this.state.highlightedSymbolListIndex
     return (
       <div
-        className="filtered_stock_list_item"
+        className={`filtered_stock_list_item ${isSelected ? 'selectedSymbolListItem' : ' '}`}
         key={index}
         onClick={() => {
           if(isCommodity){
@@ -266,15 +314,16 @@ class Main_Nav extends React.Component {
           handle_search_input_blur={() =>
             setTimeout(() => this.props.dispatch(show_filter_list(false)), 200)
           }
-          handle_search_input={e => this.handle_seach_symbol_input(e)}
-          search_symbol={this.props.stock_data.search_symbol}
+          arrowKeyListSelect={this.arrowKeyListSelect}
+          handle_search_input={e => this.handle_search_symbol_input(e)}
+          search_symbol={this.state.search_symbol}
           handle_search={e => this.handle_search(e)}
         />
         {/* </div> */}
         {this.props.meta.show_filter_list &&
           this.Filtered_Stock_List({
             filtered_stock_list: this.state.filtered_stock_list,
-            search_symbol: this.props.stock_data.search_symbol
+            search_symbol: this.state.search_symbol
           })}
       </nav>
     );
@@ -291,12 +340,13 @@ export default connect(mapStateToProps)(withRouter(Main_Nav));
 
 const Navbar_Search = ({
   handle_search_input,
-  handle_search,
+  handle_search,arrowKeyListSelect,
   search_symbol,
   handle_search_input_blur
 }) => (
   <div className="form-inline my-2 my-lg-0 absolute right_10_px z_index_100">
     <input
+    onKeyDown={arrowKeyListSelect}
       onBlur={handle_search_input_blur}
       onChange={e => handle_search_input(e)}
       className="form-control mr-sm-2"

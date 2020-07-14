@@ -762,7 +762,6 @@ class TickChart extends React.Component {
     TradeMarker({ that, partialOHLCdata, scales, chartWindow });
   }
   render() {
-    console.log(this.props)
     
     return (
       <div className={this.props.redGreenClass}>

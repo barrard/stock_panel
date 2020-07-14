@@ -37,6 +37,45 @@ class BuySellButtons extends React.Component {
 
   componentDidUpdate(prevProps) {
     // this.handleTickUpdates()
+    this.handleNewSymbol(prevProps)
+  }
+  handleNewSymbol(prevProps){
+    let currentSymbol = this.props.stock_data.search_symbol
+    let prevSymbol = prevProps.stock_data.search_symbol
+    if(currentSymbol !== prevSymbol){
+      debugger
+      console.log('New symbol')
+      //get teh ticks
+      let ticks = TICKS[currentSymbol]
+      console.log(ticks)
+      //set the stop and target limit
+      let stop = ticks * 10
+      let target = ticks * 30
+      this.props.dispatch(set_order_stop(stop))
+      this.props.dispatch(set_order_target(target))
+      // debugger
+
+      setTimeout(() => {
+        try {
+          let close = this.props.instrumentType ==='commodity'
+        ? this.props.stock_data.currentTickData[currentSymbol].close
+        : this.props.stock_data.currentStockTickData[currentSymbol].close
+        this.props.dispatch(set_order_limit(close))
+        } catch (err) {
+          setTimeout(() => {
+            try {
+              let close = this.props.instrumentType ==='commodity'
+            ? this.props.stock_data.currentTickData[currentSymbol].close
+            : this.props.stock_data.currentStockTickData[currentSymbol].close
+            this.props.dispatch(set_order_limit(close))
+            } catch (err) {
+              console.log(err)
+            }
+            }, 2000);        }
+        }, 2000);
+    
+      
+    }
   }
 
   // handleTickUpdates(){

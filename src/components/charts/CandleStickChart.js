@@ -1044,25 +1044,25 @@ class CandleStickChart extends React.Component {
     // get the SVG element
     let svg = select(this.state.chartRef.current);
     //trying to catch the source of this strange error, that only happens in dev...
-    (() => {
-      if (!svg) {
-        debugger;
-        console.log("WHAA");
-      }
-      if (!svg.select() || !this.state.priceAxis) {
-        debugger;
-        console.log("WHAA");
-      }
-      if (!svg.select(".timeAxis").call(this.state.priceAxis)) {
-        debugger;
-        console.log("WHAA");
-      }
-      if (typeof this.state.priceAxis != "function") {
-        console.log(typeof this.state.priceAxis);
-        debugger;
-        console.log("WHAA");
-      }
-    })();
+    // (() => {
+    //   if (!svg) {
+    //     debugger;
+    //     console.log("WHAA");
+    //   }
+    //   if (!svg.select() || !this.state.priceAxis) {
+    //     debugger;
+    //     console.log("WHAA");
+    //   }
+    //   if (!svg.select(".timeAxis").call(this.state.priceAxis)) {
+    //     debugger;
+    //     console.log("WHAA");
+    //   }
+    //   if (typeof this.state.priceAxis != "function") {
+    //     console.log(typeof this.state.priceAxis);
+    //     debugger;
+    //     console.log("WHAA");
+    //   }
+    // })();
 
     svg.select(".timeAxis").call(this.state.timeAxis);
     svg.select(".priceAxis").call(this.state.priceAxis);

@@ -8,7 +8,10 @@ import API from "../../API";
 import BuySellButtons from "../chartComponents/buySellButtons.js";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner } from "@fortawesome/free-solid-svg-icons";
-import { updateCommodityTrade, updateStockTrade } from "../../../redux/actions/stock_actions.js";
+import {
+  updateCommodityTrade,
+  updateStockTrade,
+} from "../../../redux/actions/stock_actions.js";
 import {
   closing_position,
   canceling_order,
@@ -54,7 +57,6 @@ class TradesList extends React.Component {
     //   });
     // }
     // let stateTrades = this.state.all_trades;
-
     // if (Array.isArray(stateTrades) && Array.isArray(trades)) {
     //   stateTrades.forEach((trade, index) => {
     //     if (!trades[index]) return;
@@ -68,13 +70,15 @@ class TradesList extends React.Component {
   }
 
   high_to_low(a, b, prop) {
-    if (a[prop] > b[prop]) return -1;
-    if (a[prop] < b[prop]) return 1;
+    let { aProp, bProp } = dynamicSortHelper(prop, a, b, this.props);
+    if (aProp > bProp) return -1;
+    if (aProp < bProp) return 1;
     return 0;
   }
   low_to_high(a, b, prop) {
-    if (a[prop] > b[prop]) return 1;
-    if (a[prop] < b[prop]) return -1;
+    let { aProp, bProp } = dynamicSortHelper(prop, a, b, this.props);
+    if (aProp > bProp) return 1;
+    if (aProp < bProp) return -1;
     return 0;
   }
 
@@ -84,18 +88,18 @@ class TradesList extends React.Component {
     if (sort_state) {
       this.setState({
         sort_state: false,
-        all_trades: this.state.all_trades.sort((a, b) =>
-          this.high_to_low(a, b, prop)
-        ),
+        // all_trades: this.state.all_trades.sort((a, b) =>
+        //   this.high_to_low(a, b, prop)
+        // ),
         sorted_prop: prop,
       });
     } else {
       this.setState({
         sort_state: true,
         sorted_prop: prop,
-        all_trades: this.state.all_trades.sort((a, b) =>
-          this.low_to_high(a, b, prop)
-        ),
+        // all_trades: this.state.all_trades.sort((a, b) =>
+        //   this.low_to_high(a, b, prop)
+        // ),
       });
     }
   }
@@ -148,18 +152,16 @@ class TradesList extends React.Component {
       let closedTrade = await API.closePosition(id);
       if (closedTrade.resp) {
         closedTrade = closedTrade.resp;
-        let {instrumentType} = closedTrade
-        if(instrumentType === 'commodity'){
-
+        let { instrumentType } = closedTrade;
+        if (instrumentType === "commodity") {
           this.props.dispatch(
             updateCommodityTrade(closedTrade, closedTrade.symbol)
-            );
-          }else if(instrumentType === 'stock'){
-debugger
-            this.props.dispatch(
-              updateStockTrade(closedTrade, closedTrade.symbol)
-              );
-            }
+          );
+        } else if (instrumentType === "stock") {
+          this.props.dispatch(
+            updateStockTrade(closedTrade, closedTrade.symbol)
+          );
+        }
         this.setState({
           closePositions: [...closePositions.filter((_id) => _id !== id)],
         });
@@ -214,18 +216,22 @@ debugger
   };
 
   render() {
-    let {  sorted_prop } = this.state;
-    
-    let trades = this.props.trades
-    if(!trades)trades = []
-    // .sort((a, b) => this.high_to_low(a, b, sorted_prop))
-    // .slice(0, 30); //This could be customizable //TODO
+    let { sorted_prop } = this.state;
+
+    let trades = this.props.trades;
+    if (!trades) trades = [];
+
     let { Closed, Open, Orders, Canceled } = this.state.filters;
     if (!Closed) trades = trades.filter((d) => d.orderStatus !== "Closed");
     if (!Open) trades = trades.filter((d) => d.orderStatus !== "Filled");
     if (!Orders) trades = trades.filter((d) => d.orderStatus !== "Open");
     if (!Canceled) trades = trades.filter((d) => d.orderStatus !== "Canceled");
-    // data = data.
+
+    let sortFn = this.state.sort_state
+      ? (a, b) => this.low_to_high(a, b, sorted_prop)
+      : (a, b) => this.high_to_low(a, b, sorted_prop);
+    trades = trades.sort(sortFn);
+
     let symbol = this.props.stock_data.search_symbol;
     let currentQuote = this.props.stock_data.currentTickData[symbol];
 
@@ -371,6 +377,7 @@ function Display_Stock_Row({
         <EntryTimeLimit
           currentQuote={currentQuote}
           entryTime={entryTime}
+          // orderTime={OrderTime}
           orderLimit={order_limit}
         />
       </div>
@@ -468,14 +475,14 @@ const EntryPrice = ({ price, orderTime }) => {
     </div>
   );
 };
-const EntryTimeLimit = ({ entryTime, orderLimit, currentQuote }) => {
+const EntryTimeLimit = ({ entryTime, orderLimit, currentQuote, orderTime }) => {
   if (entryTime) return <DateTime date={entryTime} />;
   else if (orderLimit && currentQuote) {
     let { close } = currentQuote;
     let distanceToEntry = (close - orderLimit).toFixed(2);
     return (
       <div
-        title={`Current Price is ${distanceToEntry} away from your limit order of ${orderLimit}`}
+        title={`@${orderTime}, Current Price is ${distanceToEntry} away from your limit order of ${orderLimit}`}
       >
         <Price price={orderLimit} />
         <DistanceToEntry price={distanceToEntry} />
@@ -658,7 +665,7 @@ const OrderStatus = ({ orderStatus }) => {
   let statusColor =
     orderStatus === "Filled"
       ? "green"
-      : orderStatus === "Closed"
+      : orderStatus === "Closed" || orderStatus === "Canceled"
       ? "red"
       : "royalblue";
   return (
@@ -760,3 +767,50 @@ const ColoredSpan = styled.span`
 const FilterRadioContainer = styled.div`
   margin-top;0.2em;
 `;
+
+function dynamicSortHelper(prop, aData, bData, thisProps) {
+  if (prop === "entryTime") {
+    return returnDataProps(aData, bData, prop, "orderTime");
+  } else if (prop === "entryPrice") {
+    return returnDataProps(aData, bData, prop, "order_limit");
+  } else if (prop === "PL") {
+    let { instrumentType, stock_data } = thisProps;
+    let symbol = stock_data.search_symbol;
+    let close =
+      instrumentType === "commodity"
+        ? stock_data.currentTickData[symbol].close
+        : stock_data.currentStockTickData[symbol].close;
+
+    let aPnL = aData.entryPrice
+      ? aData.buyOrSell === "Buy"
+        ? close - aData.entryPrice
+        : aData.entryPrice - close
+      : 0;
+    let bPnL = bData.entryPrice
+      ? bData.buyOrSell === "Buy"
+        ? close - bData.entryPrice
+        : bData.entryPrice - close
+      : 0;
+    return {
+      aProp: aPnL,
+      bProp: bPnL,
+    };
+  } else {
+    return returnDataProps(aData, bData, prop, prop);
+  }
+
+  function returnDataProps(aData, bData, prop, altProp) {
+    let aProp, bProp;
+    if (!aData[prop]) {
+      aProp = aData[altProp];
+    } else {
+      aProp = aData[prop];
+    }
+    if (!bData[prop]) {
+      bProp = bData[altProp];
+    } else {
+      bProp = bData[prop];
+    }
+    return { aProp, bProp };
+  }
+}

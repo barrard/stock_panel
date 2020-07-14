@@ -462,7 +462,9 @@ canvas{
   display: flex;
   justify-content: center;
 }
-
+.selectedSymbolListItem{
+  border: 3px solid green;
+}
 .flex_center {
   display: flex;
   justify-content: center;
