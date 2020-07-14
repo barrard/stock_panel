@@ -10,6 +10,14 @@ export function set_symbols_data(stock_symbols_data, commodity_symbols_data) {
   };
 }
 
+export function updateStockTrade(trade){
+  console.log(trade)
+  return{
+    type:"UPDATE_STOCK_TRADE", 
+    trade
+  }
+}
+
 export function updateCommodityTrade(trade){
   console.log(trade)
   return{
@@ -17,6 +25,16 @@ export function updateCommodityTrade(trade){
     trade
   }
 }
+
+export function addAllStockTrades(trades, symbol){
+  console.log({trades, symbol})
+  return{
+    type:"ADD_ALL_STOCK_TRADES", 
+    trades, symbol
+  }
+}
+
+
 
 export function addAllCommodityTrades(trades, symbol){
   console.log({trades, symbol})
@@ -26,6 +44,8 @@ export function addAllCommodityTrades(trades, symbol){
   }
 }
 
+
+
 export function addCommodityTrade(trade, symbol){
   console.log(trade)
   return{
@@ -33,6 +53,17 @@ export function addCommodityTrade(trade, symbol){
     trade, symbol
   }
 }
+
+
+export function addStockTrade(trade, symbol){
+  console.log(trade)
+  return{
+    type:"ADD_STOCK_TRADE", 
+    trade, symbol
+  }
+}
+
+
 
 export function commodityRegressionData(commodityRegressionData) {
   return {

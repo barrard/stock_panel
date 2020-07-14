@@ -66,6 +66,7 @@ class App extends React.Component {
       console.log("stockBotEnterTrade ENTERING A TRADE");
       return dispatch(addCommodityTrade(newTrade, newTrade.symbol));
     });
+    
     Socket.on("updateTrade", (updateTrade) => {
       
       dispatch(updateCommodityTrade(updateTrade))

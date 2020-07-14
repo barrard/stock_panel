@@ -5,7 +5,7 @@ import {
   set_symbols_data,
   commodityRegressionData,
   deleteCommodityRegressionData,
-  addAllCommodityTrades,
+  addAllCommodityTrades,addAllStockTrades,
   // set_search_symbol,
   // add_chart_data
 } from "../redux/actions/stock_actions.js";
@@ -21,7 +21,7 @@ export default {
   getCommodityRegressionValues,
   // getIndicatorValues,
   setTimeframeActive,
-  getAllCommodityTrades,
+  getAllCommodityTrades,getAllStockTrades,
   closePosition,cancelOrder,
   goLong,
   goShort,
@@ -54,7 +54,7 @@ async function fetchSEC_Filings(symbol) {
     if (fillingsData.err) throw fillingsData.err;
     return fillingsData;
   } catch (err) {
-    toastr.err(`Error loading Fillings for ${symbol}`, err);
+    toastr.error(`Error loading Fillings for ${symbol}`, err);
   }
 }
 
@@ -194,9 +194,15 @@ async function getAllCommodityTrades(symbol, props) {
   try {
     console.log({ symbol });
     if (symbol) {
-      trades = await fetch(`${LOCAL_SERVER}/API/commodityTrades/${symbol}`);
+      trades = await fetch(`${LOCAL_SERVER}/API/commodityTrades/${symbol}`, {
+        credentials: "include",
+
+      });
     } else {
-      trades = await fetch(`${LOCAL_SERVER}/API/commodityTrades`);
+      trades = await fetch(`${LOCAL_SERVER}/API/commodityTrades`, {
+        credentials: "include",
+
+      });
     }
     trades = await trades.json();
     console.log(trades);
@@ -206,6 +212,31 @@ async function getAllCommodityTrades(symbol, props) {
     return console.log("ERROR");
   }
 }
+
+
+async function getAllStockTrades(symbol, props) {
+  let trades;
+  try {
+    console.log({ symbol });
+    if (symbol) {
+      trades = await fetch(`${LOCAL_SERVER}/API/getAllStockTrades/${symbol}`, {
+        credentials: "include",
+      });
+    } else {
+      trades = await fetch(`${LOCAL_SERVER}/API/getAllStockTrades`,{
+        credentials: "include",
+
+      });
+    }
+    trades = await trades.json();
+    console.log(trades);
+    props.dispatch(addAllStockTrades(trades, symbol));
+  } catch (err) {
+    console.log({ err });
+    return console.log("ERROR");
+  }
+}
+
 
 async function getCommodityRegressionValues(symbol, props) {
   console.log("get regression values");

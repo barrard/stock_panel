@@ -16,7 +16,8 @@ const initial_state = {
   currentStockTickData:{},
   newestMinuteData: {},
   commodityPriceLevelSettings: {},
-  commodityTrades: {}
+  commodityTrades: {},
+  stockTrades:{}
 };
 
 export default (state = initial_state, action) => {
@@ -37,14 +38,27 @@ export default (state = initial_state, action) => {
         commodityTrades
       };
     }
+    case "ADD_STOCK_TRADE": {
+      let { trade, symbol } = action;
+      let stockTrades = { ...state.stockTrades };
+      
+      if (!stockTrades[symbol]) {
+        stockTrades[symbol] = [];
+      }
+      console.log(stockTrades[symbol].length)
+      console.log({trade})
+      stockTrades[symbol] = [trade, ...stockTrades[symbol]];
+      console.log(stockTrades[symbol].length)
+      return {
+        ...state,
+        stockTrades
+      };
+    }
+
     case "UPDATE_COMMODITY_TRADE": {
       let { trade } = action;
       let {symbol} = trade
       let commodityTrades = { ...state.commodityTrades };
-      console.log({trade})
-      console.log(!commodityTrades[symbol])
-      console.log(commodityTrades[symbol])
-
       if(!commodityTrades[symbol] || !commodityTrades[symbol].length){
         commodityTrades[symbol] = [trade]
       }else{
@@ -52,18 +66,50 @@ export default (state = initial_state, action) => {
       if(commodityTradeIndex < 0 ) {
         console.error('WE HAVE A PROBLEM')
       }else{
-
         commodityTrades[symbol][commodityTradeIndex] = trade
         console.log(commodityTrades[symbol])
       }
       }
-
-      
       return {
         ...state,
         commodityTrades
       };
     }
+
+    case "UPDATE_STOCK_TRADE": {
+      let { trade } = action;
+      let {symbol} = trade
+      let stockTrades = { ...state.stockTrades };
+      if(!stockTrades[symbol] || !stockTrades[symbol].length){
+        stockTrades[symbol] = [trade]
+      }else{
+        let stockTradeIndex = stockTrades[symbol].findIndex(t=>t._id === trade._id)
+      if(stockTradeIndex < 0 ) {
+        console.error('WE HAVE A PROBLEM')
+      }else{
+        stockTrades[symbol][stockTradeIndex] = trade
+        console.log(stockTrades[symbol])
+      }
+      }
+      return {
+        ...state,
+        stockTrades
+      };
+    }
+
+
+    case "ADD_ALL_STOCK_TRADES": {
+      let { trades, symbol } = action;
+      let stockTrades = { ...state.stockTrades };
+      stockTrades[symbol] = [...trades];
+      console.log(stockTrades)
+      return {
+        ...state,
+        stockTrades
+      };
+    }
+
+
     case "ADD_ALL_COMMODITY_TRADES": {
       let { trades, symbol } = action;
       let commodityTrades = { ...state.commodityTrades };
@@ -75,6 +121,9 @@ export default (state = initial_state, action) => {
         commodityTrades
       };
     }
+
+
+
     case "REMOVE_COMMODITY_REGRESSION_DATA": {
       console.log(action);
       let { id } = action;

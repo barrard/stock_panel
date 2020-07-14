@@ -5,6 +5,7 @@ import { matchPath } from "react-router";
 import styled from "styled-components";
 import API from "./API.js";
 import BalanceSheetChart from "./SEC_Fillings_component/BalanceSheetChart.js";
+import { toastr } from "react-redux-toastr";
 
 class SEC_Filings extends React.Component {
   constructor(props) {
@@ -22,6 +23,7 @@ class SEC_Filings extends React.Component {
     console.log("SEC FILING");
     //Ask the DB for this data
     let filings = await API.fetchSEC_Filings(symbol);
+    if(!filings || !filings.length)return toastr.error(`No fillings found for ${symbol}`)
     // let filings = [];
     //sort according to BalanceSheetDate
     filings = filings.sort(

@@ -8,7 +8,7 @@ import API from "../../API";
 import BuySellButtons from "../chartComponents/buySellButtons.js";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner } from "@fortawesome/free-solid-svg-icons";
-import { updateCommodityTrade } from "../../../redux/actions/stock_actions.js";
+import { updateCommodityTrade, updateStockTrade } from "../../../redux/actions/stock_actions.js";
 import {
   closing_position,
   canceling_order,
@@ -32,7 +32,7 @@ class TradesList extends React.Component {
       sorted_prop: "entryTime",
       sort_state: true, //0 = low->high 1 = high->low
       number_rows: 30, //starting default
-      all_data: [...trades],
+      // all_trades: [...trades],
     };
 
     this.load_more_data = this.load_more_data.bind(this);
@@ -41,30 +41,30 @@ class TradesList extends React.Component {
   }
 
   componentDidUpdate(prevProps, prevSate) {
-    let { sorted_prop } = this.state;
-    let symbol = this.props.stock_data.search_symbol;
-    let prevTrades = prevProps.stock_data.commodityTrades[symbol];
-    let trades = this.props.stock_data.commodityTrades[symbol];
-    if (trades && prevTrades != trades && Array.isArray(trades)) {
-      this.setState({
-        all_data: [...trades],
-        data: [...trades]
-          .sort((a, b) => this.high_to_low(a, b, sorted_prop))
-          .slice(0, 30),
-      });
-    }
-    let stateTrades = this.state.all_data;
+    // let { sorted_prop } = this.state;
+    // let symbol = this.props.stock_data.search_symbol;
+    // let prevTrades = prevProps.stock_data.commodityTrades[symbol];
+    // let trades = this.props.stock_data.commodityTrades[symbol];
+    // if (trades && prevTrades != trades && Array.isArray(trades)) {
+    //   this.setState({
+    //     all_trades: [...trades],
+    //     data: [...trades]
+    //       .sort((a, b) => this.high_to_low(a, b, sorted_prop))
+    //       .slice(0, 30),
+    //   });
+    // }
+    // let stateTrades = this.state.all_trades;
 
-    if (Array.isArray(stateTrades) && Array.isArray(trades)) {
-      stateTrades.forEach((trade, index) => {
-        if (!trades[index]) return;
-        if (trade.exitTime !== trades[index].exitTime) {
-          this.setState({
-            all_data: this.props.stock_data.commodityTrades[symbol],
-          });
-        }
-      });
-    }
+    // if (Array.isArray(stateTrades) && Array.isArray(trades)) {
+    //   stateTrades.forEach((trade, index) => {
+    //     if (!trades[index]) return;
+    //     if (trade.exitTime !== trades[index].exitTime) {
+    //       this.setState({
+    //         all_trades: this.props.stock_data.commodityTrades[symbol],
+    //       });
+    //     }
+    //   });
+    // }
   }
 
   high_to_low(a, b, prop) {
@@ -80,11 +80,11 @@ class TradesList extends React.Component {
 
   sort_by(prop) {
     let { sorted_prop, sort_state } = this.state;
-    console.log(this.state.all_data);
+    console.log(this.state.all_trades);
     if (sort_state) {
       this.setState({
         sort_state: false,
-        all_data: this.state.all_data.sort((a, b) =>
+        all_trades: this.state.all_trades.sort((a, b) =>
           this.high_to_low(a, b, prop)
         ),
         sorted_prop: prop,
@@ -93,7 +93,7 @@ class TradesList extends React.Component {
       this.setState({
         sort_state: true,
         sorted_prop: prop,
-        all_data: this.state.all_data.sort((a, b) =>
+        all_trades: this.state.all_trades.sort((a, b) =>
           this.low_to_high(a, b, prop)
         ),
       });
@@ -148,9 +148,18 @@ class TradesList extends React.Component {
       let closedTrade = await API.closePosition(id);
       if (closedTrade.resp) {
         closedTrade = closedTrade.resp;
-        this.props.dispatch(
-          updateCommodityTrade(closedTrade, closedTrade.symbol)
-        );
+        let {instrumentType} = closedTrade
+        if(instrumentType === 'commodity'){
+
+          this.props.dispatch(
+            updateCommodityTrade(closedTrade, closedTrade.symbol)
+            );
+          }else if(instrumentType === 'stock'){
+debugger
+            this.props.dispatch(
+              updateStockTrade(closedTrade, closedTrade.symbol)
+              );
+            }
         this.setState({
           closePositions: [...closePositions.filter((_id) => _id !== id)],
         });
@@ -205,30 +214,32 @@ class TradesList extends React.Component {
   };
 
   render() {
-    let { all_data, sorted_prop } = this.state;
-    let data = [...all_data];
+    let {  sorted_prop } = this.state;
+    
+    let trades = this.props.trades
+    if(!trades)trades = []
     // .sort((a, b) => this.high_to_low(a, b, sorted_prop))
     // .slice(0, 30); //This could be customizable //TODO
     let { Closed, Open, Orders, Canceled } = this.state.filters;
-    if (!Closed) data = data.filter((d) => d.orderStatus !== "Closed");
-    if (!Open) data = data.filter((d) => d.orderStatus !== "Filled");
-    if (!Orders) data = data.filter((d) => d.orderStatus !== "Open");
-    if (!Canceled) data = data.filter((d) => d.orderStatus !== "Canceled");
+    if (!Closed) trades = trades.filter((d) => d.orderStatus !== "Closed");
+    if (!Open) trades = trades.filter((d) => d.orderStatus !== "Filled");
+    if (!Orders) trades = trades.filter((d) => d.orderStatus !== "Open");
+    if (!Canceled) trades = trades.filter((d) => d.orderStatus !== "Canceled");
     // data = data.
     let symbol = this.props.stock_data.search_symbol;
     let currentQuote = this.props.stock_data.currentTickData[symbol];
 
     let tradingDay; //variable for the trade list loop
     let totalPL = 0;
-    data.forEach(({ PL }) => {
+    trades.forEach(({ PL }) => {
       if (PL && !isNaN(PL)) {
         totalPL += PL;
       }
     });
-    // console.log(data)
+    // console.log(trades)
     let filters = this.state.filters;
     let filterRadioBtns = this.filterRadioBtns({ filters });
-    let noTrades = data && data.length == 0;
+    let noTrades = trades && trades.length == 0;
     return (
       <>
         <BuySellButtons instrumentType={this.props.instrumentType} />
@@ -263,9 +274,9 @@ class TradesList extends React.Component {
               </div>
             )}
 
-            {data && data.length > 0 && (
+            {trades && trades.length > 0 && (
               <div>
-                {data.map((trade_data, index) => {
+                {trades.map((trade_data, index) => {
                   let day = new Date(trade_data.orderTime)
                     .toLocaleString()
                     .split(",")[0];

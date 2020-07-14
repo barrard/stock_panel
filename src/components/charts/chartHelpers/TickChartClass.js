@@ -763,7 +763,7 @@ class TickChart extends React.Component {
   }
   render() {
     console.log(this.props)
-    debugger
+    
     return (
       <div className={this.props.redGreenClass}>
         {this.props.meta.is_loading && (

@@ -58,6 +58,7 @@ import { TICKS } from "./chartHelpers/utils.js";
 import { CenterLabel } from "./chartHelpers/ChartMarkers/Labels.js";
 import { TradeMarker } from "./chartHelpers/ChartMarkers/TradeMarker.js";
 import { DefaultRegressionSettings } from "./chartHelpers/indicators/IndicatorRegressionSettings.js";
+import { toastr } from "react-redux-toastr";
 
 let margin = {
   top: 15,
@@ -193,6 +194,7 @@ class CandleStickChart extends React.Component {
       ) {
         // console.log("fetching data");
         const end = new Date().getTime();
+        API.getAllStockTrades(this.props.symbol, this.props)
         await view_selected_stock({ timeframe, end, symbol, props });
         console.log("SET NEW DATA???");
 
@@ -530,7 +532,7 @@ class CandleStickChart extends React.Component {
   async handleTimeFrameChange(prevState, prevProps) {
     let prevTimeframe = prevState.timeframe;
     let currentTimeframe = this.state.timeframe;
-    console.log({ prevTimeframe, currentTimeframe });
+    // console.log({ prevTimeframe, currentTimeframe });
     if (prevTimeframe !== currentTimeframe) {
       console.log("NEW TIME FRAME");
       debugger
@@ -629,6 +631,8 @@ class CandleStickChart extends React.Component {
       currentData = stock_data.commodity_data[symbol][timeframe];
       currentRawData = stock_data.rawCommodityCharts[symbol][timeframe];
     } else if (type === "stock") {
+      //catch possible bugs
+      if(!stock_data.charts[symbol])return toastr.error(`no chart data found for ${symbol}`)
       //TODO get Stock regression values??
 
       console.log(stock_data.charts);
@@ -1671,7 +1675,14 @@ class CandleStickChart extends React.Component {
   render() {
     // console.log("RENDERING??");
     let symbol = this.props.stock_data.search_symbol;
-    let trades = this.props.stock_data.commodityTrades[symbol];
+    let trades 
+    if(this.props.type === 'commodity'){
+
+     trades = this.props.stock_data.commodityTrades[symbol];
+    }else if(this.props.type === 'stock'){
+
+      trades = this.props.stock_data.stockTrades[symbol];
+     }
     let currentTickData = this.props.stock_data.currentTickData[symbol];
 
     return (

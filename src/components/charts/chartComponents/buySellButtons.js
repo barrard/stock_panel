@@ -22,7 +22,7 @@ import {
 
 import {
   updateCommodityData,
-  addCommodityTrade,
+  addCommodityTrade,addStockTrade,
   updateCommodityTrade,
 } from "../../../redux/actions/stock_actions.js";
 //import Main_Layout from '../layouts/Main_Layout.js';
@@ -78,7 +78,13 @@ class BuySellButtons extends React.Component {
       if (!newTrade) throw "Didnt get a new trade back from API";
       else if (newTrade.err) throw newTrade.err;
       this.props.dispatch(opening_long(false));
-      this.props.dispatch(addCommodityTrade(newTrade, newTrade.symbol));
+      if(instrumentType === 'commodity'){
+
+        this.props.dispatch(addCommodityTrade(newTrade, newTrade.symbol));
+      }else if(instrumentType === 'stock'){
+
+        this.props.dispatch(addStockTrade(newTrade, newTrade.symbol));
+      }
     } catch (err) {
       this.props.dispatch(opening_long(false));
 
@@ -113,7 +119,15 @@ class BuySellButtons extends React.Component {
       else if (newTrade.err) throw newTrade.err;
 
       this.props.dispatch(opening_short(false));
-      this.props.dispatch(addCommodityTrade(newTrade, newTrade.symbol));
+
+      if(instrumentType === 'commodity'){
+
+        this.props.dispatch(addCommodityTrade(newTrade, newTrade.symbol));
+      }else if(instrumentType === 'stock'){
+
+        this.props.dispatch(addStockTrade(newTrade, newTrade.symbol));
+      }
+
     } catch (err) {
       this.props.dispatch(opening_short(false));
 

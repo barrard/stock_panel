@@ -7,7 +7,7 @@ import * as user_actions from '../redux/actions/user_actions.js'
 import Signup_form from "../components/forms/Signup_Form.js";
 // import {ensure_not_loggedin} from '../components/utils/auth.js'
 
-const { register_success, register_attempt, set_user} = user_actions; 
+const {  register_attempt, login_success} = user_actions; 
 
 class Signup extends React.Component {
   constructor(props) {
@@ -88,7 +88,7 @@ class Signup extends React.Component {
       }else if(json.success && json.user){
         //TODO notify login
         //Push page?
-        this.props.dispatch(set_user(json.user));
+        this.props.dispatch(login_success(json.user));
   
         toastr.success('New User', `You are being logged in as ${this.state.email}`)
         // this.props.location.push('/account-profile')
