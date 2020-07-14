@@ -60,7 +60,8 @@ class Signup extends React.Component {
         headers: {
           "Content-Type": "application/json",
           // "Content-Type": "application/x-www-form-urlencoded",
-      },
+      },      credentials: "include",
+
         body:JSON.stringify({email, password, confirm_password, _csrf})
       })
       this.handle_signup_resp(resp);
