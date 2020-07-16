@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Route, BrowserRouter as Router, Redirect } from "react-router-dom";
 import styled from "styled-components";
 import { connect } from "react-redux";
+import { withRouter } from 'react-router'
 
 import "./App.css";
 import Socket from "./components/Socket.js";
@@ -21,7 +22,8 @@ import {
   updateCommodityTrade,
   updateStockData
 } from "./redux/actions/stock_actions.js";
-import TradeBot from "./components/TradeBot/TradeBot.js";
+import UpdateToastsWithRedirect from './components/smallComponents/RedirrectToastrUpdates.js'
+// import TradeBot from "./components/TradeBot/TradeBot.js";
 import API from "./components/API.js";
 let allData = { ES: [], CL: [], GC: [] };
 let i = 0;
@@ -67,17 +69,15 @@ class App extends React.Component {
       return dispatch(addCommodityTrade(newTrade, newTrade.symbol));
     });
     
-    Socket.on("updateTrade", (updateTrade) => {
-      
-      dispatch(updateCommodityTrade(updateTrade))
-    });
+
   }
 
   render() {
     const routing = (
       <Router>
+        <UpdateToastsWithRedirect />
         <Main_Nav />
-        <TradeBot newTickData={this.state.newTickData} />
+        {/* <TradeBot newTickData={this.state.newTickData} /> */}
 
         <div>
           <Route exact path="/" component={LandingPage} />
@@ -117,7 +117,7 @@ function mapStateToProps(state) {
   return state;
 }
 
-export default connect(mapStateToProps)(App);
+export default connect(mapStateToProps)((App));
 
 const AppContainer = styled.div`
   position: relative;

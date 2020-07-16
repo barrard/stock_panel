@@ -1,5 +1,3 @@
-// import * as meta_actions from "../actions/meta_actions.js";
-
 const initial_state = {
   has_symbols_data: false,
   stock_symbols_data: [],
@@ -204,6 +202,9 @@ export default (state = initial_state, action) => {
       for (let symbol in state.commodity_data) { 
         if (!currentTickData[symbol]) currentTickData[symbol] = {};
         currentTickData[symbol] = new_tick_data[symbol];
+        if(!currentTickData[symbol]){
+          return state
+        }
         currentTickData[symbol].timestamp = new Date(
           currentTickData[symbol].start_timestamp
         ).getTime();

@@ -335,33 +335,11 @@ class CandleStickChart extends React.Component {
       currentData[currentData.length - 1] = lastBar;
       currentRawOHLCData[currentRawOHLCData.length - 1] = lastBar;
     }
-    /**
-     * this needs ot be the last bar
-     * in the data, but we dont want
-     * to add it over and over, just once
-     */
-    // console.log({lastBar, currentTickData})
-    // if (lastBar.timestamp !== currentTickData.timestamp) {
-    //   // console.log("pushin");
-    //   currentData.push(currentTickData);
-    //   currentRawOHLCData.push(currentTickData);
-    //   if (lastPartialBar.timestamp === lastBar.timestamp) {
-    //     partialOHLCdata.push(currentTickData);
-    //   }
-
-    //   this.createPriceLevelsData();
-    // } else {
-    //   // console.log("not pushing");
-    //   currentData[currentData.length - 1] = currentTickData;
-    //   currentRawOHLCData[currentRawOHLCData.length - 1] = currentTickData;
-
-    // }
-    // console.log({partialOHLCdata, currentData})
+  
     this.setState({
       allOHLCdata: [...currentData],
       rawOHLCData: [...currentRawOHLCData],
     });
-    // setTimeout(() => this.setupChart(), 0);
   }
 
   addTickDataToOtherTimeframes(prevProps) {
@@ -374,12 +352,9 @@ class CandleStickChart extends React.Component {
     let lastTickData = prevProps.stock_data.currentTickData[symbol];
 
     for (let timeframe in stock_data.commodity_data[symbol]) {
-      // console.log({ timeframe });
       if (timeframe !== "1Min") {
-        // console.log({ stock_data, lastTickData, currentTickData });
         let chart_data = stock_data.commodity_data[symbol][timeframe];
         let props = this.props;
-        // console.log({ chart_data });
 
         chart_data = appendMinutelyCommodityDataAsNeeded(
           props,
@@ -387,7 +362,6 @@ class CandleStickChart extends React.Component {
           timeframe,
           symbol
         );
-        // console.log({ chart_data });
       }
     }
   }
@@ -419,7 +393,6 @@ class CandleStickChart extends React.Component {
          * in the data, but we dont want
          * to add it over and over, just once
          */
-        // console.log({lastBar, currentTickData})
         if (lastBar.timestamp !== currentTickData.timestamp) {
           if (lastPartialBar.timestamp === lastBar.timestamp) {
             partialOHLCdata.push(currentTickData);
@@ -535,20 +508,17 @@ class CandleStickChart extends React.Component {
     // console.log({ prevTimeframe, currentTimeframe });
     if (prevTimeframe !== currentTimeframe) {
       console.log("NEW TIME FRAME");
-      debugger
       console.log({ prevTimeframe, currentTimeframe });
 
       let { symbol } = this.props.match.params;
       const timeframe = currentTimeframe;
       const props = this.props;
       if (this.props.type === "stock") {
-        debugger
         console.log("TIM FRAME CHGANGE");
         if (
           !this.props.stock_data.charts[symbol] ||
           !this.props.stock_data.charts[symbol][timeframe]
         ) {
-          debugger;
           const end = new Date().getTime();
           await view_selected_stock({ timeframe, end, symbol, props });
           this.setState({
@@ -1012,6 +982,7 @@ class CandleStickChart extends React.Component {
   }
 
   draw(data) {
+    if(!this.state.timeAxis)return console.log('Disaster averted!')
     // console.log('Draw CandleStick')
     let drawData;
     if (data) {
@@ -1046,20 +1017,16 @@ class CandleStickChart extends React.Component {
     //trying to catch the source of this strange error, that only happens in dev...
     // (() => {
     //   if (!svg) {
-    //     debugger;
     //     console.log("WHAA");
     //   }
     //   if (!svg.select() || !this.state.priceAxis) {
-    //     debugger;
     //     console.log("WHAA");
     //   }
     //   if (!svg.select(".timeAxis").call(this.state.priceAxis)) {
-    //     debugger;
     //     console.log("WHAA");
     //   }
     //   if (typeof this.state.priceAxis != "function") {
     //     console.log(typeof this.state.priceAxis);
-    //     debugger;
     //     console.log("WHAA");
     //   }
     // })();
@@ -1241,12 +1208,16 @@ class CandleStickChart extends React.Component {
   }
 
   async updateVolProfile() {
-    let { symbol, timeframe } = this.state;
+    let { symbol, timeframe,volProfileBins,
+      volProfileBarCount } = this.state;
 
-    let {
-      volProfileBarCount,
-      volProfileBins,
-    } = this.props.stock_data.commodityRegressionData[symbol][timeframe];
+      if(!volProfileBarCount || !volProfileBins){
+
+ 
+        volProfileBarCount= this.props.stock_data.commodityRegressionData[symbol][timeframe].volProfileBarCount;
+        volProfileBins = this.props.stock_data.commodityRegressionData[symbol][timeframe].volProfileBins;
+    }
+
 
     let volProfile = await API.getVolProfile({
       symbol,
@@ -1692,7 +1663,7 @@ class CandleStickChart extends React.Component {
         {this.props.meta.is_loading && (
           <Loader width={this.props.width} height={this.state.height} />
         )}
-        <MomoIndicator
+        {/* <MomoIndicator
           symbol={this.state.symbol}
           timeframe={this.state.timeframe}
           width={this.props.width}
@@ -1709,7 +1680,7 @@ class CandleStickChart extends React.Component {
           timeframe={this.state.timeframe}
           width={this.props.width}
           height={150}
-        />
+        /> */}
         <ToggleIndicators
           toggleIndicators={(indicator) => this.toggleIndicators(indicator)}
           visibleIndicators={this.state.visibleIndicators}

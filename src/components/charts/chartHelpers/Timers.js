@@ -14,15 +14,18 @@ class Timers extends React.Component {
       secondsUntilNextMinute: 59,
       tickTimes: [],
       avgTickTime: 3.0,
+      tickTimer:null,
+      startTimer:null,
+      minuteTimer:null
     };
   }
 
   componentDidMount() {
-    console.log(this.props.lastTick.timestamp);
     this.setMinuteTimer();
-    setTimeout(() => {
+    let startTimer = setTimeout(() => {
         this.startTickTimer()
         this.startMinuteTimer()}, 0);
+        this.setState({startTimer})
   }
 
   componentDidUpdate(prevProps) {
@@ -30,6 +33,12 @@ class Timers extends React.Component {
     // console.log({prevProps, lastTick})
     this.handleNewMinute(prevProps);
     this.handleNewTick(prevProps);
+  }
+  componentWillUnmount(){
+    clearInterval(this.state.tickTimer)
+    clearInterval(this.state.minuteTimer)
+    
+    clearTimeout(this.state.startTimer)
   }
 
   handleNewMinute(prevProps) {
@@ -100,7 +109,7 @@ class Timers extends React.Component {
   }
 
   startMinuteTimer() {
-      setInterval(() => {
+    let minuteTimer =  setInterval(() => {
           let { secondsUntilNextMinute } = this.state;
         //   console.log({ secondsUntilNextMinute });
     //   console.log(`timer ${secondsUntilNextMinute}`);
@@ -109,10 +118,11 @@ class Timers extends React.Component {
         secondsUntilNextMinute,
       });
     }, 1000);
+    this.setState({minuteTimer})
   }
 
   startTickTimer() {
-    setInterval(() => {
+    let tickTimer = setInterval(() => {
         let { avgTickTime } = this.state;
         // console.log({ avgTickTime });
     // console.log(`timer ${avgTickTime}`);
@@ -123,6 +133,7 @@ class Timers extends React.Component {
       avgTickTime,
     });
   }, 100);
+  this.setState({tickTimer})
 }
   render() {
     let { secondsUntilNextMinute, avgTickTime } = this.state;

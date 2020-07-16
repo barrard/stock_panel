@@ -33,6 +33,12 @@ class Login extends React.Component {
   componentDidMount() {
     
   }
+  componentDidUpdate(){
+    if(this.props.user.isLoggedIn){
+      this.props.history.push(`/commodity/ES`)
+    }
+  }
+
 
   /* Get form input */
   handle_input(input, type) {

@@ -1,82 +1,118 @@
-import {formatData, forwardFill} from '../../components/charts/chartHelpers/utils.js'
+import {
+  formatData,
+  forwardFill,
+} from "../../components/charts/chartHelpers/utils.js";
+import { toastr } from "react-redux-toastr";
 
 export function set_symbols_data(stock_symbols_data, commodity_symbols_data) {
   // console.log('set_symbols_data')
   // console.log({stock_symbols_data,
-    // commodity_symbols_data})
+  // commodity_symbols_data})
   return {
     type: "SET_SYMBOLS_DATA",
-    stock_symbols_data, commodity_symbols_data
+    stock_symbols_data,
+    commodity_symbols_data,
   };
 }
 
-export function updateStockTrade(trade){
-  console.log(trade)
-  return{
-    type:"UPDATE_STOCK_TRADE", 
-    trade
-  }
+export function updateStockTrade(trade) {
+  console.log(trade);
+  return {
+    type: "UPDATE_STOCK_TRADE",
+    trade,
+  };
 }
 
-export function updateCommodityTrade(trade){
-  console.log(trade)
-  return{
-    type:"UPDATE_COMMODITY_TRADE", 
-    trade
+export function updateCommodityTrade(trade, history) {
+  let {
+    buyOrSell,
+    order_type,
+    entryPrice,
+    exitPrice,
+    orderStatus,
+    PL,
+    symbol,
+    instrumentType,
+  } = trade;
+  const toastrOptions = {
+    timeOut: 8000, // by setting to 0 it will prevent the auto close
+    // icon: (<myCustomIconOrAvatar />), // You can add any component you want but note that the width and height are 70px ;)
+    onToastrClick: () => {
+      if (instrumentType === "commodity") {
+        history.push(`/commodity/${symbol}`);
+      } else if (instrumentType === "stock") {
+        history.push(`/chart/${symbol}`);
+      }
+    },
+  };
+  let longOrShort = buyOrSell === 'Buy' ? 'Long' : 'Short'
+  //updated trade with Market order type is a user closing manually
+ if (orderStatus === "Filled") {
+    toastr.success(
+      `${order_type} ${orderStatus} - ${buyOrSell} ${symbol} @${entryPrice}`,toastrOptions
+    );
+  }else if (orderStatus === "Closed") {
+    toastr.success(
+      `${longOrShort} Position in ${symbol} has been ${orderStatus} @${exitPrice}: PnL= ${PL}`,toastrOptions
+      );
+  }else if (orderStatus === "Canceled") {
+    toastr.success(
+      `${order_type} to  ${buyOrSell} ${symbol} @${entryPrice} has been ${orderStatus} -`,toastrOptions
+    );
   }
+  return {
+    type: "UPDATE_COMMODITY_TRADE",
+    trade,
+  };
 }
 
-export function addAllStockTrades(trades, symbol){
-  console.log({trades, symbol})
-  return{
-    type:"ADD_ALL_STOCK_TRADES", 
-    trades, symbol
-  }
+export function addAllStockTrades(trades, symbol) {
+  console.log({ trades, symbol });
+  return {
+    type: "ADD_ALL_STOCK_TRADES",
+    trades,
+    symbol,
+  };
 }
 
-
-
-export function addAllCommodityTrades(trades, symbol){
-  console.log({trades, symbol})
-  return{
-    type:"ADD_ALL_COMMODITY_TRADES", 
-    trades, symbol
-  }
+export function addAllCommodityTrades(trades, symbol) {
+  console.log({ trades, symbol });
+  return {
+    type: "ADD_ALL_COMMODITY_TRADES",
+    trades,
+    symbol,
+  };
 }
 
-
-
-export function addCommodityTrade(trade, symbol){
-  console.log(trade)
-  return{
-    type:"ADD_COMMODITY_TRADE", 
-    trade, symbol
-  }
+export function addCommodityTrade(trade, symbol) {
+  console.log(trade);
+  return {
+    type: "ADD_COMMODITY_TRADE",
+    trade,
+    symbol,
+  };
 }
 
-
-export function addStockTrade(trade, symbol){
-  console.log(trade)
-  return{
-    type:"ADD_STOCK_TRADE", 
-    trade, symbol
-  }
+export function addStockTrade(trade, symbol) {
+  console.log(trade);
+  return {
+    type: "ADD_STOCK_TRADE",
+    trade,
+    symbol,
+  };
 }
-
-
 
 export function commodityRegressionData(commodityRegressionData) {
   return {
     type: "SET_COMMODITY_REGRESSION_DATA",
-    commodityRegressionData
+    commodityRegressionData,
   };
 }
-
 
 export function set_movers(movers) {
   return {
     type: "SET_MOVERS",
-    movers
+    movers,
   };
 }
 
@@ -84,33 +120,32 @@ export function set_search_symbol(search_symbol) {
   // console.log(search_symbol)
   return {
     type: "SET_SEARCH_SYMBOL",
-    search_symbol
+    search_symbol,
   };
 }
 
-export function get_sector_data(sector, iex_api){
+export function get_sector_data(sector, iex_api) {
   // console.log('GET SECTOR DATA')
-  return async dispatch =>{
+  return async (dispatch) => {
     let sector_data_json = await fetch(`
     ${iex_api}/stock/market/collection/sector?collectionName=${sector}&token=pk_9c5351666ec649d99eb45ff08817d362
     `);
-    let sector_data = await sector_data_json.json()
+    let sector_data = await sector_data_json.json();
     // return {}
-    return dispatch(set_sector_data( sector, sector_data))
-    }
+    return dispatch(set_sector_data(sector, sector_data));
+  };
 }
 
 export function set_sector_data(sector, data) {
   // console.log('set_sector_data')
   return {
     type: "SET_SECTOR_DATA",
-    sector, data
+    sector,
+    data,
   };
 }
 
-
-export function add_commodity_minutely_data({symbol, chart_data}) {
-
+export function add_commodity_minutely_data({ symbol, chart_data }) {
   // console.log({chart_data})
   // chart_data.forEach(r => {
   //   r.timestamp = new Date(parseInt(r.start_timestamp)).getTime()
@@ -127,93 +162,95 @@ export function add_commodity_minutely_data({symbol, chart_data}) {
   //   r.prices = JSON.parse(r.prices)
   //   r.vols = JSON.parse(r.vols)
   // })
-  let rawCommodityChartData = [...chart_data]
-  let timeframe = '1Min'
+  let rawCommodityChartData = [...chart_data];
+  let timeframe = "1Min";
   return {
     type: "ADD_COMMODITY_CHART_DATA",
-    chart_data, symbol, timeframe, rawCommodityChartData
+    chart_data,
+    symbol,
+    timeframe,
+    rawCommodityChartData,
   };
 }
 
 /**
- * 
+ *
  * @param {object} data object of commodity data
  * @param {string} type 'tick' or 'minute'
  */
-export function updateCommodityData(newData, type){
-    if(type === 'minute'){
-
-      return {
-        type:"ADD_NEW_MINUTE",
-        new_minute_data : newData
-      }
-    }else if(type === 'tick'){
-
-      return {
-        type:"ADD_NEW_TICK",
-        new_tick_data : newData
-      }
-    }
+export function updateCommodityData(newData, type) {
+  if (type === "minute") {
+    return {
+      type: "ADD_NEW_MINUTE",
+      new_minute_data: newData,
+    };
+  } else if (type === "tick") {
+    return {
+      type: "ADD_NEW_TICK",
+      new_tick_data: newData,
+    };
+  }
 }
 
-export function add_commodity_chart_data({symbol, chart_data, timeframe}) {
-  console.log('ADD_COMMODITY_CHART_DATA')
-  console.log({chart_data})
-        chart_data.forEach(r => {
-          r.timestamp = new Date(+r.timestamp).getTime()
-          r.open = +r.open
-          r.close = +r.close
-          r.high = +r.high
-          r.low = +r.low
-        });
-        let rawCommodityChartData = [...chart_data]
-        console.log({rawCommodityChartData, chart_data})
-        chart_data = forwardFill(chart_data);
+export function add_commodity_chart_data({ symbol, chart_data, timeframe }) {
+  console.log("ADD_COMMODITY_CHART_DATA");
+  console.log({ chart_data });
+  chart_data.forEach((r) => {
+    r.timestamp = new Date(+r.timestamp).getTime();
+    r.open = +r.open;
+    r.close = +r.close;
+    r.high = +r.high;
+    r.low = +r.low;
+  });
+  let rawCommodityChartData = [...chart_data];
+  console.log({ rawCommodityChartData, chart_data });
+  chart_data = forwardFill(chart_data);
   return {
     type: "ADD_COMMODITY_CHART_DATA",
-    chart_data, symbol, timeframe, rawCommodityChartData
+    chart_data,
+    symbol,
+    timeframe,
+    rawCommodityChartData,
   };
 }
 
-export function deleteCommodityRegressionData(id){
+export function deleteCommodityRegressionData(id) {
   return {
-    type:"REMOVE_COMMODITY_REGRESSION_DATA",
-    id
-  }
-
+    type: "REMOVE_COMMODITY_REGRESSION_DATA",
+    id,
+  };
 }
 
-export function add_chart_data({symbol, chartData, timeframe}) {
-  console.log('ADD_CHART_DATA')
+export function add_chart_data({ symbol, chartData, timeframe }) {
+  console.log("ADD_CHART_DATA");
   chartData = forwardFill(chartData);
 
   return {
     type: "ADD_CHART_DATA",
-    chartData, timeframe, symbol
+    chartData,
+    timeframe,
+    symbol,
   };
 }
 
-export function add_MA_data_action(MA_data, symbol){
-  return{
-    type:"ADD_MA_DATA", MA_data, symbol
-  }
-
+export function add_MA_data_action(MA_data, symbol) {
+  return {
+    type: "ADD_MA_DATA",
+    MA_data,
+    symbol,
+  };
 }
 
-
-
-export function updateStockData(newData, type){
-  if(type === 'minute'){
-
+export function updateStockData(newData, type) {
+  if (type === "minute") {
     return {
-      type:"ADD_NEW_STOCK_MINUTE",
-      new_minute_data : newData
-    }
-  }else if(type === 'tick'){
-
+      type: "ADD_NEW_STOCK_MINUTE",
+      new_minute_data: newData,
+    };
+  } else if (type === "tick") {
     return {
-      type:"ADD_NEW_STOCK_TICK",
-      new_tick_data : newData
-    }
+      type: "ADD_NEW_STOCK_TICK",
+      new_tick_data: newData,
+    };
   }
 }

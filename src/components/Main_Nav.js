@@ -5,11 +5,15 @@ import { Link, withRouter } from "react-router-dom";
 import {
   set_symbols_data,
   set_search_symbol,
-  add_chart_data
+  add_chart_data,
 } from "../redux/actions/stock_actions.js";
-import { view_selected_stock, view_selected_commodity, getMinutelyCommodityData } from "./landingPageComponents/chart_data_utils.js";
+import {
+  view_selected_stock,
+  view_selected_commodity,
+  getMinutelyCommodityData,
+} from "./landingPageComponents/chart_data_utils.js";
 import { is_loading, show_filter_list } from "../redux/actions/meta_actions.js";
-import {logout_user} from '../redux/actions/user_actions.js'
+import { logout_user } from "../redux/actions/user_actions.js";
 import API from "./API.js";
 class Main_Nav extends React.Component {
   constructor(props) {
@@ -17,24 +21,26 @@ class Main_Nav extends React.Component {
     this.state = {
       search_symbol: "",
       filtered_stock_list: [],
-      highlightedSymbolListIndex:0
+      highlightedSymbolListIndex: 0,
+      listWindowScrollCount:0,
       // searching: true,
       // stock_selected: false
       // show_filter_list: false
     };
 
-    this.handle_search_symbol_input = this.handle_search_symbol_input.bind(this);
+    this.handle_search_symbol_input = this.handle_search_symbol_input.bind(
+      this
+    );
     this.make_filter_list = this.make_filter_list.bind(this);
     this.highlight_search_letters = this.highlight_search_letters.bind(this);
     this.filtered_stock_list_item = this.filtered_stock_list_item.bind(this);
-    this.handleLogout = this.handleLogout.bind(this)
-    this.arrowKeyListSelect = this.arrowKeyListSelect.bind(this)
+    this.handleLogout = this.handleLogout.bind(this);
+    this.arrowKeyListSelect = this.arrowKeyListSelect.bind(this);
   }
   async componentDidMount() {
-
     try {
       const { has_symbols_data } = this.props.stock_data;
-      console.log({has_symbols_data})
+      console.log({ has_symbols_data });
       if (has_symbols_data) return;
       let { dispatch } = this.props;
       await API.getAllSymbolsData(dispatch);
@@ -44,70 +50,96 @@ class Main_Nav extends React.Component {
     }
   }
 
-  componentDidUpdate(prevProps){
-    this.handleSetSymbol(prevProps)
+  componentDidUpdate(prevProps) {
+    this.handleSetSymbol(prevProps);
   }
 
-  handleSetSymbol(prevProps){
-    let currentSymbol = this.props.stock_data.search_symbol
-    let prevSymbol = prevProps.stock_data.search_symbol
-    if(currentSymbol !== prevSymbol){
-      console.log('YES?')
-      this.setState({search_symbol:currentSymbol})
+  handleSetSymbol(prevProps) {
+    let currentSymbol = this.props.stock_data.search_symbol;
+    let prevSymbol = prevProps.stock_data.search_symbol;
+    if (currentSymbol !== prevSymbol) {
+      console.log("YES?");
+      this.setState({ search_symbol: currentSymbol });
     }
   }
 
-  arrowKeyListSelect(e){
-    console.log(e.key)
-    console.log(e.target.keycode)
-    let {highlightedSymbolListIndex} = this.state
-    if(e.key === 'ArrowDown'){
+  arrowKeyListSelect(e) {
+    console.log(e.key);
+    let { highlightedSymbolListIndex, listWindowScrollCount, filtered_stock_list } = this.state;
+    if (e.key === "ArrowDown") {
       //acess the list?
-      highlightedSymbolListIndex++
-      console.log(this.state.filtered_stock_list)
-      this.setState({
-        highlightedSymbolListIndex
-      })
-    }else if(e.key ==='ArrowUp'){
-      highlightedSymbolListIndex--
-      if(highlightedSymbolListIndex < -1)highlightedSymbolListIndex = -1
-      this.setState({
-        highlightedSymbolListIndex
-      })
-
-    }else if(e.key === 'Enter'){
-      let el = document.querySelectorAll('.selectedSymbolListItem')[0]
-      if(!el)return console.log('No symbol selected')
+      highlightedSymbolListIndex++;
+    } else if (e.key === "ArrowUp") {
+      highlightedSymbolListIndex--;
+    } else if (e.key === "Enter") {
+      let el = document.querySelectorAll(".selectedSymbolListItem")[0];
+      if (!el) return console.log("No symbol selected");
       el.dispatchEvent(
-        new MouseEvent('click', {
+        new MouseEvent("click", {
           view: window,
           bubbles: true,
           cancelable: true,
-          buttons: 1
+          buttons: 1,
         })
-      )
+      );
     }
+    else return
+    
+    if (highlightedSymbolListIndex < 0) highlightedSymbolListIndex = 0;
+    if(highlightedSymbolListIndex >= filtered_stock_list.length){
+      highlightedSymbolListIndex = filtered_stock_list.length - 1
+    }
+    this.setState({
+      highlightedSymbolListIndex,
+    });
+    //TODO move this function?
+    var observerAndScroll = new IntersectionObserver(
+      function (el) {
+        if (el.isIntersecting === true) {
+          return true
+        } else {
+          return false
+        }
+      },
+      { threshold: [0] }
+    );
+    setTimeout(() => {
+      let el = document.querySelectorAll(".selectedSymbolListItem")[0];
+      if (el) {
+        let isVisable = observerAndScroll.observe(el);
+        console.log({isVisable})
+        if(!isVisable){
+          // let listWindow = document.querySelectorAll('.filtered_stock_list')
+          console.log(el)
+          el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' })
+
+          // el.parentNode.scrollTop = el.offsetTop - el.parentNode.offsetTop;
+        }
+      }
+    }, 0);
   }
   handle_search_symbol_input(e) {
-    if (!this.props.meta.show_filter_list){
+    if (!this.props.meta.show_filter_list) {
       this.props.dispatch(show_filter_list(true));
     }
     // this.props.dispatch(set_search_symbol(e.target.value));
     this.make_filter_list(e.target.value);
-    this.setState({search_symbol:e.target.value})
+    this.setState({
+      search_symbol: e.target.value,
+      highlightedSymbolListIndex: 0,
+    });
   }
 
   /* On input makes the list */
   make_filter_list(search_text) {
-    console.log({search_text})
+    console.log({ search_text });
     let full_list;
-    if(search_text.split('')[0]==="/"){
-      console.log('its a commmoodity')
-      search_text = search_text.slice(1)
+    if (search_text.split("")[0] === "/") {
+      console.log("its a commmoodity");
+      search_text = search_text.slice(1);
       full_list = this.props.stock_data.commodity_symbols_data;
-      console.log({search_text, full_list})
-
-    }else{
+      console.log({ search_text, full_list });
+    } else {
       // console.log({search_text, full_list})
       // console.log(search_text.split('')[0])
       full_list = this.props.stock_data.stock_symbols_data;
@@ -129,14 +161,14 @@ class Main_Nav extends React.Component {
     var filtered_stock_list = [];
 
     /* check symbol starts with */
-    symbol_starts_with = full_list.filter(list_item =>
+    symbol_starts_with = full_list.filter((list_item) =>
       list_item.Ticker.toUpperCase().startsWith(search_text)
     );
     // console.log(symbol_starts_with);
     filtered_stock_list = [...filtered_stock_list, ...symbol_starts_with];
     if (filtered_stock_list.length < 100) {
       /* check name starts with */
-      name_starts_with = full_list.filter(list_item =>
+      name_starts_with = full_list.filter((list_item) =>
         list_item.Name.toUpperCase().startsWith(search_text)
       );
       // console.log(name_starts_with);
@@ -145,7 +177,7 @@ class Main_Nav extends React.Component {
 
     if (filtered_stock_list.length < 100) {
       /* check symbols */
-      symbol_list = full_list.filter(list_item =>
+      symbol_list = full_list.filter((list_item) =>
         list_item.Ticker.toUpperCase().includes(search_text)
       );
       // console.log(symbol_list);
@@ -154,7 +186,7 @@ class Main_Nav extends React.Component {
 
     if (filtered_stock_list.length < 100) {
       /* check name */
-      name_list = full_list.filter(list_item =>
+      name_list = full_list.filter((list_item) =>
         list_item.Name.toUpperCase().includes(search_text)
       );
       // console.log(name_list);
@@ -168,8 +200,8 @@ class Main_Nav extends React.Component {
 
   /* Use the filtered stock list to make items */
   Filtered_Stock_List({ filtered_stock_list, search_symbol }) {
-    if(search_symbol.split('')[0]=== '/')
-    search_symbol = search_symbol.slice(1)
+    if (search_symbol.split("")[0] === "/")
+      search_symbol = search_symbol.slice(1);
     return (
       <div className="filtered_stock_list">
         <>
@@ -189,27 +221,28 @@ class Main_Nav extends React.Component {
 
   /* Items that make the list of filtered stocks, on click event resets some things */
   filtered_stock_list_item(data, index, search) {
-    let symbol = data.Ticker
-    let {isCommodity} = data
-    let props= this.props
-    let timeframe = 'day'
-    let end = new Date().getTime()
-    let isSelected = index === this.state.highlightedSymbolListIndex
+    let symbol = data.Ticker;
+    let { isCommodity } = data;
+    let props = this.props;
+    let timeframe = "day";
+    let end = new Date().getTime();
+    let isSelected = index === this.state.highlightedSymbolListIndex;
     return (
       <div
-        className={`filtered_stock_list_item ${isSelected ? 'selectedSymbolListItem' : ' '}`}
+        className={`filtered_stock_list_item ${
+          isSelected ? "selectedSymbolListItem" : " "
+        }`}
         key={index}
         onClick={() => {
-          if(isCommodity){
+          if (isCommodity) {
             // getMinutelyCommodityData({ date:'3-13-2020', symbol, props })
             // view_selected_commodity({ timeframe:'intraday', symbol, props })
             // view_selected_commodity({ timeframe:'daily', symbol, props })
             //  view_selected_commodity({ timeframe:'weekly', symbol, props })
             // this.props.dispatch(set_search_symbol(symbol));
 
-             return props.history.push(`/commodity/${symbol}`);
-
-          }else{
+            return props.history.push(`/commodity/${symbol}`);
+          } else {
             // this.props.dispatch(set_search_symbol(symbol));
 
             return props.history.push(`/chart/${symbol}`);
@@ -265,16 +298,13 @@ class Main_Nav extends React.Component {
     return { __html: name };
   }
 
-  handleLogout(e){
-    
-    e.preventDefault()
-    this.props.dispatch(logout_user(this.props))
-
+  handleLogout(e) {
+    e.preventDefault();
+    this.props.dispatch(logout_user(this.props));
   }
   render() {
     let isLoggedIn = this.props.user.isLoggedIn;
     let { pathname } = this.props.location;
-    
 
     return (
       <nav className="navbar navbar-expand-lg navbar-dark bg-dark relative ">
@@ -297,33 +327,31 @@ class Main_Nav extends React.Component {
         {/* <div className="collapse navbar-collapse" id="navbarSupportedContent"> */}
         <ul className="nav-bar-links">
           {!isLoggedIn && <Register_Login_Links pathname={pathname} />}
-          {isLoggedIn && <Logout_Link pathname={pathname} handleLogout={this.handleLogout} />}
+          {isLoggedIn && (
+            <Logout_Link pathname={pathname} handleLogout={this.handleLogout} />
+          )}
 
-          <Charts_Dropdown
-            pathname={pathname}
-            charts={this.props.stock_data.charts}
-          />
-    
-          {isLoggedIn && <MA_Analysis_Link />}
+          {isLoggedIn && <TradesLink />}
 
-          {isLoggedIn && <Commodity_Page_Link />}
-          {isLoggedIn && <Chart_Analysis_Link />}
         </ul>
         <Navbar_Search
           /* Let the list stay long enough to click */
           handle_search_input_blur={() =>
-            setTimeout(() => this.props.dispatch(show_filter_list(false)), 200)
+            setTimeout(() => {
+              this.setState({ highlightedSymbolListIndex: 0 });
+              this.props.dispatch(show_filter_list(false));
+            }, 200)
           }
           arrowKeyListSelect={this.arrowKeyListSelect}
-          handle_search_input={e => this.handle_search_symbol_input(e)}
+          handle_search_input={(e) => this.handle_search_symbol_input(e)}
           search_symbol={this.state.search_symbol}
-          handle_search={e => this.handle_search(e)}
+          handle_search={(e) => this.handle_search(e)}
         />
         {/* </div> */}
         {this.props.meta.show_filter_list &&
           this.Filtered_Stock_List({
             filtered_stock_list: this.state.filtered_stock_list,
-            search_symbol: this.state.search_symbol
+            search_symbol: this.state.search_symbol,
           })}
       </nav>
     );
@@ -340,69 +368,34 @@ export default connect(mapStateToProps)(withRouter(Main_Nav));
 
 const Navbar_Search = ({
   handle_search_input,
-  handle_search,arrowKeyListSelect,
+  handle_search,
+  arrowKeyListSelect,
   search_symbol,
-  handle_search_input_blur
+  handle_search_input_blur,
 }) => (
-  <div className="form-inline my-2 my-lg-0 absolute right_10_px z_index_100">
+  <div className="form-inline absolute right_10_px">
+    <label className='white' htmlFor="symbol search">Symbol Search</label>
     <input
-    onKeyDown={arrowKeyListSelect}
+      onKeyDown={arrowKeyListSelect}
       onBlur={handle_search_input_blur}
-      onChange={e => handle_search_input(e)}
+      onChange={(e) => handle_search_input(e)}
       className="form-control mr-sm-2"
       type="search"
-      placeholder="Search Symbols"
+      placeholder='use "/" for futures i.e. /ES'
       aria-label="Search"
       value={search_symbol}
     />
   </div>
 );
 
-const Charts_Dropdown = ({ pathname, charts }) => (
-  <li className="nav-item dropdown margin_right_4em">
-    <a
-      className="nav-link dropdown-toggle white"
-      href="#"
-      id="navbarDropdown"
-      role="button"
-      data-toggle="dropdown"
-      aria-haspopup="true"
-      aria-expanded="false"
-    >
-      Charts
-    </a>
-    <div className="dropdown-menu" aria-labelledby="navbarDropdown">
-      {charts &&
-        Object.keys(charts).map((symbol, index) => (
-            <Link className="stock-list-dropdown" to={`/chart?symbol=${symbol}`} key={index}>
-              <p className="justify_center zero_margin">{symbol}</p>
-              {index + 1 != Object.keys(charts).length && (
-                <div className="dropdown-divider" />
-              )}
-            </Link>
-        ))}
-    </div>
-  </li>
-);
-
-const MA_Analysis_Link = ({ pathname }) => (
+const TradesLink = ({ pathname }) => (
   <Navbar_Links
-    name="Moving Avg. Analysis"
-    path={"/moving-average-analysis"}
+    name="Trades"
+    path={"/trades"}
     pathname={pathname}
   />
 );
 
-const Commodity_Page_Link = ({ pathname }) => (
-  <Navbar_Links name="Commodities" path={"/commodities"} pathname={pathname} />
-);
-const Chart_Analysis_Link = ({ pathname }) => (
-  <Navbar_Links
-    name="Chart Analysis"
-    path={"/chart-analysis?symbol=aapl"}
-    pathname={pathname}
-  />
-);
 
 const Logout_Link = ({ pathname, handleLogout }) => (
   <>
@@ -411,7 +404,7 @@ const Logout_Link = ({ pathname, handleLogout }) => (
       path={"/account-profile"}
       pathname={pathname}
     />
-  <LogOutBtn handleLogout={handleLogout}/>
+    <LogOutBtn handleLogout={handleLogout} />
     {/* <Navbar_Links name="Logout" path={`${}/auth/logout`} pathname={pathname} /> */}
   </>
 );
@@ -426,18 +419,18 @@ const Register_Login_Links = ({ pathname }) => {
   );
 };
 
-const LogOutBtn = ({handleLogout})=>(
+const LogOutBtn = ({ handleLogout }) => (
   <li className="nav-item clickable">
-  <Link
-    to={'/h'}
-    onClick={handleLogout}
-    className={`nav-link white`}
-    href={`${process.env.REACT_APP_API_SERVER}/auth/logout`}
-  >
-    {"Logout"}
-  </Link>
-</li>
-)
+    <Link
+      to={"/h"}
+      onClick={handleLogout}
+      className={`nav-link white`}
+      href={`${process.env.REACT_APP_API_SERVER}/auth/logout`}
+    >
+      {"Logout"}
+    </Link>
+  </li>
+);
 
 const Navbar_Links = ({ path, pathname, name }) => (
   <li className="nav-item">

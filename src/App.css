@@ -392,7 +392,6 @@ canvas{
 
 
 .right_10_px{
-  top:3em;
   right:10px;
 }
 .filtered_stock_list{
@@ -404,6 +403,8 @@ canvas{
   max-height:50vh;
   overflow-y: scroll;
   width: 50%;
+  border:3px solid black;
+  box-shadow: -11px 11px 28px 11px rgba(0,0,0,0.6);
 }
 .margin_right_4em{
   margin-right: 4em;

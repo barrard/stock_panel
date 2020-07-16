@@ -88,6 +88,7 @@ export async function view_selected_commodity({ timeframe, symbol, props }) {
    */
   console.log("append minute data");
   console.log({ chart_data });
+  debugger
   chart_data = appendMinutelyCommodityDataAsNeeded(
     props,
     chart_data,
@@ -163,6 +164,7 @@ export function appendMinutelyCommodityDataAsNeeded(
   timeframe,
   symbol
 ) {
+  debugger
   let minuteData = props.stock_data.commodity_data[symbol]["1Min"];
   console.log(minuteData);
   console.log(`how up to date is the chart_data ${timeframe} ${symbol}`);

@@ -35,10 +35,12 @@ class RegressionSettings extends React.Component {
           <SettingsInputs updateVolProfile={updateVolProfile} settingsData={this.props} />
         </div>
         <br />
-        <ToggleActiveBtn 
+        {/* TODO this will come back? */}
+        {/* <ToggleActiveBtn 
         active={active}
           toggle={this.props.setActive}
-        />
+        /> */}
+
         <button onClick={() => this.props.saveRegressionSettings()}>
           Save Values{" "}
         </button>

@@ -17,7 +17,8 @@ class TickCharts extends React.Component {
       volumePriceProfile: {},
       LAST_PRICE: 0,
       currentTickData: {},
-      showTick:true
+      showTick:true,
+      removeClassTimer:null
     };
   }
 
@@ -28,6 +29,10 @@ class TickCharts extends React.Component {
 
     console.log("MINUTE DATA FOR TICK CHARTS");
     console.log(minutelyData);
+  }
+
+  componentWillUnmount(){
+    clearTimeout(this.state.removeClassTimer)
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -75,7 +80,8 @@ class TickCharts extends React.Component {
       currentTickData = this.compilePriceVolumeData([currentTickData]);
       // console.log({currentTickData})
       this.setState({ LAST_PRICE: price, currentTickData, redGreenClass });
-      setTimeout(()=>this.setState({redGreenClass:''}), 1000)
+      let removeClassTimer = setTimeout(()=>this.setState({redGreenClass:''}), 1000)
+      this.setState({removeClassTimer})
     }
   }
 
@@ -180,9 +186,7 @@ class TickCharts extends React.Component {
       return <div>
                 <ToggleTickButton onClick={()=>{
                   this.setState({showTick:!showTick})
-                  // setTimeout(() => {
-                  //   this.set
-                  // }, (0));
+
                 }}>Show Tick Chart</ToggleTickButton>
 
       </div>;

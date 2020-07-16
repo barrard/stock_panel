@@ -33,7 +33,13 @@ class Signup extends React.Component {
 //   }
 
     componentDidMount(){
+      console.log(this.props)
+    }
 
+    componentDidUpdate(){
+      if(this.props.user.isLoggedIn){
+        this.props.history.push(`/commodity/ES`)
+      }
     }
 
 
@@ -48,7 +54,7 @@ class Signup extends React.Component {
   /* Handle FORM POST SIGNUP */
   async handle_signup(data) {
     //TODO start some spinner?
-    this.props.dispatch(register_attempt(data))
+    // this.props.dispatch(register_attempt(data))
     try {
       // console.log(this.props)
       // console.log(this.state)
@@ -90,6 +96,7 @@ class Signup extends React.Component {
         //TODO notify login
         //Push page?
         this.props.dispatch(login_success(json.user));
+        this.props.history.push(`/commodity/ES`)
   
         toastr.success('New User', `You are being logged in as ${this.state.email}`)
         // this.props.location.push('/account-profile')
@@ -132,6 +139,6 @@ class Signup extends React.Component {
   }
 }
 function mapStateToProps(state) {
-  return  {...state} ;
+  return  state;
 }
-export default connect(mapStateToProps)(Signup);
+export default connect(mapStateToProps)(withRouter(Signup));

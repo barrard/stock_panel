@@ -5,7 +5,8 @@ import {
   set_symbols_data,
   commodityRegressionData,
   deleteCommodityRegressionData,
-  addAllCommodityTrades,addAllStockTrades,
+  addAllCommodityTrades,
+  addAllStockTrades,
   // set_search_symbol,
   // add_chart_data
 } from "../redux/actions/stock_actions.js";
@@ -21,8 +22,10 @@ export default {
   getCommodityRegressionValues,
   // getIndicatorValues,
   setTimeframeActive,
-  getAllCommodityTrades,getAllStockTrades,
-  closePosition,cancelOrder,
+  getAllCommodityTrades,
+  getAllStockTrades,
+  closePosition,
+  cancelOrder,
   goLong,
   goShort,
   getVolProfile,
@@ -79,12 +82,28 @@ async function isLoggedIn(dispatch) {
 const API_SERVER = process.env.REACT_APP_STOCK_DATA_URL;
 const LOCAL_SERVER = process.env.REACT_APP_LOCAL_DATA;
 
+function handleTradeSuccess(trade) {
+
+  let {
+    buyOrSell,
+entryPrice,
+orderStatus,
+order_limit,symbol,
+order_type,
+  } = trade
+  let toastrOpts = {
+    timeOut:6000
+  }
+  toastr.success(`${order_type} order to ${buyOrSell} ${symbol} @${entryPrice || order_limit } has been ${orderStatus}`, toastrOpts);
+
+}
 function handleTradeError(direction, err) {
   console.log(err);
   console.log(err);
   console.log(err);
 
   if (!err) {
+    debugger
     toastr.error(`Error Going ${direction},  not sure why, ${err}`);
   } else if (typeof err === "string") {
     toastr.error(err);
@@ -103,7 +122,8 @@ function handleTradeError(direction, err) {
   }
 }
 
-async function goLong({instrumentType,
+async function goLong({
+  instrumentType,
   symbol,
   position_size,
   order_type,
@@ -111,10 +131,10 @@ async function goLong({instrumentType,
   order_stop_size,
   order_limit,
 }) {
-
   try {
     let orderLong = await fetch(`${LOCAL_SERVER}/API/goLong`, {
-      ...POST({instrumentType,
+      ...POST({
+        instrumentType,
         symbol,
         position_size,
         order_type,
@@ -127,25 +147,31 @@ async function goLong({instrumentType,
     orderLong = await orderLong.json();
     console.log(orderLong);
 
-    if (!orderLong.resp || orderLong.err)
+    if (!orderLong.resp || orderLong.err) {
       return handleTradeError("Long", orderLong.err);
-    toastr.success(`New Long trade in ${symbol} @${orderLong.resp.entryPrice || orderLong.resp.order_limit }`);
+    }
+
+    handleTradeSuccess(orderLong.resp);
     return orderLong.resp;
   } catch (err) {
     handleTradeError("Long", err);
   }
 }
 
-async function goShort({   symbol,instrumentType,
+async function goShort({
+  symbol,
+  instrumentType,
   position_size,
   order_type,
   order_target_size,
   order_stop_size,
-  order_limit, }) {
+  order_limit,
+}) {
   try {
     let orderShort = await fetch(`${LOCAL_SERVER}/API/goShort`, {
       ...POST({
-        symbol,instrumentType,
+        symbol,
+        instrumentType,
         position_size,
         order_type,
         order_target_size,
@@ -156,8 +182,11 @@ async function goShort({   symbol,instrumentType,
     });
     orderShort = await orderShort.json();
     console.log(orderShort);
-    if (!orderShort.resp || orderShort.err) return handleTradeError("Short", orderShort.err);
-    toastr.success(`New Short trade in ${symbol} @${orderShort.resp.entryPrice || orderShort.resp.order_limit}`);
+    if (!orderShort.resp || orderShort.err){
+
+      return handleTradeError("Short", orderShort.err);
+    }
+    handleTradeSuccess(orderShort.resp)
 
     return orderShort.resp;
   } catch (err) {
@@ -176,7 +205,6 @@ async function closePosition(id) {
   return data;
 }
 
-
 async function cancelOrder(id) {
   // console.log('getAllSymbolsData')
   let data = await fetch(`${LOCAL_SERVER}/API/cancelOrder/${id}`, {
@@ -184,7 +212,6 @@ async function cancelOrder(id) {
   });
   data = await data.json();
   console.log(data);
-
   if (!data.resp || data.err) toastr.error("Error Closing Position");
   return data;
 }
@@ -196,12 +223,10 @@ async function getAllCommodityTrades(symbol, props) {
     if (symbol) {
       trades = await fetch(`${LOCAL_SERVER}/API/commodityTrades/${symbol}`, {
         credentials: "include",
-
       });
     } else {
       trades = await fetch(`${LOCAL_SERVER}/API/commodityTrades`, {
         credentials: "include",
-
       });
     }
     trades = await trades.json();
@@ -213,7 +238,6 @@ async function getAllCommodityTrades(symbol, props) {
   }
 }
 
-
 async function getAllStockTrades(symbol, props) {
   let trades;
   try {
@@ -223,9 +247,8 @@ async function getAllStockTrades(symbol, props) {
         credentials: "include",
       });
     } else {
-      trades = await fetch(`${LOCAL_SERVER}/API/getAllStockTrades`,{
+      trades = await fetch(`${LOCAL_SERVER}/API/getAllStockTrades`, {
         credentials: "include",
-
       });
     }
     trades = await trades.json();
@@ -237,7 +260,6 @@ async function getAllStockTrades(symbol, props) {
   }
 }
 
-
 async function getCommodityRegressionValues(symbol, props) {
   console.log("get regression values");
   console.log(props);
@@ -245,8 +267,8 @@ async function getCommodityRegressionValues(symbol, props) {
     return console.log("Already have the commodityRegressionData");
   }
   let regressionData = await fetch(
-    `${LOCAL_SERVER}/API/commodityRegressionSettings/${symbol}`
-    // { credentials: "include" }
+    `${LOCAL_SERVER}/API/commodityRegressionSettings/${symbol}`,
+    { credentials: "include" }
   );
   regressionData = await regressionData.json();
   // console.log(regressionData);
@@ -433,15 +455,12 @@ async function fetchStockData({ timeframe, symbol, end }) {
   let data = await fetch(
     `${API_SERVER}/alpacaData/${symbol}/${timeframe}/${end}`
   );
-  data = await data.json()
-  if(data.err)throw data.err
+  data = await data.json();
+  if (data.err) throw data.err;
   console.log(data);
-  
+
   if (!data.length) return [];
-  toastr.success(
-    `Data loaded`,
-    `${data.length} bars loaded for ${symbol}`
-  );
+  toastr.success(`Data loaded`, `${data.length} bars loaded for ${symbol}`);
   return data;
 }
 

@@ -188,8 +188,18 @@ class TradesList extends React.Component {
   };
 
   filterRadioBtns = ({ filters }) => {
+    let trades = this.props.trades;
     let types = ["Closed", "Open", "Orders", "Canceled"];
     let RadioButtons = types.map((type, iType) => {
+      let orderStatusType = type
+      if(orderStatusType === 'Open') orderStatusType = 'Filled'
+      else if(orderStatusType === 'Orders') orderStatusType = 'Open'
+
+      let tradeTypeCount = 0
+      if(trades){
+        tradeTypeCount= trades.filter(t=>t.orderStatus === orderStatusType).length
+         
+      }
       return (
         <div className="form-check inline align_items_center" key={iType}>
           <label
@@ -197,7 +207,7 @@ class TradesList extends React.Component {
             className="form-check-label white"
             htmlFor={"Trade Filters"}
           >
-            {type}
+            {type} {tradeTypeCount}
           </label>
           <input
             style={{ width: "25px", height: "25px", marginTop: "-0.2em" }}
@@ -226,7 +236,6 @@ class TradesList extends React.Component {
     if (!Open) trades = trades.filter((d) => d.orderStatus !== "Filled");
     if (!Orders) trades = trades.filter((d) => d.orderStatus !== "Open");
     if (!Canceled) trades = trades.filter((d) => d.orderStatus !== "Canceled");
-
     let sortFn = this.state.sort_state
       ? (a, b) => this.low_to_high(a, b, sorted_prop)
       : (a, b) => this.high_to_low(a, b, sorted_prop);
@@ -251,7 +260,7 @@ class TradesList extends React.Component {
         <BuySellButtons instrumentType={this.props.instrumentType} />
         {/* <div>No Trades</div>; */}
         {/* Avoid rendering if data array is empty */}
-        <div className="col2">
+        <div className="">
           <div className="row flex_center">
             <div className="col-sm-3 flex_center">
               <h5 className="white">{symbol}</h5>
@@ -377,7 +386,7 @@ function Display_Stock_Row({
         <EntryTimeLimit
           currentQuote={currentQuote}
           entryTime={entryTime}
-          // orderTime={OrderTime}
+          orderTime={orderTime}
           orderLimit={order_limit}
         />
       </div>
@@ -791,7 +800,9 @@ function dynamicSortHelper(prop, aData, bData, thisProps) {
         ? close - bData.entryPrice
         : bData.entryPrice - close
       : 0;
-    return {
+      if(aData.orderStatus==='Closed') aPnL = aData.PL
+      if(bData.orderStatus==='Closed') bPnL = bData.PL
+      return {
       aProp: aPnL,
       bProp: bPnL,
     };

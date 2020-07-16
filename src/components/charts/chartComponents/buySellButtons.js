@@ -43,7 +43,7 @@ class BuySellButtons extends React.Component {
     let currentSymbol = this.props.stock_data.search_symbol
     let prevSymbol = prevProps.stock_data.search_symbol
     if(currentSymbol !== prevSymbol){
-      debugger
+
       console.log('New symbol')
       //get teh ticks
       let ticks = TICKS[currentSymbol]
@@ -53,7 +53,7 @@ class BuySellButtons extends React.Component {
       let target = ticks * 30
       this.props.dispatch(set_order_stop(stop))
       this.props.dispatch(set_order_target(target))
-      // debugger
+      
 
       setTimeout(() => {
         try {
