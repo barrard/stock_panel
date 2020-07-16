@@ -103,7 +103,6 @@ function handleTradeError(direction, err) {
   console.log(err);
 
   if (!err) {
-    debugger
     toastr.error(`Error Going ${direction},  not sure why, ${err}`);
   } else if (typeof err === "string") {
     toastr.error(err);

@@ -105,8 +105,8 @@ class CandleStickChart extends React.Component {
       priceLevelSensitivity: 30,
       fibonacciMinMax: 75,
       fibonacciSensitivity: 50,
-      volProfileBarCount: 50,
-      volProfileBins: 1400,
+      volProfileBarCount: 1400,
+      volProfileBins: 50,
       timestamps: [],
       highs: [],
       lows: [],
@@ -194,7 +194,7 @@ class CandleStickChart extends React.Component {
       ) {
         // console.log("fetching data");
         const end = new Date().getTime();
-        API.getAllStockTrades(this.props.symbol, this.props)
+        API.getAllStockTrades(this.props.symbol, this.props);
         await view_selected_stock({ timeframe, end, symbol, props });
         console.log("SET NEW DATA???");
 
@@ -335,7 +335,7 @@ class CandleStickChart extends React.Component {
       currentData[currentData.length - 1] = lastBar;
       currentRawOHLCData[currentRawOHLCData.length - 1] = lastBar;
     }
-  
+
     this.setState({
       allOHLCdata: [...currentData],
       rawOHLCData: [...currentRawOHLCData],
@@ -602,7 +602,8 @@ class CandleStickChart extends React.Component {
       currentRawData = stock_data.rawCommodityCharts[symbol][timeframe];
     } else if (type === "stock") {
       //catch possible bugs
-      if(!stock_data.charts[symbol])return toastr.error(`no chart data found for ${symbol}`)
+      if (!stock_data.charts[symbol])
+        return toastr.error(`no chart data found for ${symbol}`);
       //TODO get Stock regression values??
 
       console.log(stock_data.charts);
@@ -635,6 +636,16 @@ class CandleStickChart extends React.Component {
       volProfileBarCount,
       volProfileBins,
     } = this.props.stock_data.commodityRegressionData[symbol][timeframe];
+    this.setState({
+      fibonacciMinMax,
+      fibonacciSensitivity,
+      minMaxTolerance,
+      priceLevelMinMax,
+      priceLevelSensitivity,
+      regressionErrorLimit,
+      volProfileBarCount,
+      volProfileBins,
+    });
     if (
       timeframe !== "daily" &&
       timeframe !== "weekly" &&
@@ -982,7 +993,7 @@ class CandleStickChart extends React.Component {
   }
 
   draw(data) {
-    if(!this.state.timeAxis)return console.log('Disaster averted!')
+    if (!this.state.timeAxis) return console.log("Disaster averted!");
     // console.log('Draw CandleStick')
     let drawData;
     if (data) {
@@ -1208,17 +1219,18 @@ class CandleStickChart extends React.Component {
   }
 
   async updateVolProfile() {
-    let { symbol, timeframe,volProfileBins,
-      volProfileBarCount } = this.state;
+    
+    console.log(this.state);
+    console.log(this.props);
 
-      if(!volProfileBarCount || !volProfileBins){
-
- 
-        volProfileBarCount= this.props.stock_data.commodityRegressionData[symbol][timeframe].volProfileBarCount;
-        volProfileBins = this.props.stock_data.commodityRegressionData[symbol][timeframe].volProfileBins;
+    let { symbol, timeframe, volProfileBins, volProfileBarCount } = this.state;
+    let regData = this.props.stock_data.commodityRegressionData;
+    if (!volProfileBarCount || !volProfileBins) {
+      volProfileBarCount = regData[symbol][timeframe].volProfileBarCount;
+      volProfileBins = regData[symbol][timeframe].volProfileBins;
     }
 
-
+    
     let volProfile = await API.getVolProfile({
       symbol,
       date: new Date().getTime(),
@@ -1646,14 +1658,12 @@ class CandleStickChart extends React.Component {
   render() {
     // console.log("RENDERING??");
     let symbol = this.props.stock_data.search_symbol;
-    let trades 
-    if(this.props.type === 'commodity'){
-
-     trades = this.props.stock_data.commodityTrades[symbol];
-    }else if(this.props.type === 'stock'){
-
+    let trades;
+    if (this.props.type === "commodity") {
+      trades = this.props.stock_data.commodityTrades[symbol];
+    } else if (this.props.type === "stock") {
       trades = this.props.stock_data.stockTrades[symbol];
-     }
+    }
     let currentTickData = this.props.stock_data.currentTickData[symbol];
 
     return (

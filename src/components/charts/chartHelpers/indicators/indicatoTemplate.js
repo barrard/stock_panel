@@ -506,7 +506,6 @@ class IndicatorChart extends React.Component {
     // let volValues = drawData.map(d => d.volumeChange);
     let { indicator } = this.state;
     let [timeMin, timeMax] = extent(drawData.map(({ x }) => x));
-    debugger
     let [stochasticMax, stochasticMin] = extent(drawData.map(({ stochastic2 }) => stochastic2));
     // let [volMin, volMax] = extent(volValues);
 

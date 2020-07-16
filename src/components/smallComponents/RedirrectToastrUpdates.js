@@ -22,7 +22,6 @@ class UpdateToastsWithRedirect extends React.Component{
 
     componentDidMount(){
         Socket.on("updateTrade", (updateTrade) => {
-            debugger
             console.log(this.props)
             this.props.dispatch(updateCommodityTrade(updateTrade, this.props.history))
           });

@@ -320,7 +320,7 @@ function VolumeBars({
   let y = options.y
   let height = options.height
   let strokeWidth = options.strokeWidth || barWidth / 10;
-  debugger
+  
   let volBars = chartWindow.selectAll(`.${markerClass}`).data(dataPoints);
 
   volBars.exit().remove();

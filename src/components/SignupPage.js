@@ -7,7 +7,7 @@ import * as user_actions from '../redux/actions/user_actions.js'
 import Signup_form from "../components/forms/Signup_Form.js";
 // import {ensure_not_loggedin} from '../components/utils/auth.js'
 
-const {  register_attempt, login_success} = user_actions; 
+const {  login_success} = user_actions; 
 
 class Signup extends React.Component {
   constructor(props) {
@@ -25,13 +25,6 @@ class Signup extends React.Component {
     
   }
 
-//   static async getInitialProps(ctx) {
-//     ensure_not_loggedin(ctx)
-//     let state = ctx.store.getState()
-
-//     return {state}
-//   }
-
     componentDidMount(){
       console.log(this.props)
     }
@@ -46,18 +39,14 @@ class Signup extends React.Component {
   /* Get form input */
   handle_input(input, type) {
     this.setState({ [type]: input });
-    // this.props.handle_input(input, type)
 
-    // console.log({ input, type });
   }
 
   /* Handle FORM POST SIGNUP */
   async handle_signup(data) {
     //TODO start some spinner?
-    // this.props.dispatch(register_attempt(data))
     try {
-      // console.log(this.props)
-      // console.log(this.state)
+
       const _csrf = this.props.meta.csrf
 
       const {email, password, confirm_password} = data
