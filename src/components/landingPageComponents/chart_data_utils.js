@@ -82,7 +82,11 @@ export async function view_selected_commodity({ timeframe, symbol, props }) {
   // /* fetch data and add to the store/charts array */
   dispatch(is_loading(true));
   let chart_data = await API.fetchCommodityData({ timeframe, symbol });
-  if (chart_data.err) return dispatch(is_loading(false));
+  if (chart_data.err ) return dispatch(is_loading(false));
+  if(!chart_data.length){
+    toastr.info('No Data Available')
+    return dispatch(is_loading(false))
+  }
   /**
    * Append some minutle data as needed
    */
@@ -121,6 +125,7 @@ export async function view_selected_stock({ timeframe, end, symbol, props }) {
   // /* fetch data and add to the store/charts array */
   dispatch(is_loading(true));
  try {
+   debugger
   const chartData = await API.fetchStockData({ timeframe, symbol, end });
   console.log({ chartData });
   
