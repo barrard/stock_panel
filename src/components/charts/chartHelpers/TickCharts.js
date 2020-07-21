@@ -23,12 +23,12 @@ class TickCharts extends React.Component {
   }
 
   componentDidMount() {
-    console.log("TICK CHARTS DID MOUNT");
+    // console.log("TICK CHARTS DID MOUNT");
     let symbol = this.props.stock_data.search_symbol;
     let minutelyData = this.props.stock_data.commodity_data[symbol];
 
-    console.log("MINUTE DATA FOR TICK CHARTS");
-    console.log(minutelyData);
+    // console.log("MINUTE DATA FOR TICK CHARTS");
+    // console.log(minutelyData);
   }
 
   componentWillUnmount(){
@@ -91,16 +91,16 @@ class TickCharts extends React.Component {
     let prevMinuteData = prevProps.stock_data.commodity_data[currentSymbol];
     let currentMinuteData = this.props.stock_data.commodity_data[currentSymbol];
     if ((!prevMinuteData && currentMinuteData) || ( currentMinuteData && currentSymbol !== prevSymbol)) {
-      console.log("I think new data has been loaded");
-      console.log(prevMinuteData);
-      console.log(currentMinuteData);
-      console.log(this.props.stock_data)
+      // console.log("I think new data has been loaded");
+      // console.log(prevMinuteData);
+      // console.log(currentMinuteData);
+      // console.log(this.props.stock_data)
       //get LAST_VOL and LAST_PRICE
 //This only runs once new data is in, not for each tick
       let { priceChangeData, volumePriceProfile } = this.compilePriceVolumeData(
         currentMinuteData["1Min"].slice(-120)
       );
-      console.log({ priceChangeData, volumePriceProfile });
+      // console.log({ priceChangeData, volumePriceProfile });
       this.setState({
         priceChangeData,
         volumePriceProfile,

@@ -1,12 +1,8 @@
-import { select } from "d3-selection";
-
-import diff from "../extrema.js";
-import { line } from "d3";
 
 export default DrawLine;
 
 function DrawLine({
-  that,
+  // that,
   chartWindow,
   dataPoints,
   markerClass,
@@ -33,7 +29,7 @@ function DrawLine({
     .attr("stroke", (d) => {
       return color;
     })
-    .attr("class", (d, i) => `${markerClass} ${name}`)
+    .attr("class", () => `${markerClass} ${name}`)
     .on("click", function (d) {
       console.log("click");
     });

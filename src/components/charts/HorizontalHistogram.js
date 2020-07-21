@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { axisBottom, axisRight, axisTop } from "d3-axis";
 
 import { scaleLinear, scaleTime } from "d3-scale";
-import { extent, max } from "d3-array";
+import { extent } from "d3-array";
 import { select } from "d3-selection";
 import { line } from "d3-shape";
 

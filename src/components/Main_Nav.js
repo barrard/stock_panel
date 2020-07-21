@@ -40,7 +40,7 @@ class Main_Nav extends React.Component {
   async componentDidMount() {
     try {
       const { has_symbols_data } = this.props.stock_data;
-      console.log({ has_symbols_data });
+      // console.log({ has_symbols_data });
       if (has_symbols_data) return;
       let { dispatch } = this.props;
       await API.getAllSymbolsData(dispatch);
@@ -58,7 +58,6 @@ class Main_Nav extends React.Component {
     let currentSymbol = this.props.stock_data.search_symbol;
     let prevSymbol = prevProps.stock_data.search_symbol;
     if (currentSymbol !== prevSymbol) {
-      console.log("YES?");
       this.setState({ search_symbol: currentSymbol });
     }
   }
@@ -307,7 +306,7 @@ class Main_Nav extends React.Component {
     let { pathname } = this.props.location;
 
     return (
-      <nav className="navbar navbar-expand-lg navbar-dark bg-dark relative ">
+      <nav className="navbar navbar-dark bg-dark relative ">
         <Link activeclassname="active" className="navbar-brand " to="/">
           Home
         </Link>
@@ -339,7 +338,7 @@ class Main_Nav extends React.Component {
           handle_search_input_blur={() =>
             setTimeout(() => {
               this.setState({ highlightedSymbolListIndex: 0 });
-              this.props.dispatch(show_filter_list(false));
+              // this.props.dispatch(show_filter_list(false));
             }, 200)
           }
           arrowKeyListSelect={this.arrowKeyListSelect}
@@ -373,7 +372,7 @@ const Navbar_Search = ({
   search_symbol,
   handle_search_input_blur,
 }) => (
-  <div className="form-inline absolute right_10_px">
+  <div className="form-inline ">
     <label className='white' htmlFor="symbol search">Symbol Search</label>
     <input
       onKeyDown={arrowKeyListSelect}

@@ -1,8 +1,6 @@
-import { select } from "d3-selection";
 import { extent } from "d3-array";
 
-import diff from "../extrema.js";
-import { line } from "d3";
+
 import { appendVolProfileBar } from "../ChartMarkers/VolProfileBar.js";
 export { VolumeBars, VolumeProfileBars };
 
@@ -20,12 +18,9 @@ function plotVolProfileDetails({
   let volProfileMax = up + down + neutral;
   let { volProfileScale, priceScale } = scales;
   let {
-    priceMin,
-    priceMax,
-    tickSize,
+
     innerWidth,
-    innerHeight,
-    opacity,
+
   } = options;
 
   //mark the LVN

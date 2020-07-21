@@ -9,7 +9,7 @@ export function logout_user(props) {
           credentials: "include",
         }
       );
-      if (!resp) throw "Error logging out.";
+      if (!resp) throw new Error("Error logging out.");
       toastr.success(
         "Good Bye",
         `Hope to see you back soon!`

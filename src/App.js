@@ -1,13 +1,13 @@
-import React, { useState } from "react";
-import { Route, BrowserRouter as Router, Redirect } from "react-router-dom";
+import React from "react";
+import { Route, BrowserRouter as Router } from "react-router-dom";
 import styled from "styled-components";
 import { connect } from "react-redux";
-import { withRouter } from 'react-router'
+// import { withRouter } from 'react-router'
 
 import "./App.css";
 import Socket from "./components/Socket.js";
 import QuoteContainer from "./components/QuoteContainer.js";
-import ChartAnalysis from "./components/ChartAnalysis.js";
+// import ChartAnalysis from "./components/ChartAnalysis.js";
 import LandingPage from "./components/landingPage.js";
 import SignupPage from "./components/SignupPage.js";
 import LoginPage from "./components/LoginPage.js";
@@ -19,16 +19,16 @@ import Main_Nav from "./components/Main_Nav.js";
 import {
   updateCommodityData,
   addCommodityTrade,
-  updateCommodityTrade,
+  // updateCommodityTrade,
   updateStockData
 } from "./redux/actions/stock_actions.js";
 import UpdateToastsWithRedirect from './components/smallComponents/RedirrectToastrUpdates.js'
 // import TradeBot from "./components/TradeBot/TradeBot.js";
 import API from "./components/API.js";
-let allData = { ES: [], CL: [], GC: [] };
-let i = 0;
-let prices_timer;
-let es_data = { "/ES": {} };
+// let allData = { ES: [], CL: [], GC: [] };
+// let i = 0;
+// let prices_timer;
+// let es_data = { "/ES": {} };
 
 localStorage.setItem("filterList", defaultFilterList);
 

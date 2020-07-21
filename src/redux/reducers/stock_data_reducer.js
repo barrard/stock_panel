@@ -132,7 +132,7 @@ export default (state = initial_state, action) => {
       };
       console.log(commodityRegressionData);
       commodityRegressionData[symbol] = commodityRegressionData[symbol].filter(
-        d => d._id != id
+        d => d._id !== id
       );
       console.log(commodityRegressionData);
       commodityRegressionData = {
@@ -359,7 +359,7 @@ IRS: "770518772"
   return formatedSymbolsData;
 }
 
-function byDate(a, b) {
-  if (a.timestamp > b.timestamp) return 1;
-  if (a.timestamp < b.timestamp) return -1;
-}
+// function byDate(a, b) {
+//   if (a.timestamp > b.timestamp) return 1;
+//   if (a.timestamp < b.timestamp) return -1;
+// }

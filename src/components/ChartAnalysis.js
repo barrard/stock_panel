@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from "react";
+import React from "react";
 import styled from 'styled-components'
 import CandleStickChart from "./charts/CandleStickChart.js";
 

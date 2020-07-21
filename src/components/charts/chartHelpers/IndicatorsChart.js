@@ -67,7 +67,7 @@ class IndicatorChart extends React.Component {
   }
 
   componentDidMount() {
-    console.log("INDICATORS CHART");
+    // console.log("INDICATORS CHART");
 
     let indicatorYScales = {};
     let { indicators, innerHeight } = this.state;

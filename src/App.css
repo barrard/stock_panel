@@ -395,12 +395,14 @@ canvas{
   right:10px;
 }
 .filtered_stock_list{
+  text-align: center;
   z-index: 10;
   background: white;
   position: absolute;
-  top: 160%;
+  top: 100%;
   right:0%;
   max-height:50vh;
+  max-width: 27em;
   overflow-y: scroll;
   width: 50%;
   border:3px solid black;

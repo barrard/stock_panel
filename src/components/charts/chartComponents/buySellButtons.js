@@ -8,11 +8,11 @@ import { TICKS } from "../chartHelpers/utils.js";
 // import { Link, withRouter } from 'react-router-dom';
 import styled from "styled-components";
 import API from "../../API";
-import Socket from "../../Socket.js";
+// import Socket from "../../Socket.js";
 import {
   set_order_type,
   set_position_size,
-  closing_position,
+  // closing_position,
   set_order_target,
   set_order_limit,
   set_order_stop,
@@ -21,9 +21,9 @@ import {
 } from "../../../redux/actions/meta_actions.js";
 
 import {
-  updateCommodityData,
+  // updateCommodityData,
   addCommodityTrade,addStockTrade,
-  updateCommodityTrade,
+  // updateCommodityTrade,
 } from "../../../redux/actions/stock_actions.js";
 //import Main_Layout from '../layouts/Main_Layout.js';
 class BuySellButtons extends React.Component {
@@ -44,10 +44,10 @@ class BuySellButtons extends React.Component {
     let prevSymbol = prevProps.stock_data.search_symbol
     if(currentSymbol !== prevSymbol){
 
-      console.log('New symbol')
+      // console.log('New symbol')
       //get teh ticks
       let ticks = TICKS[currentSymbol]
-      console.log(ticks)
+      // console.log(ticks)
       //set the stop and target limit
       let stop = ticks * 10
       let target = ticks * 30
@@ -92,7 +92,7 @@ class BuySellButtons extends React.Component {
 
   async goLong(instrumentType) {
     let symbol = this.props.stock_data.search_symbol;
-    let { dispatch, meta, stock_data } = this.props;
+    let {  meta } = this.props;
 
     let {
       position_size,
@@ -114,7 +114,7 @@ class BuySellButtons extends React.Component {
         instrumentType,
       });
       console.log({ newTrade });
-      if (!newTrade) throw "Didnt get a new trade back from API";
+      if (!newTrade) throw new Error({message:"Didn't get a new trade back from API"});
       else if (newTrade.err) throw newTrade.err;
       this.props.dispatch(opening_long(false));
       if(instrumentType === 'commodity'){
@@ -126,14 +126,16 @@ class BuySellButtons extends React.Component {
       }
     } catch (err) {
       this.props.dispatch(opening_long(false));
+      
+      console.error(err);
+      debugger
 
-      console.error({ err });
     }
   }
 
   async goShort(instrumentType) {
     let symbol = this.props.stock_data.search_symbol;
-    let { dispatch, meta, stock_data } = this.props;
+    let { meta } = this.props;
 
     let {
       position_size,
@@ -154,7 +156,7 @@ class BuySellButtons extends React.Component {
         instrumentType,
       });
       console.log({ newTrade });
-      if (!newTrade) throw "Didnt get a new trade back from API";
+      if (!newTrade) throw new Error("Didnt get a new trade back from API");
       else if (newTrade.err) throw newTrade.err;
 
       this.props.dispatch(opening_short(false));

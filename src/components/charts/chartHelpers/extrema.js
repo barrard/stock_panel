@@ -1,5 +1,5 @@
-import { mean, min, max } from "d3-array";
-import { slopeLine, intercept } from "./utils.js";
+import { mean, min } from "d3-array";
+// import { slopeLine, intercept } from "./utils.js";
 
 
 function pythagorean(x1, x2, y1, y2){
@@ -36,8 +36,8 @@ function minMax(xArray, yArray, tolerance = 1, minMaxMostRecentData = false) {
         } else {
           same.pop();
         }
-        let indexVal = yArray[index];
-        let checkVal = yArray[x];
+        // let indexVal = yArray[index];
+        // let checkVal = yArray[x];
       }
       if (!minima && maxima && same.length < tolerance) {
         maxValues.push({ x: xArray[index], y: yArray[index] });

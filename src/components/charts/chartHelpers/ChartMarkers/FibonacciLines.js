@@ -1,19 +1,17 @@
-import { extent, max, min, mean } from "d3-array";
+import { max, min } from "d3-array";
 import { slopeAndIntercept, xOfY, dropDuplicateMinMax } from "../utils.js";
 import diff from "../extrema.js";
 import appendDot from "./Dot.js";
 import DrawLine from "./Line.js";
 
-
-
 export function makeFibonacciData(that, scales) {
-  let { timeframe, highs, lows, timestamps } = that.state;
+  let { highs, lows, timestamps } = that.state;
   // console.log(that.state);
   let { symbol, stock_data } = that.props;
   let { commodity_data } = stock_data;
   // console.log({ timeframe, symbol, stock_data });
   if (commodity_data[symbol]) {
-    let data = commodity_data[symbol][timeframe];
+    // let data = commodity_data[symbol][timeframe];
     // console.log(data);
 
     /**
@@ -29,7 +27,7 @@ export function makeFibonacciData(that, scales) {
       minMaxMostRecentData
     );
 
-    maxValues = dropDuplicateMinMax(maxValues)
+    maxValues = dropDuplicateMinMax(maxValues);
 
     var { minValues } = diff.minMax(
       timestamps,
@@ -38,11 +36,11 @@ export function makeFibonacciData(that, scales) {
       minMaxMostRecentData
     );
 
-    minValues = dropDuplicateMinMax(minValues)
+    minValues = dropDuplicateMinMax(minValues);
 
     // console.log({ maxValues, minValues });
     if (!maxValues.length || !minValues.length)
-    return console.log("No points to work with ");
+      return console.log("No points to work with ");
     /**
      * Walk the MinMax values to find the swings
      */
@@ -77,7 +75,6 @@ export function makeFibonacciData(that, scales) {
 }
 
 function determineSupportsAndResistances(highPoints, lowPoints) {
-
   let MIN = min(lowPoints, (d) => d.y);
   let MAX = max(highPoints, (d) => d.y);
 
@@ -222,19 +219,18 @@ function runFibCalculation(lines, direction) {
   return levels;
 }
 // let fibData = makeFibonacciData(that, scales);
-let maxValues,
-  minValues,
-  supports,
-  resistances,
-  lowToHigh,
-  highToLow,
-  supportFibs,
-  resistanceFibs;
 
 export function FibonacciLines(that, chartWindow, scales, fibData) {
-  // console.log("FIBONACCI");
+  let maxValues,
+    minValues,
+    supports,
+    resistances,
+    lowToHigh,
+    highToLow,
+    supportFibs,
+    resistanceFibs;
   if (!fibData) return;
-  let { priceScale, timeScale } = scales;
+  // let { priceScale, timeScale } = scales;
   maxValues = fibData.maxValues;
   minValues = fibData.minValues;
   supports = fibData.supports;
@@ -391,12 +387,12 @@ function appendSwingLines({ that, lowToHigh, highToLow, scales, chartWindow }) {
   let options = {
     strokeWidth: 3,
     color: "green",
-    mouseover: function(d, i) {
+    mouseover: function (d, i) {
       this.classList.add("hoveredSwingLine");
 
       highlightFibLines(d, i, lowToHigh, chartWindow, scales);
     },
-    mouseout: function() {
+    mouseout: function () {
       this.classList.remove("hoveredSwingLine");
 
       chartWindow.selectAll(".highlightedFibLines").remove();
@@ -416,12 +412,12 @@ function appendSwingLines({ that, lowToHigh, highToLow, scales, chartWindow }) {
   options = {
     strokeWidth: 3,
     color: "red",
-    mouseover: function(d, i){
+    mouseover: function (d, i) {
       this.classList.add("hoveredSwingLine");
 
       highlightFibLines(d, i, highToLow, chartWindow, scales);
     },
-    mouseout: function()  {
+    mouseout: function () {
       this.classList.remove("hoveredSwingLine");
 
       chartWindow.selectAll(".highlightedFibLines").remove();

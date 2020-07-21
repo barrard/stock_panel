@@ -28,7 +28,7 @@ export async function getMinutelyCommodityData({ date, symbol, props }) {
     date = new Date().getTime();
   }else date = new Date(date).getTime()
   // date = '6-4-2020'
-  console.log({ date });
+  // console.log({ date });
   const { dispatch } = props;
   // /* Set the search symbol aas selected */
   dispatch(set_search_symbol(symbol));
@@ -42,7 +42,7 @@ export async function getMinutelyCommodityData({ date, symbol, props }) {
   dispatch(is_loading(true));
   let chart_data = await API.fetch_commodity_minutely_data({ date, symbol });
 
-  console.log(chart_data);
+  // console.log(chart_data);
 
   if (!chart_data.length) {
     console.log("WE GIOT NOGTIIHIN");
@@ -60,7 +60,7 @@ export async function view_selected_commodity({ timeframe, symbol, props }) {
   // console.log(props);
   const { dispatch } = props;
   // console.log(dispatch);
-  console.log(symbol);
+  // console.log(symbol);
   // /* Set the search symbol aas selected */
   dispatch(set_search_symbol(symbol));
   if (
@@ -68,7 +68,7 @@ export async function view_selected_commodity({ timeframe, symbol, props }) {
     !props.stock_data.commodity_data[symbol]["1Min"]
   ) {
     console.log("HOLD UP!  No Minute Data");
-    console.log(props.stock_data.commodity_data);
+    // console.log(props.stock_data.commodity_data);
     await getMinutelyCommodityData({
       symbol,
       props,
@@ -76,7 +76,7 @@ export async function view_selected_commodity({ timeframe, symbol, props }) {
 
     return;
   }
-  console.log("view_selected_commodity");
+  // console.log("view_selected_commodity");
   // /* set show filtered list false */
   // dispatch(show_filter_list(false));
   // /* fetch data and add to the store/charts array */
@@ -90,15 +90,15 @@ export async function view_selected_commodity({ timeframe, symbol, props }) {
   /**
    * Append some minutle data as needed
    */
-  console.log("append minute data");
-  console.log({ chart_data });
+  // console.log("append minute data");
+  // console.log({ chart_data });
   chart_data = appendMinutelyCommodityDataAsNeeded(
     props,
     chart_data,
     timeframe,
     symbol
   );
-  console.log({ chart_data });
+  // console.log({ chart_data });
 
   dispatch(add_commodity_chart_data({ symbol, chart_data, timeframe }));
   dispatch(is_loading(false));
@@ -169,28 +169,28 @@ export function appendMinutelyCommodityDataAsNeeded(
   symbol
 ) {
   let minuteData = props.stock_data.commodity_data[symbol]["1Min"];
-  console.log(minuteData);
-  console.log(`how up to date is the chart_data ${timeframe} ${symbol}`);
+  // console.log(minuteData);
+  // console.log(`how up to date is the chart_data ${timeframe} ${symbol}`);
   let lastChartDataBar = chart_data.slice(-1)[0];
-  console.log(lastChartDataBar);
-  console.log(typeof lastChartDataBar.timestamp);
+  // console.log(lastChartDataBar);
+  // console.log(typeof lastChartDataBar.timestamp);
   let lastChartDataBarTimestamp = parseInt(lastChartDataBar.timestamp);
   let nextChartDataBarTimestamp =
     lastChartDataBarTimestamp + 1000 * 60 * getMinutesForTimeframe(timeframe);
-  console.log({ lastChartDataBarTimestamp, nextChartDataBarTimestamp });
-  console.log("find the index in the minute chart data");
-  console.log({
-    lastChartDataBarTimestamp: new Date(
-      lastChartDataBarTimestamp
-    ).toLocaleString(),
-    nextChartDataBarTimestamp: new Date(
-      nextChartDataBarTimestamp
-    ).toLocaleString(),
-  });
+  // console.log({ lastChartDataBarTimestamp, nextChartDataBarTimestamp });
+  // console.log("find the index in the minute chart data");
+  // console.log({
+  //   lastChartDataBarTimestamp: new Date(
+  //     lastChartDataBarTimestamp
+  //   ).toLocaleString(),
+  //   nextChartDataBarTimestamp: new Date(
+  //     nextChartDataBarTimestamp
+  //   ).toLocaleString(),
+  // });
   let miniuteDataIndex = minuteData.findIndex(
     (d) => d.timestamp >= nextChartDataBarTimestamp
   );
-  console.log({ miniuteDataIndex });
+  // console.log({ miniuteDataIndex });
   if (miniuteDataIndex < 0) {
     if (timeframe === "5Min") {
       console.log(`We need more 1Min`);
@@ -207,13 +207,13 @@ export function appendMinutelyCommodityDataAsNeeded(
   } else {
     minuteData = minuteData.slice(miniuteDataIndex);
   }
-  console.log({ minuteData });
+  // console.log({ minuteData });
   let timeFrameMinutes = getMinutesForTimeframe(timeframe);
   let consolidatedMinuteData = consolidateMinutelyData(
     minuteData,
     timeFrameMinutes
   );
-  console.log({ consolidatedMinuteData });
+  // console.log({ consolidatedMinuteData });
   chart_data = [...chart_data, ...consolidatedMinuteData];
   return chart_data;
 }
@@ -236,7 +236,7 @@ function consolidateMinutelyData(minuteData, timeFrameMinutes) {
   minuteData.forEach((d, i) => {
     if (d.close === 0) {
       console.error("THIS IS AN EERRROOR");
-      console.log({ d, i });
+      // console.log({ d, i });
     }
     if (!start) start = d.timestamp;
 
@@ -266,11 +266,11 @@ function consolidateMinutelyData(minuteData, timeFrameMinutes) {
     }
     consolidatedBar.volume += d.volume;
   });
-  console.log({ consolidatedBar });
+  // console.log({ consolidatedBar });
 
   //buggy?  likely there is partial data still in consolidatedBar
   consolidatedData = [...consolidatedData, consolidatedBar];
-  console.log({ consolidatedData });
+  // console.log({ consolidatedData });
   return consolidatedData;
 }
 export function getMinutesForTimeframe(timeframe) {

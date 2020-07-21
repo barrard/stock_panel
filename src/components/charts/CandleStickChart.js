@@ -1,6 +1,6 @@
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React from "react";
 import { connect } from "react-redux";
-import { Link, withRouter } from "react-router-dom";
+import {  withRouter } from "react-router-dom";
 import styled from "styled-components";
 import { axisBottom, axisRight, axisLeft, axisTop } from "d3-axis";
 // import { useDispatch, useSelector } from "react-redux";
@@ -12,13 +12,13 @@ import {
 import TradesList from "./chartHelpers/TradesList.js";
 import { zoom } from "d3-zoom";
 import { scaleLinear, scaleTime } from "d3-scale";
-import { extent, max, min, mean } from "d3-array";
+import { extent, max, min } from "d3-array";
 import { select, event, mouse } from "d3-selection";
 import { drag } from "d3-drag";
 import ToggleIndicators from "./chartHelpers/ToggleIndicators.js";
-import MomoIndicator from "./chartHelpers/indicators/MomoIndicator.js";
-import CCI_Indicator from "./chartHelpers/indicators/CCI_Indicator.js";
-import StochasticsIndicator from "./chartHelpers/indicators/StochasticsIndicator.js";
+// import MomoIndicator from "./chartHelpers/indicators/MomoIndicator.js";
+// import CCI_Indicator from "./chartHelpers/indicators/CCI_Indicator.js";
+// import StochasticsIndicator from "./chartHelpers/indicators/StochasticsIndicator.js";
 import Loader from "../smallComponents/LoadingSpinner.js";
 import {
   priceRangeGreen,
@@ -224,7 +224,7 @@ class CandleStickChart extends React.Component {
         // console.log("WTF WE ALREADY HAVE DATA>!");
         this.setNewData(symbol, timeframe);
       }
-      console.log({ regressionData });
+      // console.log({ regressionData });
       //HArd to read, but this spreads all the regression settings into state
       // this is subject to changing however and should go away
       this.setState({
@@ -236,15 +236,6 @@ class CandleStickChart extends React.Component {
     if (!this.props.stock_data.has_symbols_data) {
       return console.log("nothing is ready yet");
     }
-    let prevStockData = prevProps.stock_data;
-    // console.log({ prevState, prevStockData });
-    // console.log("state");
-    // console.log(this.state);
-    // console.log("props");
-    // console.log(this.props.stock_data);
-
-    // console.log({ prevData, currentData });
-    // this.handleDataChange(prevState, prevProps);
 
     this.handleTimeFrameChange(prevState, prevProps);
     this.handleSymbolChange(prevState, prevProps);
@@ -254,7 +245,7 @@ class CandleStickChart extends React.Component {
 
   didWidthChange(prevPops) {
     if (prevPops.width != this.props.width) {
-      console.log("Update width");
+      // console.log("Update width");
       let { width } = this.props;
       let innerWidth = width - (margin.left + margin.right);
       let { timeScale, volProfileScale } = this.state;
@@ -302,7 +293,7 @@ class CandleStickChart extends React.Component {
     // });
     let { open, high, low, close, volume, timestamp } = currentTickData;
     if (currentTickData.timestamp >= nextChartDataBarTimestamp) {
-      console.log("ADD THE NEW BAR");
+      // console.log("ADD THE NEW BAR");
       let newBar = {
         open,
         high,
@@ -317,7 +308,7 @@ class CandleStickChart extends React.Component {
       currentData.push(newBar);
       currentRawOHLCData.push(newBar);
     } else {
-      console.log("JUST ADD THIS DATA TO THE last data bar");
+      // console.log("JUST ADD THIS DATA TO THE last data bar");
       // console.log(currentTickData);
 
       lastBar.close = close;
@@ -491,12 +482,12 @@ class CandleStickChart extends React.Component {
       let prevData = prevProps.stock_data.commodity_data;
       let currentData = this.props.stock_data.commodity_data;
       if (prevData != currentData && currentData) {
-        console.log("dataChanged");
-        console.log({ prevData, currentData });
-        console.log("load up some COMMODITY data");
+        // console.log("dataChanged");
+        // console.log({ prevData, currentData });
+        // console.log("load up some COMMODITY data");
 
         let onlyAddNewBar = sameTimeFrame && sameSymbol ? true : false;
-        console.log({ onlyAddNewBar, sameSymbol, sameTimeFrame });
+        // console.log({ onlyAddNewBar, sameSymbol, sameTimeFrame });
         this.setNewData(symbol, timeframe, onlyAddNewBar);
       }
     }
@@ -514,7 +505,7 @@ class CandleStickChart extends React.Component {
       const timeframe = currentTimeframe;
       const props = this.props;
       if (this.props.type === "stock") {
-        console.log("TIM FRAME CHGANGE");
+        // console.log("TIM FRAME CHGANGE");
         if (
           !this.props.stock_data.charts[symbol] ||
           !this.props.stock_data.charts[symbol][timeframe]
@@ -606,7 +597,7 @@ class CandleStickChart extends React.Component {
         return toastr.error(`no chart data found for ${symbol}`);
       //TODO get Stock regression values??
 
-      console.log(stock_data.charts);
+      // console.log(stock_data.charts);
       currentData = stock_data.charts[symbol][timeframe];
       // currentRawData = stock_data.rawCharts[symbol][timeframe];
     }
@@ -786,9 +777,6 @@ class CandleStickChart extends React.Component {
       .attr("stroke-width", 2);
     volProfileAxisG.append("text").attr("id", `topVolProfileTagText`);
 
-    //append the crosshair marker
-    // addAxisAnnotationElements(timeAxisG, "bottomTimeTag");
-    // addAxisAnnotationElements(priceAxisG, "rightPriceTag");
 
     let chartWindow = svg
       // .append('rect').attr('width', this.state.innerWidth).attr('height', this.state.innerHeight)
@@ -796,17 +784,16 @@ class CandleStickChart extends React.Component {
       .attr("class", "chartWindow")
       .attr("transform", `translate(${margin.left},${margin.top})`)
       .attr("fill", "black");
-    /* CrossHair */
-    // create crosshairs
-
-    CenterLabel({
-      symbol: this.state.symbol,
-      timeframe: this.state.timeframe,
-      chartWindow,
-      x: "45%",
-      y: margin.top + this.state.innerHeight / 2,
-    });
-
+      
+      CenterLabel({
+        symbol: this.state.symbol,
+        timeframe: this.state.timeframe,
+        chartWindow,
+        x: "45%",
+        y: margin.top + this.state.innerHeight / 2,
+      });
+      
+      /* CrossHair */
     var crosshair = DrawCrossHair(chartWindow);
 
     chartWindow
@@ -994,7 +981,7 @@ class CandleStickChart extends React.Component {
 
   draw(data) {
     if (!this.state.timeAxis) return console.log("Disaster averted!");
-    // console.log('Draw CandleStick')
+    console.log(this.state.timeAxis)
     let drawData;
     if (data) {
       drawData = data;
@@ -1220,8 +1207,8 @@ class CandleStickChart extends React.Component {
 
   async updateVolProfile() {
     
-    console.log(this.state);
-    console.log(this.props);
+    // console.log(this.state);
+    // console.log(this.props);
 
     let { symbol, timeframe, volProfileBins, volProfileBarCount } = this.state;
     let regData = this.props.stock_data.commodityRegressionData;

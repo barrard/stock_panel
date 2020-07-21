@@ -23,7 +23,7 @@ class TradesList extends React.Component {
 
     let symbol = props.stock_data.search_symbol;
     let trades = props.trades || [];
-    console.log(trades);
+    // console.log(trades);
     this.state = {
       filters: {
         Open: true,

@@ -1,7 +1,4 @@
-import { select } from "d3-selection";
 
-import diff from "../extrema.js";
-import { scaleBand } from "d3";
 
 export function appendVolProfileBar({
   data,
@@ -9,7 +6,6 @@ export function appendVolProfileBar({
   classItem,
   color,
   chartWindow,
-  scales,
   x,
   y,
   width,
@@ -17,7 +13,6 @@ export function appendVolProfileBar({
   options,
 }) {
   let { opacity, strokeWidth } = options || {};
-  let { timeScale, priceScale } = scales;
   // VOLUME PROFILE
   let volProfileBars = chartWindow.selectAll(`.${classItem}`).data(data);
   volProfileBars.exit().remove();

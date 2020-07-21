@@ -98,10 +98,6 @@ order_type,
 
 }
 function handleTradeError(direction, err) {
-  console.log(err);
-  console.log(err);
-  console.log(err);
-
   if (!err) {
     toastr.error(`Error Going ${direction},  not sure why, ${err}`);
   } else if (typeof err === "string") {
@@ -251,7 +247,7 @@ async function getAllStockTrades(symbol, props) {
       });
     }
     trades = await trades.json();
-    console.log(trades);
+    // console.log(trades);
     props.dispatch(addAllStockTrades(trades, symbol));
   } catch (err) {
     console.log({ err });
@@ -260,8 +256,8 @@ async function getAllStockTrades(symbol, props) {
 }
 
 async function getCommodityRegressionValues(symbol, props) {
-  console.log("get regression values");
-  console.log(props);
+  // console.log("get regression values");
+  // console.log(props);
   if (props.stock_data.commodityRegressionData[symbol]) {
     return console.log("Already have the commodityRegressionData");
   }
@@ -277,10 +273,10 @@ async function getCommodityRegressionValues(symbol, props) {
 
 async function setTimeframeActive(id, timeframe, props) {
   try {
-    console.log({
-      id,
-      timeframe,
-    });
+    // console.log({
+    //   id,
+    //   timeframe,
+    // });
 
     let regressionData = await fetch(
       `${LOCAL_SERVER}/API/commodityRegressionSettings`,
@@ -325,6 +321,7 @@ async function saveRegressionValues({
   volProfileBarCount,
   props,
 }) {
+try {
   let regressionData = await fetch(
     `${LOCAL_SERVER}/API/commodityRegressionSettings`,
     {
@@ -343,13 +340,19 @@ async function saveRegressionValues({
       }),
     }
   );
+  debugger
   regressionData = await regressionData.json();
+  if(regressionData.err)throw regressionData.err
   console.log(regressionData);
   console.log(props);
   //use an array becasue thats what the actions is expecting
   toastr.success("Regression settings saved");
 
   props.dispatch(commodityRegressionData([regressionData]));
+} catch (err) {
+  toastr.error(`Sorry - ${err}`);
+
+}
 }
 
 // async function getIndicatorValues(
