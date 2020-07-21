@@ -156,7 +156,7 @@ class BuySellButtons extends React.Component {
         instrumentType,
       });
       console.log({ newTrade });
-      if (!newTrade) throw new Error("Didnt get a new trade back from API");
+      if (!newTrade) throw new Error({message:"Didn't get a new trade back from API"});
       else if (newTrade.err) throw newTrade.err;
 
       this.props.dispatch(opening_short(false));
