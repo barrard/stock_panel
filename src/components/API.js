@@ -408,18 +408,15 @@ async function getAllSymbolsData(dispatch) {
   dispatch(set_symbols_data(all_stock_symbols, all_commodity_symbols));
   return;
 }
-console.log();
+
 async function fetch_commodity_minutely_data({ date, symbol }) {
   // date = '6-5-2020'
   let msg = (data, date, symbol) =>
     `${data.length} bars loaded for ${new Date(
       date
     ).toLocaleString()} ${symbol}`;
-  console.log(`Fetching data for ${date} ${symbol}`);
-  try {
-    // symbol = settleSymbol(symbol);
-    //TD_data/dailyParsedTickData
-    // let API_SERVER = 'https://chartsapi.raveaboutdave.com'
+
+    try {
     let data = await fetch(
       `${API_SERVER}/TD_data/dailyParsedTickData/${date}/${symbol}`
     );

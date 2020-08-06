@@ -1,17 +1,9 @@
 import React from "react";
 import { connect } from "react-redux";
 import { Link, withRouter } from "react-router-dom";
-import { matchPath } from "react-router";
 
-import { fetch_selected_chart_data } from "./landingPageComponents/chart_data_utils.js";
-import Canvas_Chart from "./charts/Canvas_Chart.js";
-import Analysis_Chart from "./charts/Analysis_Chart.js";
 import CandleStickChart from "./charts/CandleStickChart.js";
 
-import {
-  view_selected_commodity,
-  getMinutelyCommodityData,
-} from "../components/landingPageComponents/chart_data_utils.js";
 import { set_search_symbol } from "../redux/actions/stock_actions.js";
 import TickCharts from "./charts/chartHelpers/TickCharts.js";
 const CHART_WIDTH_REDUCER = 0.9;

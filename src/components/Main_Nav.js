@@ -234,18 +234,9 @@ class Main_Nav extends React.Component {
         key={index}
         onClick={() => {
           if (isCommodity) {
-            // getMinutelyCommodityData({ date:'3-13-2020', symbol, props })
-            // view_selected_commodity({ timeframe:'intraday', symbol, props })
-            // view_selected_commodity({ timeframe:'daily', symbol, props })
-            //  view_selected_commodity({ timeframe:'weekly', symbol, props })
-            // this.props.dispatch(set_search_symbol(symbol));
-
             return props.history.push(`/commodity/${symbol}`);
           } else {
-            // this.props.dispatch(set_search_symbol(symbol));
-
             return props.history.push(`/chart/${symbol}`);
-            // return view_selected_stock({timeframe, end, symbol, props})
           }
         }}
       >
@@ -267,33 +258,24 @@ class Main_Nav extends React.Component {
   }
 
   highlight_search_letters(name, search) {
-    // console.log({ name, search });
     let index_of_search_term_name = name
       .toUpperCase()
       .indexOf(search.toUpperCase());
 
-    // console.log({ index_of_search_term_name });
     if (index_of_search_term_name >= 0) {
       var split_name = name.split("");
-
       split_name.splice(
         index_of_search_term_name + search.length,
         0,
         `</span>`
       );
-      // console.log({ split_name });
-
       split_name.splice(
         index_of_search_term_name,
         0,
         `<span class="highlight_search">`
       );
-      // console.log({ split_name });
-
       name = split_name.join("");
     }
-    // console.log(name);
-
     return { __html: name };
   }
 
