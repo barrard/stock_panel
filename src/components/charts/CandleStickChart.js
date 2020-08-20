@@ -369,7 +369,8 @@ class CandleStickChart extends React.Component {
         if (timeframe !== "1Min")
           return this.handleUpdatingOtherTimeframesOnTick(prevProps);
         this.addTickDataToOtherTimeframes(prevProps);
-        if (!stock_data.commodity_data[symbol]["1Min"]) {
+        if (!stock_data.commodity_data[symbol]||!stock_data.commodity_data[symbol]["1Min"]) {
+          getMinutelyCommodityData({symbol, props:this.props})
           return; //why don't we have 1Min data yet?
         }
         currentData = stock_data.commodity_data[symbol]["1Min"];
@@ -981,7 +982,7 @@ class CandleStickChart extends React.Component {
 
   draw(data) {
     if (!this.state.timeAxis) return console.log("Disaster averted!");
-    console.log(this.state.timeAxis)
+    // console.log(this.state.timeAxis)
     let drawData;
     if (data) {
       drawData = data;

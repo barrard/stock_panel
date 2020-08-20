@@ -214,7 +214,7 @@ function VolumeProfileBars({
 
   let { binnedProfile, HVN, LVN, POC, valueArea } = dataPoints;
   let bins = binnedProfile;
-
+debugger
   let rawBinProfileValues = bins.map(
     ({ up, down, neutral }) => up + down + neutral
   );
