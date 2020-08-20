@@ -199,19 +199,20 @@ export default (state = initial_state, action) => {
     case "ADD_NEW_TICK": {
       let { new_tick_data } = action;
       let currentTickData = { ...state.currentTickData };
-      for (let symbol in state.commodity_data) { 
-        if (!currentTickData[symbol]) currentTickData[symbol] = {};
-        currentTickData[symbol] = new_tick_data[symbol];
-        if(!currentTickData[symbol]){
-          return state
-        }
-        currentTickData[symbol].timestamp = new Date(
-          currentTickData[symbol].start_timestamp
-        ).getTime();
-      }
+      // for (let symbol in state.commodity_data) { 
+      //   if (!currentTickData[symbol]) currentTickData[symbol] = {};
+      //   currentTickData[symbol] = new_tick_data[symbol];
+      //   if(!currentTickData[symbol]){
+      //     return state
+      //   }
+      //   currentTickData[symbol].timestamp = new Date(
+      //     currentTickData[symbol].start_timestamp
+      //   ).getTime();
+      // }
       return {
         ...state,
-        currentTickData
+        prevTickDate:currentTickData,
+        currentTickData:new_tick_data
       };
     }
 

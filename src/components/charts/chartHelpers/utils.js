@@ -7,14 +7,14 @@ import { ReactReduxContext } from "react-redux";
 export function formatData(data) {
   if (data.length && data[0].t) {
     //alpaca data
-    data = data.map(d => ({
-      timestamp: d.t*1000,
+    data = data.map((d) => ({
+      timestamp: d.t * 1000,
       open: d.o,
       high: d.h,
       close: d.c,
-      low: d.l
+      low: d.l,
     }));
-    return data
+    return data;
   } else {
     return data;
   }
@@ -22,7 +22,7 @@ export function formatData(data) {
 
 export function forwardFill(data) {
   //find the time line
-  console.log({data})
+  console.log({ data });
   let timeframe = determineTimeFrame(data);
   data = fillMissingData(data, timeframe);
   // console.log('================================')
@@ -32,7 +32,7 @@ export function forwardFill(data) {
 }
 
 export function fillMissingData(data, timeframe) {
-  if(!data)return
+  if (!data) return;
   let missingDataObj = {};
   data.forEach((d, i) => {
     if (i === data.length - 1) return;
@@ -51,7 +51,7 @@ export function fillMissingData(data, timeframe) {
         high: lastClose,
         low: lastClose,
         volume: 0,
-        count: Math.round(diff / timeframe) - 1
+        count: Math.round(diff / timeframe) - 1,
       };
       missingDataObj[i + 1] = blankDay;
     }
@@ -60,7 +60,7 @@ export function fillMissingData(data, timeframe) {
   // console.log({ missingDataObj })
   Object.keys(missingDataObj)
     .reverse()
-    .forEach(index => {
+    .forEach((index) => {
       let { count } = missingDataObj[index];
       delete missingDataObj[index].count;
       for (let x = 0; x < count; x++) {
@@ -73,7 +73,7 @@ export function fillMissingData(data, timeframe) {
 }
 
 export function determineTimeFrame(data) {
-  if(!data)return
+  if (!data) return;
   let diffObj = {};
   // let prev = 0;
   data.forEach((d, i) => {
@@ -101,47 +101,53 @@ export function determineTimeFrame(data) {
   return timeframe;
 }
 
-export function priceRangeRed(defs){
-  let gradient = defs.append('linearGradient')
-  .attr('id', 'priceLevelGradientRed')
-  .attr('gradientTransform',"rotate(90)")
-  gradient.append('stop')
-  .attr('offset', '0%')
-  .attr('stop-opacity', '.4')
-  .attr('stop-color','red')
+export function priceRangeRed(defs) {
+  let gradient = defs
+    .append("linearGradient")
+    .attr("id", "priceLevelGradientRed")
+    .attr("gradientTransform", "rotate(90)");
+  gradient
+    .append("stop")
+    .attr("offset", "0%")
+    .attr("stop-opacity", ".4")
+    .attr("stop-color", "red");
 
-  gradient.append('stop')
-  .attr('stop-color','red')
-  .attr('offset', '20%')
-  .attr('stop-opacity', '0.1')
+  gradient
+    .append("stop")
+    .attr("stop-color", "red")
+    .attr("offset", "20%")
+    .attr("stop-opacity", "0.1");
 
-  gradient.append('stop')
-  .attr('stop-color','red')
-  .attr('offset', '50%')
-  .attr('stop-opacity', '0.0')
+  gradient
+    .append("stop")
+    .attr("stop-color", "red")
+    .attr("offset", "50%")
+    .attr("stop-opacity", "0.0");
 }
 
+export function priceRangeGreen(defs) {
+  let gradient = defs
+    .append("linearGradient")
+    .attr("id", "priceLevelGradientGreen")
+    .attr("gradientTransform", "rotate(90)");
+  gradient
+    .append("stop")
+    .attr("stop-color", "green")
+    .attr("offset", "50%")
+    .attr("stop-opacity", "0.0");
 
-export function priceRangeGreen(defs){
-  let gradient = defs.append('linearGradient')
-  .attr('id', 'priceLevelGradientGreen')
-  .attr('gradientTransform',"rotate(90)")
-  gradient.append('stop')
-  .attr('stop-color','green')
-  .attr('offset', '50%')
-  .attr('stop-opacity', '0.0')
-  
-  gradient.append('stop')
-  .attr('stop-color','green')
-  .attr('offset', '80%')
-  .attr('stop-opacity', '0.2')
-  
-  gradient.append('stop')
-  .attr('offset', '100%')
-  .attr('stop-opacity', '0.4')
-  .attr('stop-color','green')
+  gradient
+    .append("stop")
+    .attr("stop-color", "green")
+    .attr("offset", "80%")
+    .attr("stop-opacity", "0.2");
+
+  gradient
+    .append("stop")
+    .attr("offset", "100%")
+    .attr("stop-opacity", "0.4")
+    .attr("stop-color", "green");
 }
-
 
 export function dropShadow(defs) {
   // filters go in defs element
@@ -172,10 +178,7 @@ export function dropShadow(defs) {
   // Control opacity of shadow filter
   var feTransfer = filter.append("feComponentTransfer");
 
-  feTransfer
-    .append("feFuncA")
-    .attr("type", "linear")
-    .attr("slope", 0.2);
+  feTransfer.append("feFuncA").attr("type", "linear").attr("slope", 0.2);
 
   // overlay original SourceGraphic over translated blurred opacity by using
   // feMerge filter. Order of specifying inputs is important!
@@ -185,7 +188,7 @@ export function dropShadow(defs) {
   feMerge.append("feMergeNode").attr("in", "SourceGraphic");
 }
 
-export function doZoomIn({partialOHLCdata}, mouseZoomPOS) {
+export function doZoomIn({ partialOHLCdata }, mouseZoomPOS) {
   let firstHalf = partialOHLCdata.slice(
     0,
     partialOHLCdata.length * mouseZoomPOS + 1
@@ -209,15 +212,19 @@ export function doZoomIn({partialOHLCdata}, mouseZoomPOS) {
   return data;
 }
 
-export function doZoomOut({allOHLCdata, partialOHLCdata, xName='timestamp'}) {
-  if(!allOHLCdata || !partialOHLCdata)return
+export function doZoomOut({
+  allOHLCdata,
+  partialOHLCdata,
+  xName = "timestamp",
+}) {
+  if (!allOHLCdata || !partialOHLCdata) return;
   let candleZoom = parseInt(partialOHLCdata.length * 0.05) || 1;
 
   let first = partialOHLCdata[0];
   let last = partialOHLCdata[partialOHLCdata.length - 1];
   if (!first || !last) return; //fail safe?
-  let firstIndex = allOHLCdata.findIndex(d => d[xName] === first[xName]);
-  let lastIndex = allOHLCdata.findIndex(d => d[xName] === last[xName]);
+  let firstIndex = allOHLCdata.findIndex((d) => d[xName] === first[xName]);
+  let lastIndex = allOHLCdata.findIndex((d) => d[xName] === last[xName]);
   // console.log({firstIndex, lastIndex})
   let newFirstData = allOHLCdata.slice(firstIndex - candleZoom, firstIndex);
   let newLastData = allOHLCdata.slice(lastIndex, lastIndex + candleZoom);
@@ -227,45 +234,43 @@ export function doZoomOut({allOHLCdata, partialOHLCdata, xName='timestamp'}) {
 }
 
 /**
- * 
+ *
  * @param {Objecy} values object {x:time, y:price}
- * we want to remove duplicate prices 
+ * we want to remove duplicate prices
  */
-export function dropDuplicateMinMax(values){
+export function dropDuplicateMinMax(values) {
   let valCheck = [];
   let newValues = [];
-  values.forEach(v=>{
-    let index = valCheck.indexOf(v.y)
-    if(index < 0) {
-      valCheck.push(v.y)
-      newValues.push(v)
+  values.forEach((v) => {
+    let index = valCheck.indexOf(v.y);
+    if (index < 0) {
+      valCheck.push(v.y);
+      newValues.push(v);
     }
-  })
+  });
 
-return newValues
+  return newValues;
 }
 
-export function pythagorean(x1, x2, y1, y2){
-  let sideA, sideB
-  sideA = Math.abs(x1-x2)
-  sideB = Math.abs(y1 - y2)
+export function pythagorean(x1, x2, y1, y2) {
+  let sideA, sideB;
+  sideA = Math.abs(x1 - x2);
+  sideB = Math.abs(y1 - y2);
 
   return Math.sqrt(Math.pow(sideA, 2) + Math.pow(sideB, 2));
 }
 
-export function xOfY({m, b, y}){
-  
+export function xOfY({ m, b, y }) {
   // y = m*x + b
-  let x = (y-b)/m
-  return x
+  let x = (y - b) / m;
+  return x;
 }
-export function slopeAndIntercept({x1, x2, y1, y2}){
-  let m = slopeLine({ x1, x2, y1, y2 })
-  let b = intercept({x:x1, y:y1}, m)
-  let l = pythagorean(x1, x2, y1, y2)
+export function slopeAndIntercept({ x1, x2, y1, y2 }) {
+  let m = slopeLine({ x1, x2, y1, y2 });
+  let b = intercept({ x: x1, y: y1 }, m);
+  let l = pythagorean(x1, x2, y1, y2);
 
-  return {b, m, l}
-
+  return { b, m, l };
 }
 export function slopeLine({ x1, x2, y1, y2 }) {
   return slope({ x: x1, y: y1 }, { x: x2, y: y2 });
@@ -276,7 +281,7 @@ export function slope(a, b) {
   if (a.x === b.x) {
     return null;
   }
-  if((b.y === a.y))return 0
+  if (b.y === a.y) return 0;
   return (b.y - a.y) / (b.x - a.x);
 }
 
@@ -413,7 +418,6 @@ export function xIntercept(a, m) {
 
 // }
 
-
 export const TICKS = {
   ZT: 0.0039,
   ZF: 0.0078,
@@ -477,3 +481,39 @@ export const TICKS = {
   HE: 0.025,
   LE: 0.025,
 };
+
+export const tickValues = {
+  GC: 10,
+  SI: 25,
+  HG: 12.5,
+  PL: 5,
+  PA: 10,
+  ZC: 12.5,
+  KE: 12.5,
+  ZO: 12.5,
+  ZS: 12.5,
+  ZM: 10,
+  ZL: 6,
+  ZW: 12.5,
+  NQ: 5,
+  RTY: 5,
+  ES: 12.5,
+  YM: 5,
+  BTC: 25,
+  BZ: 10,
+  RB: 4.2,
+  HO: 4.2,
+  CL: 10,
+  NG: 10,
+  LBS: 11,
+  GF: 12.5,
+  HE: 10,
+  LE: 10,
+};
+export function getDollarProfit(trade) {
+  let { PL, symbol } = trade;
+  let ticks = TICKS[symbol];
+  let tp = PL / ticks;
+  let dollarAmount = (PL / ticks) * tickValues[symbol];
+  return +dollarAmount.toFixed(1);
+}

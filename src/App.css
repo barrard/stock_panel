@@ -180,7 +180,12 @@ text{
   stroke: darkorchid;
 }
 
-
+.fullWidth{
+  width:100%;
+}
+.noWrap{
+  white-space: nowrap;
+}
 .white{
   stroke:white;
   color: white;
@@ -261,6 +266,14 @@ body { height: 100%; }
 
 .scroll_x{
   overflow-x: scroll
+}
+.lightRow{
+  background: gray;
+  /* padding: 5px; */
+}
+.darkRow{
+  background: black;
+  /* padding: 5px; */
 }
 .ticker_vol{
   color: white;

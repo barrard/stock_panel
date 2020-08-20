@@ -7,11 +7,13 @@ import { connect } from "react-redux";
 import "./App.css";
 import Socket from "./components/Socket.js";
 import QuoteContainer from "./components/QuoteContainer.js";
+import StockBot from "./components/Stockbot.js";
 // import ChartAnalysis from "./components/ChartAnalysis.js";
 import LandingPage from "./components/landingPage.js";
 import SignupPage from "./components/SignupPage.js";
 import LoginPage from "./components/LoginPage.js";
 import StockChart from "./components/StockChartPage.js";
+import AccountProfile from "./components/AccountProfilePage.js";
 
 import CommodityChartPage from "./components/CommodityChartPage.js";
 import defaultFilterList from "./components/QuoteComponents/DefaultFilterList.js";
@@ -20,9 +22,9 @@ import {
   updateCommodityData,
   addCommodityTrade,
   // updateCommodityTrade,
-  updateStockData
+  updateStockData,
 } from "./redux/actions/stock_actions.js";
-import UpdateToastsWithRedirect from './components/smallComponents/RedirrectToastrUpdates.js'
+import UpdateToastsWithRedirect from "./components/smallComponents/RedirrectToastrUpdates.js";
 // import TradeBot from "./components/TradeBot/TradeBot.js";
 import API from "./components/API.js";
 // let allData = { ES: [], CL: [], GC: [] };
@@ -53,21 +55,17 @@ class App extends React.Component {
     });
     Socket.on("stock_quotes", (stockQuotes) => {
       //dispatch(updateCommodityData(newTickData, 'tick'))
-      console.log('stockQuotes');
+      console.log("stockQuotes");
       console.log(stockQuotes);
-      dispatch(updateStockData(stockQuotes, "tick"))
-
+      dispatch(updateStockData(stockQuotes, "tick"));
     });
-    Socket.on("current_minute_data", (newTickData) =>{
-      dispatch(updateCommodityData(newTickData, "tick"))
-    }
-    );
+    Socket.on("current_minute_data", (newTickData) => {
+      dispatch(updateCommodityData(newTickData, "tick"));
+    });
     Socket.on("stockBotEnterTrade", (newTrade) => {
       console.log("stockBotEnterTrade ENTERING A TRADE");
       return dispatch(addCommodityTrade(newTrade, newTrade.symbol));
     });
-    
-
   }
 
   render() {
@@ -79,30 +77,37 @@ class App extends React.Component {
 
         <div>
           <Route exact path="/" component={LandingPage} />
-
           <Route
             exact
             path="/commodities"
             // component={QuoteContainer}
             render={(props) => <QuoteContainer {...props} Socket={Socket} />}
+          />{" "}
+          <Route
+            exact
+            path="/stockbot"
+            // component={QuoteContainer}
+            render={(props) => <StockBot {...props} Socket={Socket} />}
           />
           <Route
             path="/chart/:symbol"
             render={(props) => <StockChart {...props} Socket={Socket} />}
           />
-
           <Route
             path="/commodity/:symbol"
             render={(props) => (
               <CommodityChartPage {...props} Socket={Socket} />
             )}
           />
-
+          <Route
+            path="/account-profile"
+            render={(props) => (
+              <AccountProfile {...props} Socket={Socket} />
+            )}
+          />
           {/* Keep at bottom */}
-            <Route exact path="/sign-up" component={SignupPage} />
-         
-            <Route path="/login" component={LoginPage} />
-     
+          <Route exact path="/sign-up" component={SignupPage} />
+          <Route path="/login" component={LoginPage} />
         </div>
       </Router>
     );
@@ -115,7 +120,7 @@ function mapStateToProps(state) {
   return state;
 }
 
-export default connect(mapStateToProps)((App));
+export default connect(mapStateToProps)(App);
 
 const AppContainer = styled.div`
   position: relative;

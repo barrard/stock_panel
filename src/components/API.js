@@ -31,7 +31,19 @@ export default {
   getVolProfile,
   isLoggedIn,
   fetchSEC_Filings,
+  fetchStockBotTrades,
 };
+
+async function fetchStockBotTrades() {
+  let trades = await fetch(
+    `${process.env.REACT_APP_API_SERVER}/API/stockbot-trades`,
+    {
+      method: "GET",
+    }
+  );
+  trades = await trades.json()
+  return trades
+}
 
 async function handleResponse(res) {
   try {
@@ -83,19 +95,23 @@ const API_SERVER = process.env.REACT_APP_STOCK_DATA_URL;
 const LOCAL_SERVER = process.env.REACT_APP_LOCAL_DATA;
 
 function handleTradeSuccess(trade) {
-
   let {
     buyOrSell,
-entryPrice,
-orderStatus,
-order_limit,symbol,
-order_type,
-  } = trade
+    entryPrice,
+    orderStatus,
+    order_limit,
+    symbol,
+    order_type,
+  } = trade;
   let toastrOpts = {
-    timeOut:6000
-  }
-  toastr.success(`${order_type} order to ${buyOrSell} ${symbol} @${entryPrice || order_limit } has been ${orderStatus}`, toastrOpts);
-
+    timeOut: 6000,
+  };
+  toastr.success(
+    `${order_type} order to ${buyOrSell} ${symbol} @${
+      entryPrice || order_limit
+    } has been ${orderStatus}`,
+    toastrOpts
+  );
 }
 function handleTradeError(direction, err) {
   if (!err) {
@@ -177,11 +193,10 @@ async function goShort({
     });
     orderShort = await orderShort.json();
     console.log(orderShort);
-    if (!orderShort.resp || orderShort.err){
-
+    if (!orderShort.resp || orderShort.err) {
       return handleTradeError("Short", orderShort.err);
     }
-    handleTradeSuccess(orderShort.resp)
+    handleTradeSuccess(orderShort.resp);
 
     return orderShort.resp;
   } catch (err) {
@@ -321,38 +336,37 @@ async function saveRegressionValues({
   volProfileBarCount,
   props,
 }) {
-try {
-  let regressionData = await fetch(
-    `${LOCAL_SERVER}/API/commodityRegressionSettings`,
-    {
-      credentials: "include",
-      ...POST({
-        timeframe,
-        fibonacciMinMax,
-        fibonacciSensitivity,
-        symbol,
-        minMaxTolerance,
-        regressionErrorLimit,
-        priceLevelMinMax,
-        priceLevelSensitivity,
-        volProfileBins,
-        volProfileBarCount,
-      }),
-    }
-  );
-  debugger
-  regressionData = await regressionData.json();
-  if(regressionData.err)throw regressionData.err
-  console.log(regressionData);
-  console.log(props);
-  //use an array becasue thats what the actions is expecting
-  toastr.success("Regression settings saved");
+  try {
+    let regressionData = await fetch(
+      `${LOCAL_SERVER}/API/commodityRegressionSettings`,
+      {
+        credentials: "include",
+        ...POST({
+          timeframe,
+          fibonacciMinMax,
+          fibonacciSensitivity,
+          symbol,
+          minMaxTolerance,
+          regressionErrorLimit,
+          priceLevelMinMax,
+          priceLevelSensitivity,
+          volProfileBins,
+          volProfileBarCount,
+        }),
+      }
+    );
+    debugger;
+    regressionData = await regressionData.json();
+    if (regressionData.err) throw regressionData.err;
+    console.log(regressionData);
+    console.log(props);
+    //use an array becasue thats what the actions is expecting
+    toastr.success("Regression settings saved");
 
-  props.dispatch(commodityRegressionData([regressionData]));
-} catch (err) {
-  toastr.error(`Sorry - ${err}`);
-
-}
+    props.dispatch(commodityRegressionData([regressionData]));
+  } catch (err) {
+    toastr.error(`Sorry - ${err}`);
+  }
 }
 
 // async function getIndicatorValues(
@@ -416,7 +430,7 @@ async function fetch_commodity_minutely_data({ date, symbol }) {
       date
     ).toLocaleString()} ${symbol}`;
 
-    try {
+  try {
     let data = await fetch(
       `${API_SERVER}/TD_data/dailyParsedTickData/${date}/${symbol}`
     );

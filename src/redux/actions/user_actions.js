@@ -29,7 +29,7 @@ export function logout_user(props) {
 }
 
 export function set_user_is_logged_in(user) {
-  toastr.success(`Welcome back ${user.firstname}`);
+  toastr.success(`Welcome back ${user.primary_email}`);
 
   return {
     type: "SET_USER_IS_LOGGED_IN",
