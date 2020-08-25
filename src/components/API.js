@@ -423,37 +423,38 @@ async function getAllSymbolsData(dispatch) {
   return;
 }
 
-async function fetch_commodity_minutely_data({ date, symbol }) {
+async function fetch_commodity_minutely_data({ from, to, symbol }) {
   // date = '6-5-2020'
-  let msg = (data, date, symbol) =>
+  let msg = (data, from, symbol) =>
     `${data.length} bars loaded for ${new Date(
-      date
+      to
     ).toLocaleString()} ${symbol}`;
 
   try {
     let data = await fetch(
-      `${API_SERVER}/TD_data/dailyParsedTickData/${date}/${symbol}`
+      `${API_SERVER}/TD_data/dailyParsedTickData/${symbol}/${from}/${to}`
     );
     data = await data.json();
     //the data is newest to oldest, better fix that
     data = data.sort((a, b) => a.timestamp - b.timestamp);
 
-    console.log({ data, date, symbol });
+    console.log({ data, from, symbol });
     // console.log('TOASTR')
-    toastr.success(`Data loaded`, msg(data, date, symbol));
+    toastr.success(`Data loaded`, msg(data, from, symbol));
     return data;
   } catch (err) {
     console.log(err);
     let data = [];
-    toastr.success(`No Data loaded`, msg(data, date, symbol));
+    toastr.success(`No Data loaded`, msg(data, from, symbol));
     return data;
   }
 }
 
-async function fetchCommodityData({ timeframe, symbol }) {
+async function fetchCommodityData({ timeframe, symbol,
+  from, to }) {
   console.log(LOCAL_SERVER);
 
-  let data = await fetch(`${LOCAL_SERVER}/back_data/${timeframe}/${symbol}`);
+  let data = await fetch(`${LOCAL_SERVER}/back_data/${timeframe}/${symbol}/${from}/${to}`);
   data = await data.json();
   console.log({ data });
   // console.log('TOASTR')

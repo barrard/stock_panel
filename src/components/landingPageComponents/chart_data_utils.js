@@ -17,16 +17,10 @@ export function appendTickToData(timeframe, symbol) {
   console.log({ timeframe, symbol });
 }
 
-export async function getMinutelyCommodityData({ date, symbol, props }) {
-  // console.log(date)
-  if (!date) {
-    // date = new Date()
-    // .toLocaleString()
-    // .split(",")[0]
-    // .replace("/", "-")
-    // .replace("/", "-");
-    date = new Date().getTime();
-  }else date = new Date(date).getTime()
+export async function getMinutelyCommodityData({ symbol, props, from, to }) {
+  from = from || 0
+  to = to || new Date().getTime()
+
   // date = '6-4-2020'
   // console.log({ date });
   const { dispatch } = props;
@@ -40,7 +34,7 @@ export async function getMinutelyCommodityData({ date, symbol, props }) {
    */
   // /* fetch data and add to the store/charts array */
   dispatch(is_loading(true));
-  let chart_data = await API.fetch_commodity_minutely_data({ date, symbol });
+  let chart_data = await API.fetch_commodity_minutely_data({ from,to, symbol });
 
   // console.log(chart_data);
 
@@ -63,41 +57,54 @@ export async function view_selected_commodity({ timeframe, symbol, props }) {
   // console.log(symbol);
   // /* Set the search symbol aas selected */
   dispatch(set_search_symbol(symbol));
-  if (
-    !props.stock_data.commodity_data[symbol] ||
-    !props.stock_data.commodity_data[symbol]["1Min"]
-  ) {
-    console.log("HOLD UP!  No Minute Data");
-    // console.log(props.stock_data.commodity_data);
-    await getMinutelyCommodityData({
-      symbol,
-      props,
-    });
+  // if (
+  //   !props.stock_data.commodity_data[symbol] ||
+  //   !props.stock_data.commodity_data[symbol]["1Min"]
+  // ) {
+  //   console.log("HOLD UP!  No Minute Data");
+  //   // console.log(props.stock_data.commodity_data);
+  //   await getMinutelyCommodityData({
+  //     symbol,
+  //     props,
+  //   });
 
-    return;
-  }
+  //   return;
+  // }
   // console.log("view_selected_commodity");
   // /* set show filtered list false */
   // dispatch(show_filter_list(false));
   // /* fetch data and add to the store/charts array */
   dispatch(is_loading(true));
-  let chart_data = await API.fetchCommodityData({ timeframe, symbol });
-  if (chart_data.err ) return dispatch(is_loading(false));
-  if(!chart_data.length){
-    toastr.info('No Data Available')
-    return dispatch(is_loading(false))
+  let currentData = props.stock_data.commodity_data[symbol][timeframe];
+  let to = new Date().getTime()
+  let from = 0
+  if(currentData){
+
+    to = currentData[0].timestamp
+    
+  }
+  let chart_data = await API.fetchCommodityData({
+    timeframe,
+    symbol,
+    from,
+    to,
+  });
+  if (chart_data.err) return dispatch(is_loading(false));
+  if (!chart_data.length) {
+    toastr.info("No Data Available");
+    return dispatch(is_loading(false));
   }
   /**
    * Append some minutle data as needed
    */
   // console.log("append minute data");
   // console.log({ chart_data });
-  chart_data = appendMinutelyCommodityDataAsNeeded(
-    props,
-    chart_data,
-    timeframe,
-    symbol
-  );
+  // chart_data = appendMinutelyCommodityDataAsNeeded(
+  //   props,
+  //   chart_data,
+  //   timeframe,
+  //   symbol
+  // );
   // console.log({ chart_data });
 
   dispatch(add_commodity_chart_data({ symbol, chart_data, timeframe }));
@@ -115,7 +122,7 @@ export async function view_selected_stock({ timeframe, end, symbol, props }) {
   // if (timeframe === "weekly") {
   //   console.log("TODO make weekly function");
   //   timeframe = "day";
-  // } 
+  // }
   const { dispatch } = props;
 
   // /* Set the search symbol aas selected */
@@ -124,18 +131,17 @@ export async function view_selected_stock({ timeframe, end, symbol, props }) {
   dispatch(show_filter_list(false));
   // /* fetch data and add to the store/charts array */
   dispatch(is_loading(true));
- try {
-   debugger
-  const chartData = await API.fetchStockData({ timeframe, symbol, end });
-  console.log({ chartData });
-  
-  dispatch(add_chart_data({symbol, chartData, timeframe}));
-  dispatch(is_loading(false));
- } catch (err) {
-   console.log(err)
-  dispatch(is_loading(false));
-   
- }
+  try {
+    debugger;
+    const chartData = await API.fetchStockData({ timeframe, symbol, end });
+    console.log({ chartData });
+
+    dispatch(add_chart_data({ symbol, chartData, timeframe }));
+    dispatch(is_loading(false));
+  } catch (err) {
+    console.log(err);
+    dispatch(is_loading(false));
+  }
 }
 
 /* HELPER METHOD */

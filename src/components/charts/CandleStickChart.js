@@ -1,6 +1,6 @@
 import React from "react";
 import { connect } from "react-redux";
-import {  withRouter } from "react-router-dom";
+import { withRouter } from "react-router-dom";
 import styled from "styled-components";
 import { axisBottom, axisRight, axisLeft, axisTop } from "d3-axis";
 // import { useDispatch, useSelector } from "react-redux";
@@ -66,7 +66,7 @@ let margin = {
   bottom: 20,
   left: 65,
 };
-
+let notEndOfData = true; //used to load data on drag
 let MOUSEX = 0;
 let MOUSEY = 0;
 let prevMOUSEX = 0;
@@ -284,13 +284,6 @@ class CandleStickChart extends React.Component {
     let nextChartDataBarTimestamp =
       lastBar.timestamp + 1000 * 60 * getMinutesForTimeframe(timeframe);
 
-    // console.log({
-    //   lastBar,
-    //   lastPartialBar,
-    //   secondLastPartialBar,
-    //   nextChartDataBarTimestamp,
-    //   currentTickData,
-    // });
     let { open, high, low, close, volume, timestamp } = currentTickData;
     if (currentTickData.timestamp >= nextChartDataBarTimestamp) {
       // console.log("ADD THE NEW BAR");
@@ -309,7 +302,6 @@ class CandleStickChart extends React.Component {
       currentRawOHLCData.push(newBar);
     } else {
       // console.log("JUST ADD THIS DATA TO THE last data bar");
-      // console.log(currentTickData);
 
       lastBar.close = close;
       if (high > lastBar.high) {
@@ -347,12 +339,12 @@ class CandleStickChart extends React.Component {
         let chart_data = stock_data.commodity_data[symbol][timeframe];
         let props = this.props;
 
-        chart_data = appendMinutelyCommodityDataAsNeeded(
-          props,
-          chart_data,
-          timeframe,
-          symbol
-        );
+        // chart_data = appendMinutelyCommodityDataAsNeeded(
+        //   props,
+        //   chart_data,
+        //   timeframe,
+        //   symbol
+        // );
       }
     }
   }
@@ -369,8 +361,11 @@ class CandleStickChart extends React.Component {
         if (timeframe !== "1Min")
           return this.handleUpdatingOtherTimeframesOnTick(prevProps);
         this.addTickDataToOtherTimeframes(prevProps);
-        if (!stock_data.commodity_data[symbol]||!stock_data.commodity_data[symbol]["1Min"]) {
-          getMinutelyCommodityData({symbol, props:this.props})
+        if (
+          !stock_data.commodity_data[symbol] ||
+          !stock_data.commodity_data[symbol]["1Min"]
+        ) {
+          getMinutelyCommodityData({ symbol, props: this.props });
           return; //why don't we have 1Min data yet?
         }
         currentData = stock_data.commodity_data[symbol]["1Min"];
@@ -505,6 +500,7 @@ class CandleStickChart extends React.Component {
       let { symbol } = this.props.match.params;
       const timeframe = currentTimeframe;
       const props = this.props;
+      notEndOfData = true;
       if (this.props.type === "stock") {
         // console.log("TIM FRAME CHGANGE");
         if (
@@ -587,6 +583,7 @@ class CandleStickChart extends React.Component {
     let { type, stock_data } = this.props;
     let currentData;
     let currentRawData;
+    notEndOfData = true;
 
     if (type === "commodity") {
       if (!stock_data.commodity_data[symbol]) return console.log("new bugg?");
@@ -778,23 +775,22 @@ class CandleStickChart extends React.Component {
       .attr("stroke-width", 2);
     volProfileAxisG.append("text").attr("id", `topVolProfileTagText`);
 
-
     let chartWindow = svg
       // .append('rect').attr('width', this.state.innerWidth).attr('height', this.state.innerHeight)
       .append("g")
       .attr("class", "chartWindow")
       .attr("transform", `translate(${margin.left},${margin.top})`)
       .attr("fill", "black");
-      
-      CenterLabel({
-        symbol: this.state.symbol,
-        timeframe: this.state.timeframe,
-        chartWindow,
-        x: "45%",
-        y: margin.top + this.state.innerHeight / 2,
-      });
-      
-      /* CrossHair */
+
+    CenterLabel({
+      symbol: this.state.symbol,
+      timeframe: this.state.timeframe,
+      chartWindow,
+      x: "45%",
+      y: margin.top + this.state.innerHeight / 2,
+    });
+
+    /* CrossHair */
     var crosshair = DrawCrossHair(chartWindow);
 
     chartWindow
@@ -944,16 +940,21 @@ class CandleStickChart extends React.Component {
     mouseDRAGSART = event.x - margin.left;
     dragStartData = [...partialOHLCdata];
   }
-  dragged() {
+  async dragged() {
+    let isLoading = this.props.meta.is_loading;
+    if (isLoading) return;
     let xDragPOS = event.x - margin.left;
     let dragAmount = Math.abs(xDragPOS - mouseDRAGSART);
     let barWidth = this.state.innerWidth / dragStartData.length;
     let barCount = parseInt(dragAmount / barWidth);
+    // console.log({ barWidth });
     if (barCount < 1) return;
     if (lastBarCount === barCount) return;
     lastBarCount = barCount;
     let data;
+    let zoomingLeft = false;
     if (xDragPOS > mouseDRAGSART) {
+      // console.log("left");
       let start = dragStartData[0];
       let startIndex = this.state.allOHLCdata.findIndex(
         (d) => d.timestamp === start.timestamp
@@ -961,8 +962,11 @@ class CandleStickChart extends React.Component {
       let dataEnd = dragStartData.slice(0, dragStartData.length - 1 - barCount);
       let zeroOrGreater = startIndex - barCount < 0 ? 0 : startIndex - barCount;
       let dataStart = this.state.allOHLCdata.slice(zeroOrGreater, startIndex);
+      if (zeroOrGreater===0) zoomingLeft = true;
+
       data = [...dataStart, ...dataEnd];
     } else if (xDragPOS < mouseDRAGSART) {
+      // console.log("right");
       let end = dragStartData[dragStartData.length - 1];
       let endIndex = this.state.allOHLCdata.findIndex(
         (d) => d.timestamp === end.timestamp
@@ -970,6 +974,38 @@ class CandleStickChart extends React.Component {
       let dataStart = dragStartData.slice(barCount, dragStartData.length - 1);
       let dataEnd = this.state.allOHLCdata.slice(endIndex, endIndex + barCount);
       data = [...dataStart, ...dataEnd];
+    }
+    let props = this.props;
+    let { symbol, timeframe } = this.state;
+    let newBarWidth = this.state.innerWidth / data.length;
+    const barWidthLimit = 1.6;
+    if (newBarWidth > barWidthLimit && notEndOfData && zoomingLeft) {
+      // console.log(this.state);
+      // console.log(this.props);
+      //load more data
+      let currentData = this.props.stock_data.commodity_data[symbol][timeframe];
+      let to = new Date().getTime();
+      let from = 0;
+      if (currentData) {
+        from = 0;
+        to = currentData[0].timestamp;
+      }
+      if (timeframe === "1Min") {
+        await getMinutelyCommodityData({ props, symbol, timeframe, from, to });
+      } else {
+        // debugger
+        await view_selected_commodity({ props, symbol, timeframe, from, to });
+      }
+      // console.log(this.props.stock_data.commodity_data[symbol][timeframe]);
+      let dataIndex = this.props.stock_data.commodity_data[symbol][
+        timeframe
+      ].findIndex((d) => d.timestamp === to);
+      let newData = this.props.stock_data.commodity_data[symbol][
+        timeframe
+      ].slice(0, dataIndex);
+      if (!newData.length) notEndOfData = false;
+      data = [...newData, ...data];
+      // debugger
     }
 
     partialOHLCdata = data;
@@ -1207,7 +1243,6 @@ class CandleStickChart extends React.Component {
   }
 
   async updateVolProfile() {
-    
     // console.log(this.state);
     // console.log(this.props);
 
@@ -1218,7 +1253,6 @@ class CandleStickChart extends React.Component {
       volProfileBins = regData[symbol][timeframe].volProfileBins;
     }
 
-    
     let volProfile = await API.getVolProfile({
       symbol,
       date: new Date().getTime(),

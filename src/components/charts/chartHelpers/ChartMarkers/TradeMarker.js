@@ -28,7 +28,7 @@ exitTime(pin):1585659963841
   let candleWidth = that.state.innerWidth / partialOHLCdata.length;
   function entryArrow(data) {
     let { entryTime, entryPrice } = data;
-    debugger
+    
     if(!entryPrice)entryPrice = data.order_limit
     if(!entryTime)entryTime = data.orderTime
     let x = timeScale(entryTime);
@@ -86,7 +86,7 @@ exitTime(pin):1585659963841
   let tradeOrders = trades.filter((d) => {
     if (d.orderStatus ==='Open') return d;
   });
-  debugger
+
 
   
 
@@ -271,7 +271,7 @@ order_stop: 3362.75
 order_target: 3352.75
 order_type: "Market"
    */
-  debugger;
+  ;
   let xMax = new Date(xScale.domain()[1]).getTime();
   let { entryTime, entryPrice, exitTime, order_target, order_stop, orderTime, order_limit } = data;
   let options = {
