@@ -220,11 +220,18 @@ border-bottom: white solid 1px;
 body{
   background: #333;
 }
+.overflowHidden{
+  overflow-x: hidden;
 
+}
 .tradesListMinHeight{
   overflow: hidden;
   min-height: 50vh;
   max-height: 50vh;
+}
+
+.min-width-2000{
+  min-width: 2222px;
 }
 
 

@@ -12,53 +12,71 @@ class Table extends React.Component {
     super(props);
     this.state = {
       dateRowFlag: "",
+      lastDateRowFlag: "",
+      rowCount: 30,
+      startData: 0,
+      endData: 30,
     };
   }
+
+  componentDidUpdate(prevProps) {
+    this.dataUpdated(prevProps);
+  }
+
+  dataUpdated(prevProps) {
+    let prevData = prevProps.data;
+    let { data } = this.props;
+    if (prevData.length !== data.length) {
+      let dataLen = data.length;
+      if (!dataLen < 30) {
+        dataLen = 30;
+      }
+      this.setState({
+        endData: dataLen,
+      });
+    }
+  }
   render() {
+    console.log(this.state);
+
     let {
       headerArrayMapping,
       alterData,
       addDateRow,
       data,
       dailyDollarProfit,
+      startData,
+      endData,
     } = this.props;
-    let TableRows = data.map((row, iRow) => {
-      let date;
-      if (addDateRow) {
-        let currentDate = new Date(row[addDateRow])
-          .toLocaleString()
-          .split(",")[0];
-        if (this.state.dateRowFlag !== currentDate) {
-          this.state.dateRowFlag = currentDate;
-          date = currentDate;
-        }
-      }
+    let date = "";
+    let TableRows = data.slice(startData, endData).map((row, iRow) => {
+      let currentDate = new Date(row[addDateRow])
+        .toLocaleString()
+        .split(",")[0];
+
       let Header = TableHeader(headerArrayMapping);
+      let newDate = date !== currentDate;
+      date = currentDate;
 
       return (
-        <>
-          {date && (
+        <div key={iRow} className="min-width-2000">
+          {!!addDateRow && newDate && (
             <>
-              <DateHeading date={date} />
+              <DateHeading date={date} key={date} />
               {dailyDollarProfit && (
                 <>
-                   <DailyDollarProfit date={date} data={data} />
+                  <DailyDollarProfit key={date} date={date} data={data} />
                 </>
               )}
-            {Header}
-
+              {Header}
             </>
           )}
 
-          {TableRow(headerArrayMapping, row, alterData, iRow)}
-        </>
+          {TableRow(headerArrayMapping, row, alterData, iRow, startData)}
+        </div>
       );
     });
-    return (
-      <>
-        {TableRows}
-      </>
-    );
+    return <>{TableRows}</>;
   }
 }
 
@@ -85,15 +103,18 @@ function TableData(data, key, alterData) {
  * @param {Object} rowData object of keys mapping the Header name
  * @param {*} iRowData
  */
-function TableRow(headerArrayMapping, rowData, alterData, iRowData) {
+function TableRow(headerArrayMapping, rowData, alterData, iRowData, startData) {
   return (
-    <div
+    <div 
       key={iRowData}
-      className={`row  white ${rowHighLight(iRowData)} fullWidth`}
+      className={`pl-4 row  white ${rowHighLight(iRowData)} fullWidth`}
     >
+      {startData === undefined &&<div>#</div>}
+      {startData !== undefined &&<div>{iRowData + startData}</div>}
       {Object.keys(headerArrayMapping).map((key) => {
         return (
-          <div key={`_${key}`} className="noWrap col text_center ">
+          <div key={`_${key}`} title={rowData[key]} className="p-0 col-1 text_center overflowHidden">
+
             {TableData(rowData, key, alterData)}
           </div>
         );
@@ -115,7 +136,7 @@ function DailyDollarProfit({ date, data }) {
     let dateStr = new Date(d.entryTime).toLocaleString().split(",")[0];
     return dateStr === date;
   });
-  debugger;
+
   let dailyProfit = dailyDollarProfit.reduce((a, trade) => {
     return a + getDollarProfit(trade);
   }, 0);
