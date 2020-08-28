@@ -34,13 +34,18 @@ class TradesList extends React.Component {
       closePositions: [],
       sorted_prop: "entryTime",
       sort_state: true, //0 = low->high 1 = high->low
-      number_rows: 30, //starting default
-      // all_trades: [...trades],
+      rowCount: 30,
+      startData: 0,
+      endData: 30,
     };
 
-    this.load_more_data = this.load_more_data.bind(this);
+    // this.load_more_data = this.load_more_data.bind(this);
     this.closePosition = this.closePosition.bind(this);
     this.cancelOrder = this.cancelOrder.bind(this);
+    this.handlePrev = this.handlePrev.bind(this);
+    this.handleNext = this.handleNext.bind(this);
+    this.handlePageLast = this.handlePageLast.bind(this);
+    this.handlePageFirst = this.handlePageFirst.bind(this);
   }
 
   componentDidUpdate(prevProps, prevSate) {
@@ -104,17 +109,17 @@ class TradesList extends React.Component {
     }
   }
 
-  load_more_data() {
-    // console.log("LOAD MORE DATA");
-    const { number_rows } = this.state;
-    this.setState({
-      number_rows: this.state.number_rows + 30,
-    });
-    /* Wait for next loops cycle to update state... */
-    setTimeout(() => {
-      this.sort_by(this.state.sorted_prop, true);
-    }, 0);
-  }
+  // load_more_data() {
+  //   // console.log("LOAD MORE DATA");
+  //   const { number_rows } = this.state;
+  //   this.setState({
+  //     number_rows: this.state.number_rows + 30,
+  //   });
+  //   /* Wait for next loops cycle to update state... */
+  //   setTimeout(() => {
+  //     this.sort_by(this.state.sorted_prop, true);
+  //   }, 0);
+  // }
 
   async cancelOrder(id) {
     let { cancelOrders } = this.state;
@@ -191,14 +196,14 @@ class TradesList extends React.Component {
     let trades = this.props.trades;
     let types = ["Closed", "Open", "Orders", "Canceled"];
     let RadioButtons = types.map((type, iType) => {
-      let orderStatusType = type
-      if(orderStatusType === 'Open') orderStatusType = 'Filled'
-      else if(orderStatusType === 'Orders') orderStatusType = 'Open'
+      let orderStatusType = type;
+      if (orderStatusType === "Open") orderStatusType = "Filled";
+      else if (orderStatusType === "Orders") orderStatusType = "Open";
 
-      let tradeTypeCount = 0
-      if(trades){
-        tradeTypeCount= trades.filter(t=>t.orderStatus === orderStatusType).length
-         
+      let tradeTypeCount = 0;
+      if (trades) {
+        tradeTypeCount = trades.filter((t) => t.orderStatus === orderStatusType)
+          .length;
       }
       return (
         <div className="form-check inline align_items_center" key={iType}>
@@ -225,28 +230,102 @@ class TradesList extends React.Component {
     return RadioButtons;
   };
 
-  render() {
-    let { sorted_prop } = this.state;
+  handlePageLast() {
+    let { trades } = this.props;
+    console.log("go last " + trades.length);
+    let endData = trades.length;
+    let startData =
+      trades.length < this.state.rowCount
+        ? 0
+        : trades.length - this.state.rowCount;
+    console.log({ startData, endData });
+    this.setState({
+      startData,
+      endData,
+    });
+  }
+  handlePageFirst() {
+    let { trades } = this.props;
+    let endData =
+      trades.length > this.state.rowCount ? this.state.rowCount : trades.length;
+    this.setState({
+      startData: 0,
+      endData,
+    });
+  }
 
-    let trades = this.props.trades;
-    if (!trades) trades = [];
+  handleNext() {
+    let { trades } = this.props;
+    let startData;
+    let endData;
+    if (this.state.endData === trades.length) {
+      endData =
+        trades.length > this.state.rowCount
+          ? this.state.rowCount
+          : trades.length;
+      startData = 0;
+    } else {
+      startData = this.state.startData + this.state.rowCount;
+      endData = this.state.endData + this.state.rowCount;
+    }
+    if (this.state.endData > trades.length) {
+      startData = trades.length - this.state.rowCount;
+      endData = trades.length;
+    }
+    this.setState({
+      startData,
+      endData,
+    });
+  }
+  handlePrev() {
+    let { trades } = this.props;
+    let startData;
+    let endData;
+    if (this.state.startData === 0) {
+      endData = trades.length;
+      startData = trades.length - this.state.rowCount;
+    } else {
+      endData = this.state.endData - this.state.rowCount;
+      startData = this.state.startData - this.state.rowCount;
+    }
+    if (startData < 0) {
+      startData = 0;
+      endData = trades.length < 30 ? trades.length : 30;
+    }
+    this.setState({
+      startData,
+      endData,
+    });
+  }
+
+  render() {
+    let { sorted_prop, startData, endData, rowCount } = this.state;
+    let { handleNext, handlePrev, handlePageFirst, handlePageLast } = this;
+
+    let allTrades = this.props.trades;
+    if (!allTrades) allTrades = [];
+    let tradesToShow = [...allTrades];
 
     let { Closed, Open, Orders, Canceled } = this.state.filters;
-    if (!Closed) trades = trades.filter((d) => d.orderStatus !== "Closed");
-    if (!Open) trades = trades.filter((d) => d.orderStatus !== "Filled");
-    if (!Orders) trades = trades.filter((d) => d.orderStatus !== "Open");
-    if (!Canceled) trades = trades.filter((d) => d.orderStatus !== "Canceled");
+    if (!Closed)
+      tradesToShow = tradesToShow.filter((d) => d.orderStatus !== "Closed");
+    if (!Open)
+      tradesToShow = tradesToShow.filter((d) => d.orderStatus !== "Filled");
+    if (!Orders)
+      tradesToShow = tradesToShow.filter((d) => d.orderStatus !== "Open");
+    if (!Canceled)
+      tradesToShow = tradesToShow.filter((d) => d.orderStatus !== "Canceled");
     let sortFn = this.state.sort_state
       ? (a, b) => this.low_to_high(a, b, sorted_prop)
       : (a, b) => this.high_to_low(a, b, sorted_prop);
-    trades = trades.sort(sortFn);
+    tradesToShow = tradesToShow.sort(sortFn);
 
     let symbol = this.props.stock_data.search_symbol;
     let currentQuote = this.props.stock_data.currentTickData[symbol];
 
     let tradingDay; //variable for the trade list loop
     let totalPL = 0;
-    trades.forEach(({ PL }) => {
+    allTrades.forEach(({ PL }) => {
       if (PL && !isNaN(PL)) {
         totalPL += PL;
       }
@@ -254,7 +333,7 @@ class TradesList extends React.Component {
     // console.log(trades)
     let filters = this.state.filters;
     let filterRadioBtns = this.filterRadioBtns({ filters });
-    let noTrades = trades && trades.length == 0;
+    let noTrades = tradesToShow && tradesToShow.length == 0;
     return (
       <>
         <BuySellButtons instrumentType={this.props.instrumentType} />
@@ -272,6 +351,18 @@ class TradesList extends React.Component {
               <FilterRadioContainer>{filterRadioBtns}</FilterRadioContainer>
             </div>
           </div>
+          {/* <div className='full-width scroll_x mb-4'> */}
+          {!noTrades && (
+              <Pagination
+                startData={startData}
+                endData={endData}
+                handleNext={handleNext}
+                handlePrev={handlePrev}
+                handlePageLast={handlePageLast}
+                handlePageFirst={handlePageFirst}
+                trades={tradesToShow}
+              />
+            )}
           <Stock_List_Header
             sorted_prop={this.state.sorted_prop}
             sort_state={this.state.sort_state}
@@ -279,7 +370,7 @@ class TradesList extends React.Component {
             // on_sort={this}
           />
           <div
-            className={`container-fluid tradesListMinHeight scroll_y ${
+            className={` container-fluid tradesListMinHeight scroll_y ${
               noTrades ? "flex_center" : " "
             }`}
           >
@@ -288,39 +379,53 @@ class TradesList extends React.Component {
                 <h1>NO TRADES TO DISPLAY</h1>
               </div>
             )}
-
-            {trades && trades.length > 0 && (
+            {tradesToShow && tradesToShow.length > 0 && (
               <div>
-                {trades.map((trade_data, index) => {
-                  let day = new Date(trade_data.orderTime)
-                    .toLocaleString()
-                    .split(",")[0];
-                  let DAY; //undefined unless a new Day(date)
-                  if (!tradingDay) {
-                    tradingDay = day;
-                    DAY = day;
-                  } else if (tradingDay != day) {
-                    tradingDay = day;
-                    DAY = day;
-                  }
-                  return (
-                    <div key={trade_data._id}>
-                      {/* Only render if date is new and defined */}
-                      {DAY && <p className="white">{DAY}</p>}
-                      <Display_Stock_Row
-                        currentQuote={currentQuote}
-                        index={index}
-                        trade_data={trade_data}
-                        props={this.props}
-                        closePosition={this.closePosition}
-                        closePositions={this.state.closePositions}
-                        cancelOrder={this.cancelOrder}
-                        cancelOrders={this.state.cancelOrders}
-                      />
-                    </div>
-                  );
-                })}
+                {tradesToShow
+                  .slice(startData, endData)
+                  .map((trade_data, index) => {
+                    let day = new Date(trade_data.orderTime)
+                      .toLocaleString()
+                      .split(",")[0];
+                    let DAY; //undefined unless a new Day(date)
+                    if (!tradingDay) {
+                      tradingDay = day;
+                      DAY = day;
+                    } else if (tradingDay != day) {
+                      tradingDay = day;
+                      DAY = day;
+                    }
+                    return (
+                      <div key={trade_data._id}>
+                        {/* Only render if date is new and defined */}
+                        {DAY && <p className="white">{DAY}</p>}
+                        <Display_Stock_Row
+                          startData={startData}
+                          endData={endData}
+                          currentQuote={currentQuote}
+                          index={index}
+                          trade_data={trade_data}
+                          props={this.props}
+                          closePosition={this.closePosition}
+                          closePositions={this.state.closePositions}
+                          cancelOrder={this.cancelOrder}
+                          cancelOrders={this.state.cancelOrders}
+                        />
+                      </div>
+                    );
+                  })}
               </div>
+            )}
+            {!noTrades && (
+              <Pagination
+                startData={startData}
+                endData={endData}
+                handleNext={handleNext}
+                handlePrev={handlePrev}
+                handlePageLast={handlePageLast}
+                handlePageFirst={handlePageFirst}
+                trades={tradesToShow}
+              />
             )}
           </div>
         </div>
@@ -335,7 +440,48 @@ function mapStateToProps(state) {
 
 export default connect(mapStateToProps)(withRouter(TradesList));
 
+const Pagination = ({
+  startData,
+  endData,
+  handleNext,
+  handlePrev,
+  handlePageLast,
+  handlePageFirst,
+  trades,
+}) => {
+  return (
+    <div className="row flex_center">
+      <div className="col-sm-6 flex_center">
+        <button
+          onClick={handlePageFirst}
+          type="button"
+          className="btn btn-primary paginationBtn"
+        >
+          {"<< "}FIRST 0
+        </button>
+        <button onClick={handlePrev} type="button" className="btn btn-primary paginationBtn">
+          {"< "}PREV {startData}
+        </button>
+      </div>
+      <div className="col-sm-6 flex_center">
+        <button onClick={handleNext} type="button" className="btn btn-primary paginationBtn">
+          {" "}
+          {endData} NEXT {" >"}
+        </button>
+        <button
+          onClick={handlePageLast}
+          type="button"
+          className="btn btn-primary paginationBtn"
+        >
+          {" "}
+          {trades.length} LAST {" >>"}
+        </button>
+      </div>
+    </div>
+  );
+};
 function Display_Stock_Row({
+  startData,
   trade_data,
   index,
   props,
@@ -369,7 +515,7 @@ function Display_Stock_Row({
   let end = new Date().getTime();
   return (
     <div
-      className={`row clickable ${class_name}`}
+      className={`row clickable ${class_name} relative`}
       onClick={() => {
         //TODO??  move the chart and show the order time, stop and loss targets along with entry
         console.log("View Data for");
@@ -377,9 +523,7 @@ function Display_Stock_Row({
       }}
     >
       {/* SYMBOL */}
-      {/* <div className="col flex_center">
-        <Symbol symbol={symbol} />
-      </div> */}
+      <div className="absolute white">{(index+1)+startData}</div>
 
       {/* entryTime */}
       <div className="col flex_center white">
@@ -645,6 +789,7 @@ const DateTime = ({ date }) => {
   );
 };
 const ProfitLoss = ({ PL, currentQuote, entryPrice, buyOrSell }) => {
+  debugger;
   // console.log({PL, currentQuote, entryPrice, buyOrSell})
   if (!entryPrice)
     return (
@@ -652,7 +797,7 @@ const ProfitLoss = ({ PL, currentQuote, entryPrice, buyOrSell }) => {
         Unfilled Order
       </div>
     );
-  if (!PL && currentQuote && currentQuote.close) {
+  if (PL === undefined && currentQuote && currentQuote.close) {
     let close = currentQuote.close;
     PL = buyOrSell === "Buy" ? close - entryPrice : entryPrice - close;
   }
@@ -774,7 +919,7 @@ const ColoredSpan = styled.span`
 `;
 
 const FilterRadioContainer = styled.div`
-  margin-top;0.2em;
+  margin-top: 0.2em;
 `;
 
 function dynamicSortHelper(prop, aData, bData, thisProps) {
@@ -800,9 +945,9 @@ function dynamicSortHelper(prop, aData, bData, thisProps) {
         ? close - bData.entryPrice
         : bData.entryPrice - close
       : 0;
-      if(aData.orderStatus==='Closed') aPnL = aData.PL
-      if(bData.orderStatus==='Closed') bPnL = bData.PL
-      return {
+    if (aData.orderStatus === "Closed") aPnL = aData.PL;
+    if (bData.orderStatus === "Closed") bPnL = bData.PL;
+    return {
       aProp: aPnL,
       bProp: bPnL,
     };

@@ -26,6 +26,7 @@ import {
   dropShadow,
   doZoomIn,
   doZoomOut,
+  dropDuplicateMinMax
 } from "./chartHelpers/utils.js";
 import Timers from "./chartHelpers/Timers.js";
 import {
@@ -1507,7 +1508,7 @@ class CandleStickChart extends React.Component {
     //this is used to decide if the minMax setting
     // will get reduced as the window gets smaller
     //towards the more recent data
-    let minMaxMostRecentData = false;
+    let minMaxMostRecentData = true;
     let importantMinMaxValues = this.runMinMax(
       priceLevelMinMax,
       minMaxMostRecentData
@@ -1528,6 +1529,10 @@ class CandleStickChart extends React.Component {
       allImportantPoints,
       this.state.priceLevelSensitivity
     );
+    
+    //not sure this works?
+    // groupedPoints = dropDuplicateMinMax(groupedPoints);
+
 
     this.setState({ importantPriceLevels: groupedPoints });
     setTimeout(() => this.draw(), 0);
@@ -1540,7 +1545,6 @@ class CandleStickChart extends React.Component {
     let lows = this.state.rawOHLCData.map((d) => d.low);
     let closes = this.state.rawOHLCData.map((d) => d.close);
     let opens = this.state.rawOHLCData.map((d) => d.open);
-
     this.setState({
       timestamps,
       opens,

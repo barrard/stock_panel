@@ -228,6 +228,7 @@ body{
   overflow: hidden;
   min-height: 50vh;
   max-height: 50vh;
+  /* min-width: 750px; */
 }
 
 .min-width-2000{
@@ -345,6 +346,14 @@ body { height: 100%; }
 .trade_post_form_overlay{
   left:2em;
   top:2em;
+}
+
+.paginationBtn{
+  margin-left: 10px;
+  margin-bottom: 10px;
+  margin-top: 10px;
+  font-size: 13px;
+  padding:0px 10px 0px 10px;
 }
 .relative{
   position: relative;
