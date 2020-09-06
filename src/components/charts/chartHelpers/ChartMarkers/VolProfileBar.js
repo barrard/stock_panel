@@ -4,7 +4,7 @@ export function appendVolProfileBar({
   data,
   className,
   classItem,
-  color,
+  color,stroke,
   chartWindow,
   x,
   y,
@@ -28,8 +28,8 @@ export function appendVolProfileBar({
 
     .attr("opacity", opacity || 0.3)
     .attr("width", width)
-    .attr("fill", color.fill)
-    .attr("stroke", color.stroke)
+    .attr("fill", color)
+    .attr("stroke", stroke)
     .attr(
       "stroke-width",
       strokeWidth ||

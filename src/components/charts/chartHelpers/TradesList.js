@@ -788,8 +788,7 @@ const DateTime = ({ date }) => {
     </p>
   );
 };
-const ProfitLoss = ({ PL, currentQuote, entryPrice, buyOrSell }) => {
-  debugger;
+const ProfitLoss = ({ PL, currentQuote, exitTime, entryPrice, buyOrSell }) => {
   // console.log({PL, currentQuote, entryPrice, buyOrSell})
   if (!entryPrice)
     return (
@@ -797,7 +796,7 @@ const ProfitLoss = ({ PL, currentQuote, entryPrice, buyOrSell }) => {
         Unfilled Order
       </div>
     );
-  if (PL === undefined && currentQuote && currentQuote.close) {
+  if (!exitTime && currentQuote && currentQuote.close) {
     let close = currentQuote.close;
     PL = buyOrSell === "Buy" ? close - entryPrice : entryPrice - close;
   }

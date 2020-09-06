@@ -128,7 +128,6 @@ class BuySellButtons extends React.Component {
       this.props.dispatch(opening_long(false));
       
       console.error(err);
-      debugger
 
     }
   }
@@ -307,12 +306,11 @@ const PriceBidAsk = ({ currentTick }) => {
   if (!currentTick) {
     return <p className="white">...waiting for data</p>;
   } else {
-    let { close, bid_prices, ask_prices, bid_sizes, ask_sizes } = currentTick;
-
-    let currentAskPrice = ask_prices.slice(-1)[0];
-    let currentBidPrice = bid_prices.slice(-1)[0];
-    let currentAskSize = ask_sizes.slice(-1)[0];
-    let currentBidSize = bid_sizes.slice(-1)[0];
+    let { close, bidPrice, askPrice, bidSize, askSize } = currentTick;
+    let currentAskPrice = askPrice;
+    let currentBidPrice = bidPrice;
+    let currentAskSize = askSize;
+    let currentBidSize = bidSize;
     let upDownTick =
       close === currentBidPrice
         ? "red"
@@ -464,7 +462,7 @@ const OrderType = ({ value, setOrder }) => {
 const BuyBtn = ({ opening_long, goLong, currentTick }) => {
   let currentOffer = "";
 
-  if (currentTick) currentOffer = currentTick.ask_prices.slice(-1)[0];
+  if (currentTick) currentOffer = currentTick.askPrice;
   return (
     <OpenLongPosition
       style={{ width: "inherit" }}
@@ -485,7 +483,7 @@ const BuyBtn = ({ opening_long, goLong, currentTick }) => {
 };
 const SellBtn = ({ opening_short, goShort, currentTick }) => {
   let currentBid = "";
-  if (currentTick) currentBid = currentTick.bid_prices.slice(-1)[0];
+  if (currentTick) currentBid = currentTick.bidPrice;
   return (
     <OpenShortPosition
       className="btn"

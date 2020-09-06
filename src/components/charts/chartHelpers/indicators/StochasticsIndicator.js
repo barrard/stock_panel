@@ -19,7 +19,15 @@ import { drawAxisAnnotation, removeAllAxisAnnotations } from "../chartAxis.js";
 import Loader from "../../../smallComponents/LoadingSpinner.js";
 import { appendRegressionLines } from "../ChartMarkers/RegressionLines.js";
 import API from "../../../API.js";
-import {CenterLabel} from '../ChartMarkers/Labels.js'
+import { CenterLabel } from "../ChartMarkers/Labels.js";
+import {
+  stochasticsAnalysis,
+  stochasticPeriods,
+  calcStochastics,
+  addStochastics,
+  addNewestStochastics,
+  prevCurrentStoch,
+} from "../../../../indicators/stochastics.js";
 
 const margin = {
   top: 15,
@@ -74,9 +82,7 @@ class IndicatorChart extends React.Component {
   //   return indicatorData;
   // }
 
-  async componentDidMount() {
-    
-  }
+  async componentDidMount() {}
 
   componentDidUpdate(prevProps, prevState) {
     // console.log({prevProps, prevState})
@@ -103,20 +109,20 @@ class IndicatorChart extends React.Component {
     }
   }
 
-    didWidthChange(prevProps) {
-      if (prevProps.width != this.props.width) {
-        console.log("Update width");
-        let { width } = this.props;
-        let innerWidth = width - (margin.left + margin.right);
-        let { timeScale } = this.state;
-        timeScale.range([0, innerWidth])
-        this.setState({
-          timeScale, innerWidth
-        });
-        setTimeout(() => this.setupChart(), 0);
-
-      }
+  didWidthChange(prevProps) {
+    if (prevProps.width != this.props.width) {
+      console.log("Update width");
+      let { width } = this.props;
+      let innerWidth = width - (margin.left + margin.right);
+      let { timeScale } = this.state;
+      timeScale.range([0, innerWidth]);
+      this.setState({
+        timeScale,
+        innerWidth,
+      });
+      setTimeout(() => this.setupChart(), 0);
     }
+  }
 
   //   didTickDataUpdate(prevProps) {
   //     if(!partialOHLCdata.length)return
@@ -166,36 +172,39 @@ class IndicatorChart extends React.Component {
   //     }
   //   }
   checkIfDataUpdated(prevProps) {
-    let symbol = this.props.symbol
-    if(!this.props.stock_data.commodity_data[symbol])return
-    let timeframe = this.props.timeframe
+    let symbol = this.props.symbol;
+    if (!this.props.stock_data.commodity_data[symbol]) return;
+    let timeframe = this.props.timeframe;
     let data = this.props.stock_data.commodity_data[symbol][timeframe];
-    let prevData
-    if(!prevProps.stock_data.commodity_data[symbol]) prevData=undefined
+    let prevData;
+    if (!prevProps.stock_data.commodity_data[symbol]) prevData = undefined;
     else prevData = prevProps.stock_data.commodity_data[symbol][timeframe];
-    
-    if(data === prevData || !data ||!data.length )return
-    if(!data.slice(-1)[0].stochastics)return
-    console.log(this.props)
-    console.log(this.state)
-    console.log(this.props.stock_data.commodity_data[symbol][timeframe])
-    // if (prevData != data) {
-      // console.log("TICK CHART UPDATE DATA");
-      // console.log(data);
-      let availableWindows = Object.keys(data.slice(-1)[0].stochastics).map(key=>parseInt(key.split('stochastics').slice(-1)[0]))
-      partialOHLCdata = data.map((d)=> {return {x:d.timestamp, stochastics:d.stochastics}})
-      let timestamps = data.map((d) => d.timestamp);
-      // console.log({ timestamps });
-      this.setState({
-        availableWindows,
-        data,
-        timestamps,
-        stochasticData:[...partialOHLCdata]
-      });
-      setTimeout(() => this.setupChart(), 0);
-    // }
+
+    if (data === prevData || !data || !data.length) return;
+    this.createStochasticData(data);
   }
 
+  createStochasticData() {
+    let { symbol, timeframe } = this.props;
+
+    let data = this.props.stock_data.commodity_data[symbol][timeframe];
+
+    addStochastics(data);
+    let availableWindows = Object.keys(data.slice(-1)[0].stochastics).map(
+      (key) => key.split("stochastics").slice(-1)[0]
+    );
+    partialOHLCdata = data.map((d) => {
+      return { x: d.timestamp, stochastics: d.stochastics };
+    });
+    let timestamps = data.map((d) => d.timestamp);
+    this.setState({
+      availableWindows,
+      data,
+      timestamps,
+      stochasticData: [...partialOHLCdata],
+    });
+    setTimeout(() => this.setupChart(), 0);
+  }
 
   lineFn(scale, xName, yName) {
     let that = this;
@@ -204,7 +213,8 @@ class IndicatorChart extends React.Component {
         return that.state.timeScale(d[xName]);
       })
       .y(function (d) {
-        if(!d[that.state.indicator])return 0
+        if (!d[that.state.indicator] || !d[that.state.indicator][yName])
+          return 0;
         return scale(d[that.state.indicator][yName]);
       });
   }
@@ -261,7 +271,7 @@ class IndicatorChart extends React.Component {
         data = doZoomOut({
           allOHLCdata: this.state.stochasticData,
           partialOHLCdata: partialOHLCdata,
-          xName:'x'
+          xName: "x",
         });
       }
       // console.log(data);
@@ -296,7 +306,10 @@ class IndicatorChart extends React.Component {
       // console.log({startIndex, barCount})
       let dataEnd = dragStartData.slice(0, dragStartData.length - 1 - barCount);
       let zeroOrGreater = startIndex - barCount < 0 ? 0 : startIndex - barCount;
-      let dataStart = this.state.stochasticData.slice(zeroOrGreater, startIndex);
+      let dataStart = this.state.stochasticData.slice(
+        zeroOrGreater,
+        startIndex
+      );
       //   console.log({
       //     dataEnd,
       //     zeroOrGreater,
@@ -310,11 +323,12 @@ class IndicatorChart extends React.Component {
     } else if (xDragPOS < mouseDRAGSTART) {
       //console.log("left");
       let end = dragStartData[dragStartData.length - 1];
-      let endIndex = this.state.stochasticData.findIndex(
-        (d) => d.x === end.x
-      );
+      let endIndex = this.state.stochasticData.findIndex((d) => d.x === end.x);
       let dataStart = dragStartData.slice(barCount, dragStartData.length - 1);
-      let dataEnd = this.state.stochasticData.slice(endIndex, endIndex + barCount);
+      let dataEnd = this.state.stochasticData.slice(
+        endIndex,
+        endIndex + barCount
+      );
       data = [...dataStart, ...dataEnd];
     }
     // console.log({ data });
@@ -367,7 +381,6 @@ class IndicatorChart extends React.Component {
       )
       .call(timeAxis);
 
-
     let { indicator, innerHeight, innerWidth } = this.state;
     // Object.keys(indicatorYAxes).forEach((yAxisName, index) => {
     let yAxisG = svg
@@ -379,15 +392,16 @@ class IndicatorChart extends React.Component {
       )
       .call(yAxis);
 
-      CenterLabel({
-        symbol:indicator, 
-        chartWindow, x:'45%', 
-        y:(margin.top + this.state.innerHeight / 2),
-      })
+    CenterLabel({
+      symbol: indicator,
+      chartWindow,
+      x: "45%",
+      y: margin.top + this.state.innerHeight / 2,
+    });
 
-        //If needed??
-        chartWindow.append("line").attr("id", "overBoughtLine");
-        chartWindow.append("line").attr("id", "overSoldLine");
+    //If needed??
+    chartWindow.append("line").attr("id", "overBoughtLine");
+    chartWindow.append("line").attr("id", "overSoldLine");
 
     /* CrossHair */
     // create crosshairs
@@ -509,7 +523,6 @@ class IndicatorChart extends React.Component {
     // let volValues = drawData.map(d => d.volumeChange);
     let { indicator } = this.state;
     let [timeMin, timeMax] = extent(drawData.map(({ x }) => x));
-    // debugger
     // let [stochasticMax, stochasticMin] = extent(Arr.map(({ stochastic2 }) => stochastic2));
     // let [volMin, volMax] = extent(volValues);
 
@@ -519,8 +532,7 @@ class IndicatorChart extends React.Component {
 
     this.state.timeScale.domain([timeMin, timeMax]);
 
-
-    this.state.yScale.domain(([0, 100]));
+    this.state.yScale.domain([0, 100]);
 
     let svg = select(this.state.chartRef.current);
 
@@ -537,7 +549,7 @@ class IndicatorChart extends React.Component {
      *this has 1,2,5,10, 40, 40 as options
      */
     //MOMO  'momo'
-    let indicatorKey = (window)=>`${window}`;
+    let indicatorKey = (window) => `${window}`;
     let colors = ["white", "blue", "red", "green", "yellow", "orange"];
     this.state.availableWindows.map((windowVal, index) => {
       let yVal = `${indicatorKey(windowVal)}`;
@@ -545,30 +557,42 @@ class IndicatorChart extends React.Component {
       let color = colors[index % colors.length];
       this.drawLine({ chartWindow, drawData, xVal, yVal, color });
     });
-    let overBoughtLine = 80
-    this.drawHorizontalLine('overBoughtLine',{chartWindow, timeMin, timeMax, yVal:overBoughtLine})
-    let overSoldLine = 20
-    this.drawHorizontalLine('overSoldLine',{chartWindow, timeMin, timeMax, yVal:overSoldLine})
+    let overBoughtLine = 80;
+    this.drawHorizontalLine("overBoughtLine", {
+      chartWindow,
+      timeMin,
+      timeMax,
+      yVal: overBoughtLine,
+    });
+    let overSoldLine = 20;
+    this.drawHorizontalLine("overSoldLine", {
+      chartWindow,
+      timeMin,
+      timeMax,
+      yVal: overSoldLine,
+    });
   }
 
-  drawHorizontalLine(id,{chartWindow,timeMax, timeMin, yVal}){
+  drawHorizontalLine(id, { chartWindow, timeMax, timeMin, yVal }) {
     chartWindow
-    .select(`#${id}`)
-    .attr("stroke", "orange")
-    .attr("stroke-width", "5")
-    .attr("pointer-events", "none")
-    .attr("fill", "none")
-    .attr("x1", this.state.timeScale(timeMin))
-    .attr("y1", this.state.yScale(yVal))
+      .select(`#${id}`)
+      .attr("stroke", "orange")
+      .attr("stroke-width", "5")
+      .attr("pointer-events", "none")
+      .attr("fill", "none")
+      .attr("x1", this.state.timeScale(timeMin))
+      .attr("y1", this.state.yScale(yVal))
 
-    .attr("x2", this.state.timeScale(timeMax))
-    .attr("y2", this.state.yScale(yVal));
+      .attr("x2", this.state.timeScale(timeMax))
+      .attr("y2", this.state.yScale(yVal));
   }
 
   drawLine({ chartWindow, yVal, xVal, drawData, color }) {
     chartWindow.selectAll(`.stochastic${yVal}Line`).remove();
 
-    let tickLinePath = chartWindow.selectAll(`.stochastic${yVal}Line`).data([drawData]);
+    let tickLinePath = chartWindow
+      .selectAll(`.stochastic${yVal}Line`)
+      .data([drawData]);
     tickLinePath.exit().remove();
 
     tickLinePath
@@ -586,7 +610,7 @@ class IndicatorChart extends React.Component {
 
   render() {
     return (
-      <> 
+      <>
         {/* {this.props.meta.is_loading && (
           <Loader width={this.props.width} height={this.state.height} />
         )} */}

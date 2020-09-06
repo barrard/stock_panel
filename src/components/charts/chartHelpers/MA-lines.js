@@ -2,30 +2,12 @@
 import { sum, mean, median, deviation } from "d3-array";
 import { drawLine } from "./drawLine.js";
 import { add_MA_data_action } from "../../../redux/actions/stock_actions.js";
+import { line } from "d3-shape";
 
 
 const close = d => d.close;
 
-/* Makes the data for given  Standard Deviation */
-export function makeSTD(STD_length, data) {
-  if(!data)return
-  let STDdata = {high:[], low:[]};
-  data.forEach((d, i) => {
-      if(i === 0 )return
-    if (i < STD_length - 1) return 
-    let end = i;
-    let start = i - (STD_length - 1);
 
-    let stdData = data.slice(start, end);
-    let std = deviation(stdData, close);
-    // console.log({std, stdData, close})
-    std = parseFloat(std.toFixed(3));
-    STDdata.high.push({x:data[i].timestamp, y:data[i].close+std});
-    STDdata.low.push({x:data[i].timestamp, y:data[i].close-std});
-});
-//   console.log(STDdata);
-  return STDdata;
-}
 
 /* Makes the data for given  Moving Average*/
 export function makeEMA(EMA_val, data) {
@@ -65,4 +47,78 @@ export function drawMALine(
   let scales = { priceScale, timeScale };
 
   drawLine(chartWindow, emaData[MA_value], MA_className, scales);
+}
+
+
+export function drawColoredSuperTrend(
+  chartWindow,
+  values,
+  className,
+  { timeScale, priceScale },
+) {
+  let start = new Date().getTime()
+  values = values.filter(d=>{
+      return d.superTrend && d.superTrend.superTrend
+  })
+  console.log(`Time = ${new Date().getTime()- start}`)
+  let redLineFunc = line()
+  .defined(d=>{
+    return  d.close < d.superTrend.superTrend
+  })
+    .x((d) => timeScale(d.timestamp))
+    .y((d) => priceScale(d.superTrend.superTrend));
+
+  let redLinePath = chartWindow.selectAll(`.${className}Red`).data([values]);
+    // redLinePath.exit().remove();
+
+  redLinePath
+    .enter()
+    .append("path")
+    .merge(redLinePath)
+    .attr("class", `${className}Red superTrend`)
+    .attr("stroke-width", 6)
+    .attr("d", redLineFunc)
+    .attr("stroke", 'red')
+    .attr("fill", 'none');
+
+    let greenLineFunc = line()
+    .defined(d=>{
+      return  d.close > d.superTrend.superTrend
+    })
+      .x((d) => timeScale(d.timestamp))
+      .y((d) => priceScale(d.superTrend.superTrend));
+  
+      let greenLinePath = chartWindow.selectAll(`.${className}Green`).data([values]);
+        // greenLinePath.exit().remove();
+    
+      greenLinePath
+        .enter()
+        .append("path")
+        .merge(greenLinePath)
+        .attr("class", `${className}Green superTrend`)
+        .attr("stroke-width", 6)
+        .attr("d", greenLineFunc)
+        .attr("stroke", 'green')
+        .attr("fill", 'none');
+
+        let xLineFunc = line()
+    // .defined((d, i)=>{
+    //   debugger
+    //   return  d[i-10] 
+    // })
+      .x((d) => timeScale(d.timestamp))
+      .y((d) => priceScale(d.superTrend.superTrend));
+  
+        let xLinePath = chartWindow.selectAll(`.${className}X`).data([values]);
+          // xLinePath.exit().remove();
+      
+        xLinePath
+          .enter()
+          .append("path")
+          .merge(xLinePath)
+          .attr("class", `${className}X superTrend`)
+          .attr("stroke-width", 2)
+          .attr("d", xLineFunc)
+          .attr("stroke", '#666')
+          .attr("fill", 'none');
 }

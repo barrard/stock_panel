@@ -65,7 +65,6 @@ class IndicatorChart extends React.Component {
   }
 
   // async loadIndicatorData() {
-  //   // debugger
   //   let { indicator, innerHeight } = this.state;
   //   let { timeframe, symbol } = this.props;
   //   let date = new Date().getTime();

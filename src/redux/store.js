@@ -13,7 +13,7 @@ const reduxDevtools =
 
 const enhancers = compose(
   applyMiddleware(thunk),
-  // reduxDevtools
+  reduxDevtools
 );
 
 

@@ -5,7 +5,7 @@ import { Link, withRouter } from "react-router-dom";
 import CandleStickChart from "./charts/CandleStickChart.js";
 
 import { set_search_symbol } from "../redux/actions/stock_actions.js";
-import TickCharts from "./charts/chartHelpers/TickCharts.js";
+// import TickCharts from "./charts/chartHelpers/TickCharts.js";
 const CHART_WIDTH_REDUCER = 0.9;
 class CommodityChartPage extends React.Component {
   constructor(props) {
@@ -35,13 +35,13 @@ class CommodityChartPage extends React.Component {
 
     return (
       <div className="p-5">
-        <div className="row">
+        {/* <div className="row">
           <TickCharts
             type="commodity"
             width={this.state.chartWidth}
             symbol={symbol}
           />
-        </div>
+        </div> */}
 
         <div className="row ">
           <CandleStickChart

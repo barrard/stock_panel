@@ -1,6 +1,5 @@
 import { extent } from "d3-array";
 
-
 import { appendVolProfileBar } from "../ChartMarkers/VolProfileBar.js";
 export { VolumeBars, VolumeProfileBars };
 
@@ -14,14 +13,10 @@ function plotVolProfileDetails({
   options,
 }) {
   //POC should be an array of just one item, sum up the parts for a max
-  let { up, down, neutral } = POC[0];
-  let volProfileMax = up + down + neutral;
+  let { ask, bid } = POC[0];
+  let volProfileMax = ask + bid;
   let { volProfileScale, priceScale } = scales;
-  let {
-
-    innerWidth,
-
-  } = options;
+  let { innerWidth } = options;
 
   //mark the LVN
   let markHVN = chartWindow.selectAll(".volProfileHVN").data(HVN);
@@ -33,8 +28,8 @@ function plotVolProfileDetails({
     .merge(markHVN)
     .attr("class", "volProfileHVN volumeProfile")
     .attr("x", (bin) => {
-      let { up, down, neutral } = bin;
-      let l = up + down + neutral;
+      let { ask, bid } = bin;
+      let l = ask + bid;
       let val = volProfileScale(l);
       return val;
     })
@@ -75,8 +70,8 @@ function plotVolProfileDetails({
     .merge(markLVN)
     .attr("class", "volProfileLVN volumeProfile")
     .attr("x", (bin) => {
-      let { up, down, neutral } = bin;
-      let l = up + down + neutral;
+      let { ask, bid } = bin;
+      let l = ask + bid;
       let val = volProfileScale(l);
       return val;
     })
@@ -119,8 +114,8 @@ function plotVolProfileDetails({
     .merge(markValueArea)
     .attr("class", "volProfileValueArea volumeProfile")
     .attr("x", (bin) => {
-      // let { up, down, neutral } = bin;
-      // let l = up + down + neutral;
+      // let { ask, bid } = bin;
+      // let l = ask + bid;
       let val = volProfileScale(volProfileMax);
 
       return val;
@@ -160,8 +155,8 @@ function plotVolProfileDetails({
     .merge(markPOC)
     .attr("class", "volProfilePOC volumeProfile")
     .attr("x", (bin) => {
-      let { up, down, neutral } = bin;
-      let l = up + down + neutral;
+      let { ask, bid } = bin;
+      let l = ask + bid;
       let val = volProfileScale(l);
       return val;
     })
@@ -214,10 +209,7 @@ function VolumeProfileBars({
 
   let { binnedProfile, HVN, LVN, POC, valueArea } = dataPoints;
   let bins = binnedProfile;
-debugger
-  let rawBinProfileValues = bins.map(
-    ({ up, down, neutral }) => up + down + neutral
-  );
+  let rawBinProfileValues = bins.map(({ ask, bid }) => ask + bid);
   let [volProfileMin, volProfileMax] = extent(rawBinProfileValues);
 
   volProfileScale.domain([volProfileMax, 0]);
@@ -225,14 +217,18 @@ debugger
   //NEUTRAL VOLUME PROFILE
   appendVolProfileBar({
     data: bins,
-    color: { fill: "gray", stroke: "#666" },
+    stroke: "#666",
+    color: ({ ask, bid }) => {
+      let fill = ask > bid ? "red" : "green";
+      return fill;
+    },
     className: "volumeProfile",
     classItem: "volProfileBarNeutral",
     chartWindow,
     scales,
     x: (bin) => {
-      let { up, down, neutral } = bin;
-      return volProfileScale(up + down + neutral);
+      let { ask, bid } = bin;
+      return volProfileScale(ask + bid);
     },
     y: (bin) => priceScale(bin.high),
     height: (bin) => priceScale(bin.low) - priceScale(bin.high),
@@ -244,47 +240,47 @@ debugger
   });
 
   //DOWN VOLUME PROFILE
-  appendVolProfileBar({
-    data: bins,
-    color: { fill: "red", stroke: "#666" },
-    className: "volumeProfile",
-    classItem: "volProfileBarDown",
-    chartWindow,
-    scales,
-    x: (bin) => {
-      let { up, down } = bin;
-      return volProfileScale(up + down);
-    },
-    y: (bin) => priceScale(bin.high),
-    height: (bin) => priceScale(bin.low) - priceScale(bin.high),
-    width: function (price) {
-      let x = this.getAttribute("x");
-      let width = innerWidth - x;
-      return width;
-    },
-  });
+  // appendVolProfileBar({
+  //   data: bins,
+  //   color: { fill: "red", stroke: "#666" },
+  //   className: "volumeProfile",
+  //   classItem: "volProfileBarDown",
+  //   chartWindow,
+  //   scales,
+  //   x: (bin) => {
+  //     let { ask } = bin;
+  //     return volProfileScale(ask);
+  //   },
+  //   y: (bin) => priceScale(bin.high),
+  //   height: (bin) => priceScale(bin.low) - priceScale(bin.high),
+  //   width: function (price) {
+  //     let x = this.getAttribute("x");
+  //     let width = innerWidth - x;
+  //     return width;
+  //   },
+  // });
 
   //UP VOL PROFILE
-  appendVolProfileBar({
-    data: bins,
-    color: { fill: "green", stroke: "#666" },
-    className: "volumeProfile",
-    classItem: "volProfileBarUp",
-    chartWindow,
-    scales,
-    x: (bin) => {
-      let { up } = bin;
-      return volProfileScale(up );
-    },
-    y: (bin) => priceScale(bin.high),
-    height: (bin) => priceScale(bin.low) - priceScale(bin.high),
-    width: function (price) {
-      let x = this.getAttribute("x");
-      let width = innerWidth - x;
-      return width;
-    },
-    options:{opacity:0.6}
-  });
+  // appendVolProfileBar({
+  //   data: bins,
+  //   color: { fill: "green", stroke: "#666" },
+  //   className: "volumeProfile",
+  //   classItem: "volProfileBarUp",
+  //   chartWindow,
+  //   scales,
+  //   x: (bin) => {
+  //     let { bid } = bin;
+  //     return volProfileScale(bid );
+  //   },
+  //   y: (bin) => priceScale(bin.high),
+  //   height: (bin) => priceScale(bin.low) - priceScale(bin.high),
+  //   width: function (price) {
+  //     let x = this.getAttribute("x");
+  //     let width = innerWidth - x;
+  //     return width;
+  //   },
+  //   options:{opacity:0.6}
+  // });
 
   plotVolProfileDetails({
     valueArea,
@@ -310,12 +306,12 @@ function VolumeBars({
 
   let barWidth = options.innerWidth / dataPoints.length;
   let opacity = options.opacity || 0.5;
-  let fill = options.fill
-  let x = options.x
-  let y = options.y
-  let height = options.height
+  let fill = options.fill;
+  let x = options.x;
+  let y = options.y;
+  let height = options.height;
   let strokeWidth = options.strokeWidth || barWidth / 10;
-  
+
   let volBars = chartWindow.selectAll(`.${markerClass}`).data(dataPoints);
 
   volBars.exit().remove();
@@ -325,15 +321,21 @@ function VolumeBars({
     .merge(volBars)
     .attr("class", `${markerClass} volumeBars`)
     .attr(
-      "x", x|| 
-      ((d) => timeScale(d.timestamp) - options.innerWidth / dataPoints.length / 2)
+      "x",
+      x ||
+        ((d) =>
+          timeScale(d.timestamp) - options.innerWidth / dataPoints.length / 2)
     )
-    .attr("y",  y ||( (d) => volScale(d.volume)))
-    .attr("height", height || ((d, i) => {
-      let h = options.innerHeight - volScale(d.volume);
-      if (h < 0) h = 0;
-      return h;
-    }))
+    .attr("y", y || ((d) => volScale(d.volume)))
+    .attr(
+      "height",
+      height ||
+        ((d, i) => {
+          let h = options.innerHeight - volScale(d.volume);
+          if (h < 0) h = 0;
+          return h;
+        })
+    )
     .attr("opacity", opacity)
     .attr("pointer-events", "none")
 

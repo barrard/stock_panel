@@ -1,3 +1,7 @@
+import { createAllVWAP_data } from "../../indicators/VWAP.js";
+import { makeSuperTrendData } from "../../indicators/superTrend.js";
+import { addBollingerBands } from "../../indicators/BollingerBands.js";
+import {ATR_indicatorVals} from '../../indicators/ATR.js'
 const initial_state = {
   has_symbols_data: false,
   stock_symbols_data: [],
@@ -152,6 +156,18 @@ export default (state = initial_state, action) => {
       let commodity_data = {
         ...state.commodity_data,
       };
+      //run indicator functions here, since it should only run once
+      //VWAP
+      createAllVWAP_data(rawCommodityChartData);
+      //ATR - Must be done before superTrend
+      ATR_indicatorVals(rawCommodityChartData);
+      //superTrend
+      
+      makeSuperTrendData(rawCommodityChartData);
+      //bollingerBands
+      addBollingerBands(rawCommodityChartData);
+      
+
       if (!commodity_data[symbol]) commodity_data[symbol] = {};
       let currentData = commodity_data[symbol][timeframe] || [];
       commodity_data[symbol][timeframe] = [...chart_data, ...currentData];
@@ -211,6 +227,7 @@ export default (state = initial_state, action) => {
       //     currentTickData[symbol].start_timestamp
       //   ).getTime();
       // }
+      console.log({ new_tick_data });
       return {
         ...state,
         prevTickDate: currentTickData,

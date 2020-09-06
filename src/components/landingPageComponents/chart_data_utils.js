@@ -132,7 +132,6 @@ export async function view_selected_stock({ timeframe, end, symbol, props }) {
   // /* fetch data and add to the store/charts array */
   dispatch(is_loading(true));
   try {
-    debugger;
     const chartData = await API.fetchStockData({ timeframe, symbol, end });
     console.log({ chartData });
 

@@ -66,19 +66,32 @@ class Contracts extends React.Component {
         >
           EMA 20/50/200
         </ToggleIndicatorButton>
-{/* 
         <ToggleIndicatorButton
-          onClick={() => this.props.toggleIndicators("ema50")}
-          isSet={this.props.visibleIndicators.ema50}
-        >
-          50 EMA
+          onClick={() => this.props.toggleIndicators("superTrend")}
+          isSet={this.props.visibleIndicators.superTrend}
+          >
+          Super Trend
         </ToggleIndicatorButton>
         <ToggleIndicatorButton
-          onClick={() => this.props.toggleIndicators("ema200")}
-          isSet={this.props.visibleIndicators.ema200}
+          onClick={() => this.props.toggleIndicators("bollingerBands")}
+          isSet={this.props.visibleIndicators.bollingerBands}
         >
-          200 EMA
-        </ToggleIndicatorButton> */}
+          Bollinger Bands
+        </ToggleIndicatorButton>
+        <ToggleIndicatorButton
+          onClick={() => this.props.toggleIndicators("VWAP")}
+          isSet={this.props.visibleIndicators.VWAP}
+        >
+          VWAP
+        </ToggleIndicatorButton>   
+             <ToggleIndicatorButton
+          onClick={() => this.props.toggleIndicators("expectedTradingRange")}
+          isSet={this.props.visibleIndicators.expectedTradingRange}
+        >
+          ATR
+        </ToggleIndicatorButton>
+
+        
         </div>
     );
   }

@@ -19,6 +19,7 @@ import ToggleIndicators from "./chartHelpers/ToggleIndicators.js";
 // import MomoIndicator from "./chartHelpers/indicators/MomoIndicator.js";
 // import CCI_Indicator from "./chartHelpers/indicators/CCI_Indicator.js";
 // import StochasticsIndicator from "./chartHelpers/indicators/StochasticsIndicator.js";
+import IndicatorChart from "./chartHelpers/indicators/IndicatorChart.js";
 import Loader from "../smallComponents/LoadingSpinner.js";
 import {
   priceRangeGreen,
@@ -26,9 +27,10 @@ import {
   dropShadow,
   doZoomIn,
   doZoomOut,
-  dropDuplicateMinMax
+  dropDuplicateMinMax,
 } from "./chartHelpers/utils.js";
 import Timers from "./chartHelpers/Timers.js";
+import { drawSimpleLine } from "./chartHelpers/drawLine.js";
 import {
   view_selected_commodity,
   getMinutelyCommodityData,
@@ -43,7 +45,7 @@ import {
   addAxisAnnotationElements,
   DrawCrossHair,
 } from "./chartHelpers/chartAxis.js";
-import { makeEMA, makeSTD, drawMALine } from "./chartHelpers/MA-lines.js";
+import { makeEMA, drawMALine, drawColoredSuperTrend } from "./chartHelpers/MA-lines.js";
 import API from "../API.js";
 import RegressionSettings from "./chartHelpers/regressionSettings.js";
 import {
@@ -60,7 +62,21 @@ import { CenterLabel } from "./chartHelpers/ChartMarkers/Labels.js";
 import { TradeMarker } from "./chartHelpers/ChartMarkers/TradeMarker.js";
 import { DefaultRegressionSettings } from "./chartHelpers/indicators/IndicatorRegressionSettings.js";
 import { toastr } from "react-redux-toastr";
-
+import { VolProfile } from "../../indicators/VolProfile.js";
+import { addRSI, addNewRSI } from "../../indicators/RSI.js";
+import {
+  stochasticsAnalysis,
+  stochasticPeriods,
+  calcStochastics,
+  addStochastics,
+  addNewestStochastics,
+  prevCurrentStoch,
+} from "../../indicators/stochastics.js";
+import { CCI_PERIODS, addAllCCI_data } from "../../indicators/CCI.js";
+import {
+  momentumAnalysis,
+  addNewestMomentumAnalysis,
+} from "../../indicators/momentum.js";
 let margin = {
   top: 15,
   right: 60,
@@ -114,14 +130,14 @@ class CandleStickChart extends React.Component {
       closes: [],
       opens: [],
       EMA_data: {
-        "20": [],
-        "50": [],
-        "200": [],
+        20: [],
+        50: [],
+        200: [],
       }, //array of {x,y} coords
       STD_data: {
-        "20": [],
-        "50": [],
-        "200": [],
+        20: [],
+        50: [],
+        200: [],
       }, //array of {x,y} coords
       timeMin: 0,
       timeMax: 0,
@@ -156,6 +172,9 @@ class CandleStickChart extends React.Component {
         importantPriceLevel: false,
         regressionLines: false,
         emaLine: false,
+        bollingerBands: false,
+        VWAP: false,
+        superTrend: false,
         fibonacciLines: false,
         volumeBars: false,
         volumeProfile: false,
@@ -642,12 +661,13 @@ class CandleStickChart extends React.Component {
       timeframe !== "intraday"
     ) {
       if (timeframe === "1Min") {
-        this.updateVolProfile();
         await getMinutelyCommodityData({ symbol, props });
+        this.updateVolProfile();
       }
     } else {
       await view_selected_commodity({ timeframe, symbol, props });
     }
+
   }
 
   addHighLowMarkers(minMaxValues) {
@@ -723,7 +743,6 @@ class CandleStickChart extends React.Component {
     //make all EMA/STD data
     Object.keys(this.state.EMA_data).forEach((MA_value) => {
       this.state.EMA_data[MA_value] = makeEMA(MA_value, this.state.allOHLCdata);
-      this.state.STD_data[MA_value] = makeSTD(MA_value, this.state.allOHLCdata);
     });
 
     //append timeAxis group
@@ -963,7 +982,7 @@ class CandleStickChart extends React.Component {
       let dataEnd = dragStartData.slice(0, dragStartData.length - 1 - barCount);
       let zeroOrGreater = startIndex - barCount < 0 ? 0 : startIndex - barCount;
       let dataStart = this.state.allOHLCdata.slice(zeroOrGreater, startIndex);
-      if (zeroOrGreater===0) zoomingLeft = true;
+      if (zeroOrGreater === 0) zoomingLeft = true;
 
       data = [...dataStart, ...dataEnd];
     } else if (xDragPOS < mouseDRAGSART) {
@@ -980,34 +999,32 @@ class CandleStickChart extends React.Component {
     let { symbol, timeframe } = this.state;
     let newBarWidth = this.state.innerWidth / data.length;
     const barWidthLimit = 1.6;
-    if (newBarWidth > barWidthLimit && notEndOfData && zoomingLeft) {
-      // console.log(this.state);
-      // console.log(this.props);
-      //load more data
-      let currentData = this.props.stock_data.commodity_data[symbol][timeframe];
-      let to = new Date().getTime();
-      let from = 0;
-      if (currentData) {
-        from = 0;
-        to = currentData[0].timestamp;
-      }
-      if (timeframe === "1Min") {
-        await getMinutelyCommodityData({ props, symbol, timeframe, from, to });
-      } else {
-        // debugger
-        await view_selected_commodity({ props, symbol, timeframe, from, to });
-      }
-      // console.log(this.props.stock_data.commodity_data[symbol][timeframe]);
-      let dataIndex = this.props.stock_data.commodity_data[symbol][
-        timeframe
-      ].findIndex((d) => d.timestamp === to);
-      let newData = this.props.stock_data.commodity_data[symbol][
-        timeframe
-      ].slice(0, dataIndex);
-      if (!newData.length) notEndOfData = false;
-      data = [...newData, ...data];
-      // debugger
-    }
+    // if (newBarWidth > barWidthLimit && notEndOfData && zoomingLeft) {
+    //   // console.log(this.state);
+    //   // console.log(this.props);
+    //   //load more data
+    //   let currentData = this.props.stock_data.commodity_data[symbol][timeframe];
+    //   let to = new Date().getTime();
+    //   let from = 0;
+    //   if (currentData) {
+    //     from = 0;
+    //     to = currentData[0].timestamp;
+    //   }
+    //   if (timeframe === "1Min") {
+    //     await getMinutelyCommodityData({ props, symbol, timeframe, from, to });
+    //   } else {
+    //     await view_selected_commodity({ props, symbol, timeframe, from, to });
+    //   }
+    //   // console.log(this.props.stock_data.commodity_data[symbol][timeframe]);
+    //   let dataIndex = this.props.stock_data.commodity_data[symbol][
+    //     timeframe
+    //   ].findIndex((d) => d.timestamp === to);
+    //   let newData = this.props.stock_data.commodity_data[symbol][
+    //     timeframe
+    //   ].slice(0, dataIndex);
+    //   if (!newData.length) notEndOfData = false;
+    //   data = [...newData, ...data];
+    // }
 
     partialOHLCdata = data;
 
@@ -1094,6 +1111,10 @@ class CandleStickChart extends React.Component {
     this.appendTrades(this, chartWindow, scales);
     this.drawVolumeBars(this, chartWindow, scales);
     this.drawVolumeProfile(this, chartWindow, scales, moreData);
+    this.drawVWAP(this, chartWindow, scales, moreData);
+    this.drawBollingerBands(this, chartWindow, scales, moreData);
+    this.drawSuperTrend(this, chartWindow, scales, moreData);
+    this.drawExpectedTradingRange(this, chartWindow, scales, moreData);
 
     addCandleSticks(
       drawData,
@@ -1244,22 +1265,23 @@ class CandleStickChart extends React.Component {
   }
 
   async updateVolProfile() {
-    // console.log(this.state);
-    // console.log(this.props);
-
     let { symbol, timeframe, volProfileBins, volProfileBarCount } = this.state;
+    let data = this.props.stock_data.rawCommodityCharts[symbol][timeframe];
     let regData = this.props.stock_data.commodityRegressionData;
     if (!volProfileBarCount || !volProfileBins) {
       volProfileBarCount = regData[symbol][timeframe].volProfileBarCount;
       volProfileBins = regData[symbol][timeframe].volProfileBins;
     }
 
-    let volProfile = await API.getVolProfile({
-      symbol,
-      date: new Date().getTime(),
-      bars: volProfileBarCount,
-      bins: volProfileBins,
-    });
+    //use the function to make own profile
+    let volProfile = VolProfile(data, timeframe, volProfileBins);
+
+    // let volProfile = await API.getVolProfile({
+    //   symbol,
+    //   date: new Date().getTime(),
+    //   bars: volProfileBarCount,
+    //   bins: volProfileBins,
+    // });
     this.setState({ volProfile });
     this.draw();
   }
@@ -1279,6 +1301,81 @@ class CandleStickChart extends React.Component {
       .attr("fill", "blue")
       .attr("stroke", "white")
       .attr("class", `regressionNearbyPoint`);
+  }
+
+  drawExpectedTradingRange(that, chartWindow, scales, { priceMax, priceMin }) {
+    if (!this.state.visibleIndicators.expectedTradingRange) return;
+    let { symbol, timeframe } = this.state
+
+        let x = "timestamp";
+    let y = "expectedRange";
+    debugger
+    let nestedY = "top";
+    let color = '#bfe7b1'
+    let groupName = 'expectedTradingRange'
+    let data = that.props.stock_data.rawCommodityCharts[symbol][timeframe];
+    drawSimpleLine(chartWindow, data, 'upperTtradingRange', scales, {
+      x,
+      y,
+      nestedY,color,groupName
+    });
+
+    nestedY = "bottom";
+    drawSimpleLine(chartWindow, data, 'lowerTtradingRange', scales, {
+      x,
+      y,
+      nestedY,color,groupName
+    });
+
+  }
+    drawSuperTrend(that, chartWindow, scales, { priceMax, priceMin }) {
+    if (!this.state.visibleIndicators.superTrend) return;
+    let { symbol, timeframe } = this.state
+    let data = that.props.stock_data.rawCommodityCharts[symbol][timeframe];
+    drawColoredSuperTrend(chartWindow, data, 'superTrend', scales);
+  }
+  drawBollingerBands(that, chartWindow, scales, { priceMax, priceMin }) {
+    if (!this.state.visibleIndicators.bollingerBands) return;
+    let { symbol, timeframe } = this.state
+    
+    let x = "timestamp";
+    let y = "BB";
+    let groupName = 'bollingerBands'
+    let nestedY = "upper";
+    let color = '#bfe7b1'
+    let data = that.props.stock_data.rawCommodityCharts[symbol][timeframe];
+    drawSimpleLine(chartWindow, data, 'upperBB', scales, {
+      x,
+      y,
+      nestedY,color, groupName
+    });
+    nestedY = "lower";
+    drawSimpleLine(chartWindow, data, 'lowerBB', scales, {
+      x,
+      y,
+      nestedY,color, groupName
+    });
+    nestedY = "middle";
+    drawSimpleLine(chartWindow, data, 'middleBB', scales, {
+      x,
+      y,
+      nestedY,color, groupName
+    });
+  }
+  drawVWAP(that, chartWindow, scales, { priceMax, priceMin }) {
+    if (!this.state.visibleIndicators.VWAP) return;
+    let { symbol, timeframe } = this.state
+    
+    let x = "timestamp";
+    let y = "VWAP";
+    let nestedY = "VWAP";
+    let color = 'pink'
+    let data = that.props.stock_data.rawCommodityCharts[symbol][timeframe];
+    drawSimpleLine(chartWindow, data, 'VWAP', scales, {
+      x,
+      y,
+      nestedY,color
+    });
   }
 
   drawVolumeProfile(that, chartWindow, scales, { priceMax, priceMin }) {
@@ -1529,10 +1626,9 @@ class CandleStickChart extends React.Component {
       allImportantPoints,
       this.state.priceLevelSensitivity
     );
-    
+
     //not sure this works?
     // groupedPoints = dropDuplicateMinMax(groupedPoints);
-
 
     this.setState({ importantPriceLevels: groupedPoints });
     setTimeout(() => this.draw(), 0);
@@ -1566,6 +1662,13 @@ class CandleStickChart extends React.Component {
       let highLines = diff.regressionAnalysis(highPoints, errLimit);
       let lowLines = diff.regressionAnalysis(lowPoints, errLimit);
       this.runPriceLevels();
+      //make all EMA/STD data
+      Object.keys(this.state.EMA_data).forEach((MA_value) => {
+        this.state.EMA_data[MA_value] = makeEMA(
+          MA_value,
+          this.state.allOHLCdata
+        );
+      });
 
       this.setState({
         minMaxValues: minMaxValues,
@@ -1704,19 +1807,58 @@ class CandleStickChart extends React.Component {
           timeframe={this.state.timeframe}
           width={this.props.width}
           height={150}
-        />
-        <StochasticsIndicator
+        /> */}
+
+        <IndicatorChart
+          indicator="momentum"
+          horizontalLines={{ centerLine: 0 }}
+          addIndicator={momentumAnalysis}
           symbol={this.state.symbol}
           timeframe={this.state.timeframe}
           width={this.props.width}
           height={150}
         />
-        <CCI_Indicator
+
+        <IndicatorChart
+          indicator="RSI"
+          horizontalLines={{ overboughtLine: 70, oversoldLine: 20 }}
+          addIndicator={addRSI}
+          symbol={this.state.symbol}
+          timeframe={this.state.timeframe}
+          width={this.props.width}
+          height={150}
+        />
+        <IndicatorChart
+          horizontalLines={{ overboughtLine: 100, oversoldLine: -100 }}
+          indicator="CCI"
+          addIndicator={addAllCCI_data}
+          symbol={this.state.symbol}
+          timeframe={this.state.timeframe}
+          width={this.props.width}
+          height={150}
+        />
+        {/* <CCI_Indicator
           symbol={this.state.symbol}
           timeframe={this.state.timeframe}
           width={this.props.width}
           height={150}
         /> */}
+        <IndicatorChart
+          addIndicator={addStochastics}
+          horizontalLines={{ overboughtLine: 80, oversoldLine: 20 }}
+          indicator="stochastics"
+          symbol={this.state.symbol}
+          timeframe={this.state.timeframe}
+          width={this.props.width}
+          height={150}
+        />
+        {/* <StochasticsIndicator
+          symbol={this.state.symbol}
+          timeframe={this.state.timeframe}
+          width={this.props.width}
+          height={150}
+        /> */}
+
         <ToggleIndicators
           toggleIndicators={(indicator) => this.toggleIndicators(indicator)}
           visibleIndicators={this.state.visibleIndicators}
@@ -1741,8 +1883,8 @@ class CandleStickChart extends React.Component {
           <option value="daily">Daily</option>
           <option value="weekly">Weekly</option>
         </select>
-
-        {currentTickData && <Timers lastTick={currentTickData} />}
+        {/* Sad but no more cool timer */}
+        {/* {currentTickData && <Timers lastTick={currentTickData} />} */}
         <RegressionSettingsContainer>
           {/* RegressionLine settings */}
           <RegressionSettings

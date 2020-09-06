@@ -28,7 +28,7 @@ export default {
   cancelOrder,
   goLong,
   goShort,
-  getVolProfile,
+  // getVolProfile,
   isLoggedIn,
   fetchSEC_Filings,
   fetchStockBotTrades,
@@ -355,7 +355,6 @@ async function saveRegressionValues({
         }),
       }
     );
-    debugger;
     regressionData = await regressionData.json();
     if (regressionData.err) throw regressionData.err;
     console.log(regressionData);
@@ -401,16 +400,16 @@ async function getMovers() {
   return movers;
 }
 
-async function getVolProfile({ symbol, date, bars, bins }) {
-  // console.log(API_SERVER);
-  if (!date) date = new Date().getTime();
-  else date = new Date(date).getTime();
-  let volProfTick = await fetch(
-    `${API_SERVER}/API/VolProfile/${symbol}/${date}/${bars}/${bins}`
-  );
-  volProfTick = await volProfTick.json();
-  return volProfTick;
-}
+// async function getVolProfile({ symbol, date, bars, bins }) {
+//   // console.log(API_SERVER);
+//   if (!date) date = new Date().getTime();
+//   else date = new Date(date).getTime();
+//   let volProfTick = await fetch(
+//     `${API_SERVER}/API/VolProfile/${symbol}/${date}/${bars}/${bins}`
+//   );
+//   volProfTick = await volProfTick.json();
+//   return volProfTick;
+// }
 
 async function getAllSymbolsData(dispatch) {
   // console.log('getAllSymbolsData')
