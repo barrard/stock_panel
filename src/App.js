@@ -14,7 +14,7 @@ import SignupPage from "./components/SignupPage.js";
 import LoginPage from "./components/LoginPage.js";
 import StockChart from "./components/StockChartPage.js";
 import AccountProfile from "./components/AccountProfilePage.js";
-import OpAlerts from "./components/OpAlertsPage.js";
+import OpAlerts from "./components/OpUnusualVolPage.js.js";
 
 import CommodityChartPage from "./components/CommodityChartPage.js";
 import defaultFilterList from "./components/QuoteComponents/DefaultFilterList.js";

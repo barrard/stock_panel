@@ -242,6 +242,8 @@ body {
   height: 100%;
 }
 
+
+
 .xs_fixed_height {
   min-height: 100px;
   max-height: 100px;
@@ -297,6 +299,33 @@ body {
 }
 .percentage_neutral {
   color: #eee;
+}
+.keyLabel{
+  padding: 1em;
+  line-height: 3;
+  font-size: 20px;
+  font-weight: 400;
+  text-decoration: underline;
+
+}
+.isMainTitle{
+  font-size: 44px;
+    font-weight: 700;
+    text-decoration: underline;
+}
+.isTitle{
+  font-size: 24px;
+    font-weight: 700;
+    text-decoration: underline;
+}
+.zeroHeight{
+  height: 0px;
+  display: none!important;
+}
+.opContractWindow{
+  min-height: 400px;
+  max-height: 400px;
+  overflow: scroll;
 }
 
 .md_fixed_height {

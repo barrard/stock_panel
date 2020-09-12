@@ -486,7 +486,6 @@ async function fetchOpAlerts(){
 }
 
 async function fetchOpAlertData({symbol, strike, exp, putCall}){
-  debugger
   let data = await fetch(
     `${API_SERVER}/options/alert/${symbol}/${strike}/${exp}/${putCall}`
   );
