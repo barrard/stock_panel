@@ -2,7 +2,6 @@ import React from "react";
 import { connect } from "react-redux";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner } from "@fortawesome/free-solid-svg-icons";
-import { TICKS } from "../../../indicators/indicatorHelpers/utils.js";
 // import { toastr } from 'react-redux-toastr';
 // import { Link, withRouter } from 'react-router-dom';
 import styled from "styled-components";
@@ -24,6 +23,7 @@ import {
   addCommodityTrade,addStockTrade,
   // updateCommodityTrade,
 } from "../../../redux/actions/stock_actions.js";
+const { TICKS } =require("../../../indicators/indicatorHelpers/utils.js");
 
 
 //import Main_Layout from '../layouts/Main_Layout.js';

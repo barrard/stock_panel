@@ -1,8 +1,8 @@
-import {
+import { toastr } from "react-redux-toastr";
+const {
   formatData,
   forwardFill,
-} from "../../indicators/indicatorHelpers/utils.js";
-import { toastr } from "react-redux-toastr";
+} =require("../../indicators/indicatorHelpers/utils.js");
 
 export function set_symbols_data(stock_symbols_data, commodity_symbols_data) {
   // console.log('set_symbols_data')

@@ -1,14 +1,14 @@
-import { createAllVWAP_data, addNewVWAP } from "../../indicators/VWAP.js";
-import { makeSuperTrendData } from "../../indicators/superTrend.js";
-import {
+const { createAllVWAP_data, addNewVWAP } = require("../../indicators/VWAP.js");
+const { makeSuperTrendData } = require("../../indicators/superTrend.js");
+const {
   addBollingerBands,
   addNewBollingerBands,
-} from "../../indicators/BollingerBands.js";
-import { ATR_indicatorVals } from "../../indicators/ATR.js";
-import {addStochastics} from '../../indicators/stochastics.js'
-import {momentumAnalysis} from '../../indicators/momentum.js'
-import {addRSI} from '../../indicators/RSI.js'
-import {addAllCCI_data} from '../../indicators/CCI.js'
+} = require("../../indicators/BollingerBands.js");
+const { ATR_indicatorVals } = require("../../indicators/ATR.js");
+const {addStochastics} = require('../../indicators/stochastics.js')
+const {momentumAnalysis} = require('../../indicators/momentum.js')
+const {addRSI} = require('../../indicators/RSI.js')
+let  {addAllCCI_data} =require( '../../indicators/CCI.js')
 const initial_state = {
   has_symbols_data: false,
   stock_symbols_data: [],

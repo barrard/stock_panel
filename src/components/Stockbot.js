@@ -5,7 +5,7 @@ import styled from "styled-components";
 import { getTrades } from "../redux/actions/StockBotActions.js";
 
 import Table from "./StockBotComponents/DisplayTradesTable.js";
-import { getDollarProfit, TICKS, tickValues } from "../indicators/indicatorHelpers/utils.js";
+const { getDollarProfit, TICKS, tickValues } = require("../indicators/indicatorHelpers/utils.js");
 
 class Account_Profile extends React.Component {
   constructor(props) {

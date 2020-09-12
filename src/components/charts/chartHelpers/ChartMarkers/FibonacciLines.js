@@ -1,8 +1,8 @@
 import { max, min } from "d3-array";
-import { slopeAndIntercept, xOfY, dropDuplicateMinMax } from "../../../../indicators/indicatorHelpers/utils.js";
 import diff from "../extrema.js";
 import appendDot from "./Dot.js";
 import DrawLine from "./Line.js";
+let { slopeAndIntercept, xOfY, dropDuplicateMinMax } = require("../../../../indicators/indicatorHelpers/utils.js");
 
 export function makeFibonacciData(that, scales) {
   let { highs, lows, timestamps } = that.state;
