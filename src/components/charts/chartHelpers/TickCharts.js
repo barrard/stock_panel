@@ -6,7 +6,7 @@ import { Link, withRouter } from "react-router-dom";
 import styled from "styled-components";
 import TickChart from "./TickChartClass.js";
 import IndicatorsChart from "./IndicatorsChart.js";
-import {TICKS} from '../chartHelpers/utils.js'
+import {TICKS} from '../../../indicators/indicatorHelpers/utils.js'
 //import Main_Layout from '../layouts/Main_Layout.js';
 class TickCharts extends React.Component {
   constructor(props) {

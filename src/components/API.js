@@ -29,6 +29,8 @@ export default {
   goLong,
   goShort,
   // getVolProfile,
+  fetchOpAlerts,
+  fetchOpAlertData,
   isLoggedIn,
   fetchSEC_Filings,
   fetchStockBotTrades,
@@ -211,7 +213,12 @@ async function closePosition(id) {
   data = await data.json();
   console.log(data);
 
-  if (!data.resp || data.err) toastr.error("Error Closing Position");
+  if (!data.resp || data.err) {
+    if(data.err.message){
+      toastr.error(data.err.message)
+       
+    }
+    toastr.error("Error Closing Position")};
   return data;
 }
 
@@ -431,7 +438,7 @@ async function fetch_commodity_minutely_data({ from, to, symbol }) {
 
   try {
     let data = await fetch(
-      `${API_SERVER}/TD_data/dailyParsedTickData/${symbol}/${from}/${to}`
+      `${API_SERVER}/TD_data/candles/${symbol}/${from}/${to}/1Min`
     );
     data = await data.json();
     //the data is newest to oldest, better fix that
@@ -452,10 +459,12 @@ async function fetch_commodity_minutely_data({ from, to, symbol }) {
 async function fetchCommodityData({ timeframe, symbol,
   from, to }) {
   console.log(LOCAL_SERVER);
-
-  let data = await fetch(`${LOCAL_SERVER}/back_data/${timeframe}/${symbol}/${from}/${to}`);
+  if(timeframe==='daily')timeframe='Daily'
+  if(timeframe==='weekly')timeframe='Weekly'
+  let data = await fetch(`${LOCAL_SERVER}/TD_data/candles/${symbol}/${from}/${to}/${timeframe}`);
   data = await data.json();
-  console.log({ data });
+  debugger
+  data = data.sort((a,b)=>a.timestamp - b.timestamp)
   // console.log('TOASTR')
   if (data.err)
     toastr.error(`Data Not loaded`, `An error occurred for ${symbol}`);
@@ -464,6 +473,30 @@ async function fetchCommodityData({ timeframe, symbol,
   return data;
 }
 
+async function fetchOpAlerts(){
+  let data = await fetch(
+    `${API_SERVER}/options/alerts`
+  );
+  data = await data.json();
+  if (data.err) throw data.err;
+
+  if (!data.length) return [];
+  toastr.success(`Alerts loaded`, `${data.length} loaded`);
+  return data;
+}
+
+async function fetchOpAlertData({symbol, strike, exp, putCall}){
+  debugger
+  let data = await fetch(
+    `${API_SERVER}/options/alert/${symbol}/${strike}/${exp}/${putCall}`
+  );
+  data = await data.json();
+  if (data.err) throw data.err;
+
+  if (!data.length) return [];
+  toastr.success(`Alerts loaded`, `${data.length} loaded`);
+  return data;
+}
 async function fetchStockData({ timeframe, symbol, end }) {
   let data = await fetch(
     `${API_SERVER}/alpacaData/${symbol}/${timeframe}/${end}`

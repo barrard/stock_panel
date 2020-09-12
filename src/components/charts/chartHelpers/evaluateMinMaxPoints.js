@@ -1,6 +1,6 @@
 import { sum, mean, median, deviation } from "d3-array";
 
-import { slopeLine, intercept } from "./utils.js";
+import { slopeLine, intercept } from "../../../indicators/indicatorHelpers/utils.js";
 import { extent } from "d3-array";
 import { axisBottom } from "d3";
 

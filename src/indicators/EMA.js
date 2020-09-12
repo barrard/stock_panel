@@ -2,8 +2,8 @@ const { sum, mean, median, deviation, max, min, extent } = require("d3-array");
 const { makeEMA, getClose } = require("./indicatorHelpers/MovingAverage.js");
 const { maxDiffFromPrice } = require("./indicatorHelpers/dataParser.js");
 
-const TICK_SIZE = require("../../utils/ticks.js");
-
+const {TICKS} = require("./indicatorHelpers/utils.js");
+const TICK_SIZE = TICKS()
 const indicatorName = "ema";
 
 module.exports = {

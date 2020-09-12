@@ -18,6 +18,10 @@ class RegressionSettings extends React.Component {
     let symbol = this.props.stock_data.search_symbol;
     let active 
     let settings = stock_data.commodityRegressionData[symbol]
+    if(settings && !settings[timeframe]){
+      console.log('fuuuc')
+      debugger
+    }
     if(settings){
      active = settings[timeframe].active
     }else{

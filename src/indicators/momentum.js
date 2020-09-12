@@ -104,16 +104,19 @@ function momoStrength(data) {
   let { momentum, timeframe, symbol } = data.slice(-1)[0];
   let str = "";
   let momStr = "";
+  let UD = (m)=> m > 0 ?'Up':"Down"
+  let m = momentum
+  if (m[1] > 0.05 || m[1] < -0.05) momStr += `1:${UD(m[1])} `;
+  if (m[2] > 0.09 || m[1] < -0.09) momStr += `2:${UD(m[2])} `;
+  if (m[3] > 0.13 || m[1] < -0.13) momStr += `3:${UD(m[3])} `;
+  if (m[5] > 0.12 || m[1] < -0.12) momStr += `5:${UD(m[5])} `;
+  if (m[10] > 0.17 || m[1] < -0.17) momStr += `10:${UD(m[10])} `;
+  if (m[20] > 0.27 || m[1] < -0.27) momStr += `20:${UD(m[20])} `;
+  if (m[40] > 0.46 || m[1] < -0.46) momStr += `40:${UD(m[40])} `;
   Object.keys(momentum).forEach((momoVal) => {
-    if (momentum[1] > 0.05 || momentum[1] < -0.05) momStr += `1:strong `;
-    if (momentum[2] > 0.09 || momentum[1] < -0.09) momStr += `2:strong `;
-    if (momentum[3] > 0.13 || momentum[1] < -0.13) momStr += `3:strong `;
-    if (momentum[5] > 0.12 || momentum[1] < -0.12) momStr += `5:strong `;
-    if (momentum[10] > 0.17 || momentum[1] < -0.17) momStr += `10:strong `;
-    if (momentum[20] > 0.27 || momentum[1] < -0.27) momStr += `20:strong `;
-    if (momentum[40] > 0.46 || momentum[1] < -0.46) momStr += `40:strong `;
     momoVal = +momoVal;
-    let val = momentum[momoVal].momo;
+    let val = momentum[momoVal];
+
     if (val > 0) str += "1";
     if (val < 0) str += "0";
     if (val === 0) str += "-1";

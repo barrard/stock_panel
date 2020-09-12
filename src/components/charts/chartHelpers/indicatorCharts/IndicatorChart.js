@@ -56,7 +56,7 @@ class IndicatorChart extends React.Component {
       availableWindows: [],
       indicatorData: {},
       data: [],
-      partialOHLCdata:[],
+      partialOHLCdata: [],
       visibleIndicators: {
         minMaxMarkers: true,
         regressionLines: true,
@@ -93,11 +93,20 @@ class IndicatorChart extends React.Component {
   }
 
   async handleTimeFrameChange(prevState, prevProps) {
-    let prevTimeframe = prevProps.timeframe;
-    let currentTimeframe = this.props.timeframe;
+    let { data } = this.props;
+    let prevData = prevProps.data;
+    if (!(data && Array.isArray(data)) 
+      || !(prevData && Array.isArray(prevData))){
+        return;
+      }
+    let prevTimeframe = prevData[0].timeframe;
+    let currentTimeframe = data[0].timeframe;
+    if(!prevTimeframe || !currentTimeframe)return
     if (prevTimeframe !== currentTimeframe) {
       console.log(`NEW TIME FRAME for indicator ${this.props.indicator}`);
-      // this.loadIndicatorData();
+      setTimeout(() => {
+        this.createIndicatorData();
+      }, 0);
     }
   }
 
@@ -164,23 +173,51 @@ class IndicatorChart extends React.Component {
   //     }
   //   }
   checkIfDataUpdated(prevProps) {
+    let data = this.props.data;
+    let prevData = prevProps.data;
+    if (!data) return;
+    if (data && !prevData) {
+      console.log("FIRST TIME");
+      this.createIndicatorData(data);
+    }
+    if (!data || !prevData || !prevData.length) return;
     let symbol = this.props.symbol;
-    if (!this.props.stock_data.commodity_data[symbol]) return;
+    if (!this.props.stock_data.rawCommodityCharts[symbol]) return;
     let timeframe = this.props.timeframe;
-    let data = this.props.stock_data.commodity_data[symbol][timeframe];
-    let prevData;
-    if (!prevProps.stock_data.commodity_data[symbol]) prevData = undefined;
-    else prevData = prevProps.stock_data.commodity_data[symbol][timeframe];
+    if (!prevProps.stock_data.rawCommodityCharts[symbol]) return;
+    if (!data.length || !prevData) return;
+    let currentMin = data[data.length - 1];
+    let prevMin = prevData[prevData.length - 1];
 
-    if (data === prevData || !data || !data.length) return;
-    this.createIndicatorData(data);
+    if (prevMin.lastTickDateTime != currentMin.lastTickDateTime) {
+      let { partialOHLCdata, indicatorData } = this.state;
+      let lastPartialBar = partialOHLCdata[partialOHLCdata.length - 1];
+
+      let lastData = indicatorData[indicatorData.length - 1];
+
+      currentMin.x = currentMin.timestamp;
+      if (lastData.x === currentMin.x) {
+        if (lastPartialBar.timestamp === lastData.timestamp) {
+          partialOHLCdata[partialOHLCdata.length - 1] = currentMin;
+        }
+        indicatorData[indicatorData.length - 1] = currentMin;
+      } else {
+        if (lastPartialBar.timestamp === lastData.timestamp) {
+          partialOHLCdata.push(currentMin);
+        }
+        indicatorData.push(currentMin);
+      }
+      // this.setState({
+      //   partialOHLCdata
+      // })
+      this.draw();
+      // this.createIndicatorData(data);
+    }
   }
 
   createIndicatorData() {
     let { symbol, timeframe, indicator } = this.props;
-
-    let data = this.props.stock_data.rawCommodityCharts[symbol][timeframe];
-    this.props.addIndicator(data);
+    let data = this.props.data;
     let availableWindows = [];
     Object.keys(data.slice(-1)[0][indicator]).forEach((key) => {
       let n = key.split(indicator).slice(-1)[0];
@@ -222,10 +259,6 @@ class IndicatorChart extends React.Component {
     );
     let { indicator, innerHeight, innerWidth } = this.state;
 
-    // Object.keys(this.state.yScale).forEach((indicatorName, index) => {
-    // let {yScale} = this.state;
-    // let yAxis = axisRight(scale).ticks(4);
-    // indicatorYAxes[indicator] = yAxis;
     drawAxisAnnotation(
       `right${indicator}Tag`,
       this.state.yScale,
@@ -233,12 +266,6 @@ class IndicatorChart extends React.Component {
       svg,
       `${indicator}YAxis`
     );
-
-    // .tickSize(-this.state.innerHeight);
-    // });
-
-    //     drawAxisAnnotation("rightPriceTag", this.state.priceScale, y, svg);
-    //     drawAxisAnnotation("leftVolTag", this.state.volScale, y, svg);
   }
 
   zoomed() {
@@ -259,7 +286,10 @@ class IndicatorChart extends React.Component {
 
           return this.draw();
         }
-        data = doZoomIn({ partialOHLCdata: this.state.partialOHLCdata }, mouseZoomPOS);
+        data = doZoomIn(
+          { partialOHLCdata: this.state.partialOHLCdata },
+          mouseZoomPOS
+        );
       } else if (kScale < zoomState) {
         data = doZoomOut({
           allOHLCdata: this.state.indicatorData,
@@ -275,7 +305,8 @@ class IndicatorChart extends React.Component {
   }
 
   dragStart() {
-    if (!this.state.partialOHLCdata) return console.log("FUUCK NO PARTIAL DAATT?");
+    if (!this.state.partialOHLCdata)
+      return console.log("FUUCK NO PARTIAL DAATT?");
     mouseDRAGSTART = event.x - margin.left;
     dragStartData = [...this.state.partialOHLCdata];
   }
@@ -323,7 +354,7 @@ class IndicatorChart extends React.Component {
     // console.log({ data });
 
     // this.setState({
-      this.state.partialOHLCdata = data;
+    this.state.partialOHLCdata = data;
     // });
 
     return this.draw();
@@ -505,14 +536,7 @@ class IndicatorChart extends React.Component {
       drawData = this.state.partialOHLCdata;
     }
     if (!drawData || !drawData.length || drawData.length < 2) return;
-    // console.log(drawData)
-    // let volProfileValues = Array.from(
-    //   Object.values(this.state.volumePriceProfile)
-    // );
-    // let volPriceKeys = Array.from(Object.keys(this.state.volumePriceProfile));
 
-    // let prices = drawData.map(d => d.price);
-    // let volValues = drawData.map(d => d.volumeChange);
     let { indicator } = this.props;
     let [timeMin, timeMax] = extent(drawData.map(({ x }) => x));
     let allIndicatorData = [];
@@ -539,12 +563,17 @@ class IndicatorChart extends React.Component {
 
     chartWindow.selectAll(`.${indicator}Line`).remove();
 
-    /*
-     *this has 1,2,5,10, 40, 40 as options
-     */
-    //MOMO  'momo'
     let indicatorKey = (window) => `${window}`;
-    let colors = ["white", "blue", "red", "green", "yellow", "orange", 'pink', 'magenta'];
+    let colors = [
+      "white",
+      "blue",
+      "red",
+      "green",
+      "yellow",
+      "orange",
+      "pink",
+      "magenta",
+    ];
     this.state.availableWindows.map((windowVal, index) => {
       let yVal = `${indicatorKey(windowVal)}`;
       let xVal = "x";
@@ -564,21 +593,6 @@ class IndicatorChart extends React.Component {
         });
       }
     }
-
-    // let overBoughtLine = 80;
-    // this.drawHorizontalLine("overboughtLine", {
-    //   chartWindow,
-    //   timeMin,
-    //   timeMax,
-    //   yVal: overBoughtLine,
-    // });
-    // let overSoldLine = 20;
-    // this.drawHorizontalLine("oversoldLine", {
-    //   chartWindow,
-    //   timeMin,
-    //   timeMax,
-    //   yVal: overSoldLine,
-    // });
   }
 
   drawHorizontalLine(id, { chartWindow, timeMax, timeMin, yVal }) {

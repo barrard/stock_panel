@@ -1,7 +1,7 @@
 import {
   formatData,
   forwardFill,
-} from "../../components/charts/chartHelpers/utils.js";
+} from "../../indicators/indicatorHelpers/utils.js";
 import { toastr } from "react-redux-toastr";
 
 export function set_symbols_data(stock_symbols_data, commodity_symbols_data) {
@@ -166,6 +166,7 @@ export function add_commodity_minutely_data({ symbol, chart_data }) {
  */
 export function updateCommodityData(newData, type) {
   if (type === "minute") {
+    debugger
     return {
       type: "ADD_NEW_MINUTE",
       new_minute_data: newData,
@@ -181,13 +182,7 @@ export function updateCommodityData(newData, type) {
 export function add_commodity_chart_data({ symbol, chart_data, timeframe }) {
   console.log("ADD_COMMODITY_CHART_DATA");
   console.log({ chart_data });
-  // chart_data.forEach((r) => {
-  //   r.timestamp = new Date(+r.timestamp).getTime();
-  //   r.open = +r.open;
-  //   r.close = +r.close;
-  //   r.high = +r.high;
-  //   r.low = +r.low;
-  // });
+
   let rawCommodityChartData = [...chart_data];
   console.log({ rawCommodityChartData, chart_data });
   chart_data = forwardFill(chart_data);

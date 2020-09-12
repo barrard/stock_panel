@@ -9,6 +9,7 @@ export function drawSimpleLine(
   { x, y, nestedY, color, groupName }
 ) {
   let start = new Date().getTime()
+
   values = values.filter(d=>{
     if(nestedY){
       return d[y] && d[y][nestedY]
@@ -16,7 +17,7 @@ export function drawSimpleLine(
       return d[y]
     }
   })
-  console.log(`Time = ${new Date().getTime()- start}`)
+  // console.log(`Time = ${new Date().getTime()- start}`)
   let lineFunc = line()
     .x((d) => timeScale(d[x]))
     .y((d) => (nestedY ? priceScale(d[y][nestedY]) : priceScale(d[y])));

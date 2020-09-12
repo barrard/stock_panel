@@ -25,6 +25,7 @@ function VolProfile(OHLC_data,timeframe, bins) {
 function makeVolProfile(data, currentProfile) {
   let volumePriceProfile = currentProfile || {};
   data.forEach((minute) => {
+    if(!minute.footprint)return
     Object.keys(minute.footprint).forEach((price, i) => {
       if (!price) return;
       if(!volumePriceProfile[price]){

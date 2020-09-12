@@ -97,17 +97,17 @@ function windowAvg(allData, windowSize, key) {
   let allDataLength = allData.length;
   let allAvgData = [];
   // console.log({allData, windowSize, key})
+  // debugger
   allData.forEach((data, iData) => {
     let start = iData;
     let end = iData + windowSize;
-
     if (end > allDataLength) return;
     let window = allData.slice(start, end);
 
     let { timestamp } = window.slice(-1)[0];
     let vals = window.map((d) => d[key]);
     let avg = parseFloat(average(vals).toFixed(3));
-    allAvgData.push({ [`${key}${windowSize}Avg`]: avg, timestamp });
+    allAvgData.push({ [`${key}${windowSize}Avg`]: avg, timestamp, dateTime:new Date(timestamp).toLocaleString() });
   });
 
   // console.log(allAvgData)
@@ -246,16 +246,17 @@ function meanAvgDev(data, window, key) {
   let meanVals = windowAvg(data, window, key);
   let meanKey = `${key}${window}Avg`;
   // console.log(meanVals);
+  // debugger
   data.forEach((d, iD) => {
-    d = data[iD - 1];
-    if (iD < window) return;
+    d = data[iD];
+    if (iD < window-1) return;
 
     let end = iD;
-    let start = iD - window;
+    let start = iD - (window-1);
 
     let { timestamp } = d;
     let meanVal = meanVals[start][meanKey];
-    let dataWindow = data.slice(start, end);
+    let dataWindow = data.slice(start, end+1);
     let absDeviation = dataWindow.reduce((a, b) => {
       //for each data in the window
       //add the difference from the mean
@@ -274,6 +275,7 @@ function meanAvgDev(data, window, key) {
       meanAbsDeviation,
       // currentAbsDeviation,
       timestamp,
+      dateTime:new Date(timestamp).toLocaleString()
     });
   });
 

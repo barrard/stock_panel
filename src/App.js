@@ -14,6 +14,7 @@ import SignupPage from "./components/SignupPage.js";
 import LoginPage from "./components/LoginPage.js";
 import StockChart from "./components/StockChartPage.js";
 import AccountProfile from "./components/AccountProfilePage.js";
+import OpAlerts from "./components/OpAlertsPage.js";
 
 import CommodityChartPage from "./components/CommodityChartPage.js";
 import defaultFilterList from "./components/QuoteComponents/DefaultFilterList.js";
@@ -100,6 +101,12 @@ class App extends React.Component {
             )}
           />
           <Route
+            path="/op-alerts"
+            render={(props) => (
+              <OpAlerts {...props} />
+            )}
+          />
+             <Route
             path="/account-profile"
             render={(props) => (
               <AccountProfile {...props} Socket={Socket} />

@@ -200,7 +200,7 @@ function VolumeProfileBars({
   let { volProfileScale, priceScale } = scales;
   let {
     priceMin,
-    priceMax,
+    priceMax, 
     tickSize,
     innerWidth,
     innerHeight,

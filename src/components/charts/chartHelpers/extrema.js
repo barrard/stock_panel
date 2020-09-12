@@ -1,5 +1,4 @@
 import { mean, min } from "d3-array";
-// import { slopeLine, intercept } from "./utils.js";
 
 
 function pythagorean(x1, x2, y1, y2){

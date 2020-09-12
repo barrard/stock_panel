@@ -1,5 +1,5 @@
 import { max, min } from "d3-array";
-import { slopeAndIntercept, xOfY, dropDuplicateMinMax } from "../utils.js";
+import { slopeAndIntercept, xOfY, dropDuplicateMinMax } from "../../../../indicators/indicatorHelpers/utils.js";
 import diff from "../extrema.js";
 import appendDot from "./Dot.js";
 import DrawLine from "./Line.js";
@@ -19,7 +19,7 @@ export function makeFibonacciData(that, scales) {
      */
 
     let tolerance = that.state.fibonacciMinMax;
-    var minMaxMostRecentData = true;
+    var minMaxMostRecentData = false;//keep as false for this
     var { maxValues } = diff.minMax(
       timestamps,
       highs,

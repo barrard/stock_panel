@@ -12,6 +12,7 @@
         "firstname",
         "handle",
         "histo",
+        "hoverable",
         "idata",
         "intcpt",
         "intraday",

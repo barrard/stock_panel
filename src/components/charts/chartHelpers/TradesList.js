@@ -580,6 +580,7 @@ function Display_Stock_Row({
           currentQuote={currentQuote}
           entryPrice={entryPrice}
           buyOrSell={buyOrSell}
+          exitPrice={exitPrice}
         />
       </div>
     </div>
@@ -788,7 +789,7 @@ const DateTime = ({ date }) => {
     </p>
   );
 };
-const ProfitLoss = ({ PL, currentQuote, exitTime, entryPrice, buyOrSell }) => {
+const ProfitLoss = ({ PL, currentQuote, exitTime, entryPrice, buyOrSell, exitPrice }) => {
   // console.log({PL, currentQuote, entryPrice, buyOrSell})
   if (!entryPrice)
     return (
@@ -796,7 +797,7 @@ const ProfitLoss = ({ PL, currentQuote, exitTime, entryPrice, buyOrSell }) => {
         Unfilled Order
       </div>
     );
-  if (!exitTime && currentQuote && currentQuote.close) {
+  if (!exitTime && !exitPrice && currentQuote && currentQuote.close) {
     let close = currentQuote.close;
     PL = buyOrSell === "Buy" ? close - entryPrice : entryPrice - close;
   }

@@ -4,7 +4,7 @@ import { toastr } from "react-redux-toastr";
 //import { withRouter } from 'next/router';
 import { Link, withRouter } from "react-router-dom";
 import styled from "styled-components";
-import { getDollarProfit } from "../charts/chartHelpers/utils.js";
+import { getDollarProfit } from "../../indicators/indicatorHelpers/utils.js";
 
 //import Main_Layout from '../layouts/Main_Layout.js';
 class Table extends React.Component {

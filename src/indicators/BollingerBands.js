@@ -16,7 +16,7 @@ const {
   function addNewBollingerBands(data) {
     
         //the MAD function will need more data hence the *2
-    let window = data.slice(-(movingAvg * 2 - 1));
+    let window = data.slice(-(movingAvg));
     window = addBollingerBands(window, "close");
     data[data.length-1] = window.slice(-1)[0];
     return data;
@@ -55,7 +55,7 @@ const {
   function addBollingerBands(data, key) {
     
     key = key || "close";
-    let SMA_Key = `${key}${movingAvg}Avg`;
+    // let SMA_Key = `${key}${movingAvg}Avg`;
     //first SMA
     // let SMA = windowAvg(data, movingAvg, `${key}`);
   

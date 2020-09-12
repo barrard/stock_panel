@@ -2,8 +2,7 @@ import React from "react";
 import { connect } from "react-redux";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner } from "@fortawesome/free-solid-svg-icons";
-import { TICKS } from "../chartHelpers/utils.js";
-
+import { TICKS } from "../../../indicators/indicatorHelpers/utils.js";
 // import { toastr } from 'react-redux-toastr';
 // import { Link, withRouter } from 'react-router-dom';
 import styled from "styled-components";
@@ -25,6 +24,8 @@ import {
   addCommodityTrade,addStockTrade,
   // updateCommodityTrade,
 } from "../../../redux/actions/stock_actions.js";
+
+
 //import Main_Layout from '../layouts/Main_Layout.js';
 class BuySellButtons extends React.Component {
   constructor(props) {
@@ -44,10 +45,7 @@ class BuySellButtons extends React.Component {
     let prevSymbol = prevProps.stock_data.search_symbol
     if(currentSymbol !== prevSymbol){
 
-      // console.log('New symbol')
-      //get teh ticks
-      let ticks = TICKS[currentSymbol]
-      // console.log(ticks)
+      let ticks = TICKS()[currentSymbol]
       //set the stop and target limit
       let stop = ticks * 10
       let target = ticks * 30
@@ -218,7 +216,7 @@ class BuySellButtons extends React.Component {
             />
 
             <OrderPriceInputs
-              tickSize={TICKS[search_symbol]}
+              tickSize={TICKS()[search_symbol]}
               currentPrice={currentPrice}
               position_size={position_size}
               order_Limit={order_limit}

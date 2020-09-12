@@ -51,29 +51,11 @@ export async function getMinutelyCommodityData({ symbol, props, from, to }) {
 }
 
 export async function view_selected_commodity({ timeframe, symbol, props }) {
-  // console.log(props);
   const { dispatch } = props;
-  // console.log(dispatch);
-  // console.log(symbol);
+
   // /* Set the search symbol aas selected */
   dispatch(set_search_symbol(symbol));
-  // if (
-  //   !props.stock_data.commodity_data[symbol] ||
-  //   !props.stock_data.commodity_data[symbol]["1Min"]
-  // ) {
-  //   console.log("HOLD UP!  No Minute Data");
-  //   // console.log(props.stock_data.commodity_data);
-  //   await getMinutelyCommodityData({
-  //     symbol,
-  //     props,
-  //   });
 
-  //   return;
-  // }
-  // console.log("view_selected_commodity");
-  // /* set show filtered list false */
-  // dispatch(show_filter_list(false));
-  // /* fetch data and add to the store/charts array */
   dispatch(is_loading(true));
   let currentData = props.stock_data.commodity_data[symbol][timeframe];
   let to = new Date().getTime()
@@ -118,7 +100,7 @@ export async function view_selected_stock({ timeframe, end, symbol, props }) {
   // // if(timeframe === '5Min') timeframe = '5Min'
   // // if(timeframe === '15minutely') timeframe = '15Min'
   // // if(timeframe === '30minutely') timeframe = '30Min'
-  // if (timeframe === "daily") timeframe = "day";
+  // if (timeframe === "Daily") timeframe = "day";
   // if (timeframe === "weekly") {
   //   console.log("TODO make weekly function");
   //   timeframe = "day";
@@ -203,7 +185,7 @@ export function appendMinutelyCommodityDataAsNeeded(
     if (timeframe === "intraday") {
       console.log(`We need more 5Min`);
     }
-    if (timeframe === "daily") {
+    if (timeframe === "Daily") {
       console.log(`We need more intraday`);
     }
     if (timeframe === "weekly") {
@@ -281,6 +263,6 @@ function consolidateMinutelyData(minuteData, timeFrameMinutes) {
 export function getMinutesForTimeframe(timeframe) {
   if (timeframe === "5Min") return 5;
   if (timeframe === "intraday") return 30;
-  if (timeframe === "daily") return 24 * 60;
+  if (timeframe === "Daily") return 24 * 60;
   if (timeframe === "weekly") return 24 * 60 * 7;
 }

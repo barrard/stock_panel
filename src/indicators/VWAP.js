@@ -1,5 +1,5 @@
-const {TICKS} = require("../components/charts/chartHelpers/utils.js");
-
+const {TICKS} = require("./indicatorHelpers/utils.js");
+const {checkBeginningNewDay} = require('./indicatorHelpers/IsMarketOpen.js')
 module.exports = {
   addVWAP,
   addNewVWAP,
@@ -11,7 +11,7 @@ function evalVWAP(data) {
   let lastData = data.slice(-1)[0];
   if (!lastData.VWAP) return;
   let { symbol, timeframe, VWAP } = lastData;
-  let tickSize = TICKS[symbol]
+  let tickSize = TICKS()[symbol]
   let close = lastData.close;
   let delta = (close - VWAP.VWAP) / tickSize;
   console.log(`---VWAP----${symbol} ${timeframe} ticks from VWAP:${delta}`);
@@ -19,6 +19,9 @@ function evalVWAP(data) {
 }
 
 function addNewVWAP(data) {
+    let timeframe = data[0].timeframe
+  if(timeframe!=='1Min')return data
+
   let dl = data.length;
   let prevData = data[dl - 2];
   let cumulativeAvgPriceVol
@@ -52,11 +55,11 @@ function addVWAP(data) {
   } = data;
 
   tickMinutes = createAllVWAP_data(tickMinutes);
-  dailyData = createAllVWAP_data(dailyData);
-  fiveMinData = createAllVWAP_data(fiveMinData);
-  fifteenMinData = createAllVWAP_data(fifteenMinData);
-  thirtyMinData = createAllVWAP_data(thirtyMinData);
-  hourlyData = createAllVWAP_data(hourlyData);
+  // dailyData = createAllVWAP_data(dailyData);
+  // fiveMinData = createAllVWAP_data(fiveMinData);
+  // fifteenMinData = createAllVWAP_data(fifteenMinData);
+  // thirtyMinData = createAllVWAP_data(thirtyMinData);
+  // hourlyData = createAllVWAP_data(hourlyData);
 
   return {
     tickMinutes,
@@ -72,19 +75,20 @@ function createAllVWAP_data(data) {
   let cumulativeVol = 0;
   let cumulativeAvgPriceVol = 0;
   data.forEach((d, iD) => {
-    debugger
-    let { open, high, low, close, volume } = d;
+    let { open, high, low, close, volume, timestamp } = d;
+    if(checkBeginningNewDay(timestamp)){
+      cumulativeVol = 0;
+      cumulativeAvgPriceVol = 0;
+    }
     let typicalPrice = (high + close + low) / 3;
     cumulativeAvgPriceVol = typicalPrice * volume + cumulativeAvgPriceVol;
     cumulativeVol += volume;
     if(cumulativeVol < 0){
-      debugger
     }
     let VWAP = cumulativeAvgPriceVol / cumulativeVol;
     d.VWAP = { VWAP, cumulativeAvgPriceVol, cumulativeVol };
     if(iD>180){
 
-      debugger
     }
   });
   return data;

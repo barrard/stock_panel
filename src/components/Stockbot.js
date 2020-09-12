@@ -3,9 +3,9 @@ import { connect } from "react-redux";
 import { Link, withRouter } from "react-router-dom";
 import styled from "styled-components";
 import { getTrades } from "../redux/actions/StockBotActions.js";
-import { TICKS, tickValues } from "./charts/chartHelpers/utils.js";
+
 import Table from "./StockBotComponents/DisplayTradesTable.js";
-import { getDollarProfit } from "./charts/chartHelpers/utils.js";
+import { getDollarProfit, TICKS, tickValues } from "../indicators/indicatorHelpers/utils.js";
 
 class Account_Profile extends React.Component {
   constructor(props) {

@@ -2,6 +2,7 @@ const {momoTrend, momoStrength} = require('./momentum.js')
 const{ evalVWAP} = require('./VWAP.js')
 const {evalEMA} = require('./EMA.js')
 const {prevCurrentStoch} = require('./stochastics.js')
+
 module.exports = {
     analyzeIndicators
 }
@@ -9,11 +10,11 @@ module.exports = {
 
 function analyzeIndicators(data, timeframe){
     if(timeframe==='daily'){
-        console.log(`Analyze ${timeframe} data`)
+        // console.log(`Analyze ${timeframe} data`)
 
         intradayAnalysis(data)
     }else{
-        console.log(`Analyze ${timeframe}Min data`)
+        // console.log(`Analyze ${timeframe}Min data`)
         intradayAnalysis(data)
     }
 }
@@ -23,10 +24,12 @@ function intradayAnalysis(data){
     // console.log(data)
     //MOM analysis?
     // momoTrend(data.slice(-1)[0].momentum)
-    momentumAnalysis(data)
-    evalVWAP(data)
-    evalEMA(data)
-    prevCurrentStoch(data)
+    // momentumAnalysis(data)
+    // evalVWAP(data)
+    // evalEMA(data)
+    // let stochastic_tradeDecision =prevCurrentStoch(data)
+
+
 
     //VWAP
 }

@@ -1,7 +1,14 @@
-import { createAllVWAP_data } from "../../indicators/VWAP.js";
+import { createAllVWAP_data, addNewVWAP } from "../../indicators/VWAP.js";
 import { makeSuperTrendData } from "../../indicators/superTrend.js";
-import { addBollingerBands } from "../../indicators/BollingerBands.js";
-import {ATR_indicatorVals} from '../../indicators/ATR.js'
+import {
+  addBollingerBands,
+  addNewBollingerBands,
+} from "../../indicators/BollingerBands.js";
+import { ATR_indicatorVals } from "../../indicators/ATR.js";
+import {addStochastics} from '../../indicators/stochastics.js'
+import {momentumAnalysis} from '../../indicators/momentum.js'
+import {addRSI} from '../../indicators/RSI.js'
+import {addAllCCI_data} from '../../indicators/CCI.js'
 const initial_state = {
   has_symbols_data: false,
   stock_symbols_data: [],
@@ -20,10 +27,17 @@ const initial_state = {
   commodityPriceLevelSettings: {},
   commodityTrades: {},
   stockTrades: {},
+  timeframe: "1Min",
 };
 
 export default (state = initial_state, action) => {
   switch (action.type) {
+    case "NEW_TIMEFRAME": {
+      return {
+        ...state,
+        timeframe: action.timeframe,
+      };
+    }
     case "ADD_COMMODITY_TRADE": {
       let { trade, symbol } = action;
       let commodityTrades = { ...state.commodityTrades };
@@ -156,32 +170,57 @@ export default (state = initial_state, action) => {
       let commodity_data = {
         ...state.commodity_data,
       };
+      let rawCommodityCharts = {
+        ...state.rawCommodityCharts,
+      };
+
+      if (!commodity_data[symbol]) commodity_data[symbol] = {};
+      let currentData = commodity_data[symbol][timeframe] || [];
+      //this code prevents requesting and storing duplicate data
+      let lastCurrentDay = currentData[0];
+      if (lastCurrentDay) {
+        let newChartDataIndex = chart_data.findIndex(
+          (d) => d.timestamp === lastCurrentDay.timestamp
+        );
+        if (newChartDataIndex >= 0) {
+          chart_data = chart_data.slice(0, newChartDataIndex);
+        }
+      }
+      if (!rawCommodityCharts[symbol]) rawCommodityCharts[symbol] = {};
+      let currentRawData = rawCommodityCharts[symbol][timeframe] || [];
+
+      //this code prevents requesting and storing duplicate data
+      let lastRawCurrentData = currentRawData[0];
+      if (lastRawCurrentData) {
+        let newRawChartDataIndex = rawCommodityChartData.findIndex(
+          (d) => d.timestamp === lastRawCurrentData.timestamp
+        );
+        if (newRawChartDataIndex >= 0) {
+          rawCommodityChartData = rawCommodityChartData.slice(
+            0,
+            newRawChartDataIndex
+          );
+        }
+      }
+      rawCommodityChartData = [...rawCommodityChartData, ...currentRawData];
+
       //run indicator functions here, since it should only run once
       //VWAP
       createAllVWAP_data(rawCommodityChartData);
       //ATR - Must be done before superTrend
       ATR_indicatorVals(rawCommodityChartData);
       //superTrend
-      
       makeSuperTrendData(rawCommodityChartData);
       //bollingerBands
       addBollingerBands(rawCommodityChartData);
-      
+      addStochastics(rawCommodityChartData);
+      momentumAnalysis(rawCommodityChartData);
+      addRSI(rawCommodityChartData);
+      addAllCCI_data(rawCommodityChartData);
 
-      if (!commodity_data[symbol]) commodity_data[symbol] = {};
-      let currentData = commodity_data[symbol][timeframe] || [];
       commodity_data[symbol][timeframe] = [...chart_data, ...currentData];
 
-      let rawCommodityCharts = {
-        ...state.rawCommodityCharts,
-      };
-      if (!rawCommodityCharts[symbol]) rawCommodityCharts[symbol] = {};
-      let currentRawData = rawCommodityCharts[symbol][timeframe] || [];
-      rawCommodityCharts[symbol][timeframe] = [
-        ...rawCommodityChartData,
-        ...currentRawData,
-      ];
-
+      rawCommodityCharts[symbol][timeframe] = rawCommodityChartData;
       return {
         ...state,
         commodity_data,
@@ -217,6 +256,7 @@ export default (state = initial_state, action) => {
     case "ADD_NEW_TICK": {
       let { new_tick_data } = action;
       let currentTickData = { ...state.currentTickData };
+      let { search_symbol, timeframe } = state;
       // for (let symbol in state.commodity_data) {
       //   if (!currentTickData[symbol]) currentTickData[symbol] = {};
       //   currentTickData[symbol] = new_tick_data[symbol];
@@ -227,7 +267,14 @@ export default (state = initial_state, action) => {
       //     currentTickData[symbol].start_timestamp
       //   ).getTime();
       // }
-      console.log({ new_tick_data });
+      // let data = state.rawCommodityCharts[search_symbol];
+      // if (data && Array.isArray(data[timeframe])) {
+      //   let dataSlice = data[timeframe].slice(-2);
+      // addNewVWAP(dataSlice);
+      // addNewBollingerBands(data[timeframe]);
+      // }
+      // console.log(state.commodity_data);
+      // console.log({ new_tick_data });
       return {
         ...state,
         prevTickDate: currentTickData,

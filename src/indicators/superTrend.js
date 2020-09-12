@@ -67,9 +67,9 @@ function makeSuperTrendData(data, prevST) {
   ATR.forEach((d, iD) => {
     let dataIndex = iD + (tradingRangeAvg - 1);
     //requires a previous value
-    if (iD === 0) {
-      return;
-    }
+    // if (iD === 0) {
+    //   return;
+    // }
     let atr = d[`tradingRange${tradingRangeAvg}Avg`];
     let { high, low, close, timestamp } = data[dataIndex];
     let prevClose = data[dataIndex - 1].close;
