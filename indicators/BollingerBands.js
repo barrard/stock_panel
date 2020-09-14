@@ -3,7 +3,7 @@ const {
     meanAvgDev,
   } = require("./indicatorHelpers/MovingAverage.js");
   
-  export {
+  module.exports = {
     calcBollingerBands,
     addBollingerBands,
     addNewBollingerBands,

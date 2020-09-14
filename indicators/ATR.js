@@ -6,7 +6,7 @@ const {
   
   const indicatorName = "tradingRange";
   const WINDOW_SIZE = 14
-  export {
+  module.exports =  {
     // addAllATR_data,
     singleTradingRange,
     calcTradingRange,

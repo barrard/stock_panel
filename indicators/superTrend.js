@@ -4,7 +4,7 @@ const { windowAvg } = require("./indicatorHelpers/MovingAverage.js");
 const MULTIPLYER = 2;
 const tradingRangeAvg = 14;
 const indicatorName = "superTrend";
-export {
+module.exports =  {
   calcSuperTrend,
   makeSuperTrendData,
   makeNewSuperTrendData,

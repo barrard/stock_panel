@@ -2,7 +2,7 @@ let {average, meanDeviation} = require('./indicatorHelpers/MovingAverage.js')
 let CCI_PERIODS = [5, 10, 14];
 let indicatorName = "CCI";
 
-export {
+module.exports =  {
   calcCCI, CCI_PERIODS, addAllCCI_data, addNewestCCI_data
 }
 

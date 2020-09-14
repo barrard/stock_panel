@@ -1,4 +1,5 @@
-export function  formatData(data) {
+module.exports = {
+  formatData(data) {
     if (data.length && data[0].t) {
       //alpaca data
       data = data.map((d) => ({
@@ -12,21 +13,20 @@ export function  formatData(data) {
     } else {
       return data;
     }
-  }
+  },
 
-  export function forwardFill(data) {
-    debugger
+  forwardFill(data) {
     //find the time line
     console.log({ data });
-    let timeframe = determineTimeFrame(data);
-    data = fillMissingData(data, timeframe);
+    let timeframe = module.exports.determineTimeFrame(data);
+    data = module.exports.fillMissingData(data, timeframe);
     // console.log('================================')
     // data = fillMissingData(data, timeframe)
     // console.log({data})
     return data;
-  }
+  },
 
-  export function  fillMissingData(data, timeframe) {
+  fillMissingData(data, timeframe) {
     if (!data) return;
     let missingDataObj = {};
     data.forEach((d, i) => {
@@ -37,7 +37,6 @@ export function  formatData(data) {
       // console.log({diff, timeframe})
       // console.log({i, diff:Math.round(diff / timeframe), today, tomorrow})
       if (Math.round(diff / timeframe) !== 1) {
-        debugger
         // console.log({ diff: Math.round(diff / timeframe), today, tomorrow, i, timeframe })
         let lastClose = d.close;
         let blankDay = {
@@ -66,9 +65,9 @@ export function  formatData(data) {
       });
 
     return data;
-  }
+  },
 
-  export function  determineTimeFrame(data) {
+  determineTimeFrame(data) {
     if (!data) return;
     let diffObj = {};
     // let prev = 0;
@@ -95,14 +94,14 @@ export function  formatData(data) {
     }
     // console.log({ timeframe })
     return timeframe;
-  }
+  },
 
   /**
    *
    * @param {Objecy} values object {x:time, y:price}
    * we want to remove duplicate prices
    */
-  export function  dropDuplicateMinMax(values) {
+  dropDuplicateMinMax(values) {
     let valCheck = [];
     let newValues = [];
     values.forEach((v) => {
@@ -114,52 +113,66 @@ export function  formatData(data) {
     });
 
     return newValues;
-  }
+  },
+  proximity(val1, val2){
+    return Math.abs(val1 - val2) / val1
+  },
+  
+tls(d) {
+  return new Date(d).toLocaleString();
+},
 
-  export function pythagorean(x1, x2, y1, y2) {
+  withinProximity(val1, val2, prox){
+    let diff=proximity(val1, val2)
+    return diff <= prox;
+  },
+  
+  
+
+  pythagorean(x1, x2, y1, y2) {
     let sideA, sideB;
     sideA = Math.abs(x1 - x2);
     sideB = Math.abs(y1 - y2);
 
     return Math.sqrt(Math.pow(sideA, 2) + Math.pow(sideB, 2));
-  }
-  export function  xOfY({ m, b, y }) {
+  },
+  xOfY({ m, b, y }) {
     // y = m*x + b
     let x = (y - b) / m;
     return x;
-  }
-  export function  slopeAndIntercept({ x1, x2, y1, y2 }) {
-    let m = slopeLine({ x1, x2, y1, y2 });
-    let b = intercept({ x: x1, y: y1 }, m);
-    let l = pythagorean(x1, x2, y1, y2);
+  },
+  slopeAndIntercept({ x1, x2, y1, y2 }) {
+    let m = module.exports.slopeLine({ x1, x2, y1, y2 });
+    let b = module.exports.intercept({ x: x1, y: y1 }, m);
+    let l = module.exports.pythagorean(x1, x2, y1, y2);
 
     return { b, m, l };
-  }
-  export function slopeLine({ x1, x2, y1, y2 }) {
-    return slope({ x: x1, y: y1 }, { x: x2, y: y2 });
-  }
+  },
+  slopeLine({ x1, x2, y1, y2 }) {
+    return module.exports.slope({ x: x1, y: y1 }, { x: x2, y: y2 });
+  },
 
-  export function  slope(a, b) {
+  slope(a, b) {
     // console.log({ a, b });
     if (a.x === b.x) {
       return null;
     }
     if (b.y === a.y) return 0;
     return (b.y - a.y) / (b.x - a.x);
-  }
+  },
 
-  export function  intercept(point, slope) {
+  intercept(point, slope) {
     if (slope === null) {
       // vertical line
       return point.x;
     }
 
     return point.y - slope * point.x;
-  }
+  },
 
-  export function  xIntercept(a, m) {
+  xIntercept(a, m) {
     return a.x - a.y / m;
-  }
+  },
 
   //  utilDataSetup({OHLCdata, priceScale, timeScale, timeframe}) {
 
@@ -281,7 +294,7 @@ export function  formatData(data) {
 
   // }
 
-  export function  TICKS() {
+  TICKS() {
     return {
       ZT: 0.0039,
       ZF: 0.0078,
@@ -345,9 +358,9 @@ export function  formatData(data) {
       HE: 0.025,
       LE: 0.025,
     };
-  }
+  },
 
-  export function  tickValues() {
+  tickValues() {
     return {
       GC: 10,
       SI: 25,
@@ -376,12 +389,13 @@ export function  formatData(data) {
       HE: 10,
       LE: 10,
     };
-  }
-  export function getDollarProfit(trade) {
+  },
+  getDollarProfit(trade) {
     let { PL, symbol } = trade;
-    let ticks = TICKS[symbol];
+    let ticks = module.exports.TICKS[symbol];
     let tp = PL / ticks;
 
-    let dollarAmount = (PL / ticks) * tickValues[symbol];
+    let dollarAmount = (PL / ticks) * module.exports.tickValues[symbol];
     return +dollarAmount.toFixed(1);
-  }
+  },
+};

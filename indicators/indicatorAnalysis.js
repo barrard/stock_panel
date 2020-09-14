@@ -3,7 +3,7 @@ const{ evalVWAP} = require('./VWAP.js')
 const {evalEMA} = require('./EMA.js')
 const {prevCurrentStoch} = require('./stochastics.js')
 
-export {
+module.exports =  {
     analyzeIndicators
 }
 

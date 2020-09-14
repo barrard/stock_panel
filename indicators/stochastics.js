@@ -2,7 +2,7 @@ const { average, windowAvg } = require("./indicatorHelpers/MovingAverage.js");
 let stochasticPeriods = [14, 24, 50, 100];
 let indicatorName = "stochastics";
 
-export {
+module.exports =  {
   stochasticsAnalysis,
   stochasticPeriods,
   calcStochastics,

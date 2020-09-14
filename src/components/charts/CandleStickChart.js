@@ -416,6 +416,7 @@ class CandleStickChart extends React.Component {
          * in the data, but we dont want
          * to add it over and over, just once
          */
+        if(!lastBar || !currentData)return
         if (lastBar.timestamp !== currentTickData.timestamp) {
           if (lastPartialBar.timestamp === lastBar.timestamp) {
             partialOHLCdata.push(currentTickData);

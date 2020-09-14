@@ -96,10 +96,10 @@ export function priceRangeRed(defs) {
     );
   
     let firstHalfCandleZoom = parseInt(
-      firstHalf.length < 10 ? 0 : firstHalf.length * 0.05 || 1
+      firstHalf.length < 10 ? 0 : firstHalf.length * 0.15 || 1
     );
     let secondHalfCandleZoom = parseInt(
-      secondHalf.length < 11 ? 0 : secondHalf.length * 0.05 || 1
+      secondHalf.length < 11 ? 0 : secondHalf.length * 0.15 || 1
     );
     firstHalf = firstHalf.slice(firstHalfCandleZoom, firstHalf.length);
     secondHalf = secondHalf.slice(

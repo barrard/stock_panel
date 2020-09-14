@@ -8,7 +8,7 @@ let {
   findDeviation,
 } = require("./indicatorHelpers/MovingAverage.js");
 
-export {
+module.exports =  {
   VolProfile,
 };
 function VolProfile(OHLC_data,timeframe, bins) {

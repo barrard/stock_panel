@@ -7,7 +7,7 @@ const getLow = (d) => +d.low;
 const getVolume = (d) => +d.volume;
 const getTimestamp = (d) => +d.timestamp;
 
-export  {
+module.exports = {
   findDeviation,
   windowAvg,
   rateOfChange,

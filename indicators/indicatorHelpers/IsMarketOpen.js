@@ -168,7 +168,7 @@ function forbiddenTimestamp(time) {
   return false;
 }
 
-export {
+module.exports = {
   checkBeginningNewDay,
   forbiddenTimestamp,
   checkEndOpeningSessionTime,

@@ -6,7 +6,7 @@ const {TICKS} = require("./indicatorHelpers/utils.js");
 const TICK_SIZE = TICKS()
 const indicatorName = "ema";
 
-export {
+module.exports =  {
     createAllEMAData,
   EMA_Analysis,
   addEMAVals,

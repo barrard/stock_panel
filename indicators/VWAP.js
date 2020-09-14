@@ -1,6 +1,6 @@
-import  {TICKS} from "./indicatorHelpers/utils.js";
-import  {checkBeginningNewDay} from './indicatorHelpers/IsMarketOpen.js'
-export {
+const {TICKS} = require("./indicatorHelpers/utils.js");
+const {checkBeginningNewDay} = require('./indicatorHelpers/IsMarketOpen.js')
+module.exports =  {
   addVWAP,
   addNewVWAP,
   createAllVWAP_data,
@@ -54,8 +54,6 @@ function addVWAP(data) {
     hourlyData,
   } = data;
 
-  //ONLY ADD VWAP TO MINUTE DATA
-  //TODO, add value from minute data to each other timeframe
   tickMinutes = createAllVWAP_data(tickMinutes);
   // dailyData = createAllVWAP_data(dailyData);
   // fiveMinData = createAllVWAP_data(fiveMinData);

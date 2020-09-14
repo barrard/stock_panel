@@ -2,7 +2,7 @@ const { average } = require("./indicatorHelpers/MovingAverage.js");
 let momoValues = [1, 2, 3, 5, 10, 20, 40];
 let indicatorName = "momentum";
 
-export {
+module.exports =  {
   momoTrend,
   momoStrength,
   momentumAnalysis,

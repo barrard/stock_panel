@@ -1,6 +1,6 @@
 const { windowExpAvg, windowAvg } = require("./indicatorHelpers/MovingAverage.js");
 
-export {
+module.exports =  {
   calcRSI, addRSI, addNewRSI
 };
 

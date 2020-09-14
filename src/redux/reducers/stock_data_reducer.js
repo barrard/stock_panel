@@ -1,4 +1,4 @@
-const { createAllVWAP_data, addNewVWAP } = require("../../indicators/VWAP.js");
+import {createAllVWAP_data, addNewVWAP} from "../../indicators/VWAP.js"
 const { makeSuperTrendData } = require("../../indicators/superTrend.js");
 const {
   addBollingerBands,
