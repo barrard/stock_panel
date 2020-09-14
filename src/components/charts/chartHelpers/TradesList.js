@@ -492,7 +492,7 @@ function Display_Stock_Row({
   closePositions,
 }) {
   const {
-    PL,
+    PL,stratName,
     buyOrSell,
     entryPrice,
     entryTime,
@@ -514,7 +514,7 @@ function Display_Stock_Row({
   let timeframe = "day";
   let end = new Date().getTime();
   return (
-    <div
+    <div title={stratName? stratName:''}
       className={`row clickable ${class_name} relative`}
       onClick={() => {
         //TODO??  move the chart and show the order time, stop and loss targets along with entry

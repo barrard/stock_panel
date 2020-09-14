@@ -14,85 +14,84 @@ class Timers extends React.Component {
       secondsUntilNextMinute: 59,
       tickTimes: [],
       avgTickTime: 3.0,
-      tickTimer:null,
-      startTimer:null,
-      minuteTimer:null
+      tickTimer: null,
+      startTimer: null,
+      minuteTimer: null,
     };
   }
 
   componentDidMount() {
     this.setMinuteTimer();
     let startTimer = setTimeout(() => {
-        this.startTickTimer()
-        this.startMinuteTimer()}, 0);
-        this.setState({startTimer})
+      // this.startTickTimer()
+      this.startMinuteTimer();
+    }, 0);
+    this.setState({ startTimer });
   }
 
   componentDidUpdate(prevProps) {
     let { lastTick } = this.props;
     // console.log({prevProps, lastTick})
     this.handleNewMinute(prevProps);
-    this.handleNewTick(prevProps);
+    // this.handleNewTick(prevProps);
   }
-  componentWillUnmount(){
-    clearInterval(this.state.tickTimer)
-    clearInterval(this.state.minuteTimer)
-    
-    clearTimeout(this.state.startTimer)
+  componentWillUnmount() {
+    clearInterval(this.state.tickTimer);
+    clearInterval(this.state.minuteTimer);
+
+    clearTimeout(this.state.startTimer);
   }
 
   handleNewMinute(prevProps) {
     let { lastTick } = this.props;
     let lastTickTime = lastTick.timestamp;
     let prevTickTime = prevProps.lastTick.timestamp;
-    
+
     // console.log({lastTickTime, prevTickTime})
     if (lastTickTime != prevTickTime) {
       console.log("Got a new Minute");
-      this.setMinuteTimer()
+      this.setMinuteTimer();
     }
   }
 
-  handleNewTick(prevProps) {
-    let { lastTick } = this.props;
-    let lastTickSampleTime = new Date(
-      lastTick.sample_times.slice(-1)[0]
-    ).getTime();
-    let prevTickSampleTime = new Date(
-      prevProps.lastTick.sample_times.slice(-1)[0]
-    ).getTime();
+  // handleNewTick(prevProps) {
+  //   let { lastTick } = this.props;
+  //   debugger
+  //   let lastTickSampleTime = new Date(
+  //     lastTick.sample_times.slice(-1)[0]
+  //   ).getTime();
+  //   let prevTickSampleTime = new Date(
+  //     prevProps.lastTick.sample_times.slice(-1)[0]
+  //   ).getTime();
 
-    if (lastTickSampleTime != prevTickSampleTime) {
-      // console.log({lastTick})
-      // console.log({lastTickSampleTime, prevTickSampleTime})
-    //   console.log("Got a new Tick");
-    
+  //   if (lastTickSampleTime != prevTickSampleTime) {
+  //     // console.log({lastTick})
+  //     // console.log({lastTickSampleTime, prevTickSampleTime})
+  //   //   console.log("Got a new Tick");
 
-    //   console.log({lastTickSampleTime, prevTickSampleTime})
-      let tickDelta = lastTickSampleTime - prevTickSampleTime
-    //   console.log({tickDelta})
-      this.setTickerTimer(tickDelta)
+  //   //   console.log({lastTickSampleTime, prevTickSampleTime})
+  //     let tickDelta = lastTickSampleTime - prevTickSampleTime
+  //   //   console.log({tickDelta})
+  //     this.setTickerTimer(tickDelta)
 
-    }
-  }
+  //   }
+  // }
 
-  setTickerTimer(tickDelta){
-    
-    let {tickTimes} = this.state
+  // setTickerTimer(tickDelta){
 
-    tickTimes.push(tickDelta)
-    if(tickTimes.length>10)tickTimes.shift()
-    let avgTickTime = (tickTimes.reduce((a,b)=>a+b,0)/tickTimes.length)
-    avgTickTime = avgTickTime/1000
-    avgTickTime = avgTickTime.toFixed(1)
-    // console.log({avgTickTime})
-    this.setState({
-        avgTickTime
-    })
+  //   let {tickTimes} = this.state
 
+  //   tickTimes.push(tickDelta)
+  //   if(tickTimes.length>10)tickTimes.shift()
+  //   let avgTickTime = (tickTimes.reduce((a,b)=>a+b,0)/tickTimes.length)
+  //   avgTickTime = avgTickTime/1000
+  //   avgTickTime = avgTickTime.toFixed(1)
+  //   // console.log({avgTickTime})
+  //   this.setState({
+  //       avgTickTime
+  //   })
 
-
-  }
+  // }
 
   setMinuteTimer() {
     let now = new Date().getTime();
@@ -109,38 +108,38 @@ class Timers extends React.Component {
   }
 
   startMinuteTimer() {
-    let minuteTimer =  setInterval(() => {
-          let { secondsUntilNextMinute } = this.state;
-        //   console.log({ secondsUntilNextMinute });
-    //   console.log(`timer ${secondsUntilNextMinute}`);
-      secondsUntilNextMinute--
+    let minuteTimer = setInterval(() => {
+      let { secondsUntilNextMinute } = this.state;
+      //   console.log({ secondsUntilNextMinute });
+      //   console.log(`timer ${secondsUntilNextMinute}`);
+      secondsUntilNextMinute--;
       this.setState({
         secondsUntilNextMinute,
       });
     }, 1000);
-    this.setState({minuteTimer})
+    this.setState({ minuteTimer });
   }
 
-  startTickTimer() {
-    let tickTimer = setInterval(() => {
-        let { avgTickTime } = this.state;
-        // console.log({ avgTickTime });
-    // console.log(`timer ${avgTickTime}`);
-    avgTickTime-=0.1
-    avgTickTime = avgTickTime.toFixed(1)
+  //   startTickTimer() {
+  //     let tickTimer = setInterval(() => {
+  //         let { avgTickTime } = this.state;
+  //         // console.log({ avgTickTime });
+  //     // console.log(`timer ${avgTickTime}`);
+  //     avgTickTime-=0.1
+  //     avgTickTime = avgTickTime.toFixed(1)
 
-    this.setState({
-      avgTickTime,
-    });
-  }, 100);
-  this.setState({tickTimer})
-}
+  //   //   this.setState({
+  //   //     avgTickTime,
+  //   //   });
+  //   // }, 100);
+  //   this.setState({tickTimer})
+  // }
   render() {
     let { secondsUntilNextMinute, avgTickTime } = this.state;
     return (
       <TimersContainer>
         <h5>Seconds until next minute {secondsUntilNextMinute}</h5>
-        <h5>Seconds until next tick {avgTickTime}</h5>
+        {/* <h5>Seconds until next tick {avgTickTime}</h5> */}
       </TimersContainer>
     );
   }

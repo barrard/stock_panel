@@ -64,7 +64,18 @@ class OpAlerts extends React.Component {
     });
     this.props.dispatch(getOpAlerts());
   }
-  componentDidUpdate() {}
+  shouldComponentUpdate(pp, ps) {
+    let prevAlertsLen = pp.options.alerts.length;
+    let alertsLen = this.props.options.alerts.length;
+
+    if (prevAlertsLen !== 0 && prevAlertsLen !== alertsLen) {
+      return true;
+    } else {
+
+      return false;
+    }
+    // console.log({pp, ps})
+  }
 
   sortAlerts() {
     let { alerts } = this.props.options;
@@ -88,7 +99,6 @@ class OpAlerts extends React.Component {
       sortedAlerts[symbol][exp][putCall][strike] = alert;
     });
     // console.log(sortedAlerts);
-    debugger;
     return sortedAlerts;
   }
 
@@ -98,58 +108,66 @@ class OpAlerts extends React.Component {
       name: today,
       children: [],
     };
-    Object.keys(sortedAlerts).sort((a,b)=>b<a?1:-1).map( symbol => {
-      let symbolData = {
-        name: symbol,
-        _collapsed: true,
-        children: [],//expiration dates
-      };
-      data.children.push(symbolData);
-      let attributes= {
-        'exp Dates': Object.keys(sortedAlerts[symbol]).length
-      }
-      symbolData.attributes=attributes
-
-      Object.keys(sortedAlerts[symbol]).sort((a, b)=>b<a?1:-1).map(exp=> {
-        let expData = {
-          name: exp,
+    Object.keys(sortedAlerts)
+      .sort((a, b) => (b < a ? 1 : -1))
+      .map((symbol) => {
+        let symbolData = {
+          name: symbol,
           _collapsed: true,
-          children: [],//PUTS CALLS
+          children: [], //expiration dates
         };
-        symbolData.children.push(expData);
-    
-        let attributes= {
-          'putCall': Object.keys(sortedAlerts[symbol][exp]).length
-        }
-        expData.attributes=attributes
-        for (let putCall in sortedAlerts[symbol][exp]) {
-          let putCallData = {
-            name: putCall,
-            _collapsed: true,
-            children: [],//strikes
-          };
-          expData.children.push(putCallData);
+        data.children.push(symbolData);
+        let attributes = {
+          "exp Dates": Object.keys(sortedAlerts[symbol]).length,
+        };
+        symbolData.attributes = attributes;
 
-          let attributes= {
-            'strikes': Object.keys(sortedAlerts[symbol][exp][putCall]).length
-          }
-          putCallData.attributes=attributes
-
-          Object.keys(sortedAlerts[symbol][exp][putCall]).sort((a,b)=>a-b).map(strike => {
-            let { alerts } = sortedAlerts[symbol][exp][putCall][strike];
-            let strikeCallData = {
-              name: strike,
-              children:alerts.map(a=>{return{name:a.dateTime}}),
+        Object.keys(sortedAlerts[symbol])
+          .sort((a, b) => (b < a ? 1 : -1))
+          .map((exp) => {
+            let expData = {
+              name: exp,
               _collapsed: true,
-              attributes: {
-                Alerts: alerts.length,
-              },
+              children: [], //PUTS CALLS
             };
-            putCallData.children.push(strikeCallData);
-          })
-        }
-      })
-    })
+            symbolData.children.push(expData);
+
+            let attributes = {
+              putCall: Object.keys(sortedAlerts[symbol][exp]).length,
+            };
+            expData.attributes = attributes;
+            for (let putCall in sortedAlerts[symbol][exp]) {
+              let putCallData = {
+                name: putCall,
+                _collapsed: true,
+                children: [], //strikes
+              };
+              expData.children.push(putCallData);
+
+              let attributes = {
+                strikes: Object.keys(sortedAlerts[symbol][exp][putCall]).length,
+              };
+              putCallData.attributes = attributes;
+
+              Object.keys(sortedAlerts[symbol][exp][putCall])
+                .sort((a, b) => a - b)
+                .map((strike) => {
+                  let { alerts } = sortedAlerts[symbol][exp][putCall][strike];
+                  let strikeCallData = {
+                    name: strike,
+                    children: alerts.map((a) => {
+                      return { name: a.dateTime };
+                    }),
+                    _collapsed: true,
+                    attributes: {
+                      Alerts: alerts.length,
+                    },
+                  };
+                  putCallData.children.push(strikeCallData);
+                });
+            }
+          });
+      });
 
     return [data];
   }
@@ -170,6 +188,36 @@ class OpAlerts extends React.Component {
       selectedExp: exp,
       selectedPutCall: putCall,
     });
+  }
+
+  async checkSnap({ symbol, exp, strike, putCall }) {
+    //set the symbol, strike, exp, putCall
+    console.log({ symbol, exp, strike });
+    let snap = await API.fetchOpAlertData({ symbol, exp, strike, putCall }); //[0]//SHOULD BE ARRAY LENGTH 1
+    if (!snap.length) {
+      return console.log(`No data for this strike ${symbol} ${strike}`);
+    } //re should really only get one snapshot back
+    console.log(snap);
+    debugger;
+
+    this.setState({
+      snap: snap[0],
+      selectedSymbol: symbol,
+      selectedStrike: strike,
+      selectedExp: exp,
+      selectedPutCall: putCall,
+    });
+  }
+
+  nodeClicked(data, evt){
+    if(data.depth === 5){
+      //get
+      
+      console.log(data)
+      // this.checkSnap({ symbol, strike, exp, putCall });
+
+
+    }
   }
 
   render() {
@@ -202,7 +250,7 @@ class OpAlerts extends React.Component {
           style={{ width: "100vw", height: "100vh" }}
           ref={(tc) => (this.treeContainer = tc)}
         >
-          <Tree translate={this.state.translate} data={treeSort} />
+          <Tree onClick={this.nodeClicked} translate={this.state.translate} data={treeSort} />
         </div>
       </div>
     );

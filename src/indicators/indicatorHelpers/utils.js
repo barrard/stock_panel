@@ -15,7 +15,6 @@ export function  formatData(data) {
   }
 
   export function forwardFill(data) {
-    debugger
     //find the time line
     console.log({ data });
     let timeframe = determineTimeFrame(data);
@@ -37,7 +36,6 @@ export function  formatData(data) {
       // console.log({diff, timeframe})
       // console.log({i, diff:Math.round(diff / timeframe), today, tomorrow})
       if (Math.round(diff / timeframe) !== 1) {
-        debugger
         // console.log({ diff: Math.round(diff / timeframe), today, tomorrow, i, timeframe })
         let lastClose = d.close;
         let blankDay = {

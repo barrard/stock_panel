@@ -12,7 +12,7 @@ module.exports =  {
 };
 
 
-function decide({dir, cond}){
+function decide({dir}){
       /**
      * dir          cond
      * 1 sell       1 sell
@@ -23,20 +23,16 @@ function decide({dir, cond}){
      */
     
     if(
-      //dir === 1  ||
-       cond === 1){
+       dir === 1){
       return 'Sell'
     }else if(
-      //dir === 2  ||
-       cond === 2){
+       dir === 2){
       return 'Buy'
     }else if(
-      //dir === 3  ||
-       cond === 3){
+       dir === 3){
       return 'Exit Sell'
     }else if(
-      //dir === 4  ||
-       cond === 4){
+       dir === 4){
       return 'Exit Buy'
     }else return null
 }
@@ -52,20 +48,19 @@ function prevCurrentStoch(data) {
     dir = 1; //"oversold";sell
   } else if (prevStoch === "overbought" && currStoch === "overbought") {
     dir = 2; //"overbought"; buy
-  } else if (prevStoch === "oversold" && currStoch === "being bought") {
+  } else if (prevStoch === "exitShort" && currStoch === "exitShort") {
     dir = 3; //"reverse up";exit sell
-  } else if (prevStoch === "overbought" && currStoch === "being sold") {
+  } else if (prevStoch === "exitLong" && currStoch === "exitLong") {
     dir = 4; //"reverse down"; exit buy
   } else {
     dir = 5; //"middle";
   }
-  if (!currStoch) {
-    console.log("wtf " +prevStoch);
-    currStoch = "middle";
-  }
+  // if (!currStoch) {
+  //   console.log("wtf " +prevStoch);
+  //   currStoch = "middle";
+  // }
   // console.log(`----STOCH ${symbol} ${timeframe} ${dir} ${cond}`);
-  let cond = currStoch
-    let tradeDecision = decide({dir, cond})
+    let tradeDecision = decide({dir})
   return tradeDecision;
 }
 function evalStoch(data) {
@@ -77,14 +72,14 @@ function evalStoch(data) {
   }
   let dir =
     D > 80 && K > 80
-      ? 2 //"overbought and going up"
+      ?  "overbought" //2
       : 20 > K && 20 > D
-      ? 1 //"oversold and going down"
+      ? "oversold" //1
       : K > 20 && D < 20
-      ? 3 //"being bought"
+       ? "exitShort" //3
       : K < 80 && D > 80
-      ? 4 //"being sold"
-      : 5; //"middle";
+      ?  "exitLong"//4
+      : "middle" //5;
 
   if (!dir) {
     console.log("dbug");

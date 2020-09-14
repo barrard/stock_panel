@@ -418,6 +418,7 @@ class CandleStickChart extends React.Component {
          */
         if(!lastBar || !currentData)return
         if (lastBar.timestamp !== currentTickData.timestamp) {
+          if(!lastPartialBar || !lastBar)return
           if (lastPartialBar.timestamp === lastBar.timestamp) {
             partialOHLCdata.push(currentTickData);
           }
@@ -1919,7 +1920,7 @@ class CandleStickChart extends React.Component {
           <option value="weekly">Weekly</option>
         </select>
         {/* Sad but no more cool timer */}
-        {/* {currentTickData && <Timers lastTick={currentTickData} />} */}
+        {currentTickData && <Timers lastTick={currentTickData} />}
         <RegressionSettingsContainer>
           {/* RegressionLine settings */}
           <RegressionSettings

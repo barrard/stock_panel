@@ -1,14 +1,14 @@
-import {createAllVWAP_data, addNewVWAP} from "../../indicators/VWAP.js"
+import { createAllVWAP_data, addNewVWAP } from "../../indicators/VWAP.js";
 const { makeSuperTrendData } = require("../../indicators/superTrend.js");
 const {
   addBollingerBands,
   addNewBollingerBands,
 } = require("../../indicators/BollingerBands.js");
 const { ATR_indicatorVals } = require("../../indicators/ATR.js");
-const {addStochastics} = require('../../indicators/stochastics.js')
-const {momentumAnalysis} = require('../../indicators/momentum.js')
-const {addRSI} = require('../../indicators/RSI.js')
-let  {addAllCCI_data} =require( '../../indicators/CCI.js')
+const { addStochastics } = require("../../indicators/stochastics.js");
+const { momentumAnalysis } = require("../../indicators/momentum.js");
+const { addRSI } = require("../../indicators/RSI.js");
+let { addAllCCI_data } = require("../../indicators/CCI.js");
 const initial_state = {
   has_symbols_data: false,
   stock_symbols_data: [],
@@ -75,7 +75,24 @@ export default (state = initial_state, action) => {
       let { trade } = action;
       let { symbol } = trade;
       let commodityTrades = { ...state.commodityTrades };
-      if (!commodityTrades[symbol] || !commodityTrades[symbol].length) {
+      if (trade.stratName) {
+        console.log(trade);
+        console.log(`stock bot making trades`);
+
+        console.log("is this new?? or what?");
+        if (!commodityTrades[symbol] || !commodityTrades[symbol].length) {
+          commodityTrades[symbol] = [trade];
+        } else {
+          let commodityTradeIndex = commodityTrades[symbol].findIndex(
+            (t) => t._id === trade._id
+          );
+          if (commodityTradeIndex < 0) {
+            commodityTrades[symbol] = [...commodityTrades[symbol], trade];
+          } else {
+            commodityTrades[symbol][commodityTradeIndex] = trade;
+          }
+        }
+      } else if (!commodityTrades[symbol] || !commodityTrades[symbol].length) {
         commodityTrades[symbol] = [trade];
       } else {
         let commodityTradeIndex = commodityTrades[symbol].findIndex(
@@ -90,7 +107,7 @@ export default (state = initial_state, action) => {
       }
       return {
         ...state,
-        commodityTrades,
+        commodityTrades: {...commodityTrades},
       };
     }
 
