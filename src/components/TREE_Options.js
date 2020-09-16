@@ -13,11 +13,8 @@ class OpAlerts extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      snap: {},
-      selectedSymbol: null,
-      selectedStrike: null,
-      selectedExp: null,
-      selectedPutCall: null,
+      render: false,
+      snaps: {},
       myTreeData: [
         {
           name: "Top Level",
@@ -51,7 +48,7 @@ class OpAlerts extends React.Component {
         },
       ],
     };
-    this.checkSnap = this.checkSnap.bind(this);
+    this.nodeClicked = this.nodeClicked.bind(this);
   }
 
   componentDidMount() {
@@ -68,16 +65,20 @@ class OpAlerts extends React.Component {
     let prevAlertsLen = pp.options.alerts.length;
     let alertsLen = this.props.options.alerts.length;
 
-    if (prevAlertsLen !== 0 && prevAlertsLen !== alertsLen) {
+    if (
+      (prevAlertsLen !== 0 && prevAlertsLen !== alertsLen) ||
+      this.state.render
+    ) {
+      this.state.render = false;
       return true;
     } else {
-
       return false;
     }
     // console.log({pp, ps})
   }
 
   sortAlerts() {
+    console.log("Sorting / Organizing alerts");
     let { alerts } = this.props.options;
     if (!alerts.length) return {};
     let sortedAlerts = {};
@@ -103,6 +104,7 @@ class OpAlerts extends React.Component {
   }
 
   treeSort(sortedAlerts) {
+    console.log("building tree sort data");
     let today = new Date().toLocaleString().split(",")[0];
     let data = {
       name: today,
@@ -113,6 +115,7 @@ class OpAlerts extends React.Component {
       .map((symbol) => {
         let symbolData = {
           name: symbol,
+          // attributes: { underlying: underlyingPrice },
           _collapsed: true,
           children: [], //expiration dates
         };
@@ -152,16 +155,85 @@ class OpAlerts extends React.Component {
               Object.keys(sortedAlerts[symbol][exp][putCall])
                 .sort((a, b) => a - b)
                 .map((strike) => {
-                  let { alerts } = sortedAlerts[symbol][exp][putCall][strike];
+                  let {
+                    alerts,
+                    last,
+                    timestamp,
+                    underlyingPrice,
+                    bid,
+                    ask,
+                    bsPricing,
+                    IV,
+                  } = sortedAlerts[symbol][exp][putCall][strike];
+
+                  //this just adds the underlying price to the symbol
+                  let dataIndex = data.children.findIndex(
+                    (d) => d.name === symbol
+                  );
+                  let attributes = data.children[dataIndex].attributes;
+                  data.children[dataIndex].attributes = {
+                    ...attributes,
+                    $: underlyingPrice,
+                  }; //adding undelying to symbol
+                  debugger;
                   let strikeCallData = {
                     name: strike,
                     children: alerts.map((a) => {
-                      return { name: a.dateTime };
+                      let child = {};
+                      child.attributes = {
+                        alert: a.alert
+
+                      };
+                      child.name = a.dateTime;
+
+                      // if (
+                      //   this.state.snaps[symbol] &&
+                      //   this.state.snaps[symbol][exp] &&
+                      //   this.state.snaps[symbol][exp][putCall] &&
+                      //   this.state.snaps[symbol][exp][putCall][strike]
+                      // ) {
+                      // debugger;
+                      // console.log(
+                      //   this.state.snaps[symbol][exp][putCall][strike]
+                      // );
+                      // let snaps = this.state.snaps[symbol][exp][putCall][
+                      //   strike
+                      // ];
+                      // let iSnap = snaps.findIndex((d) => {
+                      //   if (d.dateTime === a.dateTime) {
+                      //     debugger;
+                      //     console.log(d.dateTime === a.dateTime);
+                      //   }
+                      // });
+                      // let {
+                      //   IV,
+                      //   ask,
+                      //   bid,
+                      //   bsPricing,
+                      //   dateTime,
+                      //   delta,
+                      //   gamma,
+                      //   last,
+                      //   openInterest,
+                      //   rho,
+                      //   timestamp,
+                      //   totalVolume,
+                      //   underlyingPrice,
+                      //   vega,
+                      // } = snaps[iSnap];
+                      // child.attributes={...snaps[iSnap]}
+                      // _collapsed: true,
+                      // attributes: {
+                      //   Alerts: alerts.length,
+                      //   Date: new Date(timestamp).toLocaleString(),
+                      //   IV: IV.toFixed(5),
+                      //   "last vs BS": (last - bsPricing).toFixed(5),
+                      //   "Bid Ask": `${bid} ${ask}`,
+                      // },
+                      // }
+                      return child;
                     }),
-                    _collapsed: true,
-                    attributes: {
-                      Alerts: alerts.length,
-                    },
+                  
                   };
                   putCallData.children.push(strikeCallData);
                 });
@@ -171,58 +243,74 @@ class OpAlerts extends React.Component {
 
     return [data];
   }
-  async checkSnap({ symbol, exp, strike, putCall }) {
-    //set the symbol, strike, exp, putCall
-    console.log({ symbol, exp, strike });
-    let snap = await API.fetchOpAlertData({ symbol, exp, strike, putCall }); //[0]//SHOULD BE ARRAY LENGTH 1
-    if (!snap.length) {
-      return console.log(`No data for this strike ${symbol} ${strike}`);
-    } //re should really only get one snapshot back
-    console.log(snap);
-    debugger;
 
-    this.setState({
-      snap: snap[0],
-      selectedSymbol: symbol,
-      selectedStrike: strike,
-      selectedExp: exp,
-      selectedPutCall: putCall,
-    });
-  }
+  async nodeClicked(data, evt) {
+    console.log(data.depth);
+    switch (data.depth) {
+      case 1: //symbol
+        //get the snaps
 
-  async checkSnap({ symbol, exp, strike, putCall }) {
-    //set the symbol, strike, exp, putCall
-    console.log({ symbol, exp, strike });
-    let snap = await API.fetchOpAlertData({ symbol, exp, strike, putCall }); //[0]//SHOULD BE ARRAY LENGTH 1
-    if (!snap.length) {
-      return console.log(`No data for this strike ${symbol} ${strike}`);
-    } //re should really only get one snapshot back
-    console.log(snap);
-    debugger;
+        break;
 
-    this.setState({
-      snap: snap[0],
-      selectedSymbol: symbol,
-      selectedStrike: strike,
-      selectedExp: exp,
-      selectedPutCall: putCall,
-    });
-  }
+      case 4:
+        console.log(4);
+        console.log(data);
+        // let needSnaps = data._children.map(
+        // )
+        let strike = data.name;
+        let putCall = data.parent.name;
+        let exp = data.parent.parent.name;
+        let symbol = data.parent.parent.parent.name;
+        let snaps = this.state.snaps;
+        if (!snaps[symbol]) snaps[symbol] = {};
+        if (!snaps[symbol][exp]) snaps[symbol][exp] = {};
+        if (!snaps[symbol][exp][putCall]) {
+          snaps[symbol][exp][putCall] = {};
 
-  nodeClicked(data, evt){
-    if(data.depth === 5){
+          debugger;
+          // if(needSnaps){
+          let valTracker = await API.fetchOpAlertData({
+            symbol,
+            exp,
+            strike,
+            putCall,
+          }); //[0]//SHOULD BE ARRAY LENGTH 1
+          console.log(valTracker);
+          snaps[symbol][exp][putCall][strike] = valTracker[0].snaps;
+        }
+
+        // if (!snaps[symbol][exp][putCall][strike])
+        //   snaps[symbol][exp][putCall][strike] = [];
+
+        // debugger;
+        this.setState({
+          render: true,
+          snaps: { ...snaps },
+        });
+        //apply the timestamped snapshots to the respective alert
+        // data._children.gotSnaps=true
+        // }
+        break;
+
+      case 5:
+        console.log(5);
+
+        break;
+
+      default:
+        break;
+    }
+    if (data.depth === 5) {
       //get
-      
-      console.log(data)
+
+      console.log(data);
       // this.checkSnap({ symbol, strike, exp, putCall });
-
-
     }
   }
 
   render() {
     let { options } = this.props;
-    let { checkSnap } = this;
+    // let { checkSnap } = this;
     console.log(options);
     let sortedAlerts = this.sortAlerts();
     let treeSort = this.treeSort(sortedAlerts);
@@ -250,7 +338,11 @@ class OpAlerts extends React.Component {
           style={{ width: "100vw", height: "100vh" }}
           ref={(tc) => (this.treeContainer = tc)}
         >
-          <Tree onClick={this.nodeClicked} translate={this.state.translate} data={treeSort} />
+          <Tree
+            onClick={this.nodeClicked}
+            translate={this.state.translate}
+            data={treeSort}
+          />
         </div>
       </div>
     );

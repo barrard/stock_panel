@@ -92,7 +92,6 @@ class OpAlerts extends React.Component {
           </div>
           {Object.keys(sortedAlerts).map((symbol) => {
             let { CALL, PUT, underlyingPrice } = sortedAlerts[symbol];
-debugger
             //return a row per symbol
             return alertRow({
               state: this.state,

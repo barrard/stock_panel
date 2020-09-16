@@ -81,14 +81,17 @@ export default (state = initial_state, action) => {
 
         console.log("is this new?? or what?");
         if (!commodityTrades[symbol] || !commodityTrades[symbol].length) {
+          console.log('totally new')
           commodityTrades[symbol] = [trade];
         } else {
           let commodityTradeIndex = commodityTrades[symbol].findIndex(
             (t) => t._id === trade._id
           );
           if (commodityTradeIndex < 0) {
+            console.log('yes new trade')
             commodityTrades[symbol] = [...commodityTrades[symbol], trade];
           } else {
+            console.log('no, this is just update to  trade')
             commodityTrades[symbol][commodityTradeIndex] = trade;
           }
         }

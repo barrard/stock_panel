@@ -14,11 +14,12 @@ import SignupPage from "./components/SignupPage.js";
 import LoginPage from "./components/LoginPage.js";
 import StockChart from "./components/StockChartPage.js";
 import AccountProfile from "./components/AccountProfilePage.js";
-import OpAlerts from "./components/OpUnusualVolPage.js.js";
+import OpAlerts from "./components/OpUnusualVolPage.js";
 
 import CommodityChartPage from "./components/CommodityChartPage.js";
 import defaultFilterList from "./components/QuoteComponents/DefaultFilterList.js";
 import Main_Nav from "./components/Main_Nav.js";
+import{addOptionAlert}from './redux/actions/opActions.js'
 import {
   updateCommodityData,
   addCommodityTrade,
@@ -62,6 +63,11 @@ class App extends React.Component {
     });
     Socket.on("current_minute_data", (newTickData) => {
       dispatch(updateCommodityData(newTickData, "tick"));
+    });
+    
+    Socket.on("opAlert", (newOpAlert) => {
+      console.log("Option Alert");
+      return dispatch(addOptionAlert(newOpAlert));
     });
     Socket.on("stockBotEnterTrade", (newTrade) => {
       console.log("stockBotEnterTrade ENTERING A TRADE");

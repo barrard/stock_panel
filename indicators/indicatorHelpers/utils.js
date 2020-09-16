@@ -392,10 +392,10 @@ tls(d) {
   },
   getDollarProfit(trade) {
     let { PL, symbol } = trade;
-    let ticks = module.exports.TICKS[symbol];
+    let ticks = module.exports.TICKS()[symbol];
     let tp = PL / ticks;
 
-    let dollarAmount = (PL / ticks) * module.exports.tickValues[symbol];
+    let dollarAmount = (PL / ticks) * module.exports.tickValues()[symbol];
     return +dollarAmount.toFixed(1);
   },
 };

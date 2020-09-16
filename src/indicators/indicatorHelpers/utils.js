@@ -377,9 +377,9 @@ export function  formatData(data) {
   }
   export function getDollarProfit(trade) {
     let { PL, symbol } = trade;
-    let ticks = TICKS[symbol];
+    let ticks = TICKS()[symbol];
     let tp = PL / ticks;
 
-    let dollarAmount = (PL / ticks) * tickValues[symbol];
+    let dollarAmount = (PL / ticks) * tickValues()[symbol];
     return +dollarAmount.toFixed(1);
   }
