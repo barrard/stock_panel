@@ -1,5 +1,5 @@
 const initial_state = {
-  alerts:{}
+  alerts:[]
 };
 
 export default (state = initial_state, action) => {

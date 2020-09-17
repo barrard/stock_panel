@@ -5,7 +5,11 @@ import styled from "styled-components";
 import { getTrades } from "../redux/actions/StockBotActions.js";
 
 import Table from "./StockBotComponents/DisplayTradesTable.js";
-const { getDollarProfit, TICKS, tickValues } = require("../indicators/indicatorHelpers/utils.js");
+const {
+  getDollarProfit,
+  TICKS,
+  tickValues,
+} = require("../indicators/indicatorHelpers/utils.js");
 
 class Account_Profile extends React.Component {
   constructor(props) {
@@ -178,9 +182,74 @@ class Account_Profile extends React.Component {
     trades.forEach((trade) => {
       trade.dollarProfit = getDollarProfit(trade);
     });
-
     // console.log(trades);
+    let stochasticMethodTrades = trades.filter((t) =>
+      t.stratName.startsWith("stochastic")
+    );
+    let stochasticWinners = stochasticMethodTrades.filter((t) => t.PL > 0);
+    //get all stochastic trade details
+    let all5Min = [];
+    let all15Min = [];
+    let all30Min = [];
+    let all60Min = [];
+    let allDaily = [];
+    let all_ES_trades = [];
+    let all_RTY_trades = [];
+    let all_CL_trades = [];
+    let all_GC_trades = [];
+    let all_NQ_trades = [];
+    let all_YM_trades = [];
+    stochasticMethodTrades.forEach((t) => {
+      let { PL } = t;
+      let [groupName, symbol, timeframe, buySell] = t.stratName.split("_");
+      // console.log({groupName, symbol, timeframe, buySell})
 
+      switch (symbol) {
+        case "ES":
+          all_ES_trades.push(t);
+          break;
+        case "NQ":
+          all_NQ_trades.push(t);
+          break;
+        case "CL":
+          all_CL_trades.push(t);
+          break;
+        case "GC":
+          all_GC_trades.push(t);
+          break;
+        case "YM":
+          all_YM_trades.push(t);
+          break;
+        case "RTY":
+          all_RTY_trades.push(t);
+          break;
+
+        default:
+          break;
+      }
+
+      switch (timeframe) {
+        case "5Min":
+          all5Min.push(t);
+          break;
+        case "15Min":
+          all15Min.push(t);
+          break;
+        case "30Min":
+          all30Min.push(t);
+          break;
+        case "60Min":
+          all60Min.push(t);
+          break;
+        case "daily":
+          allDaily.push(t);
+          break;
+
+        default:
+          break;
+      }
+    });
+    debugger;
     let oldPriceLevelTrades = trades.filter(
       (t) => !t.stratName.endsWith("Activation")
     );
@@ -197,6 +266,21 @@ class Account_Profile extends React.Component {
     );
     let oldWinners = oldPriceLevelTrades.filter((t) => t.PL > 0);
     let newWinners = newPriceLevelTrades.filter((t) => t.PL > 0);
+
+    let stochastic_winners = {};
+    let symbols = ["ES", "CL", "YM", "GC", "RTY", "NQ"];
+
+    let esWinners = all_ES_trades.filter((t) => t.PL > 0);
+    let nqWinners = all_NQ_trades.filter((t) => t.PL > 0);
+    let clWinners = all_CL_trades.filter((t) => t.PL > 0);
+    let ymWinners = all_YM_trades.filter((t) => t.PL > 0);
+    let gcWinners = all_GC_trades.filter((t) => t.PL > 0);
+    let rtyWinners = all_RTY_trades.filter((t) => t.PL > 0);
+    let min5Winners = all5Min.filter(t=>t.PL>0)
+    let min15Winners = all15Min.filter(t=>t.PL>0)
+    let min30Winners = all30Min.filter(t=>t.PL>0)
+    let min60Winners = all60Min.filter(t=>t.PL>0)
+    let dailyWinners = allDaily.filter(t=>t.PL>0)
     return (
       <div className="container white">
         <div className="col flex_center">
@@ -210,8 +294,63 @@ class Account_Profile extends React.Component {
             )}`}</span>
           </h3>
         </div>
+        <div className="row flex_center">
+          <div className="col-sm-12 flex_center">STOCHASTICS</div>
+
+
+          <div className="col-sm-12 flex_center">
+            Total ES winners {esWinners.length}/{all_ES_trades.length} ratio{" "}
+            {(esWinners.length / all_ES_trades.length).toFixed(3)} PL = {this.totalPL(all_ES_trades)}
+          </div>
+          <div className="col-sm-12 flex_center">
+            Total YM winners {esWinners.length}/{all_YM_trades.length} ratio{" "}
+            {(ymWinners.length / all_YM_trades.length).toFixed(3)} PL = {this.totalPL(all_YM_trades)}
+          </div>
+          <div className="col-sm-12 flex_center">
+            Total GC winners {esWinners.length}/{all_GC_trades.length} ratio{" "}
+            {(gcWinners.length / all_GC_trades.length).toFixed(3)} PL = {this.totalPL(all_GC_trades)}
+          </div>
+          <div className="col-sm-12 flex_center">
+            Total CL winners {esWinners.length}/{all_CL_trades.length} ratio{" "}
+            {(clWinners.length / all_CL_trades.length).toFixed(3)} PL = {this.totalPL(all_CL_trades)}
+          </div>
+          <div className="col-sm-12 flex_center">
+            Total NQ winners {esWinners.length}/{all_NQ_trades.length} ratio{" "}
+            {(nqWinners.length / all_NQ_trades.length).toFixed(3)} PL = {this.totalPL(all_NQ_trades)}
+          </div>
+          <div className="col-sm-12 flex_center">
+            Total RTY winners {esWinners.length}/{all_RTY_trades.length} ratio{" "}
+            {(rtyWinners.length / all_RTY_trades.length).toFixed(3)} PL = {this.totalPL(all_RTY_trades)}
+          </div>
+
+          <div className="col-sm-12 flex_center">
+            Total 5Min winners {min5Winners.length}/{all5Min.length} ratio{" "}
+            {(min5Winners.length / all5Min.length).toFixed(3)} PL = {this.totalPL(all5Min)}
+          </div>
+
+
+          <div className="col-sm-12 flex_center">
+            Total 15Min winners {min15Winners.length}/{all15Min.length} ratio{" "}
+            {(min15Winners.length / all15Min.length).toFixed(3)} PL = {this.totalPL(all15Min)}
+          </div>
+          <div className="col-sm-12 flex_center">
+            Total 30Min winners {min30Winners.length}/{all30Min.length} ratio{" "}
+            {(min30Winners.length / all30Min.length).toFixed(3)} PL = {this.totalPL(all30Min)}
+          </div>
+          <div className="col-sm-12 flex_center">
+            Total 60Min winners {min60Winners.length}/{all60Min.length} ratio{" "}
+            {(min60Winners.length / all60Min.length).toFixed(3)} PL = {this.totalPL(all60Min)}
+          </div>
+          <div className="col-sm-12 flex_center">
+            Total Daily winners {dailyWinners.length}/{allDaily.length} ratio{" "}
+            {(dailyWinners.length / allDaily.length).toFixed(3)} PL = {this.totalPL(allDaily)}
+          </div>
+
+
+        </div>
         <div className="row flex_center white">
           <div className="col-sm-12 flex_center">Strat Study</div>
+
           <div className="row flex_center full-width">
             <div className="col-sm-6 ">
               <div className="row full-width flex_center">

@@ -4,7 +4,7 @@ import { toastr } from "react-redux-toastr";
 export function getOpAlerts() {
   return async (dispatch) => {
     let alerts = await API.fetchOpAlerts();
-    alerts = sortAlerts(alerts)
+    // alerts = sortAlerts(alerts)
     return dispatch({
       type: "SET_OP_ALERTS",
       alerts,

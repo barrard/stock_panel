@@ -76,22 +76,22 @@ export default (state = initial_state, action) => {
       let { symbol } = trade;
       let commodityTrades = { ...state.commodityTrades };
       if (trade.stratName) {
-        console.log(trade);
-        console.log(`stock bot making trades`);
+        // console.log(trade);
+        // console.log(`stock bot making trades`);
 
-        console.log("is this new?? or what?");
+        // console.log("is this new?? or what?");
         if (!commodityTrades[symbol] || !commodityTrades[symbol].length) {
-          console.log('totally new')
+          // console.log('totally new')
           commodityTrades[symbol] = [trade];
         } else {
           let commodityTradeIndex = commodityTrades[symbol].findIndex(
             (t) => t._id === trade._id
           );
           if (commodityTradeIndex < 0) {
-            console.log('yes new trade')
+            // console.log('yes new trade')
             commodityTrades[symbol] = [...commodityTrades[symbol], trade];
           } else {
-            console.log('no, this is just update to  trade')
+            // console.log('no, this is just update to  trade')
             commodityTrades[symbol][commodityTradeIndex] = trade;
           }
         }
@@ -105,7 +105,7 @@ export default (state = initial_state, action) => {
           console.error("WE HAVE A PROBLEM");
         } else {
           commodityTrades[symbol][commodityTradeIndex] = trade;
-          console.log(commodityTrades[symbol]);
+          // console.log(commodityTrades[symbol]);
         }
       }
       return {

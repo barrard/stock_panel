@@ -530,14 +530,30 @@ canvas {
 .align_items_center {
   align-items: center;
 }
+.optionFilterSelect{
+  border-bottom: 1px solid red;
+    margin-bottom: 20px;
+}
 .text_indent_10 {
   text-indent: 10%;
+}
+.opAlertData{
+  padding: 1em;
+  border: dashed blue 1px;
+
+}
+.filterHover{
+  border: dashed red 1px;
+
 }
 .sectionHover:hover{
   border: dashed black 1px;
 }
 .sectionHover{
   border: 1px solid transparent;
+}
+.selectedContract{
+  border: black 1px dashed;
 }
 .hoverableTicker {
   border: 1px solid transparent;
