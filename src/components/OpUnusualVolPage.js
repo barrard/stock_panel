@@ -41,17 +41,17 @@ class OpAlerts extends React.Component {
   }
 
   dropDownSelect(name, values) {
-    let selects = values.map((v) => {
+    let selects = values.map((v, iV) => {
       return (
-        <option key={v} value={v}>
+        <option key={iV} value={v}>
           {v}
         </option>
       );
     });
     let firstOption = (
       <option
-        selected="true"
-        disabled="true"
+        // selected={true}
+        // disabled={true}
         value={`Select ${name}`}
       >{`Select ${name}`}</option>
     );
@@ -79,7 +79,8 @@ class OpAlerts extends React.Component {
           </>
         )}
         <select
-          // value={this.state[`filter_${name}`]}
+          value={this.state[`filter_${name}`]}
+          defaultValue={`Select ${name}`}
           onChange={(e) => {
             this.setState({
               [`filter_${name}`]: e.target.value,
@@ -105,19 +106,19 @@ class OpAlerts extends React.Component {
                     <div className="row flex_center">
                       <div className="col-sm-12 flex_center sm-title">{f}</div>
                       <div className="col-sm-12 flex_center">
-                        {typeof this.state[`lessThan_${f}`] !== undefined &&
-                          this.state[`lessThan_${f}`] && (
-                            <div>
-                              <span className="red">Less</span> Than
-                            </div>
-                          )}
+                        {this.state[`lessThan_${f}`] && (
+                          <div>
+                            <span className="red">Less</span> Than{" "}
+                            {this.state[`filter_${f}`]}
+                          </div>
+                        )}
                         {typeof this.state[`lessThan_${f}`] !== undefined &&
                           this.state[`lessThan_${f}`] === false && (
                             <div>
-                              <span className="green">Greater</span> Than
+                              <span className="green">Greater</span> Than{" "}
+                              {this.state[`filter_${f}`]}
                             </div>
                           )}
-                        {this.state[`filter_${f}`]}
                       </div>
                     </div>
                   </div>
@@ -225,6 +226,11 @@ class OpAlerts extends React.Component {
         a.opDataSnaps.forEach((snap) => allSnaps.push(snap));
       }
     });
+    allSnaps = allSnaps
+      .map((s) => {
+        return { ...s, dateTime: new Date(s.dateTime).getTime() };
+      })
+      .sort((a, b) => a.dateTime - b.dateTime);
     alerts = alerts.filter((a) => {
       if (
         a.symbol === symbol &&

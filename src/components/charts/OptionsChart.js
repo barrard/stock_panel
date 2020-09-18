@@ -124,12 +124,15 @@ class OptionsChart extends React.Component {
     let [timeMin, timeMax] = extent(timestamps);
 
     let timeframe = 0;
-    let timeSpanBuffer = 1000*60*60*2
+    let timeSpanBuffer = 1000 * 60 * 60 * 2;
     //scale the domains
-    this.state.xBottomScale.domain([timeMin-(timeSpanBuffer), timeMax+timeSpanBuffer]);
+    this.state.xBottomScale.domain([
+      timeMin - timeSpanBuffer,
+      timeMax + timeSpanBuffer,
+    ]);
     // this.state.candleHeightScale.domain([0, priceRange]);
-    this.state.yRightScale.domain([priceMin, priceMax*1.2]);
-    this.state.yLeftScale.domain([0, volMax*1.2]);
+    this.state.yRightScale.domain([priceMin, priceMax * 1.2]);
+    this.state.yLeftScale.domain([0, volMax * 1.2]);
 
     // let volProfileAxis = axisTop(this.state.volProfileScale).ticks(4);
 
@@ -176,27 +179,25 @@ class OptionsChart extends React.Component {
       y: margin.top + innerHeight / 2,
     });
 
-
     //Draw last price line
     let lineFunc = line()
-    .x((d) => this.state.xBottomScale(new Date(d.dateTime).getTime()))
-    .y((d) => ( this.state.yRightScale(d.last)));
+      .x((d) => this.state.xBottomScale(new Date(d.dateTime).getTime()))
+      .y((d) => this.state.yRightScale(d.last));
 
-  let linePath = chartWindow.selectAll(`.lastPrice`).data([drawData]);
-  linePath
-  .enter()
-  .append("path")
-  .merge(linePath)
-  .attr("class", `.lastPrice`)
-  .attr("stroke-width", 3)
-  .attr("d", lineFunc)
-  .attr("stroke", 'white')
-  .attr("fill", 'none');
-
+    let linePath = chartWindow.selectAll(`.lastPrice`).data([drawData]);
+    linePath
+      .enter()
+      .append("path")
+      .merge(linePath)
+      .attr("class", `.lastPrice`)
+      .attr("stroke-width", 3)
+      .attr("d", lineFunc)
+      .attr("stroke", "white")
+      .attr("fill", "none");
 
     //Draw total volume bars
     let volBars = chartWindow.selectAll(`.totalVolumeBars`).data(drawData);
-    let volBarWidth = 10
+    let volBarWidth = 10;
     volBars.exit().remove();
     volBars
       .enter()
@@ -207,30 +208,32 @@ class OptionsChart extends React.Component {
         "x",
 
         (d) =>
-          this.state.xBottomScale(new Date(d.dateTime).getTime()) - (volBarWidth/2)
-          // innerWidth / dra.length / 2
+          this.state.xBottomScale(new Date(d.dateTime).getTime()) -
+          volBarWidth / 2
+        // innerWidth / dra.length / 2
       )
-      .attr("y", ((d) => this.state.yLeftScale(d.totalVolume)))
+      .attr("y", (d) => this.state.yLeftScale(d.totalVolume))
       .attr(
         "height",
         // height ||
-          ((d, i) => {
-            let h = innerHeight - this.state.yLeftScale(d.totalVolume);
-            if (h < 0) h = 0;
-            return h;
-          })
+        (d, i) => {
+          let h = innerHeight - this.state.yLeftScale(d.totalVolume);
+          if (h < 0) h = 0;
+          return h;
+        }
       )
       // .attr("opacity")
       .attr("pointer-events", "none")
 
       .attr("width", (d, i) => volBarWidth)
-      .attr("fill", (d, i) => 'goldenrod')
+      .attr("fill", (d, i) => "goldenrod")
       .attr("stroke", "#666")
       .attr(
-        "stroke-width", 3
-          // function () {
-          //   return this.getAttribute("height") / 10;
-          // }
+        "stroke-width",
+        0
+        // function () {
+        //   return this.getAttribute("height") / 10;
+        // }
       );
 
     this.setState({
@@ -241,63 +244,57 @@ class OptionsChart extends React.Component {
     });
     // this.draw();
 
+    /* CrossHair */
+    var crosshair = DrawCrossHair(chartWindow);
 
+    chartWindow
+      .append("rect")
+      .attr("class", "overlay")
 
-        /* CrossHair */
-        var crosshair = DrawCrossHair(chartWindow);
+      .attr("height", innerHeight)
+      .attr("width", innerWidth)
+      .on("mouseover", function () {
+        crosshair.style("display", null);
+      })
+      .on("mouseout", function () {
+        crosshair.style("display", "none");
+        removeAllAxisAnnotations(svg);
+      })
+      .on("mousemove", function () {
+        return mousemove(that, this);
+      });
 
-        chartWindow
-          .append("rect")
-          .attr("class", "overlay")
-    
-          .attr("height", innerHeight)
-          .attr("width", innerWidth)
-          .on("mouseover", function () {
-            crosshair.style("display", null);
-          })
-          .on("mouseout", function () {
-            crosshair.style("display", "none");
-            removeAllAxisAnnotations(svg);
-          })
-          .on("mousemove", function () {
-            return mousemove(that, this);
-          });
-    
-        function mousemove(otherThat, that) {
-          let _mouse = mouse(that);
-    
-          //this enables the crosshair to move at the
-          // timeframe interval
-          // let { timeframe } = otherThat.state;
-          // let interval = getInterval(timeframe);
-          let interval = 1;
-          let MOUSETIME = new Date(
-            otherThat.state.xBottomScale.invert(_mouse[0])
-          ).getTime();
-          MOUSETIME = Math.round(MOUSETIME / interval) * interval;
-          MOUSEX = otherThat.state.xBottomScale(MOUSETIME);
-          MOUSEY = _mouse[1];
-    
-          otherThat.appendAxisAnnotations(MOUSEX, MOUSEY, svg);
-    
-          crosshair
-            .select("#crosshairX")
-            .attr("x1", MOUSEX)
-            .attr("y1", 0)
-            .attr("x2", MOUSEX)
-            .attr("y2", innerHeight);
-    
-          crosshair
-            .select("#crosshairY")
-            .attr("x1", otherThat.state.xBottomScale(timestamps[0]))
-            .attr("y1", MOUSEY)
-            .attr(
-              "x2",
-              otherThat.state.xBottomScale(timestamps[timestamps.length - 1])
-            )
-            .attr("y2", MOUSEY);
-        }
-    
+    function mousemove(otherThat, that) {
+      let _mouse = mouse(that);
+
+      //this enables the crosshair to move at the
+      // timeframe interval
+      // let { timeframe } = otherThat.state;
+      // let interval = getInterval(timeframe);
+      let interval = 1;
+      let MOUSETIME = new Date(
+        otherThat.state.xBottomScale.invert(_mouse[0])
+      ).getTime();
+      MOUSETIME = Math.round(MOUSETIME / interval) * interval;
+      MOUSEX = otherThat.state.xBottomScale(MOUSETIME);
+      MOUSEY = _mouse[1];
+
+      otherThat.appendAxisAnnotations(MOUSEX, MOUSEY, svg);
+
+      crosshair
+        .select("#crosshairX")
+        .attr("x1", MOUSEX)
+        .attr("y1", 0)
+        .attr("x2", MOUSEX)
+        .attr("y2", innerHeight);
+
+      crosshair
+        .select("#crosshairY")
+        .attr("x1", otherThat.state.xBottomScale(otherThat.state.xBottomScale.domain()[0]))
+        .attr("y1", MOUSEY)
+        .attr("x2", otherThat.state.xBottomScale(otherThat.state.xBottomScale.domain()[1]))
+        .attr("y2", MOUSEY);
+    }
   }
 
   //draw
