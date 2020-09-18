@@ -67,7 +67,8 @@ class App extends React.Component {
     
     Socket.on("opAlert", (newOpAlert) => {
       console.log("Option Alert");
-      return dispatch(addOptionAlert(newOpAlert));
+      console.log({newOpAlert})
+      // return dispatch(addOptionAlert(newOpAlert));
     });
     Socket.on("stockBotEnterTrade", (newTrade) => {
       console.log("stockBotEnterTrade ENTERING A TRADE");

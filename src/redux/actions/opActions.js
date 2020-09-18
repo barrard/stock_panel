@@ -33,6 +33,7 @@ export function getOpAlerts() {
 
 export function addOptionAlert(alert) {
   console.log(alert);
+  return
   let { exp, putCall, strike, symbol, timestamp, alerts } = alert;
   let newAlert = alerts.slice(-1)[0]
   let alertMsg = newAlert.alert;

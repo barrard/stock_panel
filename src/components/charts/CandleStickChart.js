@@ -416,9 +416,9 @@ class CandleStickChart extends React.Component {
          * in the data, but we dont want
          * to add it over and over, just once
          */
-        if(!lastBar || !currentData)return
+        if (!lastBar || !currentData) return;
         if (lastBar.timestamp !== currentTickData.timestamp) {
-          if(!lastPartialBar || !lastBar)return
+          if (!lastPartialBar || !lastBar) return;
           if (lastPartialBar.timestamp === lastBar.timestamp) {
             partialOHLCdata.push(currentTickData);
           }
@@ -778,7 +778,7 @@ class CandleStickChart extends React.Component {
     let volProfileAxis = axisTop(this.state.volProfileScale).ticks(4);
 
     //Set up some data
-    this.createPriceLevelsData();
+    // this.createPriceLevelsData();
 
     //make all EMA/STD data
     Object.keys(this.state.EMA_data).forEach((MA_value) => {

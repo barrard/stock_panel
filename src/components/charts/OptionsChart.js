@@ -8,15 +8,16 @@ import { scaleLinear, scaleTime } from "d3-scale";
 import { extent, max, min } from "d3-array";
 import { select, event, mouse } from "d3-selection";
 import { drag } from "d3-drag";
+import { line } from "d3-shape";
 
 import {
-    drawAxisAnnotation,
-    removeAllAxisAnnotations,
-    addAxisAnnotationElements,
-    DrawCrossHair,
-  } from "./chartHelpers/chartAxis.js";
-  import { CenterLabel } from "./chartHelpers/ChartMarkers/Labels.js";
-  
+  drawAxisAnnotation,
+  removeAllAxisAnnotations,
+  addAxisAnnotationElements,
+  DrawCrossHair,
+} from "./chartHelpers/chartAxis.js";
+import { CenterLabel } from "./chartHelpers/ChartMarkers/Labels.js";
+
 let margin = {
   top: 15,
   right: 60,
@@ -35,30 +36,29 @@ class OptionsChart extends React.Component {
     this.state = {
       chartRef: React.createRef(),
 
-    //   innerWidth: width - (margin.left + margin.right),
-    //   innerHeight: height - (margin.top + margin.bottom),
+      //   innerWidth: width - (margin.left + margin.right),
+      //   innerHeight: height - (margin.top + margin.bottom),
       xBottomScale: scaleTime().range([0, innerWidth]),
-    //   topXScale: scaleLinear().range([innerWidth / 2, innerWidth]),
+      //   topXScale: scaleLinear().range([innerWidth / 2, innerWidth]),
       yRightScale: scaleLinear().range([innerHeight, 0]),
       yLeftScale: scaleLinear().range([innerHeight, 0]).nice(),
-
+      xBottomAxis: {},
+      yRightAxis: {},
+      yLeftAxis: {},
     };
   }
 
   async componentDidMount() {
-      debugger
-      console.log(this.props)
-      this.setupChart()
+    console.log(this.props);
+    this.setupChart();
   }
 
   componentDidUpdate(prevProps, prevState) {
-    this.draw();
-
+    // this.draw();
     // this.handleNewData(prevState, prevProps);
+  }
 
-}
-
-handleNewData(ps,pp){
+  handleNewData(ps, pp) {
     // let ppData = pp.data
     // let {data} = this.props
     // if(data.data !==
@@ -67,9 +67,8 @@ handleNewData(ps,pp){
     //     // data.symbol !===ppData.symbol &&
     //     // data.symbol !===ppData.symbol &&
     //     // data.symbol !===ppData.symbol &&
-
     // )
-}
+  }
   appendAxisAnnotations(x, y, svg) {
     // drawAxisAnnotation(
     //   "topVolProfileTag",
@@ -98,184 +97,239 @@ handleNewData(ps,pp){
   //setup
   setupChart() {
     let that = this;
+    let drawData = this.props.data;
     if (!this.state.chartRef.current) return;
     let svg = select(this.state.chartRef.current);
     svg.selectAll("*").remove();
-  
+
+    //Time axis
     let xBottomAxis = axisBottom(this.state.xBottomScale)
-    .ticks(5)
-    .tickSize(-innerHeight);
-
-  let yRightAxis = axisRight(this.state.yRightScale)
-    .ticks(8)
-    .tickSize(-innerWidth);
-
-
+      .ticks(5)
+      .tickSize(-innerHeight);
+    //last price axis
+    let yRightAxis = axisRight(this.state.yRightScale)
+      .ticks(8)
+      .tickSize(-innerWidth);
+    //total volume axis
     let yLeftAxis = axisLeft(this.state.yLeftScale).ticks(4);
 
-    // let volProfileAxis = axisTop(this.state.volProfileScale).ticks(4);
-
-
-    // this.setupData()
-
-
-        //append timeAxis group
-        let timeAxisG = svg
-        .append("g")
-        .attr("class", "timeAxis white")
-        .attr(
-          "transform",
-          `translate(${margin.left}, ${height - margin.bottom})`
-        )
-        .call(xBottomAxis);
-  
-      //append priceAxis group
-      let priceAxisG = svg
-        .append("g")
-        .attr("class", "priceAxis white")
-        .attr(
-          "transform",
-          `translate(${width - margin.right}, ${margin.top})`
-        )
-        .call(yRightAxis);
-
-
-            //appand volAxis
-    let volAxisG = svg
-    .append("g")
-    .attr("class", "white volAxis")
-    .attr("transform", `translate(${margin.left}, ${margin.top})`)
-    .call(yLeftAxis);
-
-//   //append the crosshair marker
-//   volAxisG
-//     .append("path")
-//     .attr("id", `leftVolTag`)
-//     // .attr("stroke", "blue")
-//     .attr("stroke-width", 2);
-//   volAxisG.append("text").attr("id", `leftVolTagText`);
-
-
-  let chartWindow = svg
-  // .append('rect').attr('width', this.state.innerWidth).attr('height', this.state.innerHeight)
-  .append("g")
-  .attr("class", "chartWindow")
-  .attr("transform", `translate(${margin.left},${margin.top})`)
-  .attr("fill", "black");
-
-  CenterLabel({
-    symbol: this.props.symbol,
-    timeframe: this.props.exp,
-    chartWindow,
-    x: "45%",
-    y: margin.top + innerHeight / 2,
-  });
-
-     /* CrossHair */
-     var crosshair = DrawCrossHair(chartWindow);
-
-
-     chartWindow
-     .append("rect")
-     .attr("class", "overlay")
-
-     .attr("height", this.state.innerHeight)
-     .attr("width", this.state.innerWidth)
-     .on("mouseover", function () {
-       crosshair.style("display", null);
-     })
-     .on("mouseout", function () {
-       crosshair.style("display", "none");
-       removeAllAxisAnnotations(svg);
-     })
-     .on("mousemove", function () {
-       return mousemove(that, this);
-     });
-
-     function mousemove(otherThat, that) {
-        let _mouse = mouse(that);
-  
-        //this enables the crosshair to move at the
-        // timeframe interval
-        // let { timeframe } = otherThat.state;
-        // let interval = getInterval(timeframe);
-        let interval = 100
-        let MOUSETIME = new Date(
-          otherThat.state.timeScale.invert(_mouse[0])
-        ).getTime();
-        MOUSETIME = Math.round(MOUSETIME / interval) * interval;
-        MOUSEX = otherThat.state.timeScale(MOUSETIME);
-        MOUSEY = _mouse[1];
-  
-        otherThat.appendAxisAnnotations(MOUSEX, MOUSEY, svg);
-  
-        crosshair
-          .select("#crosshairX")
-          .attr("x1", MOUSEX)
-          .attr("y1", 0)
-          .attr("x2", MOUSEX)
-          .attr("y2", innerHeight);
-  
-        crosshair
-          .select("#crosshairY")
-          .attr("x1", otherThat.xBottomScale(otherThat.timestamps[0]))
-          .attr("y1", MOUSEY)
-          .attr(
-            "x2",
-            otherThat.xBottomScale(
-              otherThat.timestamps[otherThat.timestamps.length - 1]
-            )
-          )
-          .attr("y2", MOUSEY);
-      }
-  
-
-      this.setState({
-        xBottomAxis,
-        yRightAxis,
-        yLeftAxis,
-
-    });
-      this.draw();
-
-}
-
-
-
-  //draw
-  draw() {
-
-      
-      let drawData = this.props.data
-      debugger
-    if(!drawData)return
+    //data cleaning get min max values
     let volValues = drawData.map((d) => d.totalVolume);
     let [volMin, volMax] = extent(volValues);
     let lastPriceValues = drawData.map((d) => d.last);
-    // let priceMax = max(lastPriceValues, (d) => d);
-    // let priceMin = mn(lastPriceValues, (d) => d);
+
     let [priceMin, priceMax] = extent(lastPriceValues);
-    let timestamps = drawData.map(d=>new Date(d.dateTime).toLocaleString())
+    let timestamps = drawData.map((d) => new Date(d.dateTime).getTime());
 
-    let [timeMin, timeMax] = extent(timestamps)
+    let [timeMin, timeMax] = extent(timestamps);
 
-    let timeframe = 0
-
-    this.state.xBottomScale.domain([timeMin - timeframe, timeMax + timeframe]);
-
+    let timeframe = 0;
+    let timeSpanBuffer = 1000*60*60*2
+    //scale the domains
+    this.state.xBottomScale.domain([timeMin-(timeSpanBuffer), timeMax+timeSpanBuffer]);
     // this.state.candleHeightScale.domain([0, priceRange]);
-    this.state.yRightScale.domain([priceMin, priceMax]);
-    this.state.yLeftScale.domain([0, volMax]);
+    this.state.yRightScale.domain([priceMin, priceMax*1.2]);
+    this.state.yLeftScale.domain([0, volMax*1.2]);
 
+    // let volProfileAxis = axisTop(this.state.volProfileScale).ticks(4);
 
-    let svg = select(this.state.chartRef.current);
+    // this.setupData()
 
+    //append/create timeAxis group
+    let timeAxisG = svg
+      .append("g")
+      .attr("class", "timeAxis white")
+      .attr("transform", `translate(${margin.left}, ${height - margin.bottom})`)
+      .call(xBottomAxis);
+
+    //append priceAxis group
+    let priceAxisG = svg
+      .append("g")
+      .attr("class", "priceAxis white")
+      .attr("transform", `translate(${width - margin.right}, ${margin.top})`)
+      .call(yRightAxis);
+
+    //appand volAxis
+    let volAxisG = svg
+      .append("g")
+      .attr("class", "white volAxis")
+      .attr("transform", `translate(${margin.left}, ${margin.top})`)
+      .call(yLeftAxis);
+
+    //apply the scaled domains to the axis
     svg.select(".timeAxis").call(this.state.xBottomScale);
     svg.select(".priceAxis").call(this.state.yRightScale);
     svg.select(".volAxis").call(this.state.yLeftScale);
-    // svg.select(".volProfileAxis").call(this.state.volProfileAxis);
+
+    let chartWindow = svg
+      // .append('rect').attr('width', this.state.innerWidth).attr('height', this.state.innerHeight)
+      .append("g")
+      .attr("class", "chartWindow")
+      .attr("transform", `translate(${margin.left},${margin.top})`)
+      .attr("fill", "black");
+
+    CenterLabel({
+      symbol: this.props.symbol,
+      timeframe: this.props.exp,
+      chartWindow,
+      x: "45%",
+      y: margin.top + innerHeight / 2,
+    });
+
+
+    //Draw last price line
+    let lineFunc = line()
+    .x((d) => this.state.xBottomScale(new Date(d.dateTime).getTime()))
+    .y((d) => ( this.state.yRightScale(d.last)));
+
+  let linePath = chartWindow.selectAll(`.lastPrice`).data([drawData]);
+  linePath
+  .enter()
+  .append("path")
+  .merge(linePath)
+  .attr("class", `.lastPrice`)
+  .attr("stroke-width", 3)
+  .attr("d", lineFunc)
+  .attr("stroke", 'white')
+  .attr("fill", 'none');
+
+
+    //Draw total volume bars
+    let volBars = chartWindow.selectAll(`.totalVolumeBars`).data(drawData);
+    let volBarWidth = 10
+    volBars.exit().remove();
+    volBars
+      .enter()
+      .append("rect")
+      .merge(volBars)
+      .attr("class", `totalVolumeBars`)
+      .attr(
+        "x",
+
+        (d) =>
+          this.state.xBottomScale(new Date(d.dateTime).getTime()) - (volBarWidth/2)
+          // innerWidth / dra.length / 2
+      )
+      .attr("y", ((d) => this.state.yLeftScale(d.totalVolume)))
+      .attr(
+        "height",
+        // height ||
+          ((d, i) => {
+            let h = innerHeight - this.state.yLeftScale(d.totalVolume);
+            if (h < 0) h = 0;
+            return h;
+          })
+      )
+      // .attr("opacity")
+      .attr("pointer-events", "none")
+
+      .attr("width", (d, i) => volBarWidth)
+      .attr("fill", (d, i) => 'goldenrod')
+      .attr("stroke", "#666")
+      .attr(
+        "stroke-width", 3
+          // function () {
+          //   return this.getAttribute("height") / 10;
+          // }
+      );
+
+    this.setState({
+      timestamps,
+      xBottomAxis,
+      yRightAxis,
+      yLeftAxis,
+    });
+    // this.draw();
+
+
+
+        /* CrossHair */
+        var crosshair = DrawCrossHair(chartWindow);
+
+        chartWindow
+          .append("rect")
+          .attr("class", "overlay")
+    
+          .attr("height", innerHeight)
+          .attr("width", innerWidth)
+          .on("mouseover", function () {
+            crosshair.style("display", null);
+          })
+          .on("mouseout", function () {
+            crosshair.style("display", "none");
+            removeAllAxisAnnotations(svg);
+          })
+          .on("mousemove", function () {
+            return mousemove(that, this);
+          });
+    
+        function mousemove(otherThat, that) {
+          let _mouse = mouse(that);
+    
+          //this enables the crosshair to move at the
+          // timeframe interval
+          // let { timeframe } = otherThat.state;
+          // let interval = getInterval(timeframe);
+          let interval = 1;
+          let MOUSETIME = new Date(
+            otherThat.state.xBottomScale.invert(_mouse[0])
+          ).getTime();
+          MOUSETIME = Math.round(MOUSETIME / interval) * interval;
+          MOUSEX = otherThat.state.xBottomScale(MOUSETIME);
+          MOUSEY = _mouse[1];
+    
+          otherThat.appendAxisAnnotations(MOUSEX, MOUSEY, svg);
+    
+          crosshair
+            .select("#crosshairX")
+            .attr("x1", MOUSEX)
+            .attr("y1", 0)
+            .attr("x2", MOUSEX)
+            .attr("y2", innerHeight);
+    
+          crosshair
+            .select("#crosshairY")
+            .attr("x1", otherThat.state.xBottomScale(timestamps[0]))
+            .attr("y1", MOUSEY)
+            .attr(
+              "x2",
+              otherThat.state.xBottomScale(timestamps[timestamps.length - 1])
+            )
+            .attr("y2", MOUSEY);
+        }
+    
   }
 
+  //draw
+  // draw() {
+  //   let drawData = this.props.data;
+  //   // debugger;
+  //   if (!drawData) return;
+  //   // let volValues = drawData.map((d) => d.totalVolume);
+  //   // let [volMin, volMax] = extent(volValues);
+  //   // let lastPriceValues = drawData.map((d) => d.last);
+  //   // // let priceMax = max(lastPriceValues, (d) => d);
+  //   // // let priceMin = mn(lastPriceValues, (d) => d);
+  //   // let [priceMin, priceMax] = extent(lastPriceValues);
+  //   // let timestamps = drawData.map((d) => new Date(d.dateTime).toLocaleString());
+
+  //   // let [timeMin, timeMax] = extent(timestamps);
+
+  //   // let timeframe = 0;
+
+  //   // this.state.xBottomScale.domain([timeMin - timeframe, timeMax + timeframe]);
+
+  //   // // this.state.candleHeightScale.domain([0, priceRange]);
+  //   // this.state.yRightScale.domain([priceMin, priceMax]);
+  //   // this.state.yLeftScale.domain([0, volMax]);
+
+  //   // let svg = select(this.state.chartRef.current);
+
+  //   // svg.select(".timeAxis").call(this.state.xBottomScale);
+  //   // svg.select(".priceAxis").call(this.state.yRightScale);
+  //   // svg.select(".volAxis").call(this.state.yLeftScale);
+  //   // svg.select(".volProfileAxis").call(this.state.volProfileAxis);
+  // }
 
   /*
   IV: 1.26
@@ -299,7 +353,7 @@ theoreticalVolatility: 29
 totalVolume: 195 */
 
   render() {
-      console.log(this.props.data)
+    console.log(this.props.data);
     return (
       <svg
         ref={this.state.chartRef}
