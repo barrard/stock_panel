@@ -6,7 +6,7 @@ import styled from "styled-components";
 import { getOpAlerts } from "../redux/actions/opActions.js";
 import API from "./API.js";
 import Tree from "react-d3-tree";
-
+import OptionsChart from "./charts/OptionsChart.js";
 // import {ensure_not_loggedin} from '../components/utils/auth.js'
 
 class OpAlerts extends React.Component {
@@ -20,11 +20,18 @@ class OpAlerts extends React.Component {
       filter_totalVolume: "",
       filter_strike: "",
       selectedAlerts: [],
-      snapshots: {},
+      snapshots: {}, //AML_EXP_CALL_44
       lessThan_last: true,
       lessThan_totalVolume: true,
       lessThan_underlying: true,
-      filterNames: ["symbol", "exp", "totalVolume", "last", "underlying"],
+      filterNames: [
+        "symbol",
+        "exp",
+        "totalVolume",
+        "last",
+        "underlying",
+        "dateTime",
+      ],
     };
     this.resetFilters = this.resetFilters.bind(this);
   }
@@ -92,15 +99,30 @@ class OpAlerts extends React.Component {
         <div className="row flex_center">
           {this.state.filterNames.map((f) => {
             return (
-              <div key={f} className="col flex_center">
-                <div className="row flex_center">
-                  <div className="col-sm-12 flex_center">{f}</div>
-                  <div className="col-sm-12 flex_center">
-                    {this.state[`filter_${f}`] && this.state[`filter_${f}`]}
-                    {!this.state[`filter_${f}`] && `Select ${f}`}
+              <>
+                {this.state[`filter_${f}`] && (
+                  <div key={f} className="col flex_center">
+                    <div className="row flex_center">
+                      <div className="col-sm-12 flex_center sm-title">{f}</div>
+                      <div className="col-sm-12 flex_center">
+                        {typeof this.state[`lessThan_${f}`] !== undefined &&
+                          this.state[`lessThan_${f}`] && (
+                            <div>
+                              <span className="red">Less</span> Than
+                            </div>
+                          )}
+                        {typeof this.state[`lessThan_${f}`] !== undefined &&
+                          this.state[`lessThan_${f}`] === false && (
+                            <div>
+                              <span className="green">Greater</span> Than
+                            </div>
+                          )}
+                        {this.state[`filter_${f}`]}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                )}
+              </>
             );
           })}
         </div>
@@ -119,11 +141,26 @@ class OpAlerts extends React.Component {
         if (f === "symbol") {
           alerts = alerts.filter((a) => a.symbol === filterValue);
         }
-        // if (f === "strike") {
-        //   alerts = alerts.filter((a) => a.strike >= filterValue);
-        // }
+        // if (f === "dateTime") {
+        //   alerts = alerts.filter((a) => a.date === filterValue);
+        // }//
+
         if (f === "exp") {
           alerts = alerts.filter((a) => a.exp === filterValue);
+        }
+
+        if (f === "dateTime") {
+          filterValue = new Date(filterValue).toLocaleString().split(",")[0];
+          alerts = alerts.filter((a) => {
+            let filteredArray = false;
+            a.alerts.forEach((a) => {
+              let dateTime = new Date(a.dateTime)
+                .toLocaleString()
+                .split(",")[0];
+              if (dateTime == filterValue) filteredArray = true;
+            });
+            if (filteredArray) return true;
+          });
         }
 
         if (f === "totalVolume") {
@@ -177,18 +214,30 @@ class OpAlerts extends React.Component {
       });
     });
   }
-  getAlerts(symbol, exp, strike) {
+  async getAlerts(symbol, exp, strike, putCall) {
     let alerts = this.props.options.alerts;
+    let snapData = await API.fetchOpAlertData({ symbol, strike, exp, putCall });
+    let allSnaps = [];
+    snapData.forEach((a) =>
+      a.opDataSnaps.forEach((snap) => allSnaps.push(snap))
+    );
     alerts = alerts.filter((a) => {
-      if (a.symbol === symbol && a.exp === exp && a.strike === strike) {
+      if (
+        a.symbol === symbol &&
+        a.exp === exp &&
+        a.strike === strike &&
+        a.putCall === putCall
+      ) {
         return a;
       }
     });
-    console.log(alerts);
+    console.log(snapData);
     this.setState({
+      snapData: allSnaps,
       selectedSymbol: symbol,
       selectedExp: exp,
       selectedStrike: strike,
+      selectedPutCall: putCall,
       selectedAlerts: alerts[0].alerts,
     });
   }
@@ -198,42 +247,60 @@ class OpAlerts extends React.Component {
       <div className="col-sm-12 flex_center">
         <div className="full-width">
           <div className="row flex_center">
-            <div className="col flex_center">{"putCall"}</div>
-            <div className="col flex_center">{"symbol"}</div>
-            <div className="col flex_center">{"exp"}</div>
-            <div className="col flex_center">{"strike"}</div>
+            <div className="col flex_center sm-title">Total Contracts</div>
+            <div className="col flex_center sm-title">putCall</div>
+            <div className="col flex_center sm-title">symbol</div>
+            <div className="col flex_center sm-title">exp</div>
+            <div className="col flex_center sm-title">strike</div>
+            <div className="col flex_center sm-title">Underlying</div>
           </div>
         </div>
       </div>
     );
     //for each alert, get one row
     //
-    let rows = alerts.map((a) => {
+    let rows = alerts.map((a, iA) => {
+      let { underlyingPrice } = a.alerts.slice(-1)[0];
       let {
         selectedExp,
         selectedStrike,
         selectedSymbol,
+        selectedPutCall,
         selectedAlerts,
       } = this.state;
       let selectedContract =
         selectedExp === a.exp &&
         selectedStrike === a.strike &&
-        selectedSymbol === a.symbol;
+        selectedSymbol === a.symbol &&
+        selectedPutCall === a.putCall;
       return (
         <div className="col-sm-12 flex_center">
           <div className="full-width">
             <div
-              onClick={() => this.getAlerts(a.symbol, a.exp, a.strike)}
+              onClick={() =>
+                this.getAlerts(a.symbol, a.exp, a.strike, a.putCall)
+              }
               className={`hoverable clickable row flex_center ${
                 selectedContract ? "selectedContract" : " "
               } `}
             >
+              <div className="col flex_center">{iA + 1}</div>
               <div className="col flex_center">{a.putCall}</div>
               <div className="col flex_center">{a.symbol}</div>
               <div className="col flex_center">{a.exp}</div>
               <div className="col flex_center">{a.strike}</div>
+              <div className="col flex_center">{underlyingPrice}</div>
               {selectedContract && (
-                <div className="col-12">
+                <div className="col-12 floating">
+                  {
+                    <OptionsChart
+                      symbol={selectedSymbol}
+                      exp={selectedExp}
+                      strike={selectedStrike}
+                      putCall={selectedPutCall}
+                      data={this.state.snapData}
+                    />
+                  }
                   {selectedAlerts &&
                     selectedAlerts.map((a, iA) => {
                       return (
@@ -319,27 +386,33 @@ class OpAlerts extends React.Component {
     let alertMessages = [];
     let lastPrices = [];
     let allIVs = [];
+    let allDateTimes = [];
     let allTotalVols = [];
     let allUnderlying = [];
     let putsOrCalls = { puts: [], calls: [] };
-    let filteredAlerts = this.filterAlerts(allAlerts);
-    filteredAlerts.forEach((alert) => {
+    allAlerts.forEach((alert) => {
       allSymbols.push(alert.symbol);
 
       expDates.push(alert.exp);
       strikePrices.push(alert.strike);
-
       alert.alerts.forEach((alert) => {
         alertMessages.push(alert.alert);
         lastPrices.push(alert.last);
         allIVs.push(alert.IV);
+        allDateTimes.push(
+          new Date(alert.dateTime).toLocaleString().split(",")[0]
+        );
         allTotalVols.push(alert.totalVolume);
         allUnderlying.push(alert.underlyingPrice);
       });
     });
+    let filteredAlerts = this.filterAlerts(allAlerts);
 
     allSymbols = Array.from(new Set(allSymbols)).sort((a, b) => a - b);
     expDates = Array.from(new Set(expDates)).sort(
+      (a, b) => new Date(a).getTime() - new Date(b).getTime()
+    );
+    allDateTimes = Array.from(new Set(allDateTimes)).sort(
       (a, b) => new Date(a).getTime() - new Date(b).getTime()
     );
     strikePrices = Array.from(new Set(strikePrices)).sort((a, b) => a - b);
@@ -357,65 +430,77 @@ class OpAlerts extends React.Component {
           <button onClick={this.resetFilters}>RESET</button>
         </div>
 
-        {/* Symbol Select */}
-        <div className="col-sm-12 flex_center">
-          <div className="row flex_center">
-            <div className="col-sm-12 flex_center">
-              <h4>Filter symbols {allSymbols.length}</h4>
+        {/* total Vol Select */}
+        <div className="col-sm-6 flex_end">
+          <div className="row ">
+            <div className="col-sm-12 flex_end">
+              <h4>Total Volume</h4>
             </div>
-            <div className="col-sm-12 flex_center">
-              {this.dropDownSelect("symbol", allSymbols)}
+            <div className="col-sm-12 flex_end">
+              {this.dropDownSelect("totalVolume", allTotalVols)}
             </div>
           </div>
         </div>
         {/* EXP Date Select */}
-        <div className="col-sm-12 flex_center">
-          <div className="row flex_center">
-            <div className="col-sm-12 flex_center">
-              <h4>Filter Expirations {expDates.length}</h4>
+        <div className="col-sm-6 flex_start">
+          <div className="row ">
+            <div className="col-sm-12 flex_start">
+              <h4>Filter Expirations </h4>
             </div>
-            <div className="col-sm-12 flex_center">
+
+            <div className="col-sm-12 flex_start">
               {this.dropDownSelect("exp", expDates)}
             </div>
           </div>
         </div>
 
-        {/* total Vol Select */}
-        <div className="col-sm-12 flex_center">
-          <div className="row flex_center">
-            <div className="col-sm-12 flex_center">
-              <h4>Total Volume {allTotalVols.length}</h4>
-            </div>
-            <div className="col-sm-12 flex_center">
-              {this.dropDownSelect("totalVolume", allTotalVols)}
-            </div>
-          </div>
-        </div>
         {/* Last Select */}
-        <div className="col-sm-12 flex_center">
-          <div className="row flex_center">
-            <div className="col-sm-12 flex_center">
-              <h4>Last Prices {lastPrices.length}</h4>
+        <div className="col-sm-6 flex_end">
+          <div className="row ">
+            <div className="col-sm-12 flex_end">
+              <h4>Last Prices </h4>
             </div>
-            <div className="col-sm-12 flex_center">
+            <div className="col-sm-12 flex_end">
               {this.dropDownSelect("last", lastPrices)}
             </div>
           </div>
         </div>
         {/* Last Select */}
-        <div className="col-sm-12 flex_center">
-          <div className="row flex_center">
-            <div className="col-sm-12 flex_center">
-              <h4>Underlying Prices {allUnderlying.length}</h4>
+        <div className="col-sm-6 flex_start">
+          <div className="row ">
+            <div className="col-sm-12 flex_start">
+              <h4>Underlying Prices</h4>
             </div>
-            <div className="col-sm-12 flex_center">
+            <div className="col-sm-12 flex_start">
               {this.dropDownSelect("underlying", allUnderlying)}
             </div>
           </div>
         </div>
-        <div className="col-sm-12 flex_center">
-          <h5>Total Contract: {filteredAlerts.length}</h5>
+        {/* Date Select */}
+        <div className="col-sm-6 flex_end">
+          <div className="row ">
+            <div className="col-sm-12 flex_end">
+              <h4>Alert Date</h4>
+            </div>
+            <div className="col-sm-12 flex_end">
+              {this.dropDownSelect("dateTime", allDateTimes)}
+            </div>
+          </div>
         </div>
+        {/* Symbol Select */}
+        <div className="col-sm-6 flex_start">
+          <div className="row ">
+            <div className="col-sm-12 flex_start">
+              <h4>Filter symbols </h4>
+            </div>
+            <div className="col-sm-12 flex_start">
+              {this.dropDownSelect("symbol", allSymbols)}
+            </div>
+          </div>
+        </div>
+        {/* <div className="col-sm-12 flex_center">
+          <h5>Total Contract: {filteredAlerts.length}</h5>
+        </div> */}
         <LineBreak />
         <div className="col-sm-12 flex_center">{this.showFilters()}</div>
         <LineBreak />

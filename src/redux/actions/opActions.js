@@ -1,6 +1,23 @@
 import API from "../../components/API.js";
 import { toastr } from "react-redux-toastr";
 
+
+
+
+// export function getOpSnaps(option) {
+//   return async (dispatch) => {
+//     // fetchOpAlertData({symbol, strike, exp, putCall})
+//     // let alerts = await API.fetchOpAlerts();
+//     // alerts = sortAlerts(alerts)
+//     return dispatch({
+//       type: "GET_OP_SNAPS",
+//       option,
+//     });
+//   };
+// }
+
+
+
 export function getOpAlerts() {
   return async (dispatch) => {
     let alerts = await API.fetchOpAlerts();
@@ -11,6 +28,8 @@ export function getOpAlerts() {
     });
   };
 }
+
+
 
 export function addOptionAlert(alert) {
   console.log(alert);
