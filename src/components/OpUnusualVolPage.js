@@ -219,7 +219,7 @@ class OpAlerts extends React.Component {
     let snapData = await API.fetchOpAlertData({ symbol, strike, exp, putCall });
     let allSnaps = [];
     snapData.forEach((a) =>
-      a.opDataSnaps.forEach((snap) => allSnaps.push(snap))
+      a.snaps.forEach((snap) => allSnaps.push(snap))
     );
     alerts = alerts.filter((a) => {
       if (
