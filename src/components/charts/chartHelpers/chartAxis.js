@@ -38,7 +38,11 @@ export const drawAxisAnnotation = (
     //from the xy
     if (isOrdinal) {
       var eachBand = scale.step();
-      var index = Math.round(xy / eachBand);
+      console.log(scale.bandwidth());
+      var index = Math.round(
+        (xy - (scale.bandwidth() - scale.paddingOuter() * scale.step())) /
+          eachBand
+      );
       value = scale.domain()[index];
     } else {
       //the current value is already a price
@@ -55,7 +59,7 @@ export const drawAxisAnnotation = (
   // value = formatTime(value);
   // console.log(value)
 
-  if (tagId.includes("Time") &&!isOrdinal) {
+  if (tagId.includes("Time") && !isOrdinal) {
     //   value = value.toFixed(3);
     //   if (String(value).length > 6) value = parseFloat(value).toFixed(2);
     // } else {

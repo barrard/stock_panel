@@ -8,7 +8,7 @@ module.exports =  {
   calcStochastics,
   addStochastics,
   addNewestStochastics,
-  prevCurrentStoch,
+  prevCurrentStoch,evalStoch
 };
 
 

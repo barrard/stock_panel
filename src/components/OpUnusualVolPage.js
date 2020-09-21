@@ -304,6 +304,7 @@ class OpAlerts extends React.Component {
                 <div className="col-12 floating">
                   {
                     <OptionsChart
+                      alerts={selectedAlerts}
                       symbol={selectedSymbol}
                       exp={selectedExp}
                       strike={selectedStrike}

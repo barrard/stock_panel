@@ -482,6 +482,15 @@ async function fetchOpAlerts(){
 
   if (!data.length) return [];
   toastr.success(`Alerts loaded`, `${data.length} loaded`);
+  data.forEach(d => {
+    d.dateTime = new Date(d.timestamp).toLocaleString()
+    d.alerts.forEach(a=>{
+      if(a.timestamp){
+        a.dateTime = new Date(a.timestamp).toLocaleString() 
+      }
+    })
+    
+  });
   return data;
 }
 

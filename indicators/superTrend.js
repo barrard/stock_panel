@@ -4,11 +4,18 @@ const { windowAvg } = require("./indicatorHelpers/MovingAverage.js");
 const MULTIPLYER = 2;
 const tradingRangeAvg = 14;
 const indicatorName = "superTrend";
-module.exports =  {
+module.exports = {
   calcSuperTrend,
   makeSuperTrendData,
   makeNewSuperTrendData,
+  evalSuperTrend
 };
+
+function evalSuperTrend(d) {
+  //is price above or below ST
+  let { close, ST } = d;
+  return close > ST ? 1 : 0;
+}
 
 function makeNewSuperTrendData(data) {
   let window = data.slice(-tradingRangeAvg);

@@ -104,9 +104,41 @@ class OptionsChart extends React.Component {
     drawAxisAnnotation("leftVolTag", this.state.yLeftScale, y, svg, "volAxis");
   }
 
+  drawFirstAlert(chartWindow, firstAlert, data){
+    let {timestamp} = firstAlert
+    timestamp = new Date(timestamp).setMilliseconds(0)
+    timestamp = new Date(timestamp).setSeconds(0)
+    /**
+     * IV: 1.32
+alert: "Unusual Activity"
+dateTime: "9/21/2020, 12:31:11 AM"
+last: 3.25
+timestamp: 1600673471686
+totalVolume: 1222
+underlyingPrice: 74.73
+     */
+    timestamp = new Date(timestamp).toLocaleString()
+debugger
+    chartWindow.append("line").attr("class", "firstAlert")
+    // .select("#crosshairX")
+    .attr("x1", this.state.xBottomScale(timestamp))
+    .attr("y1", 0)
+    .attr("x2", this.state.xBottomScale(timestamp))
+    .attr("y2", innerHeight)
+    .attr('color', 'purple')
+    .attr("stroke", 'red')
+    .attr("fill", "none");  
+
+
+  }
+
   drawLine(chartWindow, xName, yName, className, color, data) {
     let lineFunc = line()
-      .x((d) => this.state.xBottomScale(new Date(d[xName]).toLocaleString()))
+      .x(
+        (d) =>
+          this.state.xBottomScale(new Date(d[xName]).toLocaleString()) +
+          this.state.xBottomScale.bandwidth() / 2
+      )
       .y((d) => this.state.yRightScale(d[yName]));
 
     let lastPriceLinePath = chartWindow.selectAll(`.${className}`).data([data]);
@@ -132,9 +164,8 @@ class OptionsChart extends React.Component {
       .attr(
         "x",
 
-        (d) =>
-          this.state.xBottomScale(new Date(d[xName]).toLocaleString()) 
-          // +this.state.xBottomScale.bandwidth()/2
+        (d) => this.state.xBottomScale(new Date(d[xName]).toLocaleString())
+        // +this.state.xBottomScale.bandwidth()/2
         // innerWidth / dra.length / 2
       )
       .attr("y", (d) => this.state.yLeftScale(d[yName]))
@@ -150,7 +181,7 @@ class OptionsChart extends React.Component {
       // .attr("opacity")
       .attr("pointer-events", "none")
 
-      .attr("width", (d, i) => this.state.xBottomScale.bandwidth()/2)
+      .attr("width", (d, i) => this.state.xBottomScale.bandwidth() / 2)
       .attr("fill", (d, i) => color)
       .attr("stroke", "#666")
       .attr(
@@ -161,52 +192,48 @@ class OptionsChart extends React.Component {
         // }
       );
 
+    className = "totalInterestBars";
+    yName = "openInterest";
+    color = "blue";
 
+    let totalIntBars = chartWindow.selectAll(`.${className}`).data(data);
+    totalIntBars.exit().remove();
+    totalIntBars
+      .enter()
+      .append("rect")
+      .merge(totalIntBars)
+      .attr("class", className)
+      .attr(
+        "x",
 
-className = 'totalInterestBars'
-yName='openInterest'
-color = 'blue'
+        (d) =>
+          this.state.xBottomScale(new Date(d[xName]).toLocaleString()) +
+          this.state.xBottomScale.bandwidth() / 2
+        // innerWidth / dra.length / 2
+      )
+      .attr("y", (d) => this.state.yLeftScale(d[yName]))
+      .attr(
+        "height",
+        // height ||
+        (d, i) => {
+          let h = innerHeight - this.state.yLeftScale(d[yName]);
+          if (h < 0) h = 0;
+          return h;
+        }
+      )
+      // .attr("opacity")
+      .attr("pointer-events", "none")
 
-      let totalIntBars = chartWindow.selectAll(`.${className}`).data(data);
-      totalIntBars.exit().remove();
-      totalIntBars
-        .enter()
-        .append("rect")
-        .merge(totalIntBars)
-        .attr("class", className)
-        .attr(
-          "x",
-  
-          (d) =>
-            this.state.xBottomScale(new Date(d[xName]).toLocaleString()) 
-            +this.state.xBottomScale.bandwidth()/2
-          // innerWidth / dra.length / 2
-        )
-        .attr("y", (d) => this.state.yLeftScale(d[yName]))
-        .attr(
-          "height",
-          // height ||
-          (d, i) => {
-            let h = innerHeight - this.state.yLeftScale(d[yName]);
-            if (h < 0) h = 0;
-            return h;
-          }
-        )
-        // .attr("opacity")
-        .attr("pointer-events", "none")
-  
-        .attr("width", (d, i) => this.state.xBottomScale.bandwidth()/2)
-        .attr("fill", (d, i) => color)
-        .attr("stroke", "#666")
-        .attr(
-          "stroke-width",
-          0
-          // function () {
-          //   return this.getAttribute("height") / 10;
-          // }
-        );
-
-      
+      .attr("width", (d, i) => this.state.xBottomScale.bandwidth() / 2)
+      .attr("fill", (d, i) => color)
+      .attr("stroke", "#666")
+      .attr(
+        "stroke-width",
+        0
+        // function () {
+        //   return this.getAttribute("height") / 10;
+        // }
+      );
   }
 
   //setup
@@ -219,7 +246,7 @@ color = 'blue'
 
     //Time axis
     let xBottomAxis = axisBottom(this.state.xBottomScale)
-      .ticks(5)
+      // .ticks(5)
       .tickSize(-innerHeight)
       .tickValues(
         this.state.xBottomScale.domain().filter(function (d, i) {
@@ -235,10 +262,11 @@ color = 'blue'
 
     //data cleaning get min max values
     let volValues = drawData.map((d) => d.totalVolume);
+     volValues = [...volValues,...drawData.map((d) => d.openInterest)];
     let [volMin, volMax] = extent(volValues);
     let allPrices = drawData.map((d) => d.last);
-     allPrices = [ ...allPrices,...drawData.map((d) => d.ask)];
-     allPrices = [ ...allPrices,...drawData.map((d) => d.bid)];
+    allPrices = [...allPrices, ...drawData.map((d) => d.ask)];
+    allPrices = [...allPrices, ...drawData.map((d) => d.bid)];
 
     let [priceMin, priceMax] = extent(allPrices);
     let timestamps = drawData
@@ -300,7 +328,7 @@ color = 'blue'
       y: margin.top + innerHeight / 2,
     });
 
-        //Draw total volume bars
+    //Draw total volume bars
     //this draws both vol and open interest
     this.drawVolBars(
       chartWindow,
@@ -339,6 +367,13 @@ color = 'blue'
       drawData
     );
 
+    //draw Alert Marker
+    let {data}=this.props
+    data.forEach(a => {
+      a.dateTime = new Date(a.timestamp).toLocaleString()
+    });
+    let firstAlert = this.props.alerts[0]
+    this.drawFirstAlert(chartWindow ,firstAlert, data)
 
     this.setState({
       timestamps,
@@ -372,7 +407,11 @@ color = 'blue'
 
       MOUSEY = _mouse[1];
       MOUSEX = _mouse[0];
-      otherThat.appendAxisAnnotations(MOUSEX, MOUSEY, svg);
+      otherThat.appendAxisAnnotations(
+        MOUSEX ,
+        MOUSEY,
+        svg
+      );
 
       crosshair
         .select("#crosshairX")
@@ -384,18 +423,27 @@ color = 'blue'
         .select("#crosshairY")
         .attr(
           "x1",
-          otherThat.state.xBottomScale(otherThat.state.xBottomScale.domain()[0])
+          otherThat.state.xBottomScale(
+            otherThat.state.xBottomScale.domain()[0]
+          ) -
+          
+          otherThat.state.xBottomScale.bandwidth()/2 +
+          otherThat.state.xBottomScale.paddingOuter() *
+            otherThat.state.xBottomScale.step()
         )
         .attr("y1", MOUSEY)
         .attr(
           "x2",
-          otherThat.state.xBottomScale(otherThat.state.xBottomScale.domain().slice(-1)[0])
+          otherThat.state.xBottomScale(
+            otherThat.state.xBottomScale.domain().slice(-1)[0]
+          ) +
+            otherThat.state.xBottomScale.bandwidth() +
+            otherThat.state.xBottomScale.paddingOuter() *
+              otherThat.state.xBottomScale.step()
         )
         .attr("y2", MOUSEY);
     }
   }
-
- 
 
   /*
   IV: 1.26
