@@ -23,7 +23,7 @@ function evalSuperTrend(d) {
     return console.log(`No Super Trend for ${timeframe}`)
   }
   //is price above or below ST
-  console.log(data)
+  // console.log(data)
   let ST = data.superTrend.superTrend
   return close > ST ? 1 : 0;
 }
