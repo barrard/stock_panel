@@ -7,7 +7,9 @@ import { getOpAlerts } from "../redux/actions/opActions.js";
 import API from "./API.js";
 import Tree from "react-d3-tree";
 import OptionsChart from "./charts/OptionsChart.js";
+
 // import {ensure_not_loggedin} from '../components/utils/auth.js'
+import  {histogram}  from"d3-array";
 
 class OpAlerts extends React.Component {
   constructor(props) {
@@ -219,6 +221,7 @@ class OpAlerts extends React.Component {
     let alerts = this.props.options.alerts;
     let snapData = await API.fetchOpAlertData({ symbol, strike, exp, putCall });
     let allSnaps = [];
+    
     snapData.forEach((a) => {
       if (a.snaps) {
         a.snaps.forEach((snap) => allSnaps.push(snap));
@@ -227,10 +230,10 @@ class OpAlerts extends React.Component {
       }
     });
     allSnaps = allSnaps
-      .map((s) => {
-        return { ...s, dateTime: new Date(s.dateTime).getTime() };
-      })
-      .sort((a, b) => a.dateTime - b.dateTime);
+      // .map((s) => {
+      //   return { ...s, dateTime: new Date(s.dateTime).getTime() };
+      // })
+      .sort((a, b) => a.timestamp - b.timestamp);
     alerts = alerts.filter((a) => {
       if (
         a.symbol === symbol &&
@@ -411,7 +414,7 @@ class OpAlerts extends React.Component {
         lastPrices.push(alert.last);
         allIVs.push(alert.IV);
         allDateTimes.push(
-          new Date(alert.dateTime).toLocaleString().split(",")[0]
+          alert.dateTime.split(",")[0]
         );
         allTotalVols.push(alert.totalVolume);
         allUnderlying.push(alert.underlyingPrice);
@@ -419,7 +422,11 @@ class OpAlerts extends React.Component {
     });
     let filteredAlerts = this.filterAlerts(allAlerts);
 
-    allSymbols = Array.from(new Set(allSymbols)).sort((a, b) => a - b);
+    allSymbols = Array.from(new Set(allSymbols)).sort((a, b) => {
+      if(a>b)return 1
+      if(a<b)return -1
+      return 0
+    });
     expDates = Array.from(new Set(expDates)).sort(
       (a, b) => new Date(a).getTime() - new Date(b).getTime()
     );
@@ -431,6 +438,12 @@ class OpAlerts extends React.Component {
     allIVs = Array.from(new Set(allIVs)).sort((a, b) => a - b);
     allTotalVols = Array.from(new Set(allTotalVols)).sort((a, b) => a - b);
     allUnderlying = Array.from(new Set(allUnderlying)).sort((a, b) => a - b);
+
+    
+    lastPrices = lastPrices.filter((p, iP)=>iP% Math.floor(lastPrices.length/10)===0)
+    allUnderlying = allUnderlying.filter((p, iP)=>iP% Math.floor(allUnderlying.length/10)===0)
+    allTotalVols = allTotalVols.filter((p, iP)=>iP% Math.floor(allTotalVols.length/10)===0)
+
     return (
       <div className="row flex_center white">
         <div className="col-sm-12 flex_center">

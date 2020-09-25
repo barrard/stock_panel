@@ -104,10 +104,11 @@ class OptionsChart extends React.Component {
     drawAxisAnnotation("leftVolTag", this.state.yLeftScale, y, svg, "volAxis");
   }
 
-  drawFirstAlert(chartWindow, firstAlert, data){
-    let {timestamp} = firstAlert
-    timestamp = new Date(timestamp).setMilliseconds(0)
-    timestamp = new Date(timestamp).setSeconds(0)
+  drawFirstAlert(chartWindow, firstAlert, data) {
+    debugger;
+    let { timestamp } = firstAlert;
+    // timestamp = new Date(timestamp).setMilliseconds(0);
+    // timestamp = new Date(timestamp).setSeconds(0);
     /**
      * IV: 1.32
 alert: "Unusual Activity"
@@ -117,19 +118,31 @@ timestamp: 1600673471686
 totalVolume: 1222
 underlyingPrice: 74.73
      */
-    timestamp = new Date(timestamp).toLocaleString()
-debugger
-    chartWindow.append("line").attr("class", "firstAlert")
-    // .select("#crosshairX")
-    .attr("x1", this.state.xBottomScale(timestamp))
-    .attr("y1", 0)
-    .attr("x2", this.state.xBottomScale(timestamp))
-    .attr("y2", innerHeight)
-    .attr('color', 'purple')
-    .attr("stroke", 'red')
-    .attr("fill", "none");  
-
-
+    debugger;
+    let tc = this.state.xBottomScale(timestamp) 
+    console.log(tc)
+    timestamp = new Date(timestamp).toLocaleString();
+    let tt = this.state.xBottomScale(timestamp) 
+    console.log(tt)
+    chartWindow
+      .append("line")
+      .attr("class", "firstAlert")
+      // .select("#crosshairX")
+      .attr(
+        "x1",
+        this.state.xBottomScale(timestamp) +
+          this.state.xBottomScale.bandwidth() / 2
+      )
+      .attr("y1", 0)
+      .attr(
+        "x2",
+        this.state.xBottomScale(timestamp) +
+          this.state.xBottomScale.bandwidth() / 2
+      )
+      .attr("y2", innerHeight)
+      .attr("color", "purple")
+      .attr("stroke", "red")
+      .attr("fill", "none");
   }
 
   drawLine(chartWindow, xName, yName, className, color, data) {
@@ -262,7 +275,7 @@ debugger
 
     //data cleaning get min max values
     let volValues = drawData.map((d) => d.totalVolume);
-     volValues = [...volValues,...drawData.map((d) => d.openInterest)];
+    volValues = [...volValues, ...drawData.map((d) => d.openInterest)];
     let [volMin, volMax] = extent(volValues);
     let allPrices = drawData.map((d) => d.last);
     allPrices = [...allPrices, ...drawData.map((d) => d.ask)];
@@ -270,7 +283,7 @@ debugger
 
     let [priceMin, priceMax] = extent(allPrices);
     let timestamps = drawData
-      .map((d) => new Date(d.dateTime).toLocaleString())
+      .map((d) => new Date(d.timestamp).toLocaleString())
       .sort((a, b) => a - b);
 
     let [timeMin, timeMax] = extent(timestamps);
@@ -332,7 +345,7 @@ debugger
     //this draws both vol and open interest
     this.drawVolBars(
       chartWindow,
-      "dateTime",
+      "timestamp",
       "totalVolume",
       "totalVolumeBars",
       "goldenrod",
@@ -342,7 +355,7 @@ debugger
     //Draw last price line
     this.drawLine(
       chartWindow,
-      "dateTime",
+      "timestamp",
       "last",
       "lastPriceLine",
       "white",
@@ -351,7 +364,7 @@ debugger
     //Draw ask price line
     this.drawLine(
       chartWindow,
-      "dateTime",
+      "timestamp",
       "ask",
       "askPriceLine",
       "red",
@@ -360,7 +373,7 @@ debugger
     //Draw bid price line
     this.drawLine(
       chartWindow,
-      "dateTime",
+      "timestamp",
       "bid",
       "bidPriceLine",
       "green",
@@ -368,12 +381,13 @@ debugger
     );
 
     //draw Alert Marker
-    let {data}=this.props
-    data.forEach(a => {
-      a.dateTime = new Date(a.timestamp).toLocaleString()
+    let { data } = this.props;
+    data.forEach((a) => {
+      a.dateTime = new Date(a.timestamp).toLocaleString();
     });
-    let firstAlert = this.props.alerts[0]
-    this.drawFirstAlert(chartWindow ,firstAlert, data)
+    debugger
+    let firstAlert = this.props.alerts.slice(-1)[0];
+    this.drawFirstAlert(chartWindow, firstAlert, data);
 
     this.setState({
       timestamps,
@@ -407,11 +421,7 @@ debugger
 
       MOUSEY = _mouse[1];
       MOUSEX = _mouse[0];
-      otherThat.appendAxisAnnotations(
-        MOUSEX ,
-        MOUSEY,
-        svg
-      );
+      otherThat.appendAxisAnnotations(MOUSEX, MOUSEY, svg);
 
       crosshair
         .select("#crosshairX")
@@ -426,10 +436,9 @@ debugger
           otherThat.state.xBottomScale(
             otherThat.state.xBottomScale.domain()[0]
           ) -
-          
-          otherThat.state.xBottomScale.bandwidth()/2 +
-          otherThat.state.xBottomScale.paddingOuter() *
-            otherThat.state.xBottomScale.step()
+            otherThat.state.xBottomScale.bandwidth() / 2 +
+            otherThat.state.xBottomScale.paddingOuter() *
+              otherThat.state.xBottomScale.step()
         )
         .attr("y1", MOUSEY)
         .attr(

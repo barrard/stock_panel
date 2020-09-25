@@ -43,8 +43,8 @@ async function fetchStockBotTrades() {
       method: "GET",
     }
   );
-  trades = await trades.json()
-  return trades
+  trades = await trades.json();
+  return trades;
 }
 
 async function handleResponse(res) {
@@ -214,11 +214,11 @@ async function closePosition(id) {
   console.log(data);
 
   if (!data.resp || data.err) {
-    if(data.err.message){
-      toastr.error(data.err.message)
-       
+    if (data.err.message) {
+      toastr.error(data.err.message);
     }
-    toastr.error("Error Closing Position")};
+    toastr.error("Error Closing Position");
+  }
   return data;
 }
 
@@ -432,9 +432,7 @@ async function getAllSymbolsData(dispatch) {
 async function fetch_commodity_minutely_data({ from, to, symbol }) {
   // date = '6-5-2020'
   let msg = (data, from, symbol) =>
-    `${data.length} bars loaded for ${new Date(
-      to
-    ).toLocaleString()} ${symbol}`;
+    `${data.length} bars loaded for ${new Date(to).toLocaleString()} ${symbol}`;
 
   try {
     let data = await fetch(
@@ -456,15 +454,15 @@ async function fetch_commodity_minutely_data({ from, to, symbol }) {
   }
 }
 
-async function fetchCommodityData({ timeframe, symbol,
-  from, to }) {
+async function fetchCommodityData({ timeframe, symbol, from, to }) {
   console.log(LOCAL_SERVER);
-  if(timeframe==='daily')timeframe='Daily'
-  if(timeframe==='weekly')timeframe='Weekly'
-  let data = await fetch(`${LOCAL_SERVER}/TD_data/candles/${symbol}/${from}/${to}/${timeframe}`);
+  if (timeframe === "daily") timeframe = "Daily";
+  if (timeframe === "weekly") timeframe = "Weekly";
+  let data = await fetch(
+    `${LOCAL_SERVER}/TD_data/candles/${symbol}/${from}/${to}/${timeframe}`
+  );
   data = await data.json();
-  debugger
-  data = data.sort((a,b)=>a.timestamp - b.timestamp)
+  data = data.sort((a, b) => a.timestamp - b.timestamp);
   // console.log('TOASTR')
   if (data.err)
     toastr.error(`Data Not loaded`, `An error occurred for ${symbol}`);
@@ -473,28 +471,45 @@ async function fetchCommodityData({ timeframe, symbol,
   return data;
 }
 
-async function fetchOpAlerts(){
-  let data = await fetch(
-    `${API_SERVER}/options/alerts`
-  );
+async function fetchOpAlerts() {
+  let data = await fetch(`${API_SERVER}/options/alerts`);
   data = await data.json();
   if (data.err) throw data.err;
 
   if (!data.length) return [];
   toastr.success(`Alerts loaded`, `${data.length} loaded`);
-  data.forEach(d => {
-    d.dateTime = new Date(d.timestamp).toLocaleString()
-    d.alerts.forEach(a=>{
-      if(a.timestamp){
-        a.dateTime = new Date(a.timestamp).toLocaleString() 
-      }
-    })
-    
+  let allAlerts = {};
+  data.forEach((d) => {
+    let { symbol, putCall, exp, strike } = d;
+    if (!allAlerts[symbol]) allAlerts[symbol] = {};
+    if (!allAlerts[symbol][exp]) allAlerts[symbol][exp] = {};
+    if (!allAlerts[symbol][exp][putCall]) allAlerts[symbol][exp][putCall] = {};
+    if (!allAlerts[symbol][exp][putCall][strike]) {
+      allAlerts[symbol][exp][putCall][strike] = {
+        symbol,
+        strike,
+        exp,
+        putCall,
+        alerts: [],
+      };
+    }
+    d.localDateTime = new Date(d.timestamp).toLocaleString();
+    allAlerts[symbol][exp][putCall][strike].alerts.push(d);
   });
-  return data;
+  let processedAlerts = [];
+  for (let symbol in allAlerts) {
+    for (let exp in allAlerts[symbol]) {
+      for (let putCall in allAlerts[symbol][exp]) {
+        for (let strike in allAlerts[symbol][exp][putCall]) {
+          processedAlerts.push(allAlerts[symbol][exp][putCall][strike]);
+        }
+      }
+    }
+  }
+  return processedAlerts;
 }
 
-async function fetchOpAlertData({symbol, strike, exp, putCall}){
+async function fetchOpAlertData({ symbol, strike, exp, putCall }) {
   let data = await fetch(
     `${API_SERVER}/options/alert/${symbol}/${strike}/${exp}/${putCall}`
   );
