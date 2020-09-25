@@ -19,7 +19,7 @@ function evalSuperTrend(d) {
     data = d;
   }
   let { close, timeframe, superTrend } = data;
-  if(!data.superTrend || data.superTrend.superTrend){
+  if(!data.superTrend || !data.superTrend.superTrend){
     return console.log(`No Super Trend for ${timeframe}`)
   }
   //is price above or below ST
