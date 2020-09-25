@@ -8,12 +8,19 @@ module.exports = {
   calcSuperTrend,
   makeSuperTrendData,
   makeNewSuperTrendData,
-  evalSuperTrend
+  evalSuperTrend,
 };
 
 function evalSuperTrend(d) {
+  let data;
+  if (Array.isArray(d)) {
+    data = d.slice(-1)[0];
+  } else {
+    data = d;
+  }
   //is price above or below ST
-  let { close, ST } = d;
+  let { close } = data;
+  let ST = data.superTrend.superTrend
   return close > ST ? 1 : 0;
 }
 

@@ -24,16 +24,16 @@ function decide({dir}){
     
     if(
        dir === 1){
-      return 'Sell'
+      return 'oversold'
     }else if(
        dir === 2){
-      return 'Buy'
+      return 'overbought'
     }else if(
        dir === 3){
-      return 'Exit Sell'
+      return 'being bought'
     }else if(
        dir === 4){
-      return 'Exit Buy'
+      return 'being sold'
     }else return null
 }
 

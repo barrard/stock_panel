@@ -33,13 +33,13 @@ function evalEMA(allData) {
   let proximityCheck = emaProximityCheck(data);
 
   let spaceBetween = emaSpread(data)
-  console.log('----- ema')
-  console.log({ priceCheck, proximityCheck, spaceBetween });
+  // console.log('----- ema')
+  // console.log({ priceCheck, proximityCheck, spaceBetween });
   if (
     (trend === "downtrend" || priceCheck === "downtrend") &&
     !proximityCheck
   ) {
-    return "down trending wait for pullback";
+    return "down";
   } else if (
     (trend === "uptrend" || priceCheck === "uptrend") &&
     !proximityCheck
