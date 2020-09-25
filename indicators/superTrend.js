@@ -20,6 +20,7 @@ function evalSuperTrend(d) {
   }
   //is price above or below ST
   let { close } = data;
+  console.log(data)
   let ST = data.superTrend.superTrend
   return close > ST ? 1 : 0;
 }
