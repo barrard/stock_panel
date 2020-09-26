@@ -12,7 +12,7 @@ import { scaleLinear, scaleTime } from "d3-scale";
 import { extent, max } from "d3-array";
 import { select, event, mouse } from "d3-selection";
 import { line } from "d3-shape";
-
+// import {isRTH} from '../../../../indicators/indicatorHelpers/IsMarketOpen.js'
 import { doZoomIn, doZoomOut } from "../utils.js";
 import { drawAxisAnnotation, removeAllAxisAnnotations } from "../chartAxis.js";
 
@@ -364,6 +364,56 @@ class IndicatorChart extends React.Component {
     // console.log({x:event.x - margin.left,MOUSEX})
   }
 
+  colorBackGround(svg, data){
+    let date;
+    let bgFlag = false
+    debugger
+        let bgBarClass = 'backgroundColorBars'
+        let bgColorBars = svg.selectAll(`.${bgBarClass}`).data(data);
+        bgColorBars.exit().remove();
+        bgColorBars
+          .enter()
+          .append("rect")
+          .merge(bgColorBars)
+          .attr("class", bgBarClass)
+          .attr(
+            "x",
+    
+            (d) => this.state.timeScale(d.x)
+            +margin.left
+            // -(5)
+            // +this.state.timeScale.bandwidth()/2
+            // innerWidth / dra.length / 2
+          )
+          .attr("y", (d) => margin.top)
+          .attr("height", this.state.innerHeight)
+    
+          // .attr("opacity")
+          .attr("pointer-events", "none")
+    
+          .attr("width", (d, i) => 15)
+          .attr("fill", (d, i) => {
+            
+            debugger
+            let curDate = new Date(d.x).toLocaleString().split(',')[0]
+            if(!date){
+              date = curDate
+            }
+            if(date !=curDate){
+              bgFlag = !bgFlag
+              date = curDate
+            }
+            return bgFlag ? '#222':'#333'
+    
+          })
+          .attr("stroke", "none")
+       
+    
+    
+    
+    
+      }
+
   setupChart() {
     console.log("SET UP INDICATOR");
     if (!this.state.chartRef.current)
@@ -371,6 +421,8 @@ class IndicatorChart extends React.Component {
     let that = this;
     let svg = select(this.state.chartRef.current);
     svg.selectAll("*").remove();
+
+    // this.colorBackGround(svg, [])
 
     let timeAxis = axisBottom(this.state.timeScale)
       .ticks(4)
@@ -553,12 +605,14 @@ class IndicatorChart extends React.Component {
     this.state.yScale.domain([indicatorMax, indicatorMin]);
 
     let svg = select(this.state.chartRef.current);
+    // this.colorBackGround(svg, drawData)
 
+    
     //append timeAxis group
     svg.select(".timeAxis").call(this.state.timeAxis);
     //append All the y indicator axis
     svg.select(`.${indicator}YAxis`).call(this.state.yAxis);
-
+    
     let chartWindow = svg.select(".chartWindow");
 
     chartWindow.selectAll(`.${indicator}Line`).remove();

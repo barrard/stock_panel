@@ -156,10 +156,7 @@ text {
 .ema200 {
   stroke: green;
 }
-.svgChart {
-  /* fill: black; */
-  /* stroke: white; */
-}
+
 
 .hoveredRegressionLine {
   stroke-width: 4;

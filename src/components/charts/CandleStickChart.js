@@ -877,7 +877,7 @@ class CandleStickChart extends React.Component {
       // timeframe interval
       let { timeframe } = otherThat.state;
       let interval = getInterval(timeframe);
-
+      debugger;
       let MOUSETIME = new Date(
         otherThat.state.timeScale.invert(_mouse[0])
       ).getTime();
@@ -896,14 +896,16 @@ class CandleStickChart extends React.Component {
 
       crosshair
         .select("#crosshairY")
-        .attr("x1", otherThat.state.timeScale(otherThat.state.timestamps[0]))
-        .attr("y1", MOUSEY)
         .attr(
-          "x2",
-          otherThat.state.timeScale(
-            otherThat.state.timestamps[otherThat.state.timestamps.length - 1]
-          )
+          "x1",
+          otherThat.state.timeScale(otherThat.state.timeScale.domain[0])
         )
+        .attr("y1", MOUSEY)
+        .attr("x2", () => {
+          console.log(otherThat.state);
+          console.log(that.state);
+          return otherThat.state.timeScale(otherThat.state.timeScale.domain[1]);
+        })
         .attr("y2", MOUSEY);
     }
 
@@ -1096,7 +1098,6 @@ class CandleStickChart extends React.Component {
       let [volProfileMin, volProfileMax] = extent(rawVolProfileValues);
       this.state.volProfileScale.domain([volProfileMax, 0]);
     }
-
     let [timeMin, timeMax] = extent(drawData.map(({ timestamp }) => timestamp));
     const priceRange = priceMax - priceMin;
     let timeframe = drawData[1].timestamp - drawData[0].timestamp;

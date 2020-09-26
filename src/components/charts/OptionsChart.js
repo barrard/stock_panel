@@ -165,6 +165,54 @@ underlyingPrice: 74.73
       .attr("stroke", color)
       .attr("fill", "none");
   }
+  colorBackGround(svg, data){
+let date;
+let bgFlag = false
+
+    let bgBarClass = 'backgroundColorBars'
+    let bgColorBars = svg.selectAll(`.${bgBarClass}`).data(data);
+    bgColorBars.exit().remove();
+    bgColorBars
+      .enter()
+      .append("rect")
+      .merge(bgColorBars)
+      .attr("class", bgBarClass)
+      .attr(
+        "x",
+
+        (d) => this.state.xBottomScale(new Date(d['timestamp']).toLocaleString())
+        +margin.left
+        -(5)
+        // +this.state.xBottomScale.bandwidth()/2
+        // innerWidth / dra.length / 2
+      )
+      .attr("y", (d) => margin.top)
+      .attr("height", innerHeight)
+
+      // .attr("opacity")
+      .attr("pointer-events", "none")
+
+      .attr("width", (d, i) => this.state.xBottomScale.bandwidth() +15)
+      .attr("fill", (d, i) => {
+        let curDate = d.dateTime.split(',')[0]
+        debugger
+        if(!date){
+          date = curDate
+        }
+        if(date !=curDate){
+          bgFlag = !bgFlag
+          date = curDate
+        }
+        return bgFlag ? '#222':'#333'
+
+      })
+      .attr("stroke", "none")
+   
+
+
+
+
+  }
 
   drawVolBars(chartWindow, xName, yName, className, color, data) {
     let volBars = chartWindow.selectAll(`.${className}`).data(data);
@@ -299,6 +347,8 @@ underlyingPrice: 74.73
     // let volProfileAxis = axisTop(this.state.volProfileScale).ticks(4);
 
     // this.setupData()
+    //colorBack ground
+    this.colorBackGround(svg, drawData)
 
     //append/create timeAxis group
     let timeAxisG = svg
@@ -340,6 +390,7 @@ underlyingPrice: 74.73
       x: "45%",
       y: margin.top + innerHeight / 2,
     });
+
 
     //Draw total volume bars
     //this draws both vol and open interest

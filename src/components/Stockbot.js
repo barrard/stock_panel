@@ -11,7 +11,7 @@ const {
   tickValues,
 } = require("../indicators/indicatorHelpers/utils.js");
 
-class Account_Profile extends React.Component {
+class Stockbot_Page extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -98,6 +98,10 @@ class Account_Profile extends React.Component {
   totalPL(trades) {
     let totalProfit = trades.reduce((a, trade) => {
       let dollarAmount = getDollarProfit(trade);
+      if(dollarAmount>100000){
+        console.log('no')
+        debugger
+      }
       return a + dollarAmount;
     }, 0);
     return totalProfit;
@@ -253,7 +257,6 @@ class Account_Profile extends React.Component {
           break;
       }
     });
-    debugger;
     let oldPriceLevelTrades = trades.filter(
       (t) => !t.stratName.endsWith("Activation")
     );
@@ -438,7 +441,7 @@ function mapStateToProps(state) {
   return { stockBot };
 }
 
-export default connect(mapStateToProps)(withRouter(Account_Profile));
+export default connect(mapStateToProps)(withRouter(Stockbot_Page));
 
 const Pagination = ({
   startData,

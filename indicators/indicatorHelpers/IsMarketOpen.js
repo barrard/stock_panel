@@ -22,6 +22,7 @@ function checkForMaintenance(date) {
 }
 
 function futuresAreTrading(date) {
+  date = date || new Date().getTime();
   let { day, hour, minute, second } = eastCoastTime(date);
   //sunday evening 6pm
   if (day === 0) {
@@ -59,11 +60,9 @@ function stocksAreTrading(date) {
 
 function eastCoastTime(date) {
   let utc;
-  if (!date) {
-    utc = new Date().getTime() + new Date().getTimezoneOffset() * 60000;
-  } else {
-    utc = new Date(date).getTime() + new Date().getTimezoneOffset() * 60000;
-  }
+  date = date || new Date().getTime()
+  utc = new Date(date).getTime() + new Date().getTimezoneOffset() * 60000;
+
   let eastCoastTime = new Date(utc + 3600000 * -4); //get East coast time
   let day = new Date(eastCoastTime).getDay();
   let hour = new Date(eastCoastTime).getHours();
@@ -81,7 +80,7 @@ function isRTH(date) {
   let { day, hour, minute } = eastCoastTime(date);
   // if(hour <= 18) return false
 
-  if (hour < 17 && hour >= 9) {
+  if (hour < 16 && hour >= 9) {
     if (hour === 9) {
       if (minute >= 30) {
         return true;

@@ -19,7 +19,12 @@ function compileTickData(tickData, mins) {
     //firs should module 5
     let startCheck = new Date(tickData[0].timestamp).getMinutes() % mins === 0;
     if (!startCheck) {
-      throw new Error("Not the right start point");
+      while (!startCheck) {
+        tickData.shift();
+        if(!tickData.length)return
+        startCheck = new Date(tickData[0].timestamp).getMinutes() % mins === 0;
+      }
+      // throw new Error("Not the right start point");
     }
     let compiledData = [];
     let compiledBar = {};
