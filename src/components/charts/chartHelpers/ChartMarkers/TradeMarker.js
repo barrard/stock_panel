@@ -2,10 +2,12 @@ import DrawLine from "./Line.js";
 
 export const TradeMarker = ({ that, partialOHLCdata, scales, chartWindow }) => {
   let { timeScale, priceScale } = scales;
-  let xScale = timeScale
-  let yScale = priceScale
-  scales = {xScale, yScale}
+  let xScale = timeScale;
+  let yScale = priceScale;
+  scales = { xScale, yScale };
   let xMax = new Date(timeScale.domain()[1]).getTime();
+  let { tradeFilter } = that.props;
+  let { filters, stratNameFilterVal } = tradeFilter;
 
   let symbol = that.props.stock_data.search_symbol;
   let trades = that.props.stock_data.commodityTrades[symbol];
@@ -25,18 +27,27 @@ PL(pin):11.25
 exitPrice(pin):2595.25
 exitTime(pin):1585659963841
      */
+  let { Closed, Open, Orders, Canceled } = filters;
+
+  if (!Closed) trades = trades.filter((d) => d.orderStatus !== "Closed");
+  if (!Open) trades = trades.filter((d) => d.orderStatus !== "Filled");
+  if (!Orders) trades = trades.filter((d) => d.orderStatus !== "Open");
+  if (!Canceled) trades = trades.filter((d) => d.orderStatus !== "Canceled");
   let candleWidth = that.state.innerWidth / partialOHLCdata.length;
+  let scaler = 3.5;
+  if (candleWidth < 20) scaler = 2.5;
+  if (candleWidth < 6) scaler = 1.5;
+  if (stratNameFilterVal) {
+    trades = trades.filter((t) => t.stratName === stratNameFilterVal);
+  }
   function entryArrow(data) {
     let { entryTime, entryPrice } = data;
-    
-    if(!entryPrice)entryPrice = data.order_limit
-    if(!entryTime)entryTime = data.orderTime
+
+    if (!entryPrice) entryPrice = data.order_limit;
+    if (!entryTime) entryTime = data.orderTime;
     let x = timeScale(entryTime);
     let y = priceScale(entryPrice);
 
-    let scaler = 3.5;
-    if (candleWidth < 20) scaler = 2.5;
-    if (candleWidth < 6) scaler = 1.5;
     // x = x + (candleWidth*2)
     return `M ${x}, ${y}
                   l ${scaler * 5}, ${scaler * -3.75}
@@ -52,9 +63,7 @@ exitTime(pin):1585659963841
     if (!exitPrice || !exitTime) return;
     let x = timeScale(exitTime);
     let y = priceScale(exitPrice);
-    let scaler = 3.5;
-    if (candleWidth < 15) scaler = 2.5;
-    if (candleWidth < 6) scaler = 1.5;
+
     return `M ${x}, ${y}
                   l ${scaler * 5}, ${scaler * -3.75}
                   l ${scaler * 0}, ${scaler * 2.5}
@@ -77,20 +86,15 @@ exitTime(pin):1585659963841
     let { entryTime, entryPrice } = d;
     if (entryTime && entryPrice) return d;
   });
-  
+
   let tradeExits = trades.filter((d) => {
     let { exitTime, exitPrice } = d;
     if (exitTime && exitPrice) return d;
   });
 
   let tradeOrders = trades.filter((d) => {
-    if (d.orderStatus ==='Open') return d;
+    if (d.orderStatus === "Open") return d;
   });
-
-
-  
-
-
 
   let tradeEntry = chartWindow
     .selectAll(`.${"tradeEntryMarkers"}`)
@@ -171,10 +175,8 @@ exitTime(pin):1585659963841
       // console.log("remove");
     });
 
-
-
-    //ORDERS
-    let tradeOrder = chartWindow
+  //ORDERS
+  let tradeOrder = chartWindow
     .selectAll(`.${"tradeOrderMarkers"}`)
     .data(tradeOrders);
   // if(!tradeOrder.length) return
@@ -195,7 +197,7 @@ exitTime(pin):1585659963841
     })
     .attr("d", (d) => entryArrow(d))
 
-    .attr("fill", 'blue')
+    .attr("fill", "blue")
 
     .attr("stroke", "blue")
     .attr("class", `tradeMarkers tradeOrderMarkers`)
@@ -217,29 +219,27 @@ exitTime(pin):1585659963841
       // console.log("remove");
     });
 
-    //line extension from order
-    let options = {
-      strokeWidth: 5,
-      color: "blue",
-    };
-    // Target Line
-    let tradeOrderExtensions = tradeOrders.map(d=>({
-      
-        x1: d.orderTime,
-        y1: d.order_limit,
-        x2: xMax,
-        y2: d.order_limit,
-      
-    }))
-    DrawLine({
-      that: null,
-      dataPoints: tradeOrderExtensions,
-      chartWindow,
-      markerClass: "tradeOrderLine",
-      name: "tradeMarkerDetails",
-      scales,
-      options,
-    });
+  //line extension from order
+  let options = {
+    strokeWidth: 5,
+    color: "blue",
+  };
+  // Target Line
+  let tradeOrderExtensions = tradeOrders.map((d) => ({
+    x1: d.orderTime,
+    y1: d.order_limit,
+    x2: xMax,
+    y2: d.order_limit,
+  }));
+  DrawLine({
+    that: null,
+    dataPoints: tradeOrderExtensions,
+    chartWindow,
+    markerClass: "tradeOrderLine",
+    name: "tradeMarkerDetails",
+    scales,
+    options,
+  });
 };
 
 function showTradeDetails(data, chartWindow, { priceScale, timeScale }) {
@@ -247,12 +247,6 @@ function showTradeDetails(data, chartWindow, { priceScale, timeScale }) {
   let xScale = timeScale;
   let yScale = priceScale;
   let scales = { xScale, yScale };
-  //TODO
-  // highlightFibLines(d, i, lowToHigh, chartWindow, scales);
-
-  // console.log({d, i, swings})
-  // console.log({ scales });
-  //draw these lines?
 
   console.log(data);
   /**
@@ -271,27 +265,36 @@ order_stop: 3362.75
 order_target: 3352.75
 order_type: "Market"
    */
-  ;
   let xMax = new Date(xScale.domain()[1]).getTime();
-  let { entryTime, entryPrice, exitTime, order_target, order_stop, orderTime, order_limit } = data;
-  let options = {
-    strokeWidth: 5,
-    color: "green",
-  };
+  let {
+    entryTime,
+    entryPrice,
+    exitPrice,
+    exitTime,
+    order_target,
+    order_stop,
+    orderTime,
+    order_limit,
+  } = data;
+  let options = {};
+
+  options.color = "green";
+  options.strokeWidth = 5;
+  options.dasharray = null;
   // Target Line
   DrawLine({
     that: null,
     dataPoints: [
       {
-        x1: entryTime ? entryTime:orderTime,
+        x1: entryTime ? entryTime : orderTime,
         y1: order_target,
-        x2: exitTime? exitTime:xMax,
+        x2: exitTime ? exitTime : xMax,
         y2: order_target,
       },
       {
-        x1: entryTime ? entryTime:orderTime,
-        y1: entryPrice ? entryPrice:order_limit,
-        x2: entryTime ? entryTime:orderTime,
+        x1: entryTime ? entryTime : orderTime,
+        y1: entryPrice ? entryPrice : order_limit,
+        x2: entryTime ? entryTime : orderTime,
         y2: order_target,
       },
     ],
@@ -302,23 +305,20 @@ order_type: "Market"
     options,
   });
   // Stop Line
-  options = {
-    strokeWidth: 5,
-    color: "red",
-  };
+  options.color = "red";
   DrawLine({
     that: null,
     dataPoints: [
       {
-        x1: entryTime? entryTime:orderTime,
+        x1: entryTime ? entryTime : orderTime,
         y1: order_stop,
-        x2: exitTime? exitTime:xMax,
+        x2: exitTime ? exitTime : xMax,
         y2: order_stop,
       },
       {
-        x1: entryTime? entryTime:orderTime,
-        y1: entryPrice?entryPrice:order_limit,
-        x2: entryTime? entryTime:orderTime,
+        x1: entryTime ? entryTime : orderTime,
+        y1: entryPrice ? entryPrice : order_limit,
+        x2: entryTime ? entryTime : orderTime,
         y2: order_stop,
       },
     ],
@@ -328,4 +328,28 @@ order_type: "Market"
     scales,
     options,
   });
+
+  options.strokeWidth = 2;
+  options.color = "yellow";
+  options.dasharray = 4;
+
+  //TradeLine Line
+  if (exitTime && exitPrice) {
+    DrawLine({
+      that: null,
+      dataPoints: [
+        {
+          x1: entryTime,
+          y1: entryPrice,
+          x2: exitTime,
+          y2: exitPrice,
+        },
+      ],
+      chartWindow,
+      markerClass: "tradeMarkerTradeLine",
+      name: "tradeMarkerDetails",
+      scales,
+      options,
+    });
+  }
 }

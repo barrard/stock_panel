@@ -271,6 +271,15 @@ class CandleStickChart extends React.Component {
     this.handleSymbolChange(prevState, prevProps);
     this.handleNewTick(prevState, prevProps);
     this.didWidthChange(prevProps);
+    this.handleTradesFilter(prevProps);
+  }
+
+  handleTradesFilter(prevPops) {
+    let prevTradeFilter = prevPops.tradeFilter;
+    let { tradeFilter } = this.props;
+    if (prevTradeFilter !== tradeFilter) {
+      this.draw();
+    }
   }
 
   didWidthChange(prevPops) {
@@ -778,7 +787,7 @@ class CandleStickChart extends React.Component {
     let volProfileAxis = axisTop(this.state.volProfileScale).ticks(4);
 
     //Set up some data
-    // this.createPriceLevelsData();
+    this.createPriceLevelsData();
 
     //make all EMA/STD data
     Object.keys(this.state.EMA_data).forEach((MA_value) => {
@@ -877,7 +886,6 @@ class CandleStickChart extends React.Component {
       // timeframe interval
       let { timeframe } = otherThat.state;
       let interval = getInterval(timeframe);
-      debugger;
       let MOUSETIME = new Date(
         otherThat.state.timeScale.invert(_mouse[0])
       ).getTime();
@@ -896,16 +904,13 @@ class CandleStickChart extends React.Component {
 
       crosshair
         .select("#crosshairY")
-        .attr(
-          "x1",
-          otherThat.state.timeScale(otherThat.state.timeScale.domain[0])
-        )
+        .attr("x1", otherThat.state.timeScale(otherThat.state.timestamps[0]))
         .attr("y1", MOUSEY)
-        .attr("x2", () => {
-          console.log(otherThat.state);
-          console.log(that.state);
-          return otherThat.state.timeScale(otherThat.state.timeScale.domain[1]);
-        })
+        .attr("x2", () =>
+          otherThat.state.timeScale(
+            otherThat.state.timestamps[otherThat.state.timestamps.length - 1]
+          )
+        )
         .attr("y2", MOUSEY);
     }
 
@@ -1344,7 +1349,6 @@ class CandleStickChart extends React.Component {
 
     let x = "timestamp";
     let y = "expectedRange";
-    // debugger;
     let nestedY = "top";
     let color = "#bfe7b1";
     let groupName = "expectedTradingRange";

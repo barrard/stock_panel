@@ -9,7 +9,7 @@ import Tree from "react-d3-tree";
 import OptionsChart from "./charts/OptionsChart.js";
 
 // import {ensure_not_loggedin} from '../components/utils/auth.js'
-import  {histogram}  from"d3-array";
+import { histogram } from "d3-array";
 
 class OpAlerts extends React.Component {
   constructor(props) {
@@ -221,7 +221,7 @@ class OpAlerts extends React.Component {
     let alerts = this.props.options.alerts;
     let snapData = await API.fetchOpAlertData({ symbol, strike, exp, putCall });
     let allSnaps = [];
-    
+
     snapData.forEach((a) => {
       if (a.snaps) {
         a.snaps.forEach((snap) => allSnaps.push(snap));
@@ -413,9 +413,7 @@ class OpAlerts extends React.Component {
         alertMessages.push(alert.alert);
         lastPrices.push(alert.last);
         allIVs.push(alert.IV);
-        allDateTimes.push(
-          alert.dateTime.split(",")[0]
-        );
+        allDateTimes.push(alert.dateTime.split(",")[0]);
         allTotalVols.push(alert.totalVolume);
         allUnderlying.push(alert.underlyingPrice);
       });
@@ -423,9 +421,9 @@ class OpAlerts extends React.Component {
     let filteredAlerts = this.filterAlerts(allAlerts);
 
     allSymbols = Array.from(new Set(allSymbols)).sort((a, b) => {
-      if(a>b)return 1
-      if(a<b)return -1
-      return 0
+      if (a > b) return 1;
+      if (a < b) return -1;
+      return 0;
     });
     expDates = Array.from(new Set(expDates)).sort(
       (a, b) => new Date(a).getTime() - new Date(b).getTime()
@@ -439,10 +437,15 @@ class OpAlerts extends React.Component {
     allTotalVols = Array.from(new Set(allTotalVols)).sort((a, b) => a - b);
     allUnderlying = Array.from(new Set(allUnderlying)).sort((a, b) => a - b);
 
-    
-    lastPrices = lastPrices.filter((p, iP)=>iP% Math.floor(lastPrices.length/10)===0)
-    allUnderlying = allUnderlying.filter((p, iP)=>iP% Math.floor(allUnderlying.length/10)===0)
-    allTotalVols = allTotalVols.filter((p, iP)=>iP% Math.floor(allTotalVols.length/10)===0)
+    lastPrices = lastPrices.filter(
+      (p, iP) => iP % Math.floor(lastPrices.length / 10) === 0
+    );
+    allUnderlying = allUnderlying.filter(
+      (p, iP) => iP % Math.floor(allUnderlying.length / 10) === 0
+    );
+    allTotalVols = allTotalVols.filter(
+      (p, iP) => iP % Math.floor(allTotalVols.length / 10) === 0
+    );
 
     return (
       <div className="row flex_center white">
@@ -455,73 +458,85 @@ class OpAlerts extends React.Component {
         </div>
 
         {/* total Vol Select */}
-        <div className="col-sm-6 flex_end">
+        <div className="col-sm-6 flex_center">
           <div className="row ">
-            <div className="col-sm-12 flex_end">
+            <div className="col-sm-12 flex_center">
               <h4>Total Volume</h4>
             </div>
-            <div className="col-sm-12 flex_end">
+            <div className="col-sm-12 flex_center">
               {this.dropDownSelect("totalVolume", allTotalVols)}
             </div>
           </div>
         </div>
         {/* EXP Date Select */}
-        <div className="col-sm-6 flex_start">
+        <div className="col-sm-6 flex_center">
           <div className="row ">
-            <div className="col-sm-12 flex_start">
+            <div className="col-sm-12 flex_center">
               <h4>Filter Expirations </h4>
             </div>
 
-            <div className="col-sm-12 flex_start">
+            <div className="col-sm-12 flex_center">
               {this.dropDownSelect("exp", expDates)}
             </div>
           </div>
         </div>
 
         {/* Last Select */}
-        <div className="col-sm-6 flex_end">
+        <div className="col-sm-6 flex_center">
           <div className="row ">
-            <div className="col-sm-12 flex_end">
+            <div className="col-sm-12 flex_center">
               <h4>Last Prices </h4>
             </div>
-            <div className="col-sm-12 flex_end">
+            <div className="col-sm-12 flex_center">
               {this.dropDownSelect("last", lastPrices)}
             </div>
           </div>
         </div>
         {/* Last Select */}
-        <div className="col-sm-6 flex_start">
+        <div className="col-sm-6 flex_center">
           <div className="row ">
-            <div className="col-sm-12 flex_start">
+            <div className="col-sm-12 flex_center">
               <h4>Underlying Prices</h4>
             </div>
-            <div className="col-sm-12 flex_start">
+            <div className="col-sm-12 flex_center">
               {this.dropDownSelect("underlying", allUnderlying)}
             </div>
           </div>
         </div>
         {/* Date Select */}
-        <div className="col-sm-6 flex_end">
+        <div className="col-sm-6 flex_center">
           <div className="row ">
-            <div className="col-sm-12 flex_end">
+            <div className="col-sm-12 flex_center">
               <h4>Alert Date</h4>
             </div>
-            <div className="col-sm-12 flex_end">
+            <div className="col-sm-12 flex_center">
               {this.dropDownSelect("dateTime", allDateTimes)}
             </div>
           </div>
         </div>
         {/* Symbol Select */}
-        <div className="col-sm-6 flex_start">
+        <div className="col-sm-6 flex_center">
           <div className="row ">
-            <div className="col-sm-12 flex_start">
+            <div className="col-sm-12 flex_center">
               <h4>Filter symbols </h4>
             </div>
-            <div className="col-sm-12 flex_start">
+            <div className="col-sm-12 flex_center">
               {this.dropDownSelect("symbol", allSymbols)}
             </div>
           </div>
         </div>
+        {/* Profit Select */}
+        <div className="col-sm-6 flex_center">
+          <div className="row ">
+            <div className="col-sm-12 flex_center">
+              <h4>Filter P&L </h4>
+            </div>
+            <div className="col-sm-12 flex_center">
+              {this.dropDownSelect("symbol", allSymbols)}
+            </div>
+          </div>
+        </div>
+        
         {/* <div className="col-sm-12 flex_center">
           <h5>Total Contract: {filteredAlerts.length}</h5>
         </div> */}

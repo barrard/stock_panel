@@ -12,6 +12,7 @@ import {
   updateCommodityTrade,
   updateStockTrade,
 } from "../../../redux/actions/stock_actions.js";
+import {setTradeFilter, setStratNameFilter} from '../../../redux/actions/tradeFilterActions.js'
 import {
   closing_position,
   canceling_order,
@@ -25,11 +26,8 @@ class TradesList extends React.Component {
     let trades = props.trades || [];
     // console.log(trades);
     this.state = {
-      filters: {
-        Open: true,
-        Closed: false,
-        Orders: true,
-      },
+
+      stratNameFilterVal: "",
       cancelOrders: [],
       closePositions: [],
       sorted_prop: "entryTime",
@@ -185,16 +183,60 @@ class TradesList extends React.Component {
   }
 
   addFilter = (e) => {
-    let val = e.target.value;
-    let { filters } = this.state;
-    let filterValue = filters[val];
-    filters[val] = !filterValue;
-    this.setState({ filters });
+    let filterName = e.target.value;
+    let { filters } = this.props.tradeFilter;
+    let flag = filters[filterName];
+    flag = !flag;
+    this.props.dispatch(setTradeFilter({filterName, flag}))
+    // this.setState({ filters });
+  };
+
+  StratNameFilter = (trades) => {
+    let { stratNameFilterVal } = this.props.tradeFilter;
+    if (!trades) return <></>;
+    let allStrats = Array.from(new Set(trades.map((t) => t.stratName))).sort(
+      sortString
+    );
+
+    return (
+      <>
+        <label htmlFor="stratNameFilter"></label>
+        <select
+          value={stratNameFilterVal}
+          onChange={(e) => {
+            let stratName = e.target.value;
+            
+            this.props.dispatch(setStratNameFilter(stratName))
+
+          }}
+          name="stratNameFilter"
+          id=""
+        >
+          <option value={``}>{`Select StratName`}</option>
+          {allStrats.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        {stratNameFilterVal && (
+          <span className="white">
+            Total{" "}
+            {trades
+              .filter((t) => t.stratName === stratNameFilterVal)
+              .reduce((a, b) => {
+                if (!b.PL) return a;
+                return a + b.PL;
+              }, 0)}
+          </span>
+        )}
+      </>
+    );
   };
 
   filterRadioBtns = ({ filters }) => {
     let trades = this.props.trades;
-    let types = ["Closed", "Open", "Orders", "Canceled"];
+    let types = Object.keys(this.props.tradeFilter.filters)
     let RadioButtons = types.map((type, iType) => {
       let orderStatusType = type;
       if (orderStatusType === "Open") orderStatusType = "Filled";
@@ -298,15 +340,23 @@ class TradesList extends React.Component {
     });
   }
 
+ 
   render() {
-    let { sorted_prop, startData, endData, rowCount } = this.state;
+    let {
+      sorted_prop,
+      startData,
+      endData,
+      rowCount,
+      
+    } = this.state;
     let { handleNext, handlePrev, handlePageFirst, handlePageLast } = this;
 
     let allTrades = this.props.trades;
+    let {stratNameFilterVal}= this.props.tradeFilter
     if (!allTrades) allTrades = [];
     let tradesToShow = [...allTrades];
 
-    let { Closed, Open, Orders, Canceled } = this.state.filters;
+    let { Closed, Open, Orders, Canceled } = this.props.tradeFilter.filters;
     if (!Closed)
       tradesToShow = tradesToShow.filter((d) => d.orderStatus !== "Closed");
     if (!Open)
@@ -320,6 +370,13 @@ class TradesList extends React.Component {
       : (a, b) => this.high_to_low(a, b, sorted_prop);
     tradesToShow = tradesToShow.sort(sortFn);
 
+    let stratNameFilter = this.StratNameFilter(tradesToShow);
+    if (stratNameFilterVal) {
+      tradesToShow = tradesToShow.filter(
+        (t) => t.stratName === stratNameFilterVal
+      );
+    }
+
     let symbol = this.props.stock_data.search_symbol;
     let currentQuote = this.props.stock_data.currentTickData[symbol];
 
@@ -331,7 +388,7 @@ class TradesList extends React.Component {
       }
     });
     // console.log(trades)
-    let filters = this.state.filters;
+    let filters = this.props.tradeFilter.filters;
     let filterRadioBtns = this.filterRadioBtns({ filters });
     let noTrades = tradesToShow && tradesToShow.length == 0;
     return (
@@ -350,19 +407,24 @@ class TradesList extends React.Component {
             <div className="col-sm-6 flex_center">
               <FilterRadioContainer>{filterRadioBtns}</FilterRadioContainer>
             </div>
+            <div className="col-sm-12 flex_center">
+              <FilterStratNameContainer>
+                {stratNameFilter}
+              </FilterStratNameContainer>
+            </div>
           </div>
           {/* <div className='full-width scroll_x mb-4'> */}
           {!noTrades && (
-              <Pagination
-                startData={startData}
-                endData={endData}
-                handleNext={handleNext}
-                handlePrev={handlePrev}
-                handlePageLast={handlePageLast}
-                handlePageFirst={handlePageFirst}
-                trades={tradesToShow}
-              />
-            )}
+            <Pagination
+              startData={startData}
+              endData={endData}
+              handleNext={handleNext}
+              handlePrev={handlePrev}
+              handlePageLast={handlePageLast}
+              handlePageFirst={handlePageFirst}
+              trades={tradesToShow}
+            />
+          )}
           <Stock_List_Header
             sorted_prop={this.state.sorted_prop}
             sort_state={this.state.sort_state}
@@ -459,12 +521,20 @@ const Pagination = ({
         >
           {"<< "}FIRST 0
         </button>
-        <button onClick={handlePrev} type="button" className="btn btn-primary paginationBtn">
+        <button
+          onClick={handlePrev}
+          type="button"
+          className="btn btn-primary paginationBtn"
+        >
           {"< "}PREV {startData}
         </button>
       </div>
       <div className="col-sm-6 flex_center">
-        <button onClick={handleNext} type="button" className="btn btn-primary paginationBtn">
+        <button
+          onClick={handleNext}
+          type="button"
+          className="btn btn-primary paginationBtn"
+        >
           {" "}
           {endData} NEXT {" >"}
         </button>
@@ -492,7 +562,8 @@ function Display_Stock_Row({
   closePositions,
 }) {
   const {
-    PL,stratName,
+    PL,
+    stratName,
     buyOrSell,
     entryPrice,
     entryTime,
@@ -514,7 +585,8 @@ function Display_Stock_Row({
   let timeframe = "day";
   let end = new Date().getTime();
   return (
-    <div title={stratName? stratName:''}
+    <div
+      title={stratName ? stratName : ""}
       className={`row clickable ${class_name} relative`}
       onClick={() => {
         //TODO??  move the chart and show the order time, stop and loss targets along with entry
@@ -523,7 +595,7 @@ function Display_Stock_Row({
       }}
     >
       {/* SYMBOL */}
-      <div className="absolute white">{(index+1)+startData}</div>
+      <div className="absolute white">{index + 1 + startData}</div>
 
       {/* entryTime */}
       <div className="col flex_center white">
@@ -789,7 +861,14 @@ const DateTime = ({ date }) => {
     </p>
   );
 };
-const ProfitLoss = ({ PL, currentQuote, exitTime, entryPrice, buyOrSell, exitPrice }) => {
+const ProfitLoss = ({
+  PL,
+  currentQuote,
+  exitTime,
+  entryPrice,
+  buyOrSell,
+  exitPrice,
+}) => {
   // console.log({PL, currentQuote, entryPrice, buyOrSell})
   if (!entryPrice)
     return (
@@ -922,6 +1001,10 @@ const FilterRadioContainer = styled.div`
   margin-top: 0.2em;
 `;
 
+const FilterStratNameContainer = styled.div`
+  margin-top: 0.2em;
+`;
+
 function dynamicSortHelper(prop, aData, bData, thisProps) {
   if (prop === "entryTime") {
     return returnDataProps(aData, bData, prop, "orderTime");
@@ -969,4 +1052,10 @@ function dynamicSortHelper(prop, aData, bData, thisProps) {
     }
     return { aProp, bProp };
   }
+}
+
+function sortString(a, b) {
+  if (a > b) return 1;
+  if (a < b) return -1;
+  return 0;
 }

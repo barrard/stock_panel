@@ -11,6 +11,7 @@ function DrawLine({
 }) {
   let strokeWidth = options.strokeWidth || 5;
   let color = options.color || "yellow";
+  let dasharray = options.dasharray || '';
   let { yScale, xScale } = scales;
   let Lines = chartWindow.selectAll(`.${markerClass}`).data(dataPoints);
 
@@ -27,6 +28,8 @@ function DrawLine({
     .attr("stroke-width", strokeWidth)
     .attr("stroke-linejoin", "round")
     .attr("stroke-linecap", "round")
+    .attr("stroke-dasharray", dasharray)
+
     .attr("stroke", (d) => {
       return color;
     })
@@ -34,10 +37,11 @@ function DrawLine({
     .on("click", function (d) {
       console.log("click");
     });
-  if (options.mouseover) {
-    //   console.log('applyingmouseover')
-    Lines.on("mouseover", options.mouseover);
-  }
+
+    if (options.mouseover) {
+      //   console.log('applyingmouseover')
+      Lines.on("mouseover", options.mouseover);
+    }
 
   if (options.mouseout) {
     Lines.on("mouseout", options.mouseout);

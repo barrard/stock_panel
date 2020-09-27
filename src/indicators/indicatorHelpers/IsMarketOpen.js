@@ -60,7 +60,7 @@ function stocksAreTrading(date) {
 
 function eastCoastTime(date) {
   let utc;
-  date = date || new Date().getTime()
+  date = date || new Date().getTime();
   utc = new Date(date).getTime() + new Date().getTimezoneOffset() * 60000;
 
   let eastCoastTime = new Date(utc + 3600000 * -4); //get East coast time
@@ -167,7 +167,58 @@ function forbiddenTimestamp(time) {
   return false;
 }
 
+function timeAsEST(time) {
+  let date = new Date(time);
+  return `${date.toLocaleString("en-US", {
+    timeZone: "America/New_York",
+  })} EST`;
+}
+function getTimestampForPreviousSession(time) {
+  let date = new Date(time).getDate();
+  let day = new Date(time).getDay();
+  if (day === 0) {
+    date = date - 2;
+  } else if (day === 6) {
+    date = date - 1;
+  }
+  date = date - 1;
+  time = new Date(time).setDate(date);
+  return time;
+}
+
+function getTimestampForLastSession() {
+  //10pm UTC
+  let now = new Date().getTime();
+  let tenPM_UTC = new Date(now).setUTCHours(22);
+  tenPM_UTC = new Date(tenPM_UTC).setUTCMinutes(0);
+  tenPM_UTC = new Date(tenPM_UTC).setUTCSeconds(0);
+  tenPM_UTC = new Date(tenPM_UTC).setUTCMilliseconds(0);
+  if (tenPM_UTC > now) {
+    let day = new Date(tenPM_UTC).getDate();
+    tenPM_UTC = new Date(tenPM_UTC).setUTCDate(day - 1);
+  }
+  return tenPM_UTC;
+}
+
+function getTimestampForTodaysOpen() {
+  //4:30pm UTC
+  let now = new Date().getTime();
+  let tenPM_UTC = new Date(now).setUTCHours(13);
+  tenPM_UTC = new Date(tenPM_UTC).setUTCMinutes(30);
+  tenPM_UTC = new Date(tenPM_UTC).setUTCSeconds(0);
+  tenPM_UTC = new Date(tenPM_UTC).setUTCMilliseconds(0);
+  if (tenPM_UTC > now) {
+    let day = new Date(tenPM_UTC).getDate();
+    tenPM_UTC = new Date(tenPM_UTC).setUTCDate(day - 1);
+  }
+  return tenPM_UTC;
+}
+
 export {
+  getTimestampForTodaysOpen,
+  getTimestampForPreviousSession,
+  getTimestampForLastSession,
+  timeAsEST,
   checkBeginningNewDay,
   forbiddenTimestamp,
   checkEndOpeningSessionTime,
