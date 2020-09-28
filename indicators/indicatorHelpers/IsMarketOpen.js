@@ -215,8 +215,35 @@ function getTimestampForTodaysOpen() {
   return tenPM_UTC;
 }
 
+function isOptionsTime(){
+  let date =  new Date()
+  let futsOpen = futuresAreTrading(date);
+  if (!futsOpen) return false;
+  let { day, hour, minute } = eastCoastTime(date);
+  // if(hour <= 18) return false
+
+  if (hour <= 16 && hour >= 9) {
+    if(hour === 16 && minute > 30){
+      return false
+    }
+    if (hour === 9) {
+      if (minute >= 30) {
+        return true;
+      } else {
+        //9:00 am - 9:29am
+        return false;
+      }
+    } else {
+      return true;
+    }
+  } else {
+    return false;
+  }
+}
+
 
 module.exports = {
+  isOptionsTime,
   getTimestampForTodaysOpen,
   getTimestampForPreviousSession,
   getTimestampForLastSession,
