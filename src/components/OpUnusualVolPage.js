@@ -318,6 +318,7 @@ class OpAlerts extends React.Component {
             <div className="col flex_center sm-title">exp</div>
             <div className="col flex_center sm-title">strike</div>
             <div className="col flex_center sm-title">Underlying</div>
+            <div className="col flex_center sm-title">PL</div>
           </div>
         </div>
       </div>
@@ -325,7 +326,7 @@ class OpAlerts extends React.Component {
     //for each alert, get one row
     //
     let rows = alerts.map((a, iA) => {
-      let { underlyingPrice } = a.alerts.slice(-1)[0];
+      let { underlyingPrice, PL } = a.alerts.slice(-1)[0];
       let {
         selectedExp,
         selectedStrike,
@@ -355,6 +356,7 @@ class OpAlerts extends React.Component {
               <div className="col flex_center">{a.exp}</div>
               <div className="col flex_center">{a.strike}</div>
               <div className="col flex_center">{underlyingPrice}</div>
+              <div className="col flex_center">{PL}</div>
               {selectedContract && (
                 <div className="col-12 floating">
                   {
@@ -445,7 +447,6 @@ class OpAlerts extends React.Component {
   render() {
     let { options } = this.props;
     let allAlerts = options.alerts;
-    debugger;
     //filter out selected values
     let allSymbols = [];
     let expDates = [];

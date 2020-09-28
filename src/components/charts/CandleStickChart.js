@@ -415,7 +415,7 @@ class CandleStickChart extends React.Component {
         rawCurrentData = stock_data.rawCommodityCharts[symbol][timeframe];
 
         // currentRawOHLCData = this.state.rawOHLCData;
-        if (!currentData.length) return;
+        if (!currentData || !currentData.length) return;
 
         let lastBar = currentData[currentData.length - 1];
         let lastPartialBar = partialOHLCdata.slice(-1)[0];
