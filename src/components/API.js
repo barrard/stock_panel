@@ -235,6 +235,7 @@ async function cancelOrder(id) {
 
 async function getAllCommodityTrades(symbol, props) {
   let trades;
+  debugger
   try {
     console.log({ symbol });
     if (symbol) {

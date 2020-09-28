@@ -15,10 +15,40 @@ export {
   getEMA_Trend,
   emaPriceCheck,
   emaProximityCheck,
-  evalEMA
+  evalEMA,
+  emaPullBackCheck
 };
 
 const emaValues = [20, 50, 200];
+
+function emaPullBackCheck(allData){
+  let data = allData.slice(-1)[0]
+  let {ema} = data
+
+  if (!ema) return;
+  let trend = getEMA_Trend(data);
+  let proximityCheck = emaProximityCheck(data);
+  if(trend === 'bullishPullback'){
+    if(proximityCheck===20){
+      console.log('near the 20?')
+
+    }else if(proximityCheck===50){
+      return 'Buy'
+    }else if(proximityCheck===200){
+      return 'Buy'
+    } 
+
+  }else if(trend ==='bearishPullback'){
+    if(proximityCheck===20){
+      console.log('near the 20?')
+
+    }else if(proximityCheck===50){
+      return 'Sell'
+    }else if(proximityCheck===200){
+      return 'Sell'
+    } 
+  }
+}
 
 function evalEMA(allData) {
   let data = allData.slice(-1)[0]
