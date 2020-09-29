@@ -32,6 +32,7 @@ function emaPullBackCheck(allData){
   if(trend === 'bullishPullback'){
     if(proximityCheck===20){
       console.log('near the 20?')
+      return('Buy')
 
     }else if(proximityCheck===50){
       return 'Buy'
@@ -42,7 +43,7 @@ function emaPullBackCheck(allData){
   }else if(trend ==='bearishPullback'){
     if(proximityCheck===20){
       console.log('near the 20?')
-
+      return 'Sell'
     }else if(proximityCheck===50){
       return 'Sell'
     }else if(proximityCheck===200){

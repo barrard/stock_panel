@@ -15,6 +15,7 @@ class OpAlerts extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
+      selectedContractRef: null,
       filter_symbol: "",
       filter_exp: "",
       filter_underlying: "",
@@ -27,6 +28,8 @@ class OpAlerts extends React.Component {
       lessThan_totalVolume: true,
       lessThan_underlying: true,
       lessThan_PL: true,
+      sortBy:'symbol',
+      sortOrder:true,
       filterNames: [
         "symbol",
         "exp",
@@ -282,6 +285,7 @@ class OpAlerts extends React.Component {
       }
     });
     console.log(snapData);
+    this.scrollToId('selectedContractChart')
     this.setState({
       snapData: allSnaps,
       selectedSymbol: symbol,
@@ -307,18 +311,32 @@ class OpAlerts extends React.Component {
     );
   }
 
+  sortBy(key){
+    let {sortOrder} = this.state
+    this.setState({sortBy:key, sortOrder:!sortOrder})
+
+  }
+  scrollToId = (id) => {
+    setTimeout(()=>{
+      document.getElementById(id).scrollIntoView({behavior: 'smooth'});
+    },0)
+  }
+   
+
+
   makeTable(alerts) {
     let header = (
       <div className="col-sm-12 flex_center">
         <div className="full-width">
           <div className="row flex_center">
             <div className="col flex_center sm-title">Total Contracts</div>
-            <div className="col flex_center sm-title">putCall</div>
-            <div className="col flex_center sm-title">symbol</div>
-            <div className="col flex_center sm-title">exp</div>
-            <div className="col flex_center sm-title">strike</div>
-            <div className="col flex_center sm-title">Underlying</div>
-            <div className="col flex_center sm-title">PL</div>
+            <div onClick={()=>this.sortBy('putCall')} className="col flex_center sm-title">putCall</div>
+            <div onClick={()=>this.sortBy('symbol')} className="col flex_center sm-title">symbol</div>
+            <div onClick={()=>this.sortBy('exp')} className="col flex_center sm-title">exp</div>
+            <div onClick={()=>this.sortBy('strike')} className="col flex_center sm-title">strike</div>
+            <div onClick={()=>this.sortBy('underlyingPrice')} className="col flex_center sm-title">Underlying</div>
+            <div onClick={()=>this.sortBy('PL')} className="col flex_center sm-title">PL</div>
+            <div onClick={()=>this.sortBy('percentPL')} className="col flex_center sm-title">percentPL</div>
           </div>
         </div>
       </div>
@@ -326,7 +344,8 @@ class OpAlerts extends React.Component {
     //for each alert, get one row
     //
     let rows = alerts.map((a, iA) => {
-      let { underlyingPrice, PL } = a.alerts.slice(-1)[0];
+      let { underlyingPrice, PL, percentPL } = a.alerts.slice(-1)[0];
+      debugger
       let {
         selectedExp,
         selectedStrike,
@@ -357,8 +376,9 @@ class OpAlerts extends React.Component {
               <div className="col flex_center">{a.strike}</div>
               <div className="col flex_center">{underlyingPrice}</div>
               <div className="col flex_center">{PL}</div>
+              <div className="col flex_center">{percentPL}</div>
               {selectedContract && (
-                <div className="col-12 floating">
+                <div id='selectedContractChart' className="col-12 floating ">
                   {
                     <OptionsChart
                       alerts={selectedAlerts}
@@ -385,6 +405,16 @@ class OpAlerts extends React.Component {
                                 </div>
                                 <div className="col-sm-12 flex_center">
                                   {a.IV}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="col flex_center">
+                              <div className="row flex_center">
+                                <div className="col-sm-12 flex_center">
+                                  <h5>Current:</h5>
+                                </div>
+                                <div className="col-sm-12 flex_center">
+                                  ${a.currentLast}
                                 </div>
                               </div>
                             </div>
@@ -446,6 +476,7 @@ class OpAlerts extends React.Component {
 
   render() {
     let { options } = this.props;
+    let {sortBy, sortOrder}= this.state
     let allAlerts = options.alerts;
     //filter out selected values
     let allSymbols = [];
@@ -467,6 +498,8 @@ class OpAlerts extends React.Component {
       alert.alerts.forEach((alert) => {
         let { last, currentLast } = alert;
         let PL = (currentLast - last).toFixed(2);
+        let percentPL = (((currentLast-last) / last)*100).toFixed(2);
+        alert.percentPL = percentPL;
         alert.PL = PL;
         allPL.push(PL);
         alertMessages.push(alert.alert);
@@ -478,6 +511,24 @@ class OpAlerts extends React.Component {
       });
     });
     let filteredAlerts = this.filterAlerts(allAlerts);
+    debugger
+    filteredAlerts = filteredAlerts.sort((a,b)=>{
+
+      if(sortBy==='underlyingPrice'||
+      sortBy==='PL' ||
+      sortBy==='percentPL' ){
+        if(a.alerts.slice(0)[0][sortBy]<b.alerts.slice(0)[0][sortBy])return sortOrder?1:-1
+        if(a.alerts.slice(0)[0][sortBy]>b.alerts.slice(0)[0][sortBy])return sortOrder?-1:1
+        return 0
+      }else{
+
+        if(a[sortBy]<b[sortBy])return sortOrder?-1:1
+        if(a[sortBy]>b[sortBy])return sortOrder?1:-1
+        return 0
+      }
+
+      
+    })
 
     allSymbols = Array.from(new Set(allSymbols)).sort((a, b) => {
       if (a > b) return 1;

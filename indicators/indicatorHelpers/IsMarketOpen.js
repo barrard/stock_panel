@@ -217,17 +217,21 @@ function getTimestampForTodaysOpen() {
 
 function isOptionsTime(){
   let date =  new Date()
-  let futsOpen = futuresAreTrading(date);
-  if (!futsOpen) return false;
+  // let futsOpen = futuresAreTrading(date);
+  // if (!futsOpen) return false;
   let { day, hour, minute } = eastCoastTime(date);
   // if(hour <= 18) return false
 
-  if (hour <= 16 && hour >= 9) {
-    if(hour === 16 && minute > 30){
+  let startHour = 9 //9:00am
+  let startMin = 30 //00:30
+  let endHour = 16 //4:00pm
+  let endMin = 30 // 00:30
+  if (hour <= endHour && hour >= startHour) {
+    if(hour === endHour && minute > endMin){
       return false
     }
-    if (hour === 9) {
-      if (minute >= 30) {
+    if (hour === startHour) {
+      if (minute >= startMin) {
         return true;
       } else {
         //9:00 am - 9:29am

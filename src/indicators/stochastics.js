@@ -101,7 +101,7 @@ function addNewestStochastics(data) {
   }
 
   latestData[indicatorName] = {};
-  let fastKAvg = 14;
+  let fastKAvg = 50;
   let slowKAvg = 3;
 
   stochasticPeriods.forEach((period) => {
