@@ -2,39 +2,96 @@ const { average, windowAvg } = require("./indicatorHelpers/MovingAverage.js");
 let stochasticPeriods = [14, 24, 50, 100];
 let indicatorName = "stochastics";
 
-module.exports =  {
+module.exports = {
   stochasticsAnalysis,
   stochasticPeriods,
   calcStochastics,
   addStochastics,
   addNewestStochastics,
-  prevCurrentStoch,evalStoch
+  prevCurrentStoch,
+  evalStoch,
+  checkMultiPeriodStoch,
 };
 
+function decide({ dir }) {
+  /**
+   * dir          cond
+   * 1 sell       1 sell
+   * 2 buy        2 buy
+   * 3 exit sell  3 exit sell
+   * 4 exit buy   4 exit buy
+   * 5 middle     5 middle
+   */
 
-function decide({dir}){
-      /**
-     * dir          cond
-     * 1 sell       1 sell
-     * 2 buy        2 buy
-     * 3 exit sell  3 exit sell
-     * 4 exit buy   4 exit buy
-     * 5 middle     5 middle
-     */
-    
-    if(
-       dir === 1){
-      return 'oversold'
-    }else if(
-       dir === 2){
-      return 'overbought'
-    }else if(
-       dir === 3){
-      return 'being bought'
-    }else if(
-       dir === 4){
-      return 'being sold'
-    }else return null
+  if (dir === 1) {
+    return "oversold";
+  } else if (dir === 2) {
+    return "overbought";
+  } else if (dir === 3) {
+    return "being bought";
+  } else if (dir === 4) {
+    return "being sold";
+  } else return null;
+}
+
+function checkMultiPeriodStoch(data, symbol, TF) {
+  let d = data[TF].slice(-1)[0];
+  let results = evalMultiPeriodStoch(d);
+  if (!results) return;
+  let fastDir = results.fastDir;
+  let slowDir = results.slowDir;
+  if (!fastDir || !slowDir) {
+    console.log("db");
+  }
+  if (slowDir === "middle") {
+    if (fastDir === "goLong") {
+      return "Buy";
+    } else if (fastDir === "goShort") {
+      return "Sell";
+    }
+  } else {
+    if (slowDir === "goLong") {
+      return "Buy";
+    } else if (slowDir === "goShort") {
+      return "Sell";
+    }
+  }
+
+  function evalMultiPeriodStoch(d) {
+    if (
+      !d.stochastics ||
+      !d.stochastics.K ||
+      !d.stochastics.D ||
+      !d.stochastics["50"]
+    )
+      return;
+
+    let { K, D } = d.stochastics;
+    let fity = d.stochastics["50"];
+
+    let fastDir = getFastDir(K, D);
+    if (!fastDir) {
+      console.log("wtf");
+    }
+
+    let slowDir = fity >= 95 ? "goLong" : fity <= 5 ? "goShort" : "middle";
+
+    return { fastDir, slowDir };
+
+    function getFastDir(K, D) {
+      if (D >= 95 && K >= 95) {
+        return "goShort"; //2
+      } else if (5 >= K && 5 >= D) {
+        return "goShort"; //1
+      } else if (K >= 75 && D >= 30 && D <= 60) {
+        return "goLong"; //3
+      } else if (K <= 25 && D >= 30 && D <= 60) {
+        return "goShort"; //4
+      } else {
+        return "middle"; //5;
+      }
+    }
+  }
 }
 
 function prevCurrentStoch(data) {
@@ -60,7 +117,7 @@ function prevCurrentStoch(data) {
   //   currStoch = "middle";
   // }
   // console.log(`----STOCH ${symbol} ${timeframe} ${dir} ${cond}`);
-    let tradeDecision = decide({dir})
+  let tradeDecision = decide({ dir });
   return tradeDecision;
 }
 function evalStoch(data) {
@@ -72,14 +129,14 @@ function evalStoch(data) {
   }
   let dir =
     D > 80 && K > 80
-      ?  "overbought" //2
+      ? "overbought" //2
       : 20 > K && 20 > D
       ? "oversold" //1
       : K > 20 && D < 20
-       ? "exitShort" //3
+      ? "exitShort" //3
       : K < 80 && D > 80
-      ?  "exitLong"//4
-      : "middle" //5;
+      ? "exitLong" //4
+      : "middle"; //5;
 
   if (!dir) {
     console.log("dbug");
@@ -96,7 +153,7 @@ function addNewestStochastics(data) {
   }
 
   latestData[indicatorName] = {};
-  let fastKAvg = 50;
+  let fastKAvg = 14;
   let slowKAvg = 3;
 
   stochasticPeriods.forEach((period) => {
