@@ -104,7 +104,7 @@ class OpAlerts extends React.Component {
 
   showFilters() {
     return (
-      <div className="full-width filterHover">
+      <div className="full-width filterHover dynamicText">
         <div className="row flex_center">
           {this.state.filterNames.map((f) => {
             return (
@@ -605,7 +605,7 @@ class OpAlerts extends React.Component {
         <LineBreak />
         <div className="col-sm-12 flex_center">{this.showFilters()}</div>
         <LineBreak />
-        <div className="container">{this.makeTable(filteredAlerts)}</div>
+        <div className="container dynamicText">{this.makeTable(filteredAlerts)}</div>
       </div>
     );
   }

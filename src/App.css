@@ -934,3 +934,18 @@ canvas {
   background-image: -o-linear-gradient(top, #dc564e, #b92d25);
   background-image: linear-gradient(top, #dc564e, #b92d25);
 }
+
+
+
+@media only screen and (max-width: 770px) {
+
+  .dynamicText { 
+     font-size: 10px; 
+  }
+  .sm-title{
+    font-size: 10px; 
+  }
+  h4{
+    font-size: 0.9em;
+  }
+}
