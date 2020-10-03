@@ -235,7 +235,7 @@ async function cancelOrder(id) {
 
 async function getAllCommodityTrades(symbol, props) {
   let trades;
-  debugger
+
   try {
     console.log({ symbol });
     if (symbol) {
@@ -481,32 +481,41 @@ async function fetchOpAlerts() {
   toastr.success(`Alerts loaded`, `${data.length} loaded`);
   let allAlerts = {};
   data.forEach((d) => {
-    let { symbol, putCall, exp, strike } = d;
-    if (!allAlerts[symbol]) allAlerts[symbol] = {};
-    if (!allAlerts[symbol][exp]) allAlerts[symbol][exp] = {};
-    if (!allAlerts[symbol][exp][putCall]) allAlerts[symbol][exp][putCall] = {};
-    if (!allAlerts[symbol][exp][putCall][strike]) {
-      allAlerts[symbol][exp][putCall][strike] = {
-        symbol,
-        strike,
-        exp,
-        putCall,
-        alerts: [],
-      };
+    let { symbol, putCall, exp, strike, timestamp } = d;
+    d.localDateTime = new Date(timestamp).toLocaleString();
+    let alertDay = d.localDateTime.split(",")[0];
+
+    if (!allAlerts[alertDay]) allAlerts[alertDay] = {};
+    if (!allAlerts[alertDay][symbol]) allAlerts[alertDay][symbol] = {};
+    if (!allAlerts[alertDay][symbol][exp])
+      allAlerts[alertDay][symbol][exp] = {};
+    if (!allAlerts[alertDay][symbol][exp][putCall])
+      allAlerts[alertDay][symbol][exp][putCall] = {};
+    if (allAlerts[alertDay][symbol][exp][putCall][strike]) {
+      let oldAlertTime =
+        allAlerts[alertDay][symbol][exp][putCall][strike].timestamp;
+      if (oldAlertTime > d.timestamp){
+        allAlerts[alertDay][symbol][exp][putCall][strike] = d;
+      }
+    } else {
+      allAlerts[alertDay][symbol][exp][putCall][strike] =  d
     }
-    d.localDateTime = new Date(d.timestamp).toLocaleString();
-    allAlerts[symbol][exp][putCall][strike].alerts.push(d);
   });
+
   let processedAlerts = [];
-  for (let symbol in allAlerts) {
-    for (let exp in allAlerts[symbol]) {
-      for (let putCall in allAlerts[symbol][exp]) {
-        for (let strike in allAlerts[symbol][exp][putCall]) {
-          processedAlerts.push(allAlerts[symbol][exp][putCall][strike]);
+  for (let alertDate in allAlerts) {
+    // if(!processedAlerts[alertDate])processedAlerts[alertDate]=[]
+    for (let symbol in allAlerts[alertDate]) {
+      for (let exp in allAlerts[alertDate][symbol]) {
+        for (let putCall in allAlerts[alertDate][symbol][exp]) {
+          for (let strike in allAlerts[alertDate][symbol][exp][putCall]) {
+            processedAlerts.push(allAlerts[alertDate][symbol][exp][putCall][strike]);
+          }
         }
       }
     }
   }
+  
   return processedAlerts;
 }
 

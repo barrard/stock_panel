@@ -14,12 +14,12 @@ export {
 
 function decide({dir, cond}){
       /**
-     * dir          cond
-     * 1 sell       1 sell
-     * 2 buy        2 buy
-     * 3 exit sell  3 exit sell
-     * 4 exit buy   4 exit buy
-     * 5 middle     5 middle
+     * dir  
+     * 1 sell   
+     * 2 buy        
+     * 3 exit sell 
+     * 4 exit buy 
+     * 5 middle     
      */
     
     if(

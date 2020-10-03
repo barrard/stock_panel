@@ -20,6 +20,7 @@ import { toastr } from "react-redux-toastr";
 
 export function getOpAlerts() {
   return async (dispatch) => {
+    //organized one per day
     let alerts = await API.fetchOpAlerts();
     // alerts = sortAlerts(alerts)
     return dispatch({

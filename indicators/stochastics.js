@@ -15,12 +15,12 @@ module.exports = {
 
 function decide({ dir }) {
   /**
-   * dir          cond
-   * 1 sell       1 sell
-   * 2 buy        2 buy
-   * 3 exit sell  3 exit sell
-   * 4 exit buy   4 exit buy
-   * 5 middle     5 middle
+   * dir          
+   * 1 sell  
+   * 2 buy   
+   * 3 exit sell
+   * 4 exit buy
+   * 5 middle     
    */
 
   if (dir === 1) {
@@ -80,12 +80,19 @@ function checkMultiPeriodStoch(data, symbol, TF) {
 
     function getFastDir(K, D) {
       if (D >= 95 && K >= 95) {
-        return "goShort"; //2
-      } else if (5 >= K && 5 >= D) {
+        return "goLong"; //2
+      } else if (80 < K && 80 > D) {
+        return "exitLong"; //1
+      }
+      else if (20 > K && 20 < D) {
+        return "exitShort"; //1
+      }
+      else if (5 >= K && 5 >= D) {
         return "goShort"; //1
-      } else if (K >= 75 && D >= 30 && D <= 60) {
+      }
+       else if (K >= 75 && D >= 30 && D <= 70) {
         return "goLong"; //3
-      } else if (K <= 25 && D >= 30 && D <= 60) {
+      } else if (K <= 25 && D >= 30 && D <= 70) {
         return "goShort"; //4
       } else {
         return "middle"; //5;
@@ -102,24 +109,26 @@ function prevCurrentStoch(data) {
   let { symbol, timeframe } = curr;
   let dir;
   if (prevStoch === "oversold" && currStoch === "oversold") {
-    dir = 1; //"oversold";sell
+    dir = 'oversold'; //"oversold";sell
   } else if (prevStoch === "overbought" && currStoch === "overbought") {
-    dir = 2; //"overbought"; buy
+    dir = 'overbought'; //"overbought"; buy
   } else if (prevStoch === "exitShort" && currStoch === "exitShort") {
-    dir = 3; //"reverse up";exit sell
+    dir = 'being bought'; //"reverse up";exit sell
   } else if (prevStoch === "exitLong" && currStoch === "exitLong") {
-    dir = 4; //"reverse down"; exit buy
+    dir = 'being sold'; //"reverse down"; exit buy
   } else {
-    dir = 5; //"middle";
+    dir = null; //"middle";
   }
-  // if (!currStoch) {
-  //   console.log("wtf " +prevStoch);
-  //   currStoch = "middle";
-  // }
-  // console.log(`----STOCH ${symbol} ${timeframe} ${dir} ${cond}`);
-  let tradeDecision = decide({ dir });
-  return tradeDecision;
+
+  // let tradeDecision = decide({ dir });
+  return dir;
 }
+
+/**
+ * 
+ * @param {Object} data Contains stochastic data
+ * returns overBought, overSold, exitLong, exitShort, middle
+ */
 function evalStoch(data) {
   if (!data.stochastics || !data.stochastics.K || !data.stochastics.D) return;
 

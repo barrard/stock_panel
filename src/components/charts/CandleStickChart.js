@@ -1851,55 +1851,59 @@ class CandleStickChart extends React.Component {
         {this.props.meta.is_loading && (
           <Loader width={this.props.width} height={this.state.height} />
         )}
-        {/* <MomoIndicator
-          symbol={this.state.symbol}
-          timeframe={this.state.timeframe}
-          width={this.props.width}
-          height={150}
-        /> */}
+        <div
+          onClick={() =>
+            this.setState({
+              showIndicatorCharts: !this.state.showIndicatorCharts,
+            })
+          }
+        >
+          <button>Indicator Charts</button>
+          <div style={{
+            display:this.state.showIndicatorCharts? ' ':'none'
+          }}>
 
-        <IndicatorChart
-          data={this.state.rawOHLCData}
-          indicator="momentum"
-          horizontalLines={{ centerLine: 0 }}
-          // addIndicator={momentumAnalysis}
-          symbol={this.state.symbol}
-          timeframe={this.state.timeframe}
-          width={this.props.width}
-          height={150}
-        />
+          <IndicatorChart
+            data={this.state.rawOHLCData}
+            indicator="momentum"
+            horizontalLines={{ centerLine: 0 }}
+            symbol={this.state.symbol}
+            timeframe={this.state.timeframe}
+            width={this.props.width}
+            height={150}
+          />
 
-        <IndicatorChart
-          data={this.state.rawOHLCData}
-          indicator="RSI"
-          horizontalLines={{ overboughtLine: 70, oversoldLine: 20 }}
-          // addIndicator={addRSI}
-          symbol={this.state.symbol}
-          timeframe={this.state.timeframe}
-          width={this.props.width}
-          height={150}
-        />
-        <IndicatorChart
-          data={this.state.rawOHLCData}
-          horizontalLines={{ overboughtLine: 100, oversoldLine: -100 }}
-          indicator="CCI"
-          // addIndicator={addAllCCI_data}
-          symbol={this.state.symbol}
-          timeframe={this.state.timeframe}
-          width={this.props.width}
-          height={150}
-        />
+          <IndicatorChart
+            data={this.state.rawOHLCData}
+            indicator="RSI"
+            horizontalLines={{ overboughtLine: 70, oversoldLine: 20 }}
+            symbol={this.state.symbol}
+            timeframe={this.state.timeframe}
+            width={this.props.width}
+            height={150}
+          />
+          <IndicatorChart
+            data={this.state.rawOHLCData}
+            horizontalLines={{ overboughtLine: 100, oversoldLine: -100 }}
+            indicator="CCI"
+            symbol={this.state.symbol}
+            timeframe={this.state.timeframe}
+            width={this.props.width}
+            height={150}
+          />
 
-        <IndicatorChart
-          data={this.state.rawOHLCData}
-          // addIndicator={addStochastics}
-          horizontalLines={{ overboughtLine: 80, oversoldLine: 20 }}
-          indicator="stochastics"
-          symbol={this.state.symbol}
-          timeframe={this.state.timeframe}
-          width={this.props.width}
-          height={150}
-        />
+          <IndicatorChart
+            data={this.state.rawOHLCData}
+            horizontalLines={{ overboughtLine: 80, oversoldLine: 20 }}
+            indicator="stochastics"
+            symbol={this.state.symbol}
+            timeframe={this.state.timeframe}
+            width={this.props.width}
+            height={150}
+          />
+                    </div>
+
+        </div>
 
         <ToggleIndicators
           toggleIndicators={(indicator) => this.toggleIndicators(indicator)}
@@ -1920,6 +1924,8 @@ class CandleStickChart extends React.Component {
         >
           <option value="1Min">1 Min</option>
           <option value="5Min">5 Min</option>
+          {/* <option value="15Min">15 Min</option>
+          <option value="30Min">30 Min</option> */}
           <option value="60Min">60 Min</option>
           <option value="daily">Daily</option>
           <option value="weekly">Weekly</option>

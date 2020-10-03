@@ -235,18 +235,21 @@ class OpAlerts extends React.Component {
       });
     });
   }
-  async getAlerts(symbol, exp, strike, putCall) {
+  async getAlert(symbol, exp, strike, putCall, timestamp) {
+    let alertDay = new Date(timestamp).toLocaleString().split(',')[0]
     let {
       selectedSymbol,
       selectedExp,
       selectedStrike,
       selectedPutCall,
+      selectedAlertDay
     } = this.state;
     if (
       selectedSymbol === symbol &&
       selectedExp === exp &&
       selectedStrike === strike &&
-      selectedPutCall === putCall
+      selectedPutCall === putCall &&
+      selectedAlertDay === alertDay
     ){
       return this.setState({
         snapData: [],
@@ -254,6 +257,7 @@ class OpAlerts extends React.Component {
         selectedExp: '',
         selectedStrike: '',
         selectedPutCall: '',
+        selectedAlertDay:'',
         selectedAlerts: [],
       });
     }
@@ -262,17 +266,17 @@ class OpAlerts extends React.Component {
     let snapData = await API.fetchOpAlertData({ symbol, strike, exp, putCall });
     let allSnaps = [];
 
+    //the database has a conflict, this code may be able to be changed TODO
     snapData.forEach((a) => {
       if (a.snaps) {
         a.snaps.forEach((snap) => allSnaps.push(snap));
       } else if (a.opDataSnaps) {
+        //should be snaps, not this
         a.opDataSnaps.forEach((snap) => allSnaps.push(snap));
       }
     });
+    debugger
     allSnaps = allSnaps
-      // .map((s) => {
-      //   return { ...s, dateTime: new Date(s.dateTime).getTime() };
-      // })
       .sort((a, b) => a.timestamp - b.timestamp);
     alerts = alerts.filter((a) => {
       if (
@@ -284,7 +288,8 @@ class OpAlerts extends React.Component {
         return a;
       }
     });
-    console.log(snapData);
+    console.log(allSnaps);
+    debugger
     this.scrollToId('selectedContractChart')
     this.setState({
       snapData: allSnaps,
@@ -292,7 +297,8 @@ class OpAlerts extends React.Component {
       selectedExp: exp,
       selectedStrike: strike,
       selectedPutCall: putCall,
-      selectedAlerts: alerts[0].alerts,
+      selectedAlertDay:alertDay,
+      selectedAlerts: alerts,
     });
   }
 
@@ -344,14 +350,13 @@ class OpAlerts extends React.Component {
     //for each alert, get one row
     //
     let rows = alerts.map((a, iA) => {
-      let { underlyingPrice, PL, percentPL } = a.alerts.slice(-1)[0];
-      debugger
+      let { underlyingPrice, PL, percentPL } = a
       let {
         selectedExp,
         selectedStrike,
         selectedSymbol,
         selectedPutCall,
-        selectedAlerts,
+        selectedAlerts,selectedAlertDay
       } = this.state;
       let selectedContract =
         selectedExp === a.exp &&
@@ -363,7 +368,7 @@ class OpAlerts extends React.Component {
           <div className="full-width">
             <div
               onClick={() =>
-                this.getAlerts(a.symbol, a.exp, a.strike, a.putCall)
+                this.getAlert(a.symbol, a.exp, a.strike, a.putCall, a.timestamp)
               }
               className={`hoverable clickable row flex_center ${
                 selectedContract ? "selectedContract" : " "
@@ -381,6 +386,7 @@ class OpAlerts extends React.Component {
                 <div id='selectedContractChart' className="col-12 floating ">
                   {
                     <OptionsChart
+                      alertDay={selectedAlertDay}
                       alerts={selectedAlerts}
                       symbol={selectedSymbol}
                       exp={selectedExp}
@@ -491,14 +497,15 @@ class OpAlerts extends React.Component {
     let allPL = [];
     let putsOrCalls = { puts: [], calls: [] };
     allAlerts.forEach((alert) => {
+      // allAlerts[alertDay].map(()=>{
+
       allSymbols.push(alert.symbol);
 
       expDates.push(alert.exp);
       strikePrices.push(alert.strike);
-      alert.alerts.forEach((alert) => {
         let { last, currentLast } = alert;
         let PL = (currentLast - last).toFixed(2);
-        let percentPL = (((currentLast-last) / last)*100).toFixed(2);
+        let percentPL = ((PL / last)*100).toFixed(2);
         alert.percentPL = percentPL;
         alert.PL = PL;
         allPL.push(PL);
@@ -508,17 +515,15 @@ class OpAlerts extends React.Component {
         allDateTimes.push(alert.dateTime.split(",")[0]);
         allTotalVols.push(alert.totalVolume);
         allUnderlying.push(alert.underlyingPrice);
-      });
+      // });
     });
     let filteredAlerts = this.filterAlerts(allAlerts);
-    debugger
     filteredAlerts = filteredAlerts.sort((a,b)=>{
-
       if(sortBy==='underlyingPrice'||
       sortBy==='PL' ||
       sortBy==='percentPL' ){
-        if(a.alerts.slice(0)[0][sortBy]<b.alerts.slice(0)[0][sortBy])return sortOrder?1:-1
-        if(a.alerts.slice(0)[0][sortBy]>b.alerts.slice(0)[0][sortBy])return sortOrder?-1:1
+        if(parseFloat(a[sortBy])<parseFloat(b[sortBy]))return sortOrder?1:-1
+        if(parseFloat(a[sortBy])>parseFloat(b[sortBy]))return sortOrder?-1:1
         return 0
       }else{
 
@@ -529,7 +534,6 @@ class OpAlerts extends React.Component {
 
       
     })
-
     allSymbols = Array.from(new Set(allSymbols)).sort((a, b) => {
       if (a > b) return 1;
       if (a < b) return -1;

@@ -104,7 +104,7 @@ class OptionsChart extends React.Component {
     drawAxisAnnotation("leftVolTag", this.state.yLeftScale, y, svg, "volAxis");
   }
 
-  drawFirstAlert(chartWindow, firstAlert, data) {
+  drawSelectedAlert(chartWindow, firstAlert, data) {
     debugger;
     let { timestamp } = firstAlert;
     // timestamp = new Date(timestamp).setMilliseconds(0);
@@ -119,11 +119,11 @@ totalVolume: 1222
 underlyingPrice: 74.73
      */
     debugger;
-    let tc = this.state.xBottomScale(timestamp) 
-    console.log(tc)
+    let tc = this.state.xBottomScale(timestamp);
+    console.log(tc);
     timestamp = new Date(timestamp).toLocaleString();
-    let tt = this.state.xBottomScale(timestamp) 
-    console.log(tt)
+    let tt = this.state.xBottomScale(timestamp);
+    console.log(tt);
     chartWindow
       .append("line")
       .attr("class", "firstAlert")
@@ -165,11 +165,11 @@ underlyingPrice: 74.73
       .attr("stroke", color)
       .attr("fill", "none");
   }
-  colorBackGround(svg, data){
-let date;
-let bgFlag = false
+  colorBackGround(svg, data) {
+    let date;
+    let bgFlag = false;
 
-    let bgBarClass = 'backgroundColorBars'
+    let bgBarClass = "backgroundColorBars";
     let bgColorBars = svg.selectAll(`.${bgBarClass}`).data(data);
     bgColorBars.exit().remove();
     bgColorBars
@@ -180,9 +180,10 @@ let bgFlag = false
       .attr(
         "x",
 
-        (d) => this.state.xBottomScale(new Date(d['timestamp']).toLocaleString())
-        +margin.left
-        -(5)
+        (d) =>
+          this.state.xBottomScale(new Date(d["timestamp"]).toLocaleString()) +
+          margin.left -
+          5
         // +this.state.xBottomScale.bandwidth()/2
         // innerWidth / dra.length / 2
       )
@@ -192,26 +193,19 @@ let bgFlag = false
       // .attr("opacity")
       .attr("pointer-events", "none")
 
-      .attr("width", (d, i) => this.state.xBottomScale.bandwidth() +15)
+      .attr("width", (d, i) => this.state.xBottomScale.bandwidth() + 15)
       .attr("fill", (d, i) => {
-        let curDate = d.dateTime.split(',')[0]
-        debugger
-        if(!date){
-          date = curDate
+        let curDate = d.dateTime.split(",")[0];
+        if (!date) {
+          date = curDate;
         }
-        if(date !=curDate){
-          bgFlag = !bgFlag
-          date = curDate
+        if (date != curDate) {
+          bgFlag = !bgFlag;
+          date = curDate;
         }
-        return bgFlag ? '#222':'#333'
-
+        return bgFlag ? "#222" : "#333";
       })
-      .attr("stroke", "none")
-   
-
-
-
-
+      .attr("stroke", "none");
   }
 
   drawVolBars(chartWindow, xName, yName, className, color, data) {
@@ -348,7 +342,7 @@ let bgFlag = false
 
     // this.setupData()
     //colorBack ground
-    this.colorBackGround(svg, drawData)
+    this.colorBackGround(svg, drawData);
 
     //append/create timeAxis group
     let timeAxisG = svg
@@ -391,7 +385,6 @@ let bgFlag = false
       y: margin.top + innerHeight / 2,
     });
 
-
     //Draw total volume bars
     //this draws both vol and open interest
     this.drawVolBars(
@@ -432,13 +425,16 @@ let bgFlag = false
     );
 
     //draw Alert Marker
-    let { data } = this.props;
+    debugger;
+    let { data, alertDay } = this.props;
     data.forEach((a) => {
       a.dateTime = new Date(a.timestamp).toLocaleString();
     });
-    debugger
-    let firstAlert = this.props.alerts.slice(-1)[0];
-    this.drawFirstAlert(chartWindow, firstAlert, data);
+    debugger;
+    let selectedAlert = this.props.alerts.filter(
+      (a) => new Date(a.timestamp).toLocaleString().split(",")[0] === alertDay
+    )[0];
+    this.drawSelectedAlert(chartWindow, selectedAlert, data);
 
     this.setState({
       timestamps,
