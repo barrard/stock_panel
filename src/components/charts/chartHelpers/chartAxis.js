@@ -23,8 +23,10 @@ export const drawAxisAnnotation = (
   xy,
   svg,
   axisClass,
+  toFixed,
   isOrdinal
 ) => {
+  toFixed = toFixed || 3
   //Remove any first
   svg.select(`#${tagId}`).remove();
   svg.select(`#${tagId}Text`).remove();
@@ -33,7 +35,7 @@ export const drawAxisAnnotation = (
   addAxisAnnotationElements(axisG, tagId);
   let value;
   //current means this will be a price and not a px val
-  if (tagId.includes("current") || isOrdinal) {
+  if (tagId.includes("current") ||tagId.includes("last") || isOrdinal) {
     //if ordinal true, this is how we get the value f
     //from the xy
     if (isOrdinal) {
@@ -48,12 +50,14 @@ export const drawAxisAnnotation = (
       //the current value is already a price
       //so no need to invert
       value = xy;
-      xy = scale(xy);
+      xy = scale(xy)
     }
   } else {
     //this will be a px value so must
     //invert to a price value
     value = scale.invert(xy);
+    value = (value).toFixed(toFixed)
+    
   }
   // console.log(value)
   // value = formatTime(value);
@@ -68,9 +72,7 @@ export const drawAxisAnnotation = (
   } else if (tagId.includes("Vol")) {
     value = parseInt(value);
   }
-  // console.log(String(value).length);
-  // console.log({ value: value });
-  // console.log(`place a marker at ${xy} with value ${value}`);
+
   svg
     .select(`#${tagId}`)
     .attr("class", "axisAnnotation")

@@ -9,7 +9,8 @@ import { extent, max, min } from "d3-array";
 import { select, event, mouse } from "d3-selection";
 import { drag } from "d3-drag";
 import { line } from "d3-shape";
-
+import DrawLine from "./chartHelpers/ChartMarkers/Line.js";
+import { entryArrow } from "./chartHelpers/ChartMarkers/TradeMarker.js";
 import {
   drawAxisAnnotation,
   removeAllAxisAnnotations,
@@ -20,37 +21,38 @@ import { CenterLabel } from "./chartHelpers/ChartMarkers/Labels.js";
 
 let margin = {
   top: 15,
-  right: 60,
+  right: 50,
   bottom: 20,
-  left: 65,
+  left: 50,
 };
 let MOUSEX = 0;
 let MOUSEY = 0;
-let width = 800;
+// let width = 800;
 let height = 400;
-let innerWidth = width - (margin.left + margin.right);
-let innerHeight = height - (margin.top + margin.bottom);
+// let innerWidth = width - (margin.left + margin.right);
+// let innerHeight = height - (margin.top + margin.bottom);
 class OptionsChart extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       chartRef: React.createRef(),
-
-      //   innerWidth: width - (margin.left + margin.right),
-      //   innerHeight: height - (margin.top + margin.bottom),
+      height: 400,
+      innerWidth: 0, //width - (margin.left + margin.right),
+      innerHeight: 0, // height - (margin.top + margin.bottom),
       xBottomScale: scaleBand()
-        .range([0, innerWidth])
+        // .range([0, innerWidth])
         .paddingInner(0.1)
         .paddingOuter(0.2)
         .align(0.5)
         .round(true),
       //   topXScale: scaleLinear().range([innerWidth / 2, innerWidth]),
-      yRightScale: scaleLinear().range([innerHeight, 0]),
-      yLeftScale: scaleLinear().range([innerHeight, 0]).nice(),
+      yRightScale: scaleLinear(), //.range([innerHeight, 0]),
+      yLeftScale: scaleLinear(), //.range([innerHeight, 0]).nice(),
       xBottomAxis: {},
       yRightAxis: {},
       yLeftAxis: {},
     };
+    this.drawCurrentPrice = this.drawCurrentPrice.bind(this);
   }
 
   async componentDidMount() {
@@ -61,6 +63,21 @@ class OptionsChart extends React.Component {
   componentDidUpdate(prevProps, prevState) {
     // this.draw();
     // this.handleNewData(prevState, prevProps);
+    this.didWidthChange(prevProps);
+  }
+  didWidthChange(prevPops) {
+    if (prevPops.width != this.props.width) {
+      // console.log("Update width");
+      let { width } = this.props;
+      let innerWidth = width - (margin.left + margin.right);
+      let { xBottomScale } = this.state;
+      xBottomScale.range([0, innerWidth]);
+      this.setState({
+        xBottomScale,
+        innerWidth,
+      });
+      setTimeout(() => this.setupChart(), 0);
+    }
   }
 
   handleNewData(ps, pp) {
@@ -74,7 +91,7 @@ class OptionsChart extends React.Component {
     //     // data.symbol !===ppData.symbol &&
     // )
   }
-  appendAxisAnnotations(x, y, svg) {
+  appendAxisAnnotations(x, y, svg, toFixed) {
     // drawAxisAnnotation(
     //   "topVolProfileTag",
     //   this.state.volProfileScale,
@@ -90,6 +107,7 @@ class OptionsChart extends React.Component {
       x,
       svg,
       "timeAxis",
+      toFixed,
       isOrdinal
     );
 
@@ -98,51 +116,65 @@ class OptionsChart extends React.Component {
       this.state.yRightScale,
       y,
       svg,
-      "priceAxis"
+      "priceAxis",
+      toFixed
     );
 
-    drawAxisAnnotation("leftVolTag", this.state.yLeftScale, y, svg, "volAxis");
+    drawAxisAnnotation(
+      "leftVolTag",
+      this.state.yLeftScale,
+      y,
+      svg,
+      "volAxis",
+      toFixed
+    );
   }
 
   drawSelectedAlert(chartWindow, firstAlert, data) {
-    debugger;
+    let scaler = 3.5;
+    // if (data.length < 20) scaler = 2.5;
+    // if (data.length < 6) scaler = 1.5;
+    let xScale = this.state.xBottomScale;
+    let yScale = this.state.yRightScale;
+    let enterPath = entryArrow({
+      entryTime: firstAlert.localDateTime,
+      entryPrice: firstAlert.last,
+    });
     let { timestamp } = firstAlert;
-    // timestamp = new Date(timestamp).setMilliseconds(0);
-    // timestamp = new Date(timestamp).setSeconds(0);
-    /**
-     * IV: 1.32
-alert: "Unusual Activity"
-dateTime: "9/21/2020, 12:31:11 AM"
-last: 3.25
-timestamp: 1600673471686
-totalVolume: 1222
-underlyingPrice: 74.73
-     */
-    debugger;
-    let tc = this.state.xBottomScale(timestamp);
-    console.log(tc);
+
     timestamp = new Date(timestamp).toLocaleString();
     let tt = this.state.xBottomScale(timestamp);
     console.log(tt);
     chartWindow
-      .append("line")
-      .attr("class", "firstAlert")
-      // .select("#crosshairX")
-      .attr(
-        "x1",
-        this.state.xBottomScale(timestamp) +
-          this.state.xBottomScale.bandwidth() / 2
-      )
-      .attr("y1", 0)
-      .attr(
-        "x2",
-        this.state.xBottomScale(timestamp) +
-          this.state.xBottomScale.bandwidth() / 2
-      )
-      .attr("y2", innerHeight)
-      .attr("color", "purple")
-      .attr("stroke", "red")
-      .attr("fill", "none");
+      .append("path")
+      .attr("stroke", "black")
+      .attr("transform", () => {
+        // let { entryTime, entryPrice } = d;
+        let x = xScale(firstAlert.localDateTime);
+        let y = yScale(firstAlert.last);
+        return `rotate(${180}, ${x}, ${y})`;
+      })
+      .attr("class", `tradeMarkers tradeEntryMarkers`)
+      .style("opacity", 0.9)
+      .attr("d", enterPath)
+
+      .attr("fill", "green");
+
+    function entryArrow(data) {
+      let { entryTime, entryPrice } = data;
+      debugger;
+      let x = xScale(entryTime) - xScale.bandwidth() / 2;
+      let y = yScale(entryPrice);
+
+      // x = x + (candleWidth*2)
+      return `M ${x}, ${y}
+                      l ${scaler * 5}, ${scaler * -3.75}
+                      l ${scaler * 0}, ${scaler * 2.5}
+                      l ${scaler * 7.5}, ${scaler * 0}
+                      l ${scaler * 0}, ${scaler * 2.5}
+                      l ${scaler * -7.5}, ${scaler * 0}
+                      l ${scaler * 0}, ${scaler * 2.5} z`;
+    }
   }
 
   drawLine(chartWindow, xName, yName, className, color, data) {
@@ -188,7 +220,7 @@ underlyingPrice: 74.73
         // innerWidth / dra.length / 2
       )
       .attr("y", (d) => margin.top)
-      .attr("height", innerHeight)
+      .attr("height", this.state.innerHeight)
 
       // .attr("opacity")
       .attr("pointer-events", "none")
@@ -228,7 +260,7 @@ underlyingPrice: 74.73
         "height",
         // height ||
         (d, i) => {
-          let h = innerHeight - this.state.yLeftScale(d.totalVolume);
+          let h = this.state.innerHeight - this.state.yLeftScale(d.totalVolume);
           if (h < 0) h = 0;
           return h;
         }
@@ -271,7 +303,7 @@ underlyingPrice: 74.73
         "height",
         // height ||
         (d, i) => {
-          let h = innerHeight - this.state.yLeftScale(d[yName]);
+          let h = this.state.innerHeight - this.state.yLeftScale(d[yName]);
           if (h < 0) h = 0;
           return h;
         }
@@ -294,11 +326,17 @@ underlyingPrice: 74.73
   //setup
   setupChart() {
     let that = this;
+    let { xBottomScale, yLeftScale, yRightScale } = this.state;
     let drawData = this.props.data;
+    let { width } = this.props;
+    let innerWidth = width - (margin.left + margin.right);
+    let innerHeight = height - (margin.top + margin.bottom);
     if (!this.state.chartRef.current) return;
     let svg = select(this.state.chartRef.current);
     svg.selectAll("*").remove();
-
+    xBottomScale.range([0, innerWidth]);
+    yRightScale.range([innerHeight, 0]);
+    yLeftScale.range([innerHeight, 0]).nice();
     //Time axis
     let xBottomAxis = axisBottom(this.state.xBottomScale)
       // .ticks(5)
@@ -337,167 +375,258 @@ underlyingPrice: 74.73
     // this.state.candleHeightScale.domain([0, priceRange]);
     this.state.yRightScale.domain([priceMin, priceMax * 1.2]);
     this.state.yLeftScale.domain([0, volMax * 1.2]);
-
-    // let volProfileAxis = axisTop(this.state.volProfileScale).ticks(4);
-
-    // this.setupData()
-    //colorBack ground
-    this.colorBackGround(svg, drawData);
-
-    //append/create timeAxis group
-    let timeAxisG = svg
-      .append("g")
-      .attr("class", "timeAxis white")
-      .attr("transform", `translate(${margin.left}, ${height - margin.bottom})`)
-      .call(xBottomAxis);
-
-    //append priceAxis group
-    let priceAxisG = svg
-      .append("g")
-      .attr("class", "priceAxis white")
-      .attr("transform", `translate(${width - margin.right}, ${margin.top})`)
-      .call(yRightAxis);
-
-    //appand volAxis
-    let volAxisG = svg
-      .append("g")
-      .attr("class", "white volAxis")
-      .attr("transform", `translate(${margin.left}, ${margin.top})`)
-      .call(yLeftAxis);
-
-    //apply the scaled domains to the axis
-    svg.select(".timeAxis").call(this.state.xBottomScale);
-    svg.select(".priceAxis").call(this.state.yRightScale);
-    svg.select(".volAxis").call(this.state.yLeftScale);
-
-    let chartWindow = svg
-      // .append('rect').attr('width', this.state.innerWidth).attr('height', this.state.innerHeight)
-      .append("g")
-      .attr("class", "chartWindow")
-      .attr("transform", `translate(${margin.left},${margin.top})`)
-      .attr("fill", "black");
-
-    CenterLabel({
-      symbol: this.props.symbol,
-      timeframe: this.props.exp,
-      chartWindow,
-      x: "45%",
-      y: margin.top + innerHeight / 2,
-    });
-
-    //Draw total volume bars
-    //this draws both vol and open interest
-    this.drawVolBars(
-      chartWindow,
-      "timestamp",
-      "totalVolume",
-      "totalVolumeBars",
-      "goldenrod",
-      drawData
-    );
-
-    //Draw last price line
-    this.drawLine(
-      chartWindow,
-      "timestamp",
-      "last",
-      "lastPriceLine",
-      "white",
-      drawData
-    );
-    //Draw ask price line
-    this.drawLine(
-      chartWindow,
-      "timestamp",
-      "ask",
-      "askPriceLine",
-      "red",
-      drawData
-    );
-    //Draw bid price line
-    this.drawLine(
-      chartWindow,
-      "timestamp",
-      "bid",
-      "bidPriceLine",
-      "green",
-      drawData
-    );
-
-    //draw Alert Marker
-    debugger;
-    let { data, alertDay } = this.props;
-    data.forEach((a) => {
-      a.dateTime = new Date(a.timestamp).toLocaleString();
-    });
-    debugger;
-    let selectedAlert = this.props.alerts.filter(
-      (a) => new Date(a.timestamp).toLocaleString().split(",")[0] === alertDay
-    )[0];
-    this.drawSelectedAlert(chartWindow, selectedAlert, data);
-
     this.setState({
       timestamps,
       xBottomAxis,
       yRightAxis,
       yLeftAxis,
+      innerWidth,
+      xBottomScale,
+      yRightScale,
+      innerHeight,
+      yLeftScale,
     });
 
-    /* CrossHair */
-    var crosshair = DrawCrossHair(chartWindow);
+    setTimeout(() => {
+      // let volProfileAxis = axisTop(this.state.volProfileScale).ticks(4);
 
-    chartWindow
-      .append("rect")
-      .attr("class", "overlay")
+      // this.setupData()
+      //colorBack ground
+      this.colorBackGround(svg, drawData);
 
-      .attr("height", innerHeight)
-      .attr("width", innerWidth)
-      .on("mouseover", function () {
-        crosshair.style("display", null);
-      })
-      .on("mouseout", function () {
-        crosshair.style("display", "none");
-        removeAllAxisAnnotations(svg);
-      })
-      .on("mousemove", function () {
-        return mousemove(that, this);
+      //append/create timeAxis group
+      let timeAxisG = svg
+        .append("g")
+        .attr("class", "timeAxis white")
+        .attr(
+          "transform",
+          `translate(${margin.left}, ${height - margin.bottom})`
+        )
+        .call(xBottomAxis);
+
+      //append priceAxis group
+      let priceAxisG = svg
+        .append("g")
+        .attr("class", "priceAxis white")
+        .attr("transform", `translate(${width - margin.right}, ${margin.top})`)
+        .call(yRightAxis);
+
+      //appand volAxis
+      let volAxisG = svg
+        .append("g")
+        .attr("class", "white volAxis")
+        .attr("transform", `translate(${margin.left}, ${margin.top})`)
+        .call(yLeftAxis);
+
+      //apply the scaled domains to the axis
+      svg.select(".timeAxis").call(this.state.xBottomScale);
+      svg.select(".priceAxis").call(this.state.yRightScale);
+      svg.select(".volAxis").call(this.state.yLeftScale);
+
+      let chartWindow = svg
+        // .append('rect').attr('width', this.state.innerWidth).attr('height', this.state.innerHeight)
+        .append("g")
+        .attr("class", "chartWindow")
+        .attr("transform", `translate(${margin.left},${margin.top})`)
+        .attr("fill", "black");
+
+      CenterLabel({
+        symbol: this.props.symbol,
+        timeframe: this.props.exp,
+        chartWindow,
+        x: "45%",
+        y: margin.top + innerHeight / 2,
       });
 
-    function mousemove(otherThat, that) {
-      let _mouse = mouse(that);
+      //Draw total volume bars
+      //this draws both vol and open interest
+      this.drawVolBars(
+        chartWindow,
+        "timestamp",
+        "totalVolume",
+        "totalVolumeBars",
+        "goldenrod",
+        drawData
+      );
 
-      MOUSEY = _mouse[1];
-      MOUSEX = _mouse[0];
-      otherThat.appendAxisAnnotations(MOUSEX, MOUSEY, svg);
+      //Draw last price line
+      this.drawLine(
+        chartWindow,
+        "timestamp",
+        "last",
+        "lastPriceLine",
+        "white",
+        drawData
+      );
+      //Draw ask price line
+      this.drawLine(
+        chartWindow,
+        "timestamp",
+        "ask",
+        "askPriceLine",
+        "red",
+        drawData
+      );
+      //Draw bid price line
+      this.drawLine(
+        chartWindow,
+        "timestamp",
+        "bid",
+        "bidPriceLine",
+        "green",
+        drawData
+      );
 
-      crosshair
-        .select("#crosshairX")
-        .attr("x1", MOUSEX)
-        .attr("y1", 0)
-        .attr("x2", MOUSEX)
-        .attr("y2", innerHeight);
-      crosshair
-        .select("#crosshairY")
-        .attr(
-          "x1",
-          otherThat.state.xBottomScale(
-            otherThat.state.xBottomScale.domain()[0]
-          ) -
-            otherThat.state.xBottomScale.bandwidth() / 2 +
-            otherThat.state.xBottomScale.paddingOuter() *
-              otherThat.state.xBottomScale.step()
-        )
-        .attr("y1", MOUSEY)
-        .attr(
-          "x2",
-          otherThat.state.xBottomScale(
-            otherThat.state.xBottomScale.domain().slice(-1)[0]
-          ) +
-            otherThat.state.xBottomScale.bandwidth() +
-            otherThat.state.xBottomScale.paddingOuter() *
-              otherThat.state.xBottomScale.step()
-        )
-        .attr("y2", MOUSEY);
+      //draw Alert Marker
+      let { data, alertDay } = this.props;
+      data.forEach((a) => {
+        a.dateTime = new Date(a.timestamp).toLocaleString();
+      });
+      let selectedAlert = this.props.alerts.filter(
+        (a) => new Date(a.timestamp).toLocaleString().split(",")[0] === alertDay
+      )[0];
+      this.drawSelectedAlert(chartWindow, selectedAlert, data);
+
+      /* CrossHair */
+      var crosshair = DrawCrossHair(chartWindow);
+
+      chartWindow
+        .append("rect")
+        .attr("class", "overlay")
+
+        .attr("height", innerHeight)
+        .attr("width", innerWidth)
+        .on("mouseover", function () {
+          crosshair.style("display", null);
+        })
+        .on("mouseout", function () {
+          crosshair.style("display", "none");
+          removeAllAxisAnnotations(svg);
+        })
+        .on("mousemove", function () {
+          return mousemove(that, this);
+        });
+      // debugger
+      //  Adds an axis annotation to show the most recent value
+      drawAxisAnnotation(
+        "currentRightPriceTag",
+        this.state.yRightScale,
+        selectedAlert.currentLast,
+        svg,
+        "priceAxis"
+      );
+
+      //  Adds an axis annotation to show the most recent value
+      drawAxisAnnotation(
+        "lastRightPriceTag",
+        this.state.yRightScale,
+        selectedAlert.last,
+        svg,
+        "priceAxis"
+      );
+
+      //draw dashed white line from last data to axis at the currentLast
+      this.drawCurrentPrice(selectedAlert, drawData, chartWindow);
+
+      function mousemove(otherThat, that) {
+        let _mouse = mouse(that);
+
+        MOUSEY = _mouse[1];
+        MOUSEX = _mouse[0];
+        otherThat.appendAxisAnnotations(MOUSEX, MOUSEY, svg, 2);
+
+        crosshair
+          .select("#crosshairX")
+          .attr("x1", MOUSEX)
+          .attr("y1", 0)
+          .attr("x2", MOUSEX)
+          .attr("y2", innerHeight);
+        crosshair
+          .select("#crosshairY")
+          .attr(
+            "x1",
+            otherThat.state.xBottomScale(
+              otherThat.state.xBottomScale.domain()[0]
+            ) -
+              otherThat.state.xBottomScale.bandwidth() / 2 +
+              otherThat.state.xBottomScale.paddingOuter() *
+                otherThat.state.xBottomScale.step()
+          )
+          .attr("y1", MOUSEY)
+          .attr(
+            "x2",
+            otherThat.state.xBottomScale(
+              otherThat.state.xBottomScale.domain().slice(-1)[0]
+            ) +
+              otherThat.state.xBottomScale.bandwidth() +
+              otherThat.state.xBottomScale.paddingOuter() *
+                otherThat.state.xBottomScale.step()
+          )
+          .attr("y2", MOUSEY);
+      }
+    }, 0);
+  }
+
+  drawCurrentPrice(selectedAlert, drawData, chartWindow) {
+    let { xBottomScale, yRightScale } = this.state;
+    let { currentLast, last, timestamp } = selectedAlert;
+    let currentDateTime = new Date(
+      drawData.slice(-1)[0].timestamp
+    ).toLocaleString();
+    let entryDateTime = new Date(timestamp).toLocaleString();
+
+    // debugger
+    //This Draws the lastHorizonalCurrent
+    drawLastHorizontalCurrent();
+    drawEntryToLastCurrent();
+    drawEntryPrice();
+
+    function drawEntryPrice() {
+      let y1;
+      let y2 = (y1 = yRightScale(last));
+      let x1 = xBottomScale(entryDateTime) + xBottomScale.bandwidth() / 2;
+      let x2 =
+        xBottomScale(currentDateTime) +
+        xBottomScale.bandwidth() +
+        xBottomScale.align() * xBottomScale.bandwidth();
+      drawCurrentLine(x1, x2, y1, y2);
+    }
+    function drawLastHorizontalCurrent() {
+      let y1;
+      let y2 = (y1 = yRightScale(currentLast));
+      let x1 = xBottomScale(currentDateTime) + xBottomScale.bandwidth() / 2;
+      let x2 =
+        xBottomScale(currentDateTime) +
+        xBottomScale.bandwidth() +
+        xBottomScale.align() * xBottomScale.bandwidth();
+      drawCurrentLine(x1, x2, y1, y2);
+    }
+
+    function drawEntryToLastCurrent() {
+      let y2 = yRightScale(last);
+      let y1 = yRightScale(currentLast);
+      // let dateTime = new Date(timestamp).toLocaleString();
+      let x1 = xBottomScale(currentDateTime) + xBottomScale.bandwidth() / 2;
+      let x2 = xBottomScale(entryDateTime) + xBottomScale.bandwidth() / 2;
+      // xBottomScale.align() * xBottomScale.bandwidth();
+
+      drawCurrentLine(x1, x2, y1, y2);
+    }
+    function drawCurrentLine(x1, x2, y1, y2) {
+      chartWindow
+        .append("line")
+        .attr("y1", y1)
+
+        .attr("x1", x1)
+        .attr("x2", x2)
+        .attr("y2", y2)
+        .attr("stroke-width", 2)
+        .attr("stroke-linejoin", "round")
+        .attr("stroke-linecap", "round")
+        .attr("stroke-dasharray", 4)
+
+        .attr("stroke", "yellow")
+        .attr("class", "PL_Line");
     }
   }
 
@@ -526,8 +655,9 @@ totalVolume: 195 */
     console.log(this.props.data);
     return (
       <svg
+        onClick={(e) => e.stopPropagation()}
         ref={this.state.chartRef}
-        width={width}
+        width={this.props.width}
         height={height}
         className="svgChart"
       ></svg>

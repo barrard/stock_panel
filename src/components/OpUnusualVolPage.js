@@ -11,6 +11,7 @@ import OptionsChart from "./charts/OptionsChart.js";
 // import {ensure_not_loggedin} from '../components/utils/auth.js'
 import { histogram } from "d3-array";
 
+const CHART_WIDTH_REDUCER = 0.9;
 class OpAlerts extends React.Component {
   constructor(props) {
     super(props);
@@ -28,8 +29,8 @@ class OpAlerts extends React.Component {
       lessThan_totalVolume: true,
       lessThan_underlying: true,
       lessThan_PL: true,
-      sortBy:'symbol',
-      sortOrder:true,
+      sortBy: "symbol",
+      sortOrder: true,
       filterNames: [
         "symbol",
         "exp",
@@ -45,6 +46,16 @@ class OpAlerts extends React.Component {
 
   componentDidMount() {
     this.props.dispatch(getOpAlerts());
+    this.setChartWidth();
+    window.addEventListener("resize", this.setChartWidth.bind(this));
+  }
+  componentWillUnmount() {
+    window.removeEventListener("resize", this.setChartWidth);
+  }
+  setChartWidth() {
+    this.setState({
+      chartWidth: window.innerWidth * CHART_WIDTH_REDUCER,
+    });
   }
 
   dropDownSelect(name, values) {
@@ -161,12 +172,10 @@ class OpAlerts extends React.Component {
           filterValue = new Date(filterValue).toLocaleString().split(",")[0];
           alerts = alerts.filter((a) => {
             let filteredArray = false;
-            a.alerts.forEach((a) => {
-              let dateTime = new Date(a.dateTime)
-                .toLocaleString()
-                .split(",")[0];
-              if (dateTime == filterValue) filteredArray = true;
-            });
+            // a.alerts.forEach((a) => {
+            let dateTime = new Date(a.dateTime).toLocaleString().split(",")[0];
+            if (dateTime == filterValue) filteredArray = true;
+            // });
             if (filteredArray) return true;
           });
         }
@@ -174,52 +183,52 @@ class OpAlerts extends React.Component {
         if (f === "totalVolume") {
           alerts = alerts.filter((a) => {
             let filteredArray = false;
-            a.alerts.forEach((a) => {
-              if (this.state[`lessThan_totalVolume`]) {
-                if (a.totalVolume <= filterValue) filteredArray = true;
-              } else {
-                if (a.totalVolume >= filterValue) filteredArray = true;
-              }
-            });
+            // a.alerts.forEach((a) => {
+            if (this.state[`lessThan_totalVolume`]) {
+              if (a.totalVolume <= filterValue) filteredArray = true;
+            } else {
+              if (a.totalVolume >= filterValue) filteredArray = true;
+            }
+            // });
             if (filteredArray) return true;
           });
         }
         if (f === "underlying") {
           alerts = alerts.filter((a) => {
             let filteredArray = false;
-            a.alerts.forEach((a) => {
-              if (this.state[`lessThan_underlying`]) {
-                if (a.underlyingPrice <= filterValue) filteredArray = true;
-              } else {
-                if (a.underlyingPrice >= filterValue) filteredArray = true;
-              }
-            });
+            // a.alerts.forEach((a) => {
+            if (this.state[`lessThan_underlying`]) {
+              if (a.underlyingPrice <= filterValue) filteredArray = true;
+            } else {
+              if (a.underlyingPrice >= filterValue) filteredArray = true;
+            }
+            // });
             if (filteredArray) return true;
           });
         }
         if (f === "last") {
           alerts = alerts.filter((a) => {
             let filteredArray = false;
-            a.alerts.forEach((a) => {
-              if (this.state[`lessThan_last`]) {
-                if (a.last <= filterValue) filteredArray = true;
-              } else {
-                if (a.last >= filterValue) filteredArray = true;
-              }
-            });
+            // a.alerts.forEach((a) => {
+            if (this.state[`lessThan_last`]) {
+              if (a.last <= filterValue) filteredArray = true;
+            } else {
+              if (a.last >= filterValue) filteredArray = true;
+            }
+            // });
             if (filteredArray) return true;
           });
         }
         if (f === "PL") {
           alerts = alerts.filter((a) => {
             let filteredArray = false;
-            a.alerts.forEach((a) => {
-              if (this.state[`lessThan_PL`]) {
-                if (a.PL <= filterValue) filteredArray = true;
-              } else {
-                if (a.PL >= filterValue) filteredArray = true;
-              }
-            });
+            // a.alerts.forEach((a) => {
+            if (this.state[`lessThan_PL`]) {
+              if (a.PL <= filterValue) filteredArray = true;
+            } else {
+              if (a.PL >= filterValue) filteredArray = true;
+            }
+            // });
             if (filteredArray) return true;
           });
         }
@@ -236,13 +245,13 @@ class OpAlerts extends React.Component {
     });
   }
   async getAlert(symbol, exp, strike, putCall, timestamp) {
-    let alertDay = new Date(timestamp).toLocaleString().split(',')[0]
+    let alertDay = new Date(timestamp).toLocaleString().split(",")[0];
     let {
       selectedSymbol,
       selectedExp,
       selectedStrike,
       selectedPutCall,
-      selectedAlertDay
+      selectedAlertDay,
     } = this.state;
     if (
       selectedSymbol === symbol &&
@@ -250,18 +259,18 @@ class OpAlerts extends React.Component {
       selectedStrike === strike &&
       selectedPutCall === putCall &&
       selectedAlertDay === alertDay
-    ){
+    ) {
       return this.setState({
         snapData: [],
-        selectedSymbol: '',
-        selectedExp: '',
-        selectedStrike: '',
-        selectedPutCall: '',
-        selectedAlertDay:'',
+        selectedSymbol: "",
+        selectedExp: "",
+        selectedStrike: "",
+        selectedPutCall: "",
+        selectedAlertDay: "",
         selectedAlerts: [],
       });
     }
-      
+
     let alerts = this.props.options.alerts;
     let snapData = await API.fetchOpAlertData({ symbol, strike, exp, putCall });
     let allSnaps = [];
@@ -275,9 +284,7 @@ class OpAlerts extends React.Component {
         a.opDataSnaps.forEach((snap) => allSnaps.push(snap));
       }
     });
-    debugger
-    allSnaps = allSnaps
-      .sort((a, b) => a.timestamp - b.timestamp);
+    allSnaps = allSnaps.sort((a, b) => a.timestamp - b.timestamp);
     alerts = alerts.filter((a) => {
       if (
         a.symbol === symbol &&
@@ -289,15 +296,14 @@ class OpAlerts extends React.Component {
       }
     });
     console.log(allSnaps);
-    debugger
-    this.scrollToId('selectedContractChart')
+    this.scrollToId("selectedContractChart");
     this.setState({
       snapData: allSnaps,
       selectedSymbol: symbol,
       selectedExp: exp,
       selectedStrike: strike,
       selectedPutCall: putCall,
-      selectedAlertDay:alertDay,
+      selectedAlertDay: alertDay,
       selectedAlerts: alerts,
     });
   }
@@ -317,18 +323,20 @@ class OpAlerts extends React.Component {
     );
   }
 
-  sortBy(key){
-    let {sortOrder} = this.state
-    this.setState({sortBy:key, sortOrder:!sortOrder})
-
+  sortBy(key) {
+    let { sortOrder } = this.state;
+    this.setState({ sortBy: key, sortOrder: !sortOrder });
   }
   scrollToId = (id) => {
-    setTimeout(()=>{
-      document.getElementById(id).scrollIntoView({behavior: 'smooth'});
-    },0)
-  }
-   
+    setTimeout(() => {
+      const yOffset = -40;
+      const element = document.getElementById(id);
+      const y =
+        element.getBoundingClientRect().top + window.pageYOffset + yOffset;
 
+      window.scrollTo({ top: y, behavior: "smooth" });
+    }, 0);
+  };
 
   makeTable(alerts) {
     let header = (
@@ -336,13 +344,48 @@ class OpAlerts extends React.Component {
         <div className="full-width">
           <div className="row flex_center">
             <div className="col flex_center sm-title">Total Contracts</div>
-            <div onClick={()=>this.sortBy('putCall')} className="col flex_center sm-title">putCall</div>
-            <div onClick={()=>this.sortBy('symbol')} className="col flex_center sm-title">symbol</div>
-            <div onClick={()=>this.sortBy('exp')} className="col flex_center sm-title">exp</div>
-            <div onClick={()=>this.sortBy('strike')} className="col flex_center sm-title">strike</div>
-            <div onClick={()=>this.sortBy('underlyingPrice')} className="col flex_center sm-title">Underlying</div>
-            <div onClick={()=>this.sortBy('PL')} className="col flex_center sm-title">PL</div>
-            <div onClick={()=>this.sortBy('percentPL')} className="col flex_center sm-title">percentPL</div>
+            <div
+              onClick={() => this.sortBy("putCall")}
+              className="col flex_center sm-title"
+            >
+              putCall
+            </div>
+            <div
+              onClick={() => this.sortBy("symbol")}
+              className="col flex_center sm-title"
+            >
+              symbol
+            </div>
+            <div
+              onClick={() => this.sortBy("exp")}
+              className="col flex_center sm-title"
+            >
+              exp
+            </div>
+            <div
+              onClick={() => this.sortBy("strike")}
+              className="col flex_center sm-title"
+            >
+              strike
+            </div>
+            <div
+              onClick={() => this.sortBy("underlyingPrice")}
+              className="col flex_center sm-title"
+            >
+              Underlying
+            </div>
+            <div
+              onClick={() => this.sortBy("PL")}
+              className="col flex_center sm-title"
+            >
+              PL
+            </div>
+            <div
+              onClick={() => this.sortBy("percentPL")}
+              className="col flex_center sm-title"
+            >
+              percentPL
+            </div>
           </div>
         </div>
       </div>
@@ -350,18 +393,22 @@ class OpAlerts extends React.Component {
     //for each alert, get one row
     //
     let rows = alerts.map((a, iA) => {
-      let { underlyingPrice, PL, percentPL } = a
+      let { underlyingPrice, PL, percentPL } = a;
       let {
         selectedExp,
         selectedStrike,
         selectedSymbol,
         selectedPutCall,
-        selectedAlerts,selectedAlertDay
+        chartWidth,
+        selectedAlerts,
+        selectedAlertDay,
       } = this.state;
+      let alertDate = new Date(a.timestamp).toLocaleString().split(",")[0];
       let selectedContract =
         selectedExp === a.exp &&
         selectedStrike === a.strike &&
         selectedSymbol === a.symbol &&
+        selectedAlertDay === alertDate &&
         selectedPutCall === a.putCall;
       return (
         <div className="col-sm-12 flex_center">
@@ -383,9 +430,10 @@ class OpAlerts extends React.Component {
               <div className="col flex_center">{PL}</div>
               <div className="col flex_center">{percentPL}</div>
               {selectedContract && (
-                <div id='selectedContractChart' className="col-12 floating ">
+                <div id="selectedContractChart" className="floating ">
                   {
                     <OptionsChart
+                      width={chartWidth}
                       alertDay={selectedAlertDay}
                       alerts={selectedAlerts}
                       symbol={selectedSymbol}
@@ -400,7 +448,7 @@ class OpAlerts extends React.Component {
                       return (
                         <>
                           {/* <div className="full-width"> */}
-                          <div className="row flex_center opAlertData">
+                          <div className="row flex_center opAlertData dynamicText">
                             {/* <div className="col flex_center">
                                 putCall: {a.putCall}
                               </div> */}
@@ -482,7 +530,7 @@ class OpAlerts extends React.Component {
 
   render() {
     let { options } = this.props;
-    let {sortBy, sortOrder}= this.state
+    let { sortBy, sortOrder } = this.state;
     let allAlerts = options.alerts;
     //filter out selected values
     let allSymbols = [];
@@ -503,37 +551,51 @@ class OpAlerts extends React.Component {
 
       expDates.push(alert.exp);
       strikePrices.push(alert.strike);
-        let { last, currentLast } = alert;
-        let PL = (currentLast - last).toFixed(2);
-        let percentPL = ((PL / last)*100).toFixed(2);
-        alert.percentPL = percentPL;
-        alert.PL = PL;
-        allPL.push(PL);
-        alertMessages.push(alert.alert);
-        lastPrices.push(alert.last);
-        allIVs.push(alert.IV);
-        allDateTimes.push(alert.dateTime.split(",")[0]);
-        allTotalVols.push(alert.totalVolume);
-        allUnderlying.push(alert.underlyingPrice);
+      let { last, currentLast } = alert;
+      let PL = (currentLast - last).toFixed(2);
+      let percentPL = parseFloat(((PL / last) * 100).toFixed(2));
+      alert.percentPL = percentPL;
+      alert.PL = PL;
+      allPL.push(PL);
+      alertMessages.push(alert.alert);
+      lastPrices.push(alert.last);
+      allIVs.push(alert.IV);
+      allDateTimes.push(alert.dateTime.split(",")[0]);
+      allTotalVols.push(alert.totalVolume);
+      allUnderlying.push(alert.underlyingPrice);
       // });
     });
     let filteredAlerts = this.filterAlerts(allAlerts);
-    filteredAlerts = filteredAlerts.sort((a,b)=>{
-      if(sortBy==='underlyingPrice'||
-      sortBy==='PL' ||
-      sortBy==='percentPL' ){
-        if(parseFloat(a[sortBy])<parseFloat(b[sortBy]))return sortOrder?1:-1
-        if(parseFloat(a[sortBy])>parseFloat(b[sortBy]))return sortOrder?-1:1
-        return 0
-      }else{
-
-        if(a[sortBy]<b[sortBy])return sortOrder?-1:1
-        if(a[sortBy]>b[sortBy])return sortOrder?1:-1
-        return 0
+    filteredAlerts = filteredAlerts.sort((a, b) => {
+      if (
+        sortBy === "underlyingPrice" ||
+        sortBy === "PL" ||
+        sortBy === "percentPL"
+      ) {
+        if (parseFloat(a[sortBy]) < parseFloat(b[sortBy]))
+          return sortOrder ? 1 : -1;
+        if (parseFloat(a[sortBy]) > parseFloat(b[sortBy]))
+          return sortOrder ? -1 : 1;
+        return 0;
+      } else {
+        if (a[sortBy] < b[sortBy]) return sortOrder ? -1 : 1;
+        if (a[sortBy] > b[sortBy]) return sortOrder ? 1 : -1;
+        return 0;
       }
+    });
+    console.log(filteredAlerts);
+    let totalPL = filteredAlerts.reduce((a, b) => {
+      let PL = parseFloat(b.PL);
+      let sum = a + PL;
+      return sum;
+    }, 0);
+    let totalPercPL = filteredAlerts.reduce((a, b) => {
+      let percentPL = parseFloat(b.percentPL);
+      let sum = parseInt((a + percentPL).toFixed(2));
+      debugger
+      return sum;
+    }, 0);
 
-      
-    })
     allSymbols = Array.from(new Set(allSymbols)).sort((a, b) => {
       if (a > b) return 1;
       if (a < b) return -1;
@@ -572,7 +634,6 @@ class OpAlerts extends React.Component {
         <div className="col-sm-6 flex_center">
           <button onClick={this.resetFilters}>RESET</button>
         </div>
-
         <div className="container">
           <div className="row flex_center">
             {/* EXP Date Select */}
@@ -601,11 +662,33 @@ class OpAlerts extends React.Component {
             {this.FilterSelect("Filter P&L", "PL", allPL)}
           </div>
         </div>
-
         <LineBreak />
         <div className="col-sm-12 flex_center">{this.showFilters()}</div>
         <LineBreak />
-        <div className="container dynamicText">{this.makeTable(filteredAlerts)}</div>
+        <div className="col-sm-6 flex_center">
+          <div className="row flex_center">
+            <div className="col-sm-12 flex_center">
+              <div className="sm-title">Total P&L</div>
+            </div>
+            <div className="col-sm-12 flex_center">
+              <p>${totalPL}</p>
+            </div>
+          </div>
+        </div>
+        <div className="col-sm-6 flex_center">
+          <div className="row flex_center">
+            <div className="col-sm-12 flex_center">
+              <div className="sm-title">Total %P&L</div>
+            </div>
+            <div className="col-sm-12 flex_center">
+              <p>%{totalPercPL}</p>
+            </div>
+          </div>
+        </div>
+        <LineBreak />
+        <div className="container dynamicText">
+          {this.makeTable(filteredAlerts)}
+        </div>
       </div>
     );
   }
