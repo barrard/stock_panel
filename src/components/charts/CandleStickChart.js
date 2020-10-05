@@ -967,7 +967,8 @@ class CandleStickChart extends React.Component {
       this.state.priceScale,
       y,
       svg,
-      "priceAxis"
+      "priceAxis",
+      2
     );
     drawAxisAnnotation("leftVolTag", this.state.volScale, y, svg, "volAxis");
   }

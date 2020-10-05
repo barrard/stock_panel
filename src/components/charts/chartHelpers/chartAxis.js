@@ -26,7 +26,7 @@ export const drawAxisAnnotation = (
   toFixed,
   isOrdinal
 ) => {
-  toFixed = toFixed || 3
+  toFixed = toFixed || 0
   //Remove any first
   svg.select(`#${tagId}`).remove();
   svg.select(`#${tagId}Text`).remove();
@@ -55,8 +55,12 @@ export const drawAxisAnnotation = (
   } else {
     //this will be a px value so must
     //invert to a price value
+    debugger
     value = scale.invert(xy);
-    value = (value).toFixed(toFixed)
+    if(!axisClass.includes('time')){
+
+      value = (value).toFixed(toFixed)
+    }
     
   }
   // console.log(value)
