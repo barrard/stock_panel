@@ -532,7 +532,7 @@ async function fetchOpAlertData({ symbol, strike, exp, putCall }) {
 }
 async function fetchStockData({ timeframe, symbol, end }) {
   let data = await fetch(
-    `${API_SERVER}/alpacaData/${symbol}/${timeframe}/${end}`
+    `${API_SERVER}/getStockData/${symbol}/${timeframe}/${end}`
   );
   data = await data.json();
   if (data.err) throw data.err;

@@ -184,6 +184,7 @@ export default (state = initial_state, action) => {
     }
 
     case "ADD_COMMODITY_CHART_DATA": {
+      debugger
       console.log(action);
       let { chart_data, symbol, timeframe, rawCommodityChartData } = action;
       console.log({ rawCommodityChartData, chart_data });
@@ -210,7 +211,7 @@ export default (state = initial_state, action) => {
       let currentRawData = rawCommodityCharts[symbol][timeframe] || [];
 
       //this code prevents requesting and storing duplicate data
-      let lastRawCurrentData = currentRawData[0];
+      let lastRawCurrentData = currentRawData.slice(-1)[0];
       if (lastRawCurrentData) {
         let newRawChartDataIndex = rawCommodityChartData.findIndex(
           (d) => d.timestamp === lastRawCurrentData.timestamp
@@ -239,7 +240,6 @@ export default (state = initial_state, action) => {
       addAllCCI_data(rawCommodityChartData);
 
       commodity_data[symbol][timeframe] = [...chart_data, ...currentData];
-
       rawCommodityCharts[symbol][timeframe] = rawCommodityChartData;
       return {
         ...state,
@@ -389,17 +389,132 @@ export default (state = initial_state, action) => {
     }
 
     case "ADD_CHART_DATA": {
-      let { chartData, timeframe, symbol } = action;
+      debugger
+      let { chartData, timeframe, symbol, rawChartData } = action;
+      debugger
       let charts = {
         ...state.charts,
       };
       if (!charts[symbol]) charts[symbol] = {};
-      charts[symbol][timeframe] = chartData;
+
+      debugger
+      let rawCharts = {
+        ...state.rawCharts,
+      };
+
+      if (!charts[symbol]) charts[symbol] = {};
+      let currentData = charts[symbol][timeframe] || [];
+      //this code prevents requesting and storing duplicate data
+      let lastCurrentDay = currentData[0];
+      if (lastCurrentDay) {
+        let newChartDataIndex = chartData.findIndex(
+          (d) => d.timestamp === lastCurrentDay.timestamp
+        );
+        if (newChartDataIndex >= 0) {
+          chartData = chartData.slice(0, newChartDataIndex);
+        }
+      }
+      if (!rawCharts[symbol]) rawCharts[symbol] = {};
+      let currentRawData = rawCharts[symbol][timeframe] || [];
+
+      //this code prevents requesting and storing duplicate data
+      let lastRawCurrentData = currentRawData.slice(-1)[0];
+      if (lastRawCurrentData) {
+        let newRawChartDataIndex = rawChartData.findIndex(
+          (d) => d.timestamp === lastRawCurrentData.timestamp
+        );
+        if (newRawChartDataIndex >= 0) {
+          rawChartData = rawChartData.slice(
+            0,
+            newRawChartDataIndex
+          );
+        }
+      }
+      rawChartData = [...rawChartData, ...currentRawData];
+
+      //run indicator functions here, since it should only run once
+      //VWAP
+      createAllVWAP_data(rawChartData);
+      //ATR - Must be done before superTrend
+      ATR_indicatorVals(rawChartData);
+      //superTrend
+      makeSuperTrendData(rawChartData);
+      //bollingerBands
+      addBollingerBands(rawChartData);
+      addStochastics(rawChartData);
+      momentumAnalysis(rawChartData);
+      addRSI(rawChartData);
+      addAllCCI_data(rawChartData);
+
+      charts[symbol][timeframe] = [...chartData, ...currentData];
+      rawCharts[symbol][timeframe] = rawChartData;
+
+
+
+
+
 
       return {
         ...state,
         charts,
+        rawCharts,
       };
+    }
+    case "ADD_NEW_MINUTE": {
+      let { new_minute_data } = action;
+      console.log({ new_minute_data });
+      // console.log({ state });
+      // console.log(new_minute_data["ES"].prices);
+      let commodity_data = { ...state.commodity_data };
+
+      for (let symbol in state.commodity_data) {
+        new_minute_data[symbol].timestamp = new Date(
+          new_minute_data[symbol].start_timestamp
+        ).getTime();
+        if (!commodity_data[symbol]["1Min"]) {
+          //This should NEvEr ruN
+          console.log("-----------    This should NEvEr ruN  ============");
+          // commodity_data[symbol] = {};
+          commodity_data[symbol]["1Min"] = [];
+        }
+        commodity_data[symbol]["1Min"].push(new_minute_data[symbol]);
+      }
+
+      return {
+        ...state,
+        ...commodity_data,
+      };
+    }
+
+    case "ADD_NEW_TICK": {
+      let { new_tick_data } = action;
+      let currentTickData = { ...state.currentTickData };
+      let { search_symbol, timeframe } = state;
+      // for (let symbol in state.commodity_data) {
+      //   if (!currentTickData[symbol]) currentTickData[symbol] = {};
+      //   currentTickData[symbol] = new_tick_data[symbol];
+      //   if(!currentTickData[symbol]){
+      //     return state
+      //   }
+      //   currentTickData[symbol].timestamp = new Date(
+      //     currentTickData[symbol].start_timestamp
+      //   ).getTime();
+      // }
+      // let data = state.rawCommodityCharts[search_symbol];
+      // if (data && Array.isArray(data[timeframe])) {
+      //   let dataSlice = data[timeframe].slice(-2);
+      // addNewVWAP(dataSlice);
+      // addNewBollingerBands(data[timeframe]);
+      // }
+      // console.log(state.commodity_data);
+      // console.log({ new_tick_data });
+      return {
+        ...state,
+        prevTickDate: currentTickData,
+        currentTickData: new_tick_data,
+      };
+
+
     }
 
     case "SET_SYMBOLS_DATA": {

@@ -8,8 +8,9 @@ export function drawSimpleLine(
   { timeScale, priceScale },
   { x, y, nestedY, color, groupName }
 ) {
+  debugger
   let start = new Date().getTime()
-
+debugger
   values = values.filter(d=>{
     if(nestedY){
       return d[y] && d[y][nestedY]

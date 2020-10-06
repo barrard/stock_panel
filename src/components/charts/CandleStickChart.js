@@ -651,6 +651,7 @@ class CandleStickChart extends React.Component {
   }
 
   setNewData(symbol, timeframe, onlyAddNewBar) {
+    debugger
     let { type, stock_data } = this.props;
     let currentData;
     let currentRawData;
@@ -667,7 +668,7 @@ class CandleStickChart extends React.Component {
 
       // console.log(stock_data.charts);
       currentData = stock_data.charts[symbol][timeframe];
-      // currentRawData = stock_data.rawCharts[symbol][timeframe];
+      currentRawData = stock_data.rawCharts[symbol][timeframe];
     }
 
     /**
@@ -1387,6 +1388,7 @@ class CandleStickChart extends React.Component {
     let nestedY = "upper";
     let color = "#bfe7b1";
     let data = this.state.rawOHLCData;
+    debugger
     drawSimpleLine(chartWindow, data, "upperBB", scales, {
       x,
       y,
@@ -1811,7 +1813,6 @@ class CandleStickChart extends React.Component {
   }
 
   runNewSettings(settingName) {
-    console.log({ settingName });
     if (
       settingName === "minMaxTolerance" ||
       settingName === "regressionErrorLimit"
@@ -1860,50 +1861,50 @@ class CandleStickChart extends React.Component {
           }
         >
           <button>Indicator Charts</button>
-          <div style={{
-            display:this.state.showIndicatorCharts? ' ':'none'
-          }}>
+          <div
+            style={{
+              display: this.state.showIndicatorCharts ? " " : "none",
+            }}
+          >
+            <IndicatorChart
+              data={this.state.rawOHLCData}
+              indicator="momentum"
+              horizontalLines={{ centerLine: 0 }}
+              symbol={this.state.symbol}
+              timeframe={this.state.timeframe}
+              width={this.props.width}
+              height={150}
+            />
 
-          <IndicatorChart
-            data={this.state.rawOHLCData}
-            indicator="momentum"
-            horizontalLines={{ centerLine: 0 }}
-            symbol={this.state.symbol}
-            timeframe={this.state.timeframe}
-            width={this.props.width}
-            height={150}
-          />
+            <IndicatorChart
+              data={this.state.rawOHLCData}
+              indicator="RSI"
+              horizontalLines={{ overboughtLine: 70, oversoldLine: 20 }}
+              symbol={this.state.symbol}
+              timeframe={this.state.timeframe}
+              width={this.props.width}
+              height={150}
+            />
+            <IndicatorChart
+              data={this.state.rawOHLCData}
+              horizontalLines={{ overboughtLine: 100, oversoldLine: -100 }}
+              indicator="CCI"
+              symbol={this.state.symbol}
+              timeframe={this.state.timeframe}
+              width={this.props.width}
+              height={150}
+            />
 
-          <IndicatorChart
-            data={this.state.rawOHLCData}
-            indicator="RSI"
-            horizontalLines={{ overboughtLine: 70, oversoldLine: 20 }}
-            symbol={this.state.symbol}
-            timeframe={this.state.timeframe}
-            width={this.props.width}
-            height={150}
-          />
-          <IndicatorChart
-            data={this.state.rawOHLCData}
-            horizontalLines={{ overboughtLine: 100, oversoldLine: -100 }}
-            indicator="CCI"
-            symbol={this.state.symbol}
-            timeframe={this.state.timeframe}
-            width={this.props.width}
-            height={150}
-          />
-
-          <IndicatorChart
-            data={this.state.rawOHLCData}
-            horizontalLines={{ overboughtLine: 80, oversoldLine: 20 }}
-            indicator="stochastics"
-            symbol={this.state.symbol}
-            timeframe={this.state.timeframe}
-            width={this.props.width}
-            height={150}
-          />
-                    </div>
-
+            <IndicatorChart
+              data={this.state.rawOHLCData}
+              horizontalLines={{ overboughtLine: 80, oversoldLine: 20 }}
+              indicator="stochastics"
+              symbol={this.state.symbol}
+              timeframe={this.state.timeframe}
+              width={this.props.width}
+              height={150}
+            />
+          </div>
         </div>
 
         <ToggleIndicators
@@ -1982,15 +1983,6 @@ let RegressionSettingsContainer = styled.div`
 let TradesListContainer = styled.div`
   border: solid red 1px;
 `;
-
-function byDate(a, b) {
-  if (a.timestamp < b.timestamp) return 1;
-  if (a.timestamp > b.timestamp) return -1;
-}
-function byX(a, b) {
-  if (a.x > b.x) return 1;
-  if (a.x < b.x) return -1;
-}
 
 function getInterval(timeframe) {
   if (timeframe === "1Min") return 1000 * 60 * 1;
