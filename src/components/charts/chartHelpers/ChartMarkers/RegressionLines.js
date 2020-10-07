@@ -1,4 +1,4 @@
-import diff from "../extrema.js";
+import diff from "../../../../indicators/indicatorHelpers/extrema";
 
 export function appendRegressionLines(
   that,

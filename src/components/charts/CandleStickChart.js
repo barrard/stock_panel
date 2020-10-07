@@ -32,7 +32,7 @@ import {
   getMinutelyCommodityData,
 } from "../landingPageComponents/chart_data_utils.js";
 
-import diff from "../charts/chartHelpers/extrema.js";
+import diff from "../../indicators/indicatorHelpers/extrema.js";
 import { addCandleSticks } from "./chartHelpers/candleStickUtils.js";
 import { add_commodity_chart_data } from "../../redux/actions/stock_actions.js";
 import {
@@ -48,10 +48,8 @@ import {
 } from "./chartHelpers/MA-lines.js";
 import API from "../API.js";
 import RegressionSettings from "./chartHelpers/regressionSettings.js";
-import {
-  FibonacciLines,
-  makeFibonacciData,
-} from "./chartHelpers/ChartMarkers/FibonacciLines.js";
+import { FibonacciLines } from "./chartHelpers/ChartMarkers/FibonacciLines.js";
+import { makeFibonacciData } from "./../../indicators/Fibinacci.js";
 
 import {
   VolumeBars,
@@ -61,7 +59,10 @@ import { CenterLabel } from "./chartHelpers/ChartMarkers/Labels.js";
 import { TradeMarker } from "./chartHelpers/ChartMarkers/TradeMarker.js";
 import { DefaultRegressionSettings } from "./chartHelpers/indicatorCharts/IndicatorRegressionSettings.js";
 import { toastr } from "react-redux-toastr";
-const { TICKS } = require("../../indicators/indicatorHelpers/utils.js");
+const {
+  TICKS,
+  dropDuplicateMinMax,
+} = require("../../indicators/indicatorHelpers/utils.js");
 const { VolProfile } = require("../../indicators/VolProfile.js");
 const { addRSI, addNewRSI } = require("../../indicators/RSI.js");
 const {
@@ -651,7 +652,6 @@ class CandleStickChart extends React.Component {
   }
 
   setNewData(symbol, timeframe, onlyAddNewBar) {
-    debugger
     let { type, stock_data } = this.props;
     let currentData;
     let currentRawData;
@@ -934,9 +934,12 @@ class CandleStickChart extends React.Component {
     chartWindow.call(d3zoom); //needs to be after drag
 
     //Making data for later draws
-    let fibData = makeFibonacciData(this, {
-      timeScale: this.state.timeScale,
-      priceScale: this.state.priceScale,
+    let { highs, lows, timestamps, fibonacciMinMax } = this.state;
+    let fibData = makeFibonacciData({
+      highs,
+      lows,
+      timestamps,
+      fibonacciMinMax,
     });
     this.setState({
       timeAxis,
@@ -1388,7 +1391,7 @@ class CandleStickChart extends React.Component {
     let nestedY = "upper";
     let color = "#bfe7b1";
     let data = this.state.rawOHLCData;
-    debugger
+
     drawSimpleLine(chartWindow, data, "upperBB", scales, {
       x,
       y,
@@ -1421,7 +1424,7 @@ class CandleStickChart extends React.Component {
     let y = "VWAP";
     let nestedY = "VWAP";
     let color = "pink";
-    let data = that.props.stock_data.rawCommodityCharts[symbol][timeframe];
+    let data = this.state.rawOHLCData;
     drawSimpleLine(chartWindow, data, "VWAP", scales, {
       x,
       y,
@@ -1596,40 +1599,41 @@ class CandleStickChart extends React.Component {
       .attr("class", `nearbyPoint`);
   }
 
-  runMinMax(tolerance, minMaxMostRecentData) {
+  runMinMax(tolerance) {
     let { highs, lows, closes, timestamps } = this.state;
     let minMaxValues = {
       high: { maxValues: [] },
       low: { minValues: [] },
       close: { minValues: [], maxValues: [] },
     };
-    var { minValues, maxValues } = diff.minMax(
+    //Max Highs
+    var { maxValues } = diff.minMax(
       timestamps,
       highs,
-      tolerance,
-      minMaxMostRecentData
+      tolerance
     );
-
+    //remove dups
+    maxValues = dropDuplicateMinMax(maxValues);
     minMaxValues["high"].maxValues = maxValues;
-
-    var { minValues, maxValues } = diff.minMax(
+    //Min lows
+    var { minValues } = diff.minMax(
       timestamps,
       lows,
-      tolerance,
-      minMaxMostRecentData
+      tolerance
     );
-
+    minValues = dropDuplicateMinMax(minValues);
     minMaxValues["low"].minValues = minValues;
-
+    //Min and max close
     var { minValues, maxValues } = diff.minMax(
       timestamps,
       closes,
-      tolerance,
-      minMaxMostRecentData
+      tolerance
     );
-
+    maxValues = dropDuplicateMinMax(maxValues);
+    minValues = dropDuplicateMinMax(minValues);
     minMaxValues["close"].maxValues = maxValues;
     minMaxValues["close"].minValues = minValues;
+
     return minMaxValues;
   }
 
@@ -1702,11 +1706,8 @@ class CandleStickChart extends React.Component {
     });
 
     setTimeout(() => {
-      let minMaxMostRecentData = true;
       let minMaxValues = this.runMinMax(
-        this.state.minMaxTolerance,
-        minMaxMostRecentData
-      );
+        this.state.minMaxTolerance      );
       let highPoints = [...minMaxValues.high.maxValues];
       let lowPoints = [...minMaxValues.low.minValues];
       //run a cool regression function with the min max values
@@ -1729,6 +1730,7 @@ class CandleStickChart extends React.Component {
     }, 0);
     setTimeout(() => this.draw(), 0);
   }
+
   //tells the stock bot to watch certain stock
   setTimeframeActive() {
     let { timeframe, symbol } = this.state;
@@ -1787,11 +1789,8 @@ class CandleStickChart extends React.Component {
 
   runRegressionAnalysis() {
     //Run regrerssion lines
-    let minMaxMostRecentData = true;
     let minMaxValues = this.runMinMax(
-      this.state.minMaxTolerance,
-      minMaxMostRecentData
-    );
+      this.state.minMaxTolerance    );
     let highPoints = [...minMaxValues.high.maxValues];
     let lowPoints = [...minMaxValues.low.minValues];
     //run a cool regression function with the min max values
@@ -1827,9 +1826,12 @@ class CandleStickChart extends React.Component {
       settingName === "fibonacciMinMax" ||
       settingName === '"fibonacciSensitivity"'
     ) {
-      let fibData = makeFibonacciData(this, {
-        timeScale: this.state.timeScale,
-        priceScale: this.state.priceScale,
+      let { highs, lows, timestamps, fibonacciMinMax } = this.state;
+      let fibData = makeFibonacciData({
+        highs,
+        lows,
+        timestamps,
+        fibonacciMinMax,
       });
       this.setState({ fibData });
     }

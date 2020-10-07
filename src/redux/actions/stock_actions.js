@@ -148,7 +148,7 @@ export function add_commodity_minutely_data({ symbol, chart_data }) {
  */
 export function updateCommodityData(newData, type) {
   if (type === "minute") {
-    debugger
+    
     return {
       type: "ADD_NEW_MINUTE",
       new_minute_data: newData,
@@ -186,7 +186,7 @@ export function deleteCommodityRegressionData(id) {
 
 export function add_chart_data({ symbol, chartData, timeframe }) {
   console.log("ADD_CHART_DATA");
-debugger
+
   let rawChartData = [...chartData];
   chartData = forwardFill(chartData);
   return {

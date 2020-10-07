@@ -4,7 +4,7 @@ import { toastr } from "react-redux-toastr";
 //import { withRouter } from 'next/router';
 import { Link, withRouter } from "react-router-dom";
 import styled from "styled-components";
-import diff from "../charts/chartHelpers/extrema.js";
+import diff from "../../indicators/indicatorHelpers/extrema";
 
 let masterPriceLevels = {};
 let masterRegressionLines = {};

@@ -17,7 +17,7 @@ import TickChart from "../components/charts/TickChart.js";
 import CandleStickChart from "../components/charts/CandleStickChart.js";
 
 import styled from "styled-components";
-import diff from "./charts/chartHelpers/extrema";
+import diff from "../indicators/indicatorHelpers/extrema.js";
 
 const LAST_PRICE = {}; //just to determine uptick downTick
 const PRICE_VOL_LIST = {}; //for time and sales

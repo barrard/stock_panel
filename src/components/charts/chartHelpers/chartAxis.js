@@ -55,7 +55,7 @@ export const drawAxisAnnotation = (
   } else {
     //this will be a px value so must
     //invert to a price value
-    debugger
+    
     value = scale.invert(xy);
     if(!axisClass.includes('time')){
 

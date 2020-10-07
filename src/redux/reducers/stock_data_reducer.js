@@ -389,20 +389,19 @@ export default (state = initial_state, action) => {
     }
 
     case "ADD_CHART_DATA": {
-      debugger
+      
       let { chartData, timeframe, symbol, rawChartData } = action;
-      debugger
+      
       let charts = {
         ...state.charts,
       };
       if (!charts[symbol]) charts[symbol] = {};
 
-      debugger
+      
       let rawCharts = {
         ...state.rawCharts,
       };
 
-      if (!charts[symbol]) charts[symbol] = {};
       let currentData = charts[symbol][timeframe] || [];
       //this code prevents requesting and storing duplicate data
       let lastCurrentDay = currentData[0];

@@ -1,52 +1,63 @@
-import { mean, min } from "d3-array";
+let { mean, min } = require("d3-array");
 
-
-function pythagorean(x1, x2, y1, y2){
-  let sideA, sideB
-  sideA = Math.abs(x1-x2)
-  sideB = Math.abs(y1 - y2)
+function pythagorean(x1, x2, y1, y2) {
+  let sideA, sideB;
+  sideA = Math.abs(x1 - x2);
+  sideB = Math.abs(y1 - y2);
 
   return Math.sqrt(Math.pow(sideA, 2) + Math.pow(sideB, 2));
 }
 
-function minMax(xArray, yArray, tolerance = 1, minMaxMostRecentData = false) {
+function minMax(xArray, yArray, tolerance = 1) {
   //xArray is time, yArray is price
   let minValues = [];
   let maxValues = [];
   let totalLength = yArray.length;
-  yArray.forEach((value, index) => {
-    if (index - tolerance < 0) {
-      return;
-    }
-    if(index + tolerance > totalLength && minMaxMostRecentData){
-      tolerance = parseInt(tolerance/2)
-    
-    } else if(index + tolerance > totalLength) return
-      let minima = false;
-      let maxima = false;
-      let same = [];
-      //loop from
-      for (let x = index - tolerance; x <= index + tolerance; x++) {
-        if (x === index) continue;
-        if (yArray[index] < yArray[x]) minima = true;
-        if (yArray[index] > yArray[x]) maxima = true;
-        if (yArray[index] === yArray[x]) {
-          same.push(true);
-        } else {
-          same.pop();
-        }
-        // let indexVal = yArray[index];
-        // let checkVal = yArray[x];
-      }
-      if (!minima && maxima && same.length < tolerance) {
-        maxValues.push({ x: xArray[index], y: yArray[index] });
-      }
-      if (minima && !maxima && same.length < tolerance) {
-        minValues.push({ x: xArray[index], y: yArray[index] });
-      }
 
-    
-  });
+  //MIN
+  for (let index = 0; index < yArray.length; index++) {
+    let yValue = yArray[index];
+    let startingPoint = index - tolerance;
+    if (startingPoint < 0) {
+      startingPoint = 0;
+    }
+    let minima = false;
+    let maxima = false;
+    let same = [];
+    for (let x = startingPoint; x <= index + tolerance; x++) {
+      let iCheck = x;
+      if (x > totalLength) iCheck = totalLength - 1;
+      if (x === index) continue;
+      if (yValue < yArray[iCheck]) minima = true;
+      if (yValue > yArray[iCheck]) maxima = true;
+    }
+    if (!maxima && minima) {
+      minValues.push({ x: xArray[index], y: yValue });
+      index += tolerance - 1;
+    }
+  }
+
+  //MAX
+  for (let index = 0; index < yArray.length; index++) {
+    let yValue = yArray[index];
+    let startingPoint = index - tolerance;
+    if (startingPoint < 0) {
+      startingPoint = 0;
+    }
+    let minima = false;
+    let maxima = false;
+    for (let x = startingPoint; x <= index + tolerance; x++) {
+      let iCheck = x;
+      if (x > totalLength) iCheck = totalLength - 1;
+      if (x === index) continue;
+      if (yValue < yArray[iCheck]) minima = true;
+      if (yValue > yArray[iCheck]) maxima = true;
+    }
+    if (!minima && maxima) {
+      maxValues.push({ x: xArray[index], y: yValue });
+      index += tolerance - 1;
+    }
+  }
   return { minValues, maxValues };
 }
 
@@ -86,9 +97,9 @@ function consolidateMinMaxValues(allPoints, allOHLCdata) {
       return consolidatedPoints.push([point]);
     }
     //find group index where this market should go
-    let groupIndex = consolidatedPoints.findIndex(group => {
+    let groupIndex = consolidatedPoints.findIndex((group) => {
       let flag = false;
-      group.forEach(p => {
+      group.forEach((p) => {
         if (x - p.x <= timeframe) {
           flag = true;
         }
@@ -106,9 +117,9 @@ function consolidateMinMaxValues(allPoints, allOHLCdata) {
     }
   });
 
-  let finalConsolidatedMarkers = consolidatedPoints.map(group => {
-    let x = mean(group, d => d.x);
-    let y = mean(group, d => d.y);
+  let finalConsolidatedMarkers = consolidatedPoints.map((group) => {
+    let x = mean(group, (d) => d.x);
+    let y = mean(group, (d) => d.y);
     return { x, y };
   });
   return finalConsolidatedMarkers;
@@ -116,15 +127,15 @@ function consolidateMinMaxValues(allPoints, allOHLCdata) {
 
 function mergeImportantPriceLevels(priceLevels, priceLevelSensitivity) {
   let mergedPrices = {};
-  priceLevels.sort((a,b)=>a.y-b.y)
+  priceLevels.sort((a, b) => a.y - b.y);
 
-  priceLevels.map(priceLevel => {
+  priceLevels.map((priceLevel) => {
     let similar = false;
 
     for (let mergedPriceLevel in mergedPrices) {
-      if(similar)return
-      let absDiff = Math.abs((priceLevel.y / mergedPriceLevel) - 1);
-      if (absDiff < priceLevelSensitivity/10000) {
+      if (similar) return;
+      let absDiff = Math.abs(priceLevel.y / mergedPriceLevel - 1);
+      if (absDiff < priceLevelSensitivity / 10000) {
         similar = true;
         mergedPrices[mergedPriceLevel].push(priceLevel);
       }
@@ -133,16 +144,15 @@ function mergeImportantPriceLevels(priceLevels, priceLevelSensitivity) {
       mergedPrices[priceLevel.y] = [priceLevel];
     }
   });
-  let groupedPoints = []
-  for(let price in mergedPrices){
-    let avgPrice = mean(mergedPrices[price], ({y})=>y)
-    avgPrice = parseFloat(avgPrice.toFixed(4))
-    let minTime = min(mergedPrices[price], ({x})=>x)
-    let points = mergedPrices[price]
-    groupedPoints.push({x:minTime , y:avgPrice, points })
+  let groupedPoints = [];
+  for (let price in mergedPrices) {
+    let avgPrice = mean(mergedPrices[price], ({ y }) => y);
+    avgPrice = parseFloat(avgPrice.toFixed(4));
+    let minTime = min(mergedPrices[price], ({ x }) => x);
+    let points = mergedPrices[price];
+    groupedPoints.push({ x: minTime, y: avgPrice, points });
   }
-  return groupedPoints
-
+  return groupedPoints;
 }
 
 function regressionAnalysis(points, errLimit, lines = [], count = 2) {
@@ -156,10 +166,10 @@ function regressionAnalysis(points, errLimit, lines = [], count = 2) {
    * and restart the process
    */
 
-  let badLine1 =  isNaN(line1.results_error)
-  let badLine2 =  isNaN(line2.results_error)
- 
-  if (error > errLimit  && (!badLine1&&!badLine2)) {
+  let badLine1 = isNaN(line1.results_error);
+  let badLine2 = isNaN(line2.results_error);
+
+  if (error > errLimit && !badLine1 && !badLine2) {
     //we need to save line 1, and restart the function with spliced array
     let nearbyPoints = pointsArray.slice(0, count);
     pointsArray.splice(0, count - 1);
@@ -197,7 +207,7 @@ function regressionAnalysis(points, errLimit, lines = [], count = 2) {
        * else we can just take the last good line (line2)
        * and return all the lines.
        */
-      if(badLine2)return
+      if (badLine2) return;
       line2.nearbyPoints = pointsArray;
       lines.push(line2);
       return lines;
@@ -216,7 +226,7 @@ function RMSerror(pointsArray, current_count) {
     pointsArray,
     line1,
     line2,
-    current_count
+    current_count,
   };
 
   // highLines[0] = findLineByLeastSquares(highMarks.slice(0, 2));
@@ -296,16 +306,16 @@ function findLineByLeastSquares(points) {
   let x2 = result_values_x[result_values_x.length - 1];
   x2 = (x2 - x1) * 0.5 + x2;
   let y2 = x2 * m + b;
-  let length = pythagorean(x1, x2, y1, y2)
-// console.log({ x1, y1, x2, y2, m, b, results_error, length})
+  let length = pythagorean(x1, x2, y1, y2);
+  // console.log({ x1, y1, x2, y2, m, b, results_error, length})
   return { x1, y1, x2, y2, m, b, results_error, length };
 }
 
 // y = [ 0,   1,   2,   3,  2,   3.2,   4,   5,   1,   0];
 // x = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
-export default {
+module.exports = {
   minMax,
   mergeImportantPriceLevels,
   consolidateMinMaxValues,
-  regressionAnalysis
+  regressionAnalysis,
 };
