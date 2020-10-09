@@ -24,6 +24,14 @@ function checkForMaintenance(date) {
 function futuresAreTrading(date) {
   date = date || new Date().getTime();
   let { day, hour, minute, second } = eastCoastTime(date);
+
+  //any day from 4:15-4:29
+  if(hour === 14){
+    if(minute >= 15 && minute <=29)return false
+  }
+  if (hour === 17) {
+    return false;
+  }
   //sunday evening 6pm
   if (day === 0) {
     if (hour >= 18) return true;

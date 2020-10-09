@@ -249,7 +249,8 @@ function getEMA_Trend({ ema, close }) {
   let bearishPullback = false
   if(!emaOrderUpTrend){
     if(ema['50'] > ema['200']) bullishPullback = true
-  }else if(!emaOrderDownTrend){
+  }
+  if(!emaOrderDownTrend){
     if(ema['50'] < ema['200']) bearishPullback = true
   }
 
