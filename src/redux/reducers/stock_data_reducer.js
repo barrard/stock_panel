@@ -110,7 +110,7 @@ export default (state = initial_state, action) => {
       }
       return {
         ...state,
-        commodityTrades: {...commodityTrades},
+        commodityTrades: { ...commodityTrades },
       };
     }
 
@@ -184,7 +184,6 @@ export default (state = initial_state, action) => {
     }
 
     case "ADD_COMMODITY_CHART_DATA": {
-      debugger
       console.log(action);
       let { chart_data, symbol, timeframe, rawCommodityChartData } = action;
       console.log({ rawCommodityChartData, chart_data });
@@ -211,7 +210,7 @@ export default (state = initial_state, action) => {
       let currentRawData = rawCommodityCharts[symbol][timeframe] || [];
 
       //this code prevents requesting and storing duplicate data
-      let lastRawCurrentData = currentRawData.slice(-1)[0];
+      let lastRawCurrentData = currentRawData[0];
       if (lastRawCurrentData) {
         let newRawChartDataIndex = rawCommodityChartData.findIndex(
           (d) => d.timestamp === lastRawCurrentData.timestamp
@@ -389,15 +388,13 @@ export default (state = initial_state, action) => {
     }
 
     case "ADD_CHART_DATA": {
-      
       let { chartData, timeframe, symbol, rawChartData } = action;
-      
+
       let charts = {
         ...state.charts,
       };
       if (!charts[symbol]) charts[symbol] = {};
 
-      
       let rawCharts = {
         ...state.rawCharts,
       };
@@ -423,10 +420,7 @@ export default (state = initial_state, action) => {
           (d) => d.timestamp === lastRawCurrentData.timestamp
         );
         if (newRawChartDataIndex >= 0) {
-          rawChartData = rawChartData.slice(
-            0,
-            newRawChartDataIndex
-          );
+          rawChartData = rawChartData.slice(0, newRawChartDataIndex);
         }
       }
       rawChartData = [...rawChartData, ...currentRawData];
@@ -447,11 +441,6 @@ export default (state = initial_state, action) => {
 
       charts[symbol][timeframe] = [...chartData, ...currentData];
       rawCharts[symbol][timeframe] = rawChartData;
-
-
-
-
-
 
       return {
         ...state,
@@ -512,8 +501,6 @@ export default (state = initial_state, action) => {
         prevTickDate: currentTickData,
         currentTickData: new_tick_data,
       };
-
-
     }
 
     case "SET_SYMBOLS_DATA": {
