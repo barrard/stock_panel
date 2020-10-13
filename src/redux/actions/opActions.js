@@ -30,19 +30,6 @@ export function getOpAlerts() {
   };
 }
 
-export function getExpOpAlerts() {
-  return async (dispatch) => {
-    //organized one per day
-    let alerts = await API.fetchExpOpAlerts();
-    // alerts = sortAlerts(alerts)
-    return dispatch({
-      type: "SET_EXP_OP_ALERTS",
-      alerts,
-    });
-  };
-}
-
-
 
 export function addOptionAlert(alert) {
   console.log(alert);

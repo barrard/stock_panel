@@ -472,20 +472,6 @@ async function fetchCommodityData({ timeframe, symbol, from, to }) {
   return data;
 }
 
-async function fetchExpOpAlerts() {
-  let expAlerts = await fetch(`${API_SERVER}/options/expAlerts`);
-  expAlerts = await expAlerts.json();
-  let processedAlerts = [];
-  if (expAlerts.err) throw expAlerts.err;
-
-  if (!expAlerts.length) {
-    processedAlerts = [];
-  } else {
-    processedAlerts = sortAlerts(expAlerts);
-  }
-  toastr.success(`Alerts loaded`, `${processedAlerts.length} loaded`);
-  return processedAlerts;
-}
 
 async function fetchOpAlerts() {
   let data = await fetch(`${API_SERVER}/options/alerts`);

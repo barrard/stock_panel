@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { toastr } from "react-redux-toastr";
 import { withRouter } from "react-router";
 import styled from "styled-components";
-import { getOpAlerts, getExpOpAlerts } from "../redux/actions/opActions.js";
+import { getOpAlerts } from "../redux/actions/opActions.js";
 import API from "./API.js";
 import Tree from "react-d3-tree";
 import OptionsChart from "./charts/OptionsChart.js";
@@ -24,11 +24,14 @@ class OpAlerts extends React.Component {
       filter_last: "",
       filter_totalVolume: "",
       filter_strike: "",
+      filter_dateTime: "",
       selectedAlerts: [],
       snapshots: {}, //AML_EXP_CALL_44
+      includeExpiredContracts: false,
       lessThan_last: true,
       lessThan_totalVolume: true,
       lessThan_underlying: true,
+      lessThan_percentPL: true,
       lessThan_PL: true,
       lessThan_exp: true,
       sortBy: "symbol",
@@ -41,10 +44,10 @@ class OpAlerts extends React.Component {
         "underlying",
         "dateTime",
         "PL",
+        "percentPL",
       ],
     };
     this.resetFilters = this.resetFilters.bind(this);
-    this.getExpiredContractAlerts = this.getExpiredContractAlerts.bind(this)
   }
 
   componentDidMount() {
@@ -61,7 +64,7 @@ class OpAlerts extends React.Component {
     });
   }
 
-  dropDownSelect(name, values) {
+  dropDownSelect(name, values, label) {
     let selects = values.map((v, iV) => {
       return (
         <option key={iV} value={v}>
@@ -73,82 +76,76 @@ class OpAlerts extends React.Component {
       <option
         // selected={true}
         // disabled={true}
-        value={`Select ${name}`}
-      >{`Select ${name}`}</option>
+        value={``}
+      >{`Select ${label}`}</option>
     );
     selects = [firstOption, ...selects];
     return (
       <div className="optionFilterSelect">
         {/* <div className='row flex_center'> */}
-          
+
         {/* <div className='col-sm-6 flex_center'> */}
         {(name === "last" ||
           name === "PL" ||
+          name === "percentPL" ||
           name === "exp" ||
           name === "underlying" ||
           name === "totalVolume") && (
           <>
-           <Switch
+            <Switch
+              className="filterSwitch"
               onChange={() => {
                 let lessThan = this.state[`lessThan_${name}`];
                 this.setState({ [`lessThan_${name}`]: !lessThan });
               }}
               checked={this.state[`lessThan_${name}`]}
-              offColor="#ccc"
-              onColor="#ccc"
-              width={75}
-              uncheckedIcon={
-                <div
+              offColor="#333"
+              onColor="#333"
+              width={111}
+              height={30}
+              checkedIcon={
+                <span
                   style={{
+                    textShadow: "rgb(1,1,1) 0px 0px 1px",
+                    width: "6em",
                     display: "flex",
                     justifyContent: "center",
                     alignItems: "center",
                     height: "100%",
+                    fontWeight: 900,
                     fontSize: 12,
                     color: "red",
-                    paddingRight: "1em",
-                  }}
-                >
-                  Less
-                </div>
-              }
-              checkedIcon={
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    height: "100%",
-                    fontSize: 12,
-                    color: "green",
                     paddingLeft: "1em",
                   }}
                 >
-                  Greater
+                  Less Than
+                </span>
+              }
+              uncheckedIcon={
+                <div
+                  style={{
+                    textShadow: "rgb(1,1,1) 0px 0px 1px",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: "100%",
+                    fontWeight: 900,
+                    fontSize: 12,
+                    color: "green",
+                    whiteSpace: "nowrap",
+                    paddingRight: "3em",
+                  }}
+                >
+                  Greater Than
                 </div>
               }
             />
-            <label className="p-2" htmlFor="">{`${
-              this.state[`lessThan_${name}`] ? `Less Than` : `Greater Than`
-            }`}</label>
-
-           
-
-            {/* <input
-              value={this.state[`lessThan_${name}`]}
-              onChange={() => {
-                let lessThan = this.state[`lessThan_${name}`];
-                this.setState({ [`lessThan_${name}`]: !lessThan });
-              }}
-              type="checkbox"
-              name="greater Less Than"
-              id=""
-            /> */}
           </>
         )}
         {/* </div> */}
-  {/* <div className='col-sm-6 flex_center'> */}
-  <select
+        {/* <div className='col-sm-6 flex_center'> */}
+        <select
+          className='darkDropDown'
           value={this.state[`filter_${name}`]}
           defaultValue={`Select ${name}`}
           onChange={(e) => {
@@ -160,8 +157,8 @@ class OpAlerts extends React.Component {
         >
           {selects}
         </select>
-  </div>
-        // </div>
+      </div>
+      // </div>
 
       // </div>
     );
@@ -172,6 +169,8 @@ class OpAlerts extends React.Component {
       <div className="full-width filterHover dynamicText">
         <div className="row flex_center">
           {this.state.filterNames.map((f) => {
+            debugger;
+            console.log(typeof this.state[`lessThan_${f}`] === undefined);
             return (
               <>
                 {this.state[`filter_${f}`] && (
@@ -194,8 +193,9 @@ class OpAlerts extends React.Component {
                               {this.state[`filter_${f}`]}
                             </div>
                           )}
-                                      {/* EQUAL TO LABEL */}
-                        {this.state[`filter_${f}`] !=='' && (
+                        {/* EQUAL TO LABEL */}
+                        {this.state[`filter_${f}`] !== "" &&
+                           (
                             <div>
                               {/* <span className="yellow">Equal</span> Than{" "} */}
                               {this.state[`filter_${f}`]}
@@ -305,18 +305,24 @@ class OpAlerts extends React.Component {
             if (filteredArray) return true;
           });
         }
+        if (f === "percentPL") {
+          alerts = alerts.filter((a) => {
+            let filteredArray = false;
+            // a.alerts.forEach((a) => {
+            if (this.state[`lessThan_percentPL`]) {
+              if (a.percentPL <= filterValue) filteredArray = true;
+            } else {
+              if (a.percentPL >= filterValue) filteredArray = true;
+            }
+            // });
+            if (filteredArray) return true;
+          });
+        }
       }
     });
     return alerts;
   }
 
-  getExpiredContractAlerts(){
-    if(this.state.expiredContractsLoaded)return
-    this.setState({
-      expiredContractsLoaded:true
-    })
-    getExpOpAlerts()
-  }
   resetFilters() {
     this.state.filterNames.forEach((fn) => {
       this.setState({
@@ -356,24 +362,24 @@ class OpAlerts extends React.Component {
     function fallbackCopyTextToClipboard(text) {
       var textArea = document.createElement("textarea");
       textArea.value = text;
-      
+
       // Avoid scrolling to bottom
       textArea.style.top = "0";
       textArea.style.left = "0";
       textArea.style.position = "fixed";
-    
+
       document.body.appendChild(textArea);
       textArea.focus();
       textArea.select();
-    
+
       try {
-        var successful = document.execCommand('copy');
-        var msg = successful ? 'successful' : 'unsuccessful';
-        console.log('Fallback: Copying text command was ' + msg);
+        var successful = document.execCommand("copy");
+        var msg = successful ? "successful" : "unsuccessful";
+        console.log("Fallback: Copying text command was " + msg);
       } catch (err) {
-        console.error('Fallback: Oops, unable to copy', err);
+        console.error("Fallback: Oops, unable to copy", err);
       }
-    
+
       document.body.removeChild(textArea);
     }
     //HELPER FUNCTION SHOULD GO SOMEWHERE ELSE
@@ -383,15 +389,20 @@ class OpAlerts extends React.Component {
         fallbackCopyTextToClipboard(text);
         return;
       }
-      navigator.clipboard.writeText(text).then(function() {
-        console.log('Async: Copying to clipboard was successful!');
-      }, function(err) {
-        console.error('Async: Could not copy text: ', err);
-      });
+      navigator.clipboard.writeText(text).then(
+        function () {
+          console.log("Async: Copying to clipboard was successful!");
+        },
+        function (err) {
+          console.error("Async: Could not copy text: ", err);
+        }
+      );
     }
-    let opString = `${symbol} ${exp} ${putCall === "CALL" ? "c" : "p"} @$${strike}`;
+    let opString = `${symbol} ${exp} ${
+      putCall === "CALL" ? "c" : "p"
+    } @$${strike}`;
 
-    copyTextToClipboard(opString)
+    copyTextToClipboard(opString);
 
     let alerts = this.props.options.alerts;
     let snapData = await API.fetchOpAlertData({ symbol, strike, exp, putCall });
@@ -438,7 +449,7 @@ class OpAlerts extends React.Component {
             <h4>{label} </h4>
           </div>
           <div className="col-sm-12 flex_center">
-            {this.dropDownSelect(name, array)}
+            {this.dropDownSelect(name, array, label)}
           </div>
         </div>
       </div>
@@ -465,46 +476,46 @@ class OpAlerts extends React.Component {
       <div className="col-sm-12 flex_center">
         <div className="full-width">
           <div className="row flex_center">
-            <div className="col flex_center sm-title">#</div>
+            <div className="col flex_center sm-title p-0">#</div>
             <div
               onClick={() => this.sortBy("putCall")}
-              className="col flex_center sm-title"
+              className="col flex_center sm-title p-0"
             >
               putCall
             </div>
             <div
               onClick={() => this.sortBy("symbol")}
-              className="col flex_center sm-title"
+              className="col flex_center sm-title p-0"
             >
               symbol
             </div>
             <div
               onClick={() => this.sortBy("exp")}
-              className="col flex_center sm-title"
+              className="col flex_center sm-title p-0"
             >
               exp
             </div>
             <div
               onClick={() => this.sortBy("strike")}
-              className="col flex_center sm-title"
+              className="col flex_center sm-title p-0"
             >
               strike
             </div>
             <div
               onClick={() => this.sortBy("underlyingPrice")}
-              className="col flex_center sm-title"
+              className="col flex_center sm-title p-0"
             >
               Underlying
             </div>
             <div
               onClick={() => this.sortBy("PL")}
-              className="col flex_center sm-title"
+              className="col flex_center sm-title p-0"
             >
               PL
             </div>
             <div
               onClick={() => this.sortBy("percentPL")}
-              className="col flex_center sm-title"
+              className="col flex_center sm-title p-0"
             >
               percentPL
             </div>
@@ -543,14 +554,14 @@ class OpAlerts extends React.Component {
                 selectedContract ? "selectedContract" : " "
               } `}
             >
-              <div className="col flex_center">{iA + 1}</div>
-              <div className="col flex_center">{a.putCall}</div>
-              <div className="col flex_center">{a.symbol}</div>
-              <div className="col flex_center">{a.exp}</div>
-              <div className="col flex_center">{a.strike}</div>
-              <div className="col flex_center">{underlyingPrice}</div>
-              <div className="col flex_center">{PL}</div>
-              <div className="col flex_center">{percentPL}</div>
+              <div className={`col flex_center p-0`}>{iA + 1}</div>
+              <div className={`col flex_center p-0`}>{a.putCall}</div>
+              <div className={`col flex_center p-0`}>{a.symbol}</div>
+              <div className={`col flex_center`}>{a.exp}</div>
+              <div className={`col flex_center p-0`}>{a.strike}</div>
+              <div className={`col flex_center p-0`}>{underlyingPrice}</div>
+              <div className={`col flex_center p-0`}>{PL}</div>
+              <div className={`col flex_center p-0`}>{percentPL}</div>
               {selectedContract && (
                 <div id="selectedContractChart" className="floating ">
                   {
@@ -652,7 +663,7 @@ class OpAlerts extends React.Component {
 
   render() {
     let { options } = this.props;
-    let { sortBy, sortOrder } = this.state;
+    let { sortBy, sortOrder, includeExpiredContracts } = this.state;
     let allAlerts = options.alerts;
     //filter out selected values
     let allSymbols = [];
@@ -665,7 +676,13 @@ class OpAlerts extends React.Component {
     let allTotalVols = [];
     let allUnderlying = [];
     let allPL = [];
+    let allPercentPL = [];
     let putsOrCalls = { puts: [], calls: [] };
+    if (!includeExpiredContracts && allAlerts.length) {
+      let day = new Date(new Date().toLocaleString().split(",")[0]).getTime();
+      allAlerts = allAlerts.filter((a) => new Date(a.exp).getTime() > day);
+    }
+
     allAlerts.forEach((alert) => {
       // allAlerts[alertDay].map(()=>{
 
@@ -674,11 +691,12 @@ class OpAlerts extends React.Component {
       expDates.push(alert.exp);
       strikePrices.push(alert.strike);
       let { last, currentLast } = alert;
-      let PL = (currentLast - last).toFixed(2);
+      let PL = parseFloat((currentLast - last).toFixed(2));
       let percentPL = parseFloat(((PL / last) * 100).toFixed(2));
       alert.percentPL = percentPL;
       alert.PL = PL;
       allPL.push(PL);
+      allPercentPL.push(percentPL);
       alertMessages.push(alert.alert);
       lastPrices.push(alert.last);
       allIVs.push(alert.IV);
@@ -705,12 +723,14 @@ class OpAlerts extends React.Component {
         return 0;
       }
     });
-    console.log(filteredAlerts);
-    let totalPL = filteredAlerts.reduce((a, b) => {
-      let PL = parseFloat(b.PL);
-      let sum = a + PL;
-      return sum;
-    }, 0);
+
+    let totalPL = filteredAlerts
+      .reduce((a, b) => {
+        let PL = parseFloat(b.PL);
+        let sum = a + PL;
+        return sum;
+      }, 0)
+      .toFixed(1);
     let totalPercPL = filteredAlerts.reduce((a, b) => {
       let percentPL = parseFloat(b.percentPL);
       let sum = parseInt((a + percentPL).toFixed(2));
@@ -735,8 +755,12 @@ class OpAlerts extends React.Component {
     allTotalVols = Array.from(new Set(allTotalVols)).sort((a, b) => a - b);
     allUnderlying = Array.from(new Set(allUnderlying)).sort((a, b) => a - b);
     allPL = Array.from(new Set(allPL)).sort((a, b) => b - a);
+    allPercentPL = Array.from(new Set(allPercentPL)).sort((a, b) => b - a);
 
     allPL = allPL.filter((p, iP) => iP % Math.floor(allPL.length / 10) === 0);
+    allPercentPL = allPercentPL.filter(
+      (p, iP) => iP % Math.floor(allPercentPL.length / 10) === 0
+    );
     lastPrices = lastPrices.filter(
       (p, iP) => iP % Math.floor(lastPrices.length / 10) === 0
     );
@@ -752,10 +776,21 @@ class OpAlerts extends React.Component {
         <div className="col-sm-12 flex_center">
           <h2>Option Alerts</h2>
         </div>
-        <div className="col-sm-6 flex_center"></div>
-        <div className="col-sm-6 flex_center">
-        <button onClick={this.getExpiredContractAlerts}>LOAD EXPIRED CONTRACTS</button>
-        <button onClick={this.resetFilters}>RESET</button>
+        {/* <div className="col-sm-6 flex_center"></div> */}
+        <div className="col-sm-4 flex_center">
+          <label className="p-2">Include Expired Contracts</label>
+          <Switch
+            onChange={() => {
+              let incExp = this.state.includeExpiredContracts;
+              this.setState({ includeExpiredContracts: !incExp });
+            }}
+            checked={this.state[`includeExpiredContracts`]}
+          />{" "}
+        </div>
+        <div className="col-sm-4 flex_center"></div>
+
+        <div className="col-sm-4 flex_center">
+          <button onClick={this.resetFilters}>RESET</button>
         </div>
         <div className="container">
           <div className="row flex_center">
@@ -783,12 +818,25 @@ class OpAlerts extends React.Component {
 
             {/* Profit Select */}
             {this.FilterSelect("Filter P&L", "PL", allPL)}
+
+            {/* Profit Select */}
+            {this.FilterSelect("Filter %P&L", "percentPL", allPercentPL)}
           </div>
         </div>
         <LineBreak />
         <div className="col-sm-12 flex_center">{this.showFilters()}</div>
         <LineBreak />
-        <div className="col-sm-6 flex_center">
+        <div className="col-sm-4 flex_center">
+          <div className="row flex_center">
+            <div className="col-sm-12 flex_center">
+              <div className="sm-title">Total Contracts</div>
+            </div>
+            <div className="col-sm-12 flex_center">
+              <p>{filteredAlerts.length}</p>
+            </div>
+          </div>
+        </div>
+        <div className="col-sm-4 flex_center">
           <div className="row flex_center">
             <div className="col-sm-12 flex_center">
               <div className="sm-title">Total P&L</div>
@@ -798,7 +846,7 @@ class OpAlerts extends React.Component {
             </div>
           </div>
         </div>
-        <div className="col-sm-6 flex_center">
+        <div className="col-sm-4 flex_center">
           <div className="row flex_center">
             <div className="col-sm-12 flex_center">
               <div className="sm-title">Total %P&L</div>

@@ -58,9 +58,13 @@
   padding: 1em;
   margin: 1em;
 }
+.react-switch-bg:nth-child(2) {
+  width:58px !important
+}
 
 .svgChart {
   border: 1px solid black;
+  user-select: none;
 }
 
 .not-available {
@@ -166,10 +170,30 @@ text {
   stroke: darkorchid;
 }
 
+.reactSelect{
+  color:white;
+  background-color: black;
+
+}
+.reactSelect:hover{
+  background-color:lightcyan
+}
+
+.react-switch-handle{
+  background: #333!important;
+  border: 1px solid #ccc !important;
+
+}
+
+.filterSwitch{
+  border: 1px solid black;
+}
+
+
 .fullWidth {
   width: 100%;
 }
-.noWrap {
+.space: nowrap {
   white-space: nowrap;
 }
 .white {
@@ -543,8 +567,12 @@ canvas {
   align-items: center;
 }
 .optionFilterSelect{
-  border-bottom: 1px solid red;
+  /* border-bottom: 1px solid red; */
     margin-bottom: 20px;
+}
+.darkDropDown{
+  background: black;
+    color: white;
 }
 .text_indent_10 {
   text-indent: 10%;
