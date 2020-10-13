@@ -472,13 +472,38 @@ async function fetchCommodityData({ timeframe, symbol, from, to }) {
   return data;
 }
 
+async function fetchExpOpAlerts() {
+  let expAlerts = await fetch(`${API_SERVER}/options/expAlerts`);
+  expAlerts = await expAlerts.json();
+  let processedAlerts = [];
+  if (expAlerts.err) throw expAlerts.err;
+
+  if (!expAlerts.length) {
+    processedAlerts = [];
+  } else {
+    processedAlerts = sortAlerts(expAlerts);
+  }
+  toastr.success(`Alerts loaded`, `${processedAlerts.length} loaded`);
+  return processedAlerts;
+}
+
 async function fetchOpAlerts() {
   let data = await fetch(`${API_SERVER}/options/alerts`);
   data = await data.json();
   if (data.err) throw data.err;
+  let processedAlerts = [];
 
-  if (!data.length) return [];
-  toastr.success(`Alerts loaded`, `${data.length} loaded`);
+  if (!data.length) {
+    processedAlerts = [];
+  } else {
+    processedAlerts = sortAlerts(data);
+  }
+  toastr.success(`Alerts loaded`, `${processedAlerts.length} loaded`);
+  return processedAlerts;
+}
+
+//HELPER FOR SORTING ALERTS
+function sortAlerts(data) {
   let allAlerts = {};
   data.forEach((d) => {
     let { symbol, putCall, exp, strike, timestamp } = d;
@@ -494,11 +519,11 @@ async function fetchOpAlerts() {
     if (allAlerts[alertDay][symbol][exp][putCall][strike]) {
       let oldAlertTime =
         allAlerts[alertDay][symbol][exp][putCall][strike].timestamp;
-      if (oldAlertTime > d.timestamp){
+      if (oldAlertTime > d.timestamp) {
         allAlerts[alertDay][symbol][exp][putCall][strike] = d;
       }
     } else {
-      allAlerts[alertDay][symbol][exp][putCall][strike] =  d
+      allAlerts[alertDay][symbol][exp][putCall][strike] = d;
     }
   });
 
@@ -509,13 +534,14 @@ async function fetchOpAlerts() {
       for (let exp in allAlerts[alertDate][symbol]) {
         for (let putCall in allAlerts[alertDate][symbol][exp]) {
           for (let strike in allAlerts[alertDate][symbol][exp][putCall]) {
-            processedAlerts.push(allAlerts[alertDate][symbol][exp][putCall][strike]);
+            processedAlerts.push(
+              allAlerts[alertDate][symbol][exp][putCall][strike]
+            );
           }
         }
       }
     }
   }
-  
   return processedAlerts;
 }
 

@@ -31,6 +31,11 @@ import {
   view_selected_commodity,
   getMinutelyCommodityData,
 } from "../landingPageComponents/chart_data_utils.js";
+import Socket from "../Socket.js";
+import {
+  updateCommodityData,
+  updateStockData,
+} from "../../redux/actions/stock_actions.js";
 
 import diff from "../../indicators/indicatorHelpers/extrema.js";
 import { addCandleSticks } from "./chartHelpers/candleStickUtils.js";
@@ -262,6 +267,16 @@ class CandleStickChart extends React.Component {
         ...this.props.stock_data.commodityRegressionData[symbol][timeframe],
       });
     }
+
+    Socket.on("stock_quotes", (stockQuotes) => {
+      //dispatch(updateCommodityData(newTickData, 'tick'))
+      console.log("stockQuotes");
+      console.log(stockQuotes);
+      this.props.dispatch(updateStockData(stockQuotes, "tick"));
+    });
+    Socket.on("current_minute_data", (newTickData) => {
+      this.props.dispatch(updateCommodityData(newTickData, "tick"));
+    });
   }
   componentDidUpdate(prevProps, prevState) {
     if (!this.props.stock_data.has_symbols_data) {
@@ -1607,28 +1622,16 @@ class CandleStickChart extends React.Component {
       close: { minValues: [], maxValues: [] },
     };
     //Max Highs
-    var { maxValues } = diff.minMax(
-      timestamps,
-      highs,
-      tolerance
-    );
+    var { maxValues } = diff.minMax(timestamps, highs, tolerance);
     //remove dups
     maxValues = dropDuplicateMinMax(maxValues);
     minMaxValues["high"].maxValues = maxValues;
     //Min lows
-    var { minValues } = diff.minMax(
-      timestamps,
-      lows,
-      tolerance
-    );
+    var { minValues } = diff.minMax(timestamps, lows, tolerance);
     minValues = dropDuplicateMinMax(minValues);
     minMaxValues["low"].minValues = minValues;
     //Min and max close
-    var { minValues, maxValues } = diff.minMax(
-      timestamps,
-      closes,
-      tolerance
-    );
+    var { minValues, maxValues } = diff.minMax(timestamps, closes, tolerance);
     maxValues = dropDuplicateMinMax(maxValues);
     minValues = dropDuplicateMinMax(minValues);
     minMaxValues["close"].maxValues = maxValues;
@@ -1706,8 +1709,7 @@ class CandleStickChart extends React.Component {
     });
 
     setTimeout(() => {
-      let minMaxValues = this.runMinMax(
-        this.state.minMaxTolerance      );
+      let minMaxValues = this.runMinMax(this.state.minMaxTolerance);
       let highPoints = [...minMaxValues.high.maxValues];
       let lowPoints = [...minMaxValues.low.minValues];
       //run a cool regression function with the min max values
@@ -1789,8 +1791,7 @@ class CandleStickChart extends React.Component {
 
   runRegressionAnalysis() {
     //Run regrerssion lines
-    let minMaxValues = this.runMinMax(
-      this.state.minMaxTolerance    );
+    let minMaxValues = this.runMinMax(this.state.minMaxTolerance);
     let highPoints = [...minMaxValues.high.maxValues];
     let lowPoints = [...minMaxValues.low.minValues];
     //run a cool regression function with the min max values

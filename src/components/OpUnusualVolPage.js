@@ -3,10 +3,11 @@ import { connect } from "react-redux";
 import { toastr } from "react-redux-toastr";
 import { withRouter } from "react-router";
 import styled from "styled-components";
-import { getOpAlerts } from "../redux/actions/opActions.js";
+import { getOpAlerts, getExpOpAlerts } from "../redux/actions/opActions.js";
 import API from "./API.js";
 import Tree from "react-d3-tree";
 import OptionsChart from "./charts/OptionsChart.js";
+import Switch from "react-switch";
 
 // import {ensure_not_loggedin} from '../components/utils/auth.js'
 import { histogram } from "d3-array";
@@ -29,6 +30,7 @@ class OpAlerts extends React.Component {
       lessThan_totalVolume: true,
       lessThan_underlying: true,
       lessThan_PL: true,
+      lessThan_exp: true,
       sortBy: "symbol",
       sortOrder: true,
       filterNames: [
@@ -42,6 +44,7 @@ class OpAlerts extends React.Component {
       ],
     };
     this.resetFilters = this.resetFilters.bind(this);
+    this.getExpiredContractAlerts = this.getExpiredContractAlerts.bind(this)
   }
 
   componentDidMount() {
@@ -76,16 +79,62 @@ class OpAlerts extends React.Component {
     selects = [firstOption, ...selects];
     return (
       <div className="optionFilterSelect">
+        {/* <div className='row flex_center'> */}
+          
+        {/* <div className='col-sm-6 flex_center'> */}
         {(name === "last" ||
           name === "PL" ||
+          name === "exp" ||
           name === "underlying" ||
           name === "totalVolume") && (
           <>
-            <label htmlFor="">{`${
+           <Switch
+              onChange={() => {
+                let lessThan = this.state[`lessThan_${name}`];
+                this.setState({ [`lessThan_${name}`]: !lessThan });
+              }}
+              checked={this.state[`lessThan_${name}`]}
+              offColor="#ccc"
+              onColor="#ccc"
+              width={75}
+              uncheckedIcon={
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: "100%",
+                    fontSize: 12,
+                    color: "red",
+                    paddingRight: "1em",
+                  }}
+                >
+                  Less
+                </div>
+              }
+              checkedIcon={
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: "100%",
+                    fontSize: 12,
+                    color: "green",
+                    paddingLeft: "1em",
+                  }}
+                >
+                  Greater
+                </div>
+              }
+            />
+            <label className="p-2" htmlFor="">{`${
               this.state[`lessThan_${name}`] ? `Less Than` : `Greater Than`
             }`}</label>
 
-            <input
+           
+
+            {/* <input
               value={this.state[`lessThan_${name}`]}
               onChange={() => {
                 let lessThan = this.state[`lessThan_${name}`];
@@ -94,10 +143,12 @@ class OpAlerts extends React.Component {
               type="checkbox"
               name="greater Less Than"
               id=""
-            />
+            /> */}
           </>
         )}
-        <select
+        {/* </div> */}
+  {/* <div className='col-sm-6 flex_center'> */}
+  <select
           value={this.state[`filter_${name}`]}
           defaultValue={`Select ${name}`}
           onChange={(e) => {
@@ -109,10 +160,13 @@ class OpAlerts extends React.Component {
         >
           {selects}
         </select>
-      </div>
+  </div>
+        // </div>
+
+      // </div>
     );
   }
-
+  //display to the user which filters are used
   showFilters() {
     return (
       <div className="full-width filterHover dynamicText">
@@ -125,7 +179,7 @@ class OpAlerts extends React.Component {
                     <div className="row flex_center">
                       <div className="col-sm-12 flex_center sm-title">{f}</div>
                       <div className="col-sm-12 flex_center">
-                        {/* LES THAN LABEL */}
+                        {/* LESS THAN LABEL */}
                         {this.state[`lessThan_${f}`] && (
                           <div>
                             <span className="red">Less</span> Than{" "}
@@ -137,6 +191,13 @@ class OpAlerts extends React.Component {
                           this.state[`lessThan_${f}`] === false && (
                             <div>
                               <span className="green">Greater</span> Than{" "}
+                              {this.state[`filter_${f}`]}
+                            </div>
+                          )}
+                                      {/* EQUAL TO LABEL */}
+                        {this.state[`filter_${f}`] !=='' && (
+                            <div>
+                              {/* <span className="yellow">Equal</span> Than{" "} */}
                               {this.state[`filter_${f}`]}
                             </div>
                           )}
@@ -165,7 +226,19 @@ class OpAlerts extends React.Component {
         }
 
         if (f === "exp") {
-          alerts = alerts.filter((a) => a.exp === filterValue);
+          filterValue = new Date(filterValue).getTime();
+          alerts = alerts.filter((a) => {
+            let filteredArray = false;
+            let alertExp = new Date(a.exp).getTime();
+            // a.alerts.forEach((a) => {
+            if (this.state[`lessThan_exp`]) {
+              if (alertExp <= filterValue) filteredArray = true;
+            } else {
+              if (alertExp >= filterValue) filteredArray = true;
+            }
+            // });
+            if (filteredArray) return true;
+          });
         }
 
         if (f === "dateTime") {
@@ -237,6 +310,13 @@ class OpAlerts extends React.Component {
     return alerts;
   }
 
+  getExpiredContractAlerts(){
+    if(this.state.expiredContractsLoaded)return
+    this.setState({
+      expiredContractsLoaded:true
+    })
+    getExpOpAlerts()
+  }
   resetFilters() {
     this.state.filterNames.forEach((fn) => {
       this.setState({
@@ -270,6 +350,48 @@ class OpAlerts extends React.Component {
         selectedAlerts: [],
       });
     }
+
+    //HELPER FUNCTION SHOULD GO SOMEWHERE ELSE
+    //TODO
+    function fallbackCopyTextToClipboard(text) {
+      var textArea = document.createElement("textarea");
+      textArea.value = text;
+      
+      // Avoid scrolling to bottom
+      textArea.style.top = "0";
+      textArea.style.left = "0";
+      textArea.style.position = "fixed";
+    
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+    
+      try {
+        var successful = document.execCommand('copy');
+        var msg = successful ? 'successful' : 'unsuccessful';
+        console.log('Fallback: Copying text command was ' + msg);
+      } catch (err) {
+        console.error('Fallback: Oops, unable to copy', err);
+      }
+    
+      document.body.removeChild(textArea);
+    }
+    //HELPER FUNCTION SHOULD GO SOMEWHERE ELSE
+    //TODO
+    function copyTextToClipboard(text) {
+      if (!navigator.clipboard) {
+        fallbackCopyTextToClipboard(text);
+        return;
+      }
+      navigator.clipboard.writeText(text).then(function() {
+        console.log('Async: Copying to clipboard was successful!');
+      }, function(err) {
+        console.error('Async: Could not copy text: ', err);
+      });
+    }
+    let opString = `${symbol} ${exp} ${putCall === "CALL" ? "c" : "p"} @$${strike}`;
+
+    copyTextToClipboard(opString)
 
     let alerts = this.props.options.alerts;
     let snapData = await API.fetchOpAlertData({ symbol, strike, exp, putCall });
@@ -343,7 +465,7 @@ class OpAlerts extends React.Component {
       <div className="col-sm-12 flex_center">
         <div className="full-width">
           <div className="row flex_center">
-            <div className="col flex_center sm-title">Total Contracts</div>
+            <div className="col flex_center sm-title">#</div>
             <div
               onClick={() => this.sortBy("putCall")}
               className="col flex_center sm-title"
@@ -592,7 +714,7 @@ class OpAlerts extends React.Component {
     let totalPercPL = filteredAlerts.reduce((a, b) => {
       let percentPL = parseFloat(b.percentPL);
       let sum = parseInt((a + percentPL).toFixed(2));
-      debugger
+
       return sum;
     }, 0);
 
@@ -632,7 +754,8 @@ class OpAlerts extends React.Component {
         </div>
         <div className="col-sm-6 flex_center"></div>
         <div className="col-sm-6 flex_center">
-          <button onClick={this.resetFilters}>RESET</button>
+        <button onClick={this.getExpiredContractAlerts}>LOAD EXPIRED CONTRACTS</button>
+        <button onClick={this.resetFilters}>RESET</button>
         </div>
         <div className="container">
           <div className="row flex_center">

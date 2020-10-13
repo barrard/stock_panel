@@ -55,16 +55,7 @@ class App extends React.Component {
     Socket.on("err", (err) => {
       console.log(err);
     });
-    Socket.on("stock_quotes", (stockQuotes) => {
-      //dispatch(updateCommodityData(newTickData, 'tick'))
-      console.log("stockQuotes");
-      console.log(stockQuotes);
-      dispatch(updateStockData(stockQuotes, "tick"));
-    });
-    Socket.on("current_minute_data", (newTickData) => {
-      dispatch(updateCommodityData(newTickData, "tick"));
-    });
-    
+
     Socket.on("opAlert", (newOpAlert) => {
       console.log("Option Alert");
       console.log({newOpAlert})
