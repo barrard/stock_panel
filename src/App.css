@@ -193,7 +193,7 @@ text {
 .fullWidth {
   width: 100%;
 }
-.space: nowrap {
+.nowrap {
   white-space: nowrap;
 }
 .white {
