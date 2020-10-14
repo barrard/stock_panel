@@ -40,7 +40,6 @@ export const drawAxisAnnotation = (
     //from the xy
     if (isOrdinal) {
       var eachBand = scale.step();
-      // console.log(scale.bandwidth());
       var index = Math.round(
         (xy - (scale.bandwidth() - scale.paddingOuter() * scale.step())) /
           eachBand
@@ -72,6 +71,7 @@ export const drawAxisAnnotation = (
     // } else {
     /* need to have time formatting */
     value = formatTime(value);
+
   } else if (tagId.includes("Vol")) {
     value = parseInt(value);
   }

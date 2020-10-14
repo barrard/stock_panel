@@ -574,6 +574,7 @@ canvas {
 .darkDropDown{
   background: black;
     color: white;
+    height: 2em;
 }
 .text_indent_10 {
   text-indent: 10%;

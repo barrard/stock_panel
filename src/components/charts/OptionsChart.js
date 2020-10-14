@@ -1,16 +1,16 @@
 import React from "react";
 import { connect } from "react-redux";
 import { withRouter } from "react-router-dom";
-import styled from "styled-components";
+// import styled from "styled-components";
 import { axisBottom, axisRight, axisLeft, axisTop } from "d3-axis";
-import { zoom } from "d3-zoom";
+// import { zoom } from "d3-zoom";
 import { scaleLinear, scaleTime, scaleBand } from "d3-scale";
 import { extent, max, min } from "d3-array";
 import { select, event, mouse } from "d3-selection";
-import { drag } from "d3-drag";
+// import { drag } from "d3-drag";
 import { line } from "d3-shape";
-import DrawLine from "./chartHelpers/ChartMarkers/Line.js";
-import { entryArrow } from "./chartHelpers/ChartMarkers/TradeMarker.js";
+// import DrawLine from "./chartHelpers/ChartMarkers/Line.js";
+// import { entryArrow } from "./chartHelpers/ChartMarkers/TradeMarker.js";
 import {
   drawAxisAnnotation,
   removeAllAxisAnnotations,
@@ -42,9 +42,9 @@ class OptionsChart extends React.Component {
       xBottomScale: scaleBand()
         // .range([0, innerWidth])
         .paddingInner(0.1)
-        .paddingOuter(0.2)
-        .align(0.5)
-        .round(true),
+        // .paddingOuter(0.2)
+        .align(0.1),
+      // .round(true)
       //   topXScale: scaleLinear().range([innerWidth / 2, innerWidth]),
       yRightScale: scaleLinear(), //.range([innerHeight, 0]),
       yLeftScale: scaleLinear(), //.range([innerHeight, 0]).nice(),
@@ -130,21 +130,25 @@ class OptionsChart extends React.Component {
     );
   }
 
-  drawSelectedAlert(chartWindow, firstAlert, data) {
+  drawSelectedAlert(chartWindow, firstAlert, highPricePoint) {
     let scaler = 3.5;
-    // if (data.length < 20) scaler = 2.5;
-    // if (data.length < 6) scaler = 1.5;
+    highPricePoint.localDateTime = new Date(
+      highPricePoint.timestamp
+    ).toLocaleString();
     let xScale = this.state.xBottomScale;
     let yScale = this.state.yRightScale;
     let enterPath = entryArrow({
       entryTime: firstAlert.localDateTime,
       entryPrice: firstAlert.last,
     });
-    let { timestamp } = firstAlert;
-
-    timestamp = new Date(timestamp).toLocaleString();
-    let tt = this.state.xBottomScale(timestamp);
-    console.log(tt);
+    let exitPath = entryArrow({
+      entryTime: highPricePoint.localDateTime,
+      entryPrice: highPricePoint.last,
+    });
+    // let { timestamp } = firstAlert;
+    // timestamp = new Date(timestamp).toLocaleString();
+    // let tt = this.state.xBottomScale(timestamp);
+    // console.log(tt);
     chartWindow
       .append("path")
       .attr("stroke", "black")
@@ -160,9 +164,23 @@ class OptionsChart extends React.Component {
 
       .attr("fill", "green");
 
+    chartWindow
+      .append("path")
+      .attr("stroke", "black")
+      .attr("transform", () => {
+        // let { entryTime, entryPrice } = d;
+        let x = xScale(highPricePoint.localDateTime);
+        let y = yScale(highPricePoint.last);
+        return `rotate(${180}, ${x}, ${y})`;
+      })
+      .attr("class", `tradeMarkers tradeExitMarkers`)
+      .style("opacity", 0.9)
+      .attr("d", exitPath)
+
+      .attr("fill", "red");
+
     function entryArrow(data) {
       let { entryTime, entryPrice } = data;
-      debugger;
       let x = xScale(entryTime) - xScale.bandwidth() / 2;
       let y = yScale(entryPrice);
 
@@ -337,15 +355,7 @@ class OptionsChart extends React.Component {
     xBottomScale.range([0, innerWidth]);
     yRightScale.range([innerHeight, 0]);
     yLeftScale.range([innerHeight, 0]).nice();
-    //Time axis
-    let xBottomAxis = axisBottom(this.state.xBottomScale)
-      // .ticks(5)
-      .tickSize(-innerHeight)
-      .tickValues(
-        this.state.xBottomScale.domain().filter(function (d, i) {
-          return !(i % 10);
-        })
-      );
+
     //last price axis
     let yRightAxis = axisRight(this.state.yRightScale)
       .ticks(8)
@@ -371,10 +381,19 @@ class OptionsChart extends React.Component {
     let timeframe = 0;
     let timeSpanBuffer = 1000 * 60 * 60 * 2;
     //scale the domains
-    this.state.xBottomScale.domain(timestamps);
-    // this.state.candleHeightScale.domain([0, priceRange]);
-    this.state.yRightScale.domain([priceMin, priceMax * 1.2]);
-    this.state.yLeftScale.domain([0, volMax * 1.2]);
+    xBottomScale.domain(timestamps);
+    yRightScale.domain([priceMin, priceMax * 1.2]);
+    yLeftScale.domain([0, volMax * 1.2]);
+
+    //Time axis// needs to be here, after the domain is set
+    let xBottomAxis = axisBottom(xBottomScale)
+      // .ticks(5)
+      .tickSize(-innerHeight)
+      .tickValues(
+        xBottomScale.domain().filter(function (d, i, a) {
+          return !(i % Math.floor(a.length / 10));
+        })
+      );
     this.setState({
       timestamps,
       xBottomAxis,
@@ -478,14 +497,21 @@ class OptionsChart extends React.Component {
       );
 
       //draw Alert Marker
-      let { data, alertDay } = this.props;
+      let { data, alertDay, alerts } = this.props;
       data.forEach((a) => {
         a.dateTime = new Date(a.timestamp).toLocaleString();
       });
-      let selectedAlert = this.props.alerts.filter(
+      let selectedAlert = alerts.filter(
         (a) => new Date(a.timestamp).toLocaleString().split(",")[0] === alertDay
       )[0];
-      this.drawSelectedAlert(chartWindow, selectedAlert, data);
+
+      let highPricePoint = data.filter(
+        (snap) =>
+          snap.last === selectedAlert.highPrice &&
+          snap.timestamp >= selectedAlert.timestamp
+      )[0];
+
+      this.drawSelectedAlert(chartWindow, selectedAlert, highPricePoint);
 
       /* CrossHair */
       var crosshair = DrawCrossHair(chartWindow);
@@ -506,8 +532,8 @@ class OptionsChart extends React.Component {
         .on("mousemove", function () {
           return mousemove(that, this);
         });
-      // debugger
-      //  Adds an axis annotation to show the most recent value
+
+        //  Adds an axis annotation to show the most recent value
       drawAxisAnnotation(
         "currentRightPriceTag",
         this.state.yRightScale,
@@ -516,7 +542,7 @@ class OptionsChart extends React.Component {
         "priceAxis"
       );
 
-      //  Adds an axis annotation to show the most recent value
+      //  Adds an axis annotation to show alert price
       drawAxisAnnotation(
         "lastRightPriceTag",
         this.state.yRightScale,
@@ -525,8 +551,22 @@ class OptionsChart extends React.Component {
         "priceAxis"
       );
 
+            //  Adds an axis annotation to show max price after alert
+            drawAxisAnnotation(
+              "lastMaxRightPriceTag",
+              this.state.yRightScale,
+              highPricePoint.last,
+              svg,
+              "priceAxis"
+            );
+
       //draw dashed white line from last data to axis at the currentLast
-      this.drawCurrentPrice(selectedAlert, drawData, chartWindow);
+      this.drawCurrentPrice(
+        selectedAlert,
+        highPricePoint,
+        drawData,
+        chartWindow
+      );
 
       function mousemove(otherThat, that) {
         let _mouse = mouse(that);
@@ -567,9 +607,10 @@ class OptionsChart extends React.Component {
     }, 0);
   }
 
-  drawCurrentPrice(selectedAlert, drawData, chartWindow) {
+  drawCurrentPrice(selectedAlert, highPricePoint, drawData, chartWindow) {
     let { xBottomScale, yRightScale } = this.state;
-    let { currentLast, last, timestamp } = selectedAlert;
+    let highPriceTime = new Date(highPricePoint.timestamp).toLocaleString();
+    let { currentLast, last, timestamp, highPrice } = selectedAlert;
     let currentDateTime = new Date(
       drawData.slice(-1)[0].timestamp
     ).toLocaleString();
@@ -580,6 +621,8 @@ class OptionsChart extends React.Component {
     drawLastHorizontalCurrent();
     drawEntryToLastCurrent();
     drawEntryPrice();
+    drawEntryToMaxProfit();
+    drawLastHorizontalMaxProfit();
 
     function drawEntryPrice() {
       let y1;
@@ -590,6 +633,19 @@ class OptionsChart extends React.Component {
         xBottomScale.bandwidth() +
         xBottomScale.align() * xBottomScale.bandwidth();
       drawCurrentLine(x1, x2, y1, y2);
+    }
+    function drawLastHorizontalMaxProfit() {
+      console.log(xBottomScale.align());
+      console.log(xBottomScale.bandwidth());
+
+      let y1;
+      let y2 = (y1 = yRightScale(highPrice));
+      let x1 = xBottomScale(highPriceTime) + xBottomScale.bandwidth() / 2;
+      let x2 =
+        xBottomScale(currentDateTime) +
+        xBottomScale.bandwidth() +
+        xBottomScale.align() * xBottomScale.bandwidth();
+      drawCurrentLine(x1, x2, y1, y2, "green");
     }
     function drawLastHorizontalCurrent() {
       let y1;
@@ -612,7 +668,17 @@ class OptionsChart extends React.Component {
 
       drawCurrentLine(x1, x2, y1, y2);
     }
-    function drawCurrentLine(x1, x2, y1, y2) {
+    function drawEntryToMaxProfit() {
+      let y2 = yRightScale(last);
+      let y1 = yRightScale(highPrice);
+      // let dateTime = new Date(timestamp).toLocaleString();
+      let x1 = xBottomScale(highPriceTime) + xBottomScale.bandwidth() / 2;
+      let x2 = xBottomScale(entryDateTime) + xBottomScale.bandwidth() / 2;
+      // xBottomScale.align() * xBottomScale.bandwidth();
+
+      drawCurrentLine(x1, x2, y1, y2, "green");
+    }
+    function drawCurrentLine(x1, x2, y1, y2, color = "yellow") {
       chartWindow
         .append("line")
         .attr("y1", y1)
@@ -625,7 +691,7 @@ class OptionsChart extends React.Component {
         .attr("stroke-linecap", "round")
         .attr("stroke-dasharray", 4)
 
-        .attr("stroke", "yellow")
+        .attr("stroke", color)
         .attr("class", "PL_Line");
     }
   }

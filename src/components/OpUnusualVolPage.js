@@ -35,8 +35,8 @@ class OpAlerts extends React.Component {
       lessThan_last: true,
       lessThan_totalVolume: true,
       lessThan_underlying: true,
-      lessThan_percentPL: true,
-      lessThan_PL: true,
+      lessThan_maxPercentPL: true,
+      lessThan_maxPL: true,
       lessThan_exp: true,
       sortBy: "symbol",
       sortOrder: true,
@@ -93,8 +93,8 @@ class OpAlerts extends React.Component {
 
         {/* <div className='col-sm-6 flex_center'> */}
         {(name === "last" ||
-          name === "PL" ||
-          name === "percentPL" ||
+          name === "maxPL" ||
+          name === "maxPercentPL" ||
           name === "exp" ||
           name === "underlying" ||
           name === "totalVolume") && (
@@ -645,7 +645,7 @@ class OpAlerts extends React.Component {
                                   <h5> dateTime:</h5>
                                 </div>
                                 <div className="col-sm-12 flex_center">
-                                  {new Date(a.dateTime).toLocaleString()}
+                                  {new Date(a.timestamp).toLocaleString()}
                                 </div>
                               </div>
                             </div>
@@ -685,7 +685,6 @@ class OpAlerts extends React.Component {
     let allMaxPercentPL = [];
     let putsOrCalls = { puts: [], calls: [] };
     if (!includeExpiredContracts && allAlerts.length) {
-      debugger;
       let day = new Date(new Date().toLocaleString().split(",")[0]).getTime();
       allAlerts = allAlerts.filter((a) => new Date(a.exp).getTime() > day);
     }
