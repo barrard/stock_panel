@@ -572,7 +572,7 @@ canvas {
     display: flex;
 }
 .darkDropDown{
-  background: black;
+  background: #333;
     color: white;
     height: 2em;
 }
