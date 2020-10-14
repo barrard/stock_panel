@@ -811,7 +811,7 @@ totalVolume: 195 */
 
   render() {
     return (
-      <Swipeable onSwiped={this.onSwiped} trackMouse={true}>
+      <Swipeable onSwiped={this.onSwiped} preventDefaultTouchmoveEvent={true} trackMouse={true}>
         <svg
           onClick={(e) => e.stopPropagation()}
           ref={this.state.chartRef}
