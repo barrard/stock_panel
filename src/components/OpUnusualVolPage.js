@@ -25,6 +25,10 @@ class OpAlerts extends React.Component {
       filter_totalVolume: "",
       filter_strike: "",
       filter_dateTime: "",
+      filter_maxPL: "",
+      filter_maxPercentPL: "",
+      filter_PL: "",
+      filter_percentPL: "",
       selectedAlerts: [],
       snapshots: {}, //AML_EXP_CALL_44
       includeExpiredContracts: false,
@@ -45,6 +49,8 @@ class OpAlerts extends React.Component {
         "dateTime",
         "PL",
         "percentPL",
+        "maxPL",
+        "maxPercentPL",
       ],
     };
     this.resetFilters = this.resetFilters.bind(this);
@@ -74,6 +80,7 @@ class OpAlerts extends React.Component {
     });
     let firstOption = (
       <option
+      key={`Select ${label}`}
         // selected={true}
         // disabled={true}
         value={``}
@@ -145,7 +152,7 @@ class OpAlerts extends React.Component {
         {/* </div> */}
         {/* <div className='col-sm-6 flex_center'> */}
         <select
-          className='darkDropDown'
+          className="darkDropDown"
           value={this.state[`filter_${name}`]}
           defaultValue={`Select ${name}`}
           onChange={(e) => {
@@ -169,8 +176,6 @@ class OpAlerts extends React.Component {
       <div className="full-width filterHover dynamicText">
         <div className="row flex_center">
           {this.state.filterNames.map((f) => {
-            debugger;
-            console.log(typeof this.state[`lessThan_${f}`] === undefined);
             return (
               <>
                 {this.state[`filter_${f}`] && (
@@ -194,13 +199,12 @@ class OpAlerts extends React.Component {
                             </div>
                           )}
                         {/* EQUAL TO LABEL */}
-                        {this.state[`filter_${f}`] !== "" &&
-                           (
-                            <div>
-                              {/* <span className="yellow">Equal</span> Than{" "} */}
-                              {this.state[`filter_${f}`]}
-                            </div>
-                          )}
+                        {this.state[`filter_${f}`] !== "" && (
+                          <div>
+                            {/* <span className="yellow">Equal</span> Than{" "} */}
+                            {this.state[`filter_${f}`]}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -508,16 +512,16 @@ class OpAlerts extends React.Component {
               Underlying
             </div>
             <div
-              onClick={() => this.sortBy("PL")}
+              onClick={() => this.sortBy("maxPL")}
               className="col flex_center sm-title p-0"
             >
-              PL
+              max PL
             </div>
             <div
-              onClick={() => this.sortBy("percentPL")}
+              onClick={() => this.sortBy("maxPercentPL")}
               className="col flex_center sm-title p-0"
             >
-              percentPL
+              Max %PL
             </div>
           </div>
         </div>
@@ -526,7 +530,7 @@ class OpAlerts extends React.Component {
     //for each alert, get one row
     //
     let rows = alerts.map((a, iA) => {
-      let { underlyingPrice, PL, percentPL } = a;
+      let { underlyingPrice, maxPL, maxPercentPL } = a;
       let {
         selectedExp,
         selectedStrike,
@@ -560,8 +564,8 @@ class OpAlerts extends React.Component {
               <div className={`col flex_center`}>{a.exp}</div>
               <div className={`col flex_center p-0`}>{a.strike}</div>
               <div className={`col flex_center p-0`}>{underlyingPrice}</div>
-              <div className={`col flex_center p-0`}>{PL}</div>
-              <div className={`col flex_center p-0`}>{percentPL}</div>
+              <div className={`col flex_center p-0`}>{maxPL}</div>
+              <div className={`col flex_center p-0`}>{maxPercentPL}</div>
               {selectedContract && (
                 <div id="selectedContractChart" className="floating ">
                   {
@@ -676,9 +680,12 @@ class OpAlerts extends React.Component {
     let allTotalVols = [];
     let allUnderlying = [];
     let allPL = [];
+    let allMaxPL = [];
     let allPercentPL = [];
+    let allMaxPercentPL = [];
     let putsOrCalls = { puts: [], calls: [] };
     if (!includeExpiredContracts && allAlerts.length) {
+      debugger;
       let day = new Date(new Date().toLocaleString().split(",")[0]).getTime();
       allAlerts = allAlerts.filter((a) => new Date(a.exp).getTime() > day);
     }
@@ -690,13 +697,17 @@ class OpAlerts extends React.Component {
 
       expDates.push(alert.exp);
       strikePrices.push(alert.strike);
-      let { last, currentLast } = alert;
-      let PL = parseFloat((currentLast - last).toFixed(2));
-      let percentPL = parseFloat(((PL / last) * 100).toFixed(2));
-      alert.percentPL = percentPL;
-      alert.PL = PL;
-      allPL.push(PL);
-      allPercentPL.push(percentPL);
+      let { last, currentLast, highPrice } = alert;
+      // let PL = parseFloat((currentLast - last).toFixed(2));
+      // let percentPL = parseFloat(((PL / last) * 100).toFixed(2));
+      let maxPL = parseFloat((highPrice - last).toFixed(2));
+      let maxPercentPL = parseFloat(((maxPL / last) * 100).toFixed(2));
+      alert.maxPercentPL = maxPercentPL;
+      alert.maxPL = maxPL;
+      // allPL.push(PL);
+      allMaxPL.push(maxPL);
+      allMaxPercentPL.push(maxPercentPL);
+      // allPercentPL.push(percentPL);
       alertMessages.push(alert.alert);
       lastPrices.push(alert.last);
       allIVs.push(alert.IV);
@@ -709,8 +720,8 @@ class OpAlerts extends React.Component {
     filteredAlerts = filteredAlerts.sort((a, b) => {
       if (
         sortBy === "underlyingPrice" ||
-        sortBy === "PL" ||
-        sortBy === "percentPL"
+        sortBy === "maxPL" ||
+        sortBy === "maxPercentPL"
       ) {
         if (parseFloat(a[sortBy]) < parseFloat(b[sortBy]))
           return sortOrder ? 1 : -1;
@@ -724,16 +735,16 @@ class OpAlerts extends React.Component {
       }
     });
 
-    let totalPL = filteredAlerts
+    let totalMaxPL = filteredAlerts
       .reduce((a, b) => {
-        let PL = parseFloat(b.PL);
-        let sum = a + PL;
+        let maxPL = parseFloat(b.maxPL);
+        let sum = a + maxPL;
         return sum;
       }, 0)
       .toFixed(1);
-    let totalPercPL = filteredAlerts.reduce((a, b) => {
-      let percentPL = parseFloat(b.percentPL);
-      let sum = parseInt((a + percentPL).toFixed(2));
+    let totalMaxPercPL = filteredAlerts.reduce((a, b) => {
+      let maxPercentPL = parseFloat(b.maxPercentPL);
+      let sum = parseInt((a + maxPercentPL).toFixed(2));
 
       return sum;
     }, 0);
@@ -754,12 +765,24 @@ class OpAlerts extends React.Component {
     allIVs = Array.from(new Set(allIVs)).sort((a, b) => a - b);
     allTotalVols = Array.from(new Set(allTotalVols)).sort((a, b) => a - b);
     allUnderlying = Array.from(new Set(allUnderlying)).sort((a, b) => a - b);
-    allPL = Array.from(new Set(allPL)).sort((a, b) => b - a);
-    allPercentPL = Array.from(new Set(allPercentPL)).sort((a, b) => b - a);
+    // allPL = Array.from(new Set(allPL)).sort((a, b) => b - a);
+    // allPercentPL = Array.from(new Set(allPercentPL)).sort((a, b) => b - a);
 
-    allPL = allPL.filter((p, iP) => iP % Math.floor(allPL.length / 10) === 0);
-    allPercentPL = allPercentPL.filter(
-      (p, iP) => iP % Math.floor(allPercentPL.length / 10) === 0
+    allMaxPL = Array.from(new Set(allMaxPL)).sort((a, b) => b - a);
+    allMaxPercentPL = Array.from(new Set(allMaxPercentPL)).sort(
+      (a, b) => b - a
+    );
+
+    // allPL = allPL.filter((p, iP) => iP % Math.floor(allPL.length / 10) === 0);
+    // allPercentPL = allPercentPL.filter(
+    //   (p, iP) => iP % Math.floor(allPercentPL.length / 10) === 0
+    // );
+
+    allMaxPL = allMaxPL.filter(
+      (p, iP) => iP % Math.floor(allMaxPL.length / 10) === 0
+    );
+    allMaxPercentPL = allMaxPercentPL.filter(
+      (p, iP) => iP % Math.floor(allMaxPercentPL.length / 10) === 0
     );
     lastPrices = lastPrices.filter(
       (p, iP) => iP % Math.floor(lastPrices.length / 10) === 0
@@ -817,10 +840,16 @@ class OpAlerts extends React.Component {
             )}
 
             {/* Profit Select */}
-            {this.FilterSelect("Filter P&L", "PL", allPL)}
+            {/* {this.FilterSelect("Filter P&L", "PL", allPL)} */}
 
             {/* Profit Select */}
-            {this.FilterSelect("Filter %P&L", "percentPL", allPercentPL)}
+            {/* {this.FilterSelect("Filter %P&L", "percentPL", allPercentPL)} */}
+
+            {/* Max Profit Select */}
+            {this.FilterSelect("Filter Max P&L", "maxPL", allMaxPL)}
+
+            {/* Max Profit Select */}
+            {this.FilterSelect("Filter Max %P&L", "maxPercentPL", allMaxPercentPL)}
           </div>
         </div>
         <LineBreak />
@@ -842,7 +871,7 @@ class OpAlerts extends React.Component {
               <div className="sm-title">Total P&L</div>
             </div>
             <div className="col-sm-12 flex_center">
-              <p>${totalPL}</p>
+              <p>${totalMaxPL}</p>
             </div>
           </div>
         </div>
@@ -852,7 +881,7 @@ class OpAlerts extends React.Component {
               <div className="sm-title">Total %P&L</div>
             </div>
             <div className="col-sm-12 flex_center">
-              <p>%{totalPercPL}</p>
+              <p>%{totalMaxPercPL}</p>
             </div>
           </div>
         </div>

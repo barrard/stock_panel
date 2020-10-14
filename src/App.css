@@ -569,6 +569,7 @@ canvas {
 .optionFilterSelect{
   /* border-bottom: 1px solid red; */
     margin-bottom: 20px;
+    display: flex;
 }
 .darkDropDown{
   background: black;

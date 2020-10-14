@@ -40,7 +40,7 @@ export const drawAxisAnnotation = (
     //from the xy
     if (isOrdinal) {
       var eachBand = scale.step();
-      console.log(scale.bandwidth());
+      // console.log(scale.bandwidth());
       var index = Math.round(
         (xy - (scale.bandwidth() - scale.paddingOuter() * scale.step())) /
           eachBand
@@ -55,7 +55,6 @@ export const drawAxisAnnotation = (
   } else {
     //this will be a px value so must
     //invert to a price value
-    
     value = scale.invert(xy);
     if(!axisClass.includes('time')){
 
