@@ -80,7 +80,7 @@ class OpAlerts extends React.Component {
     });
     let firstOption = (
       <option
-      key={`Select ${label}`}
+        key={`Select ${label}`}
         // selected={true}
         // disabled={true}
         value={``}
@@ -589,66 +589,19 @@ class OpAlerts extends React.Component {
                             {/* <div className="col flex_center">
                                 putCall: {a.putCall}
                               </div> */}
-                            <div className="col flex_center">
-                              <div className="row flex_center">
-                                <div className="col-sm-12 flex_center">
-                                  <h5> IV:</h5>
-                                </div>
-                                <div className="col-sm-12 flex_center">
-                                  {a.IV}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="col flex_center">
-                              <div className="row flex_center">
-                                <div className="col-sm-12 flex_center">
-                                  <h5>Current:</h5>
-                                </div>
-                                <div className="col-sm-12 flex_center">
-                                  ${a.currentLast}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="col flex_center">
-                              <div className="row flex_center">
-                                <div className="col-sm-12 flex_center">
-                                  <h5> last:</h5>
-                                </div>
-                                <div className="col-sm-12 flex_center">
-                                  ${a.last}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="col flex_center">
-                              <div className="row flex_center">
-                                <div className="col-sm-12 flex_center">
-                                  <h5> underlyingPrice:</h5>
-                                </div>
-                                <div className="col-sm-12 flex_center">
-                                  ${a.underlyingPrice}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="col flex_center">
-                              <div className="row flex_center">
-                                <div className="col-sm-12 flex_center">
-                                  <h5> totalVolume:</h5>
-                                </div>
-                                <div className="col-sm-12 flex_center">
-                                  {a.totalVolume}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="col flex_center">
-                              <div className="row flex_center">
-                                <div className="col-sm-12 flex_center">
-                                  <h5> dateTime:</h5>
-                                </div>
-                                <div className="col-sm-12 flex_center">
-                                  {new Date(a.timestamp).toLocaleString()}
-                                </div>
-                              </div>
-                            </div>
+                            <AlertDetails
+                              title="Alert Date"
+                              col={12}
+                              value={new Date(a.timestamp).toLocaleString()}
+                            />
+                            <AlertDetails title="Strike" col={12} value={a.strike} />
+                            <AlertDetails title="Exp" col={12} value={a.exp} />
+                            <AlertDetails title="Alert Price" col={12} value={a.last} />
+                            <AlertDetails title="Max Profit" col={12} value={a.maxPL} />
+                            <AlertDetails title="Max Profit %" col={12} value={a.maxPercentPL} />
+              
+                   
+                         
                           </div>
                           {/* </div> */}
                         </>
@@ -848,7 +801,11 @@ class OpAlerts extends React.Component {
             {this.FilterSelect("Filter Max P&L", "maxPL", allMaxPL)}
 
             {/* Max Profit Select */}
-            {this.FilterSelect("Filter Max %P&L", "maxPercentPL", allMaxPercentPL)}
+            {this.FilterSelect(
+              "Filter Max %P&L",
+              "maxPercentPL",
+              allMaxPercentPL
+            )}
           </div>
         </div>
         <LineBreak />
@@ -903,3 +860,16 @@ const LineBreak = styled.div`
   border-top: 1px solid black;
   width: 100%;
 `;
+
+const AlertDetails = ({ col, title, value }) => {
+  return (
+    <div className="col flex_center">
+      <div className="row flex_center">
+        <div className={`col-sm-${col} flex_center`}>
+          <h5> {title}:</h5>
+        </div>
+        <div className={`col-sm-${col} flex_center`}>{value}</div>
+      </div>
+    </div>
+  );
+};

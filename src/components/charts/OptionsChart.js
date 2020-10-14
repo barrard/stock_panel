@@ -9,6 +9,8 @@ import { extent, max, min } from "d3-array";
 import { select, event, mouse } from "d3-selection";
 // import { drag } from "d3-drag";
 import { line } from "d3-shape";
+import { useSwipeable, Swipeable } from "react-swipeable";
+
 // import DrawLine from "./chartHelpers/ChartMarkers/Line.js";
 // import { entryArrow } from "./chartHelpers/ChartMarkers/TradeMarker.js";
 import {
@@ -53,11 +55,14 @@ class OptionsChart extends React.Component {
       yLeftAxis: {},
     };
     this.drawCurrentPrice = this.drawCurrentPrice.bind(this);
+    this.onSwiped = this.onSwiped.bind(this);
   }
 
   async componentDidMount() {
     console.log(this.props);
+    let drawData = this.props.data
     this.setupChart();
+    this.setState({drawData})
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -90,6 +95,63 @@ class OptionsChart extends React.Component {
     //     // data.symbol !===ppData.symbol &&
     //     // data.symbol !===ppData.symbol &&
     // )
+  }
+
+  onSwiped(swipeData) {
+    // console.log(swipeData)
+    let { width } = this.props;
+    let { height } = this.state;
+    let mr = margin.right;
+    let ml = margin.left;
+    let mb = margin.bottom;
+    let { initial, deltaY, deltaX, dir, event } = swipeData;
+    let { offsetX, offsetY } = event;
+    let [initX, initY] = initial;
+    console.log({ offsetY, dir, mb, height });
+    let leftSide = offsetX < ml;
+    let rightSide = offsetX > width - mr;
+    let bottomSide = offsetY > height - mb * 2;
+    debugger;
+    let scale, scaleName, scaler;
+    if (dir === "Down") scaler = 0.85;
+    if (dir === "Up") scaler = 1.15;
+    // if(dir === 'left')
+    if (leftSide) {
+      console.log("do the thing " + deltaY);
+      //get the left side scale
+      scaleName = "yLeftScale";
+    } else if (rightSide) {
+      //get the right side scale
+      scaleName = "yRightScale";
+    } else if (bottomSide) {
+      let drawData = this.state.drawData;
+      scaleName = "xBottomScale";
+      scale = this.state[scaleName];
+      let bandDomain = scale.domain();
+      let l = bandDomain.length;
+      l = Math.floor(l * 0.1);
+      bandDomain = bandDomain.slice(l);
+      drawData = drawData.slice(l)
+      scale.domain(bandDomain);
+      this.setState({
+        drawData,
+        [scaleName]: scale,
+      });
+      setTimeout(() => this.draw(), 0);
+
+      return;
+    }
+    if (!scaleName) return;
+    scale = this.state[scaleName];
+
+    let [min, max] = scale.domain();
+    //decrease max 10%?
+    max = max * scaler;
+    scale.domain([min, max]);
+    this.setState({
+      [scaleName]: scale,
+    });
+    setTimeout(() => this.draw(), 0);
   }
   appendAxisAnnotations(x, y, svg, toFixed) {
     // drawAxisAnnotation(
@@ -149,6 +211,8 @@ class OptionsChart extends React.Component {
     // timestamp = new Date(timestamp).toLocaleString();
     // let tt = this.state.xBottomScale(timestamp);
     // console.log(tt);
+    chartWindow.selectAll(".tradeEntryMarkers").remove();
+    chartWindow.selectAll(".tradeExitMarkers").remove();
     chartWindow
       .append("path")
       .attr("stroke", "black")
@@ -196,6 +260,7 @@ class OptionsChart extends React.Component {
   }
 
   drawLine(chartWindow, xName, yName, className, color, data) {
+    chartWindow.selectAll(`.${className}`).remove();
     let lineFunc = line()
       .x(
         (d) =>
@@ -205,11 +270,13 @@ class OptionsChart extends React.Component {
       .y((d) => this.state.yRightScale(d[yName]));
 
     let lastPriceLinePath = chartWindow.selectAll(`.${className}`).data([data]);
+
+    // chartWindow.selectAll(`.${className}`).remove()
     lastPriceLinePath
       .enter()
       .append("path")
       .merge(lastPriceLinePath)
-      .attr("class", `.${className}`)
+      .attr("class", `${className}`)
       .attr("stroke-width", 3)
       .attr("d", lineFunc)
       .attr("stroke", color)
@@ -341,6 +408,121 @@ class OptionsChart extends React.Component {
       );
   }
 
+  draw() {
+    let that = this;
+    let {
+      xBottomScale,
+      yLeftScale,
+      yRightScale,
+      xBottomAxis,
+      yRightAxis,
+      yLeftAxis,
+    } = this.state;
+    let drawData =  this.state.drawData;
+    let { width } = this.props;
+    let innerWidth = width - (margin.left + margin.right);
+    let innerHeight = height - (margin.top + margin.bottom);
+    if (!this.state.chartRef.current) return;
+    let svg = select(this.state.chartRef.current);
+    // svg.selectAll("*").remove();
+    // xBottomScale.range([0, innerWidth]);
+    // yRightScale.range([innerHeight, 0]);
+    // yLeftScale.range([innerHeight, 0]).nice();
+
+    //apply the scaled domains to the axis
+    svg.select(".timeAxis").call(xBottomAxis);
+    svg.select(".priceAxis").call(yRightAxis);
+    svg.select(".volAxis").call(yLeftAxis);
+    
+
+    let chartWindow = svg.select(".chartWindow");
+
+    //Draw total volume bars
+    //this draws both vol and open interest
+    this.drawVolBars(
+      chartWindow,
+      "timestamp",
+      "totalVolume",
+      "totalVolumeBars",
+      "goldenrod",
+      drawData
+    );
+
+    //Draw last price line
+    this.drawLine(
+      chartWindow,
+      "timestamp",
+      "last",
+      "lastPriceLine",
+      "white",
+      drawData
+    );
+    //Draw ask price line
+    this.drawLine(
+      chartWindow,
+      "timestamp",
+      "ask",
+      "askPriceLine",
+      "red",
+      drawData
+    );
+    //Draw bid price line
+    this.drawLine(
+      chartWindow,
+      "timestamp",
+      "bid",
+      "bidPriceLine",
+      "green",
+      drawData
+    );
+
+    //draw Alert Marker
+    let { data, alertDay, alerts } = this.props;
+    data.forEach((a) => {
+      a.dateTime = new Date(a.timestamp).toLocaleString();
+    });
+    let selectedAlert = alerts.filter(
+      (a) => new Date(a.timestamp).toLocaleString().split(",")[0] === alertDay
+    )[0];
+
+    let highPricePoint = data.filter(
+      (snap) =>
+        snap.last === selectedAlert.highPrice &&
+        snap.timestamp >= selectedAlert.timestamp
+    )[0];
+
+    this.drawSelectedAlert(chartWindow, selectedAlert, highPricePoint);
+    //  Adds an axis annotation to show the most recent value
+    drawAxisAnnotation(
+      "currentRightPriceTag",
+      this.state.yRightScale,
+      selectedAlert.currentLast,
+      svg,
+      "priceAxis"
+    );
+
+    //  Adds an axis annotation to show alert price
+    drawAxisAnnotation(
+      "lastRightPriceTag",
+      this.state.yRightScale,
+      selectedAlert.last,
+      svg,
+      "priceAxis"
+    );
+
+    //  Adds an axis annotation to show max price after alert
+    drawAxisAnnotation(
+      "lastMaxRightPriceTag",
+      this.state.yRightScale,
+      highPricePoint.last,
+      svg,
+      "priceAxis"
+    );
+
+    //draw dashed white line from last data to axis at the currentLast
+    this.drawCurrentPrice(selectedAlert, highPricePoint, drawData, chartWindow);
+  }
+
   //setup
   setupChart() {
     let that = this;
@@ -438,9 +620,9 @@ class OptionsChart extends React.Component {
         .call(yLeftAxis);
 
       //apply the scaled domains to the axis
-      svg.select(".timeAxis").call(this.state.xBottomScale);
-      svg.select(".priceAxis").call(this.state.yRightScale);
-      svg.select(".volAxis").call(this.state.yLeftScale);
+      svg.select(".timeAxis").call(xBottomScale);
+      svg.select(".priceAxis").call(yRightScale);
+      svg.select(".volAxis").call(yLeftScale);
 
       let chartWindow = svg
         // .append('rect').attr('width', this.state.innerWidth).attr('height', this.state.innerHeight)
@@ -456,62 +638,6 @@ class OptionsChart extends React.Component {
         x: "45%",
         y: margin.top + innerHeight / 2,
       });
-
-      //Draw total volume bars
-      //this draws both vol and open interest
-      this.drawVolBars(
-        chartWindow,
-        "timestamp",
-        "totalVolume",
-        "totalVolumeBars",
-        "goldenrod",
-        drawData
-      );
-
-      //Draw last price line
-      this.drawLine(
-        chartWindow,
-        "timestamp",
-        "last",
-        "lastPriceLine",
-        "white",
-        drawData
-      );
-      //Draw ask price line
-      this.drawLine(
-        chartWindow,
-        "timestamp",
-        "ask",
-        "askPriceLine",
-        "red",
-        drawData
-      );
-      //Draw bid price line
-      this.drawLine(
-        chartWindow,
-        "timestamp",
-        "bid",
-        "bidPriceLine",
-        "green",
-        drawData
-      );
-
-      //draw Alert Marker
-      let { data, alertDay, alerts } = this.props;
-      data.forEach((a) => {
-        a.dateTime = new Date(a.timestamp).toLocaleString();
-      });
-      let selectedAlert = alerts.filter(
-        (a) => new Date(a.timestamp).toLocaleString().split(",")[0] === alertDay
-      )[0];
-
-      let highPricePoint = data.filter(
-        (snap) =>
-          snap.last === selectedAlert.highPrice &&
-          snap.timestamp >= selectedAlert.timestamp
-      )[0];
-
-      this.drawSelectedAlert(chartWindow, selectedAlert, highPricePoint);
 
       /* CrossHair */
       var crosshair = DrawCrossHair(chartWindow);
@@ -533,40 +659,7 @@ class OptionsChart extends React.Component {
           return mousemove(that, this);
         });
 
-        //  Adds an axis annotation to show the most recent value
-      drawAxisAnnotation(
-        "currentRightPriceTag",
-        this.state.yRightScale,
-        selectedAlert.currentLast,
-        svg,
-        "priceAxis"
-      );
-
-      //  Adds an axis annotation to show alert price
-      drawAxisAnnotation(
-        "lastRightPriceTag",
-        this.state.yRightScale,
-        selectedAlert.last,
-        svg,
-        "priceAxis"
-      );
-
-            //  Adds an axis annotation to show max price after alert
-            drawAxisAnnotation(
-              "lastMaxRightPriceTag",
-              this.state.yRightScale,
-              highPricePoint.last,
-              svg,
-              "priceAxis"
-            );
-
-      //draw dashed white line from last data to axis at the currentLast
-      this.drawCurrentPrice(
-        selectedAlert,
-        highPricePoint,
-        drawData,
-        chartWindow
-      );
+      this.draw();
 
       function mousemove(otherThat, that) {
         let _mouse = mouse(that);
@@ -615,11 +708,11 @@ class OptionsChart extends React.Component {
       drawData.slice(-1)[0].timestamp
     ).toLocaleString();
     let entryDateTime = new Date(timestamp).toLocaleString();
+    chartWindow.selectAll(`.${"PL_Line"}`).remove();
 
-    // debugger
     //This Draws the lastHorizonalCurrent
-    drawLastHorizontalCurrent();
-    drawEntryToLastCurrent();
+    // drawLastHorizontalCurrent();
+    // drawEntryToLastCurrent();
     drawEntryPrice();
     drawEntryToMaxProfit();
     drawLastHorizontalMaxProfit();
@@ -632,7 +725,7 @@ class OptionsChart extends React.Component {
         xBottomScale(currentDateTime) +
         xBottomScale.bandwidth() +
         xBottomScale.align() * xBottomScale.bandwidth();
-      drawCurrentLine(x1, x2, y1, y2);
+      drawCurrentLine(x1, x2, y1, y2, "yellow", chartWindow);
     }
     function drawLastHorizontalMaxProfit() {
       console.log(xBottomScale.align());
@@ -645,7 +738,7 @@ class OptionsChart extends React.Component {
         xBottomScale(currentDateTime) +
         xBottomScale.bandwidth() +
         xBottomScale.align() * xBottomScale.bandwidth();
-      drawCurrentLine(x1, x2, y1, y2, "green");
+      drawCurrentLine(x1, x2, y1, y2, "green", chartWindow);
     }
     function drawLastHorizontalCurrent() {
       let y1;
@@ -655,9 +748,8 @@ class OptionsChart extends React.Component {
         xBottomScale(currentDateTime) +
         xBottomScale.bandwidth() +
         xBottomScale.align() * xBottomScale.bandwidth();
-      drawCurrentLine(x1, x2, y1, y2);
+      drawCurrentLine(x1, x2, y1, y2, "yellow", chartWindow);
     }
-
     function drawEntryToLastCurrent() {
       let y2 = yRightScale(last);
       let y1 = yRightScale(currentLast);
@@ -666,7 +758,7 @@ class OptionsChart extends React.Component {
       let x2 = xBottomScale(entryDateTime) + xBottomScale.bandwidth() / 2;
       // xBottomScale.align() * xBottomScale.bandwidth();
 
-      drawCurrentLine(x1, x2, y1, y2);
+      drawCurrentLine(x1, x2, y1, y2, "yellow", chartWindow);
     }
     function drawEntryToMaxProfit() {
       let y2 = yRightScale(last);
@@ -676,9 +768,9 @@ class OptionsChart extends React.Component {
       let x2 = xBottomScale(entryDateTime) + xBottomScale.bandwidth() / 2;
       // xBottomScale.align() * xBottomScale.bandwidth();
 
-      drawCurrentLine(x1, x2, y1, y2, "green");
+      drawCurrentLine(x1, x2, y1, y2, "green", chartWindow);
     }
-    function drawCurrentLine(x1, x2, y1, y2, color = "yellow") {
+    function drawCurrentLine(x1, x2, y1, y2, color = "yellow", chartWindow) {
       chartWindow
         .append("line")
         .attr("y1", y1)
@@ -718,15 +810,16 @@ theoreticalVolatility: 29
 totalVolume: 195 */
 
   render() {
-    console.log(this.props.data);
     return (
-      <svg
-        onClick={(e) => e.stopPropagation()}
-        ref={this.state.chartRef}
-        width={this.props.width}
-        height={height}
-        className="svgChart"
-      ></svg>
+      <Swipeable onSwiped={this.onSwiped} trackMouse={true}>
+        <svg
+          onClick={(e) => e.stopPropagation()}
+          ref={this.state.chartRef}
+          width={this.props.width}
+          height={height}
+          className="svgChart"
+        ></svg>
+      </Swipeable>
     );
   }
 }
