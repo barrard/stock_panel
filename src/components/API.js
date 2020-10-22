@@ -472,7 +472,6 @@ async function fetchCommodityData({ timeframe, symbol, from, to }) {
   return data;
 }
 
-
 async function fetchOpAlerts() {
   let data = await fetch(`${API_SERVER}/options/alerts`);
   data = await data.json();

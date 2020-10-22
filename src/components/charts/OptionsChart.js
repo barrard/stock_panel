@@ -10,7 +10,7 @@ import { select, event, mouse } from "d3-selection";
 // import { drag } from "d3-drag";
 import { line } from "d3-shape";
 import { useSwipeable, Swipeable } from "react-swipeable";
-
+import API from '../API.js'
 // import DrawLine from "./chartHelpers/ChartMarkers/Line.js";
 // import { entryArrow } from "./chartHelpers/ChartMarkers/TradeMarker.js";
 import {
@@ -97,21 +97,20 @@ class OptionsChart extends React.Component {
     // )
   }
 
-  onSwiped(swipeData) {
-    // console.log(swipeData)
+  async onSwiped(swipeData) {
+
     let { width } = this.props;
     let { height } = this.state;
     let mr = margin.right;
     let ml = margin.left;
     let mb = margin.bottom;
     let { initial, deltaY, deltaX, dir, event } = swipeData;
+    let isTouch = event.touches
     let { offsetX, offsetY } = event;
-    let [initX, initY] = initial;
     console.log({ offsetY, dir, mb, height });
     let leftSide = offsetX < ml;
     let rightSide = offsetX > width - mr;
     let bottomSide = offsetY > height - mb * 2;
-    debugger;
     let scale, scaleName, scaler;
     if (dir === "Down") scaler = 0.85;
     if (dir === "Up") scaler = 1.15;
@@ -120,11 +119,12 @@ class OptionsChart extends React.Component {
       console.log("do the thing " + deltaY);
       //get the left side scale
       scaleName = "yLeftScale";
-    } else if (rightSide) {
+    } else if (rightSide || (isTouch&&(dir === "Down"||dir === "Up"))) {
       //get the right side scale
       scaleName = "yRightScale";
-    } else if (bottomSide) {
+    } else if (bottomSide || (isTouch&&(dir==='Left'))) {
       let drawData = this.state.drawData;
+      debugger
       scaleName = "xBottomScale";
       scale = this.state[scaleName];
       let bandDomain = scale.domain();
@@ -212,22 +212,22 @@ class OptionsChart extends React.Component {
     // let tt = this.state.xBottomScale(timestamp);
     // console.log(tt);
     chartWindow.selectAll(".tradeEntryMarkers").remove();
-    chartWindow.selectAll(".tradeExitMarkers").remove();
     chartWindow
-      .append("path")
-      .attr("stroke", "black")
-      .attr("transform", () => {
-        // let { entryTime, entryPrice } = d;
-        let x = xScale(firstAlert.localDateTime);
-        let y = yScale(firstAlert.last);
-        return `rotate(${180}, ${x}, ${y})`;
-      })
-      .attr("class", `tradeMarkers tradeEntryMarkers`)
-      .style("opacity", 0.9)
-      .attr("d", enterPath)
-
-      .attr("fill", "green");
-
+    .append("path")
+    .attr("stroke", "black")
+    .attr("transform", () => {
+      // let { entryTime, entryPrice } = d;
+      let x = xScale(firstAlert.localDateTime);
+      let y = yScale(firstAlert.last);
+      return `rotate(${180}, ${x}, ${y})`;
+    })
+    .attr("class", `tradeMarkers tradeEntryMarkers`)
+    .style("opacity", 0.9)
+    .attr("d", enterPath)
+    
+    .attr("fill", "green");
+    
+    chartWindow.selectAll(".tradeExitMarkers").remove();
     chartWindow
       .append("path")
       .attr("stroke", "black")
@@ -448,15 +448,15 @@ class OptionsChart extends React.Component {
       drawData
     );
 
-    //Draw last price line
-    this.drawLine(
-      chartWindow,
-      "timestamp",
-      "last",
-      "lastPriceLine",
-      "white",
-      drawData
-    );
+    //Draw thor theoreticalOptionValue line
+    // this.drawLine(
+    //   chartWindow,
+    //   "timestamp",
+    //   "theoreticalOptionValue",
+    //   "theoreticalOptionValueLine",
+    //   "purple",
+    //   drawData
+    // );
     //Draw ask price line
     this.drawLine(
       chartWindow,
@@ -467,12 +467,22 @@ class OptionsChart extends React.Component {
       drawData
     );
     //Draw bid price line
+    debugger
     this.drawLine(
       chartWindow,
       "timestamp",
       "bid",
       "bidPriceLine",
       "green",
+      drawData
+    );
+
+    this.drawLine(
+      chartWindow,
+      "timestamp",
+      "last",
+      "lastPriceLine",
+      "white",
       drawData
     );
 

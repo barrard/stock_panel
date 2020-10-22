@@ -153,8 +153,7 @@ class OpAlerts extends React.Component {
         {/* <div className='col-sm-6 flex_center'> */}
         <select
           className="darkDropDown"
-          value={this.state[`filter_${name}`]}
-          defaultValue={`Select ${name}`}
+          defaultValue={this.state[`filter_${name}`]}
           onChange={(e) => {
             this.setState({
               [`filter_${name}`]: e.target.value,
@@ -174,10 +173,9 @@ class OpAlerts extends React.Component {
   showFilters() {
     return (
       <div className="full-width filterHover dynamicText">
-        <div className="row flex_center">
           {this.state.filterNames.map((f) => {
             return (
-              <>
+          <div key={f} className="row flex_center">
                 {this.state[`filter_${f}`] && (
                   <div key={f} className="col flex_center">
                     <div className="row flex_center">
@@ -199,7 +197,7 @@ class OpAlerts extends React.Component {
                             </div>
                           )}
                         {/* EQUAL TO LABEL */}
-                        {this.state[`filter_${f}`] !== "" && (
+                        {this.state[`filter_${f}`] !== "" && typeof this.state[`lessThan_${f}`] === undefined&&(
                           <div>
                             {/* <span className="yellow">Equal</span> Than{" "} */}
                             {this.state[`filter_${f}`]}
@@ -209,10 +207,9 @@ class OpAlerts extends React.Component {
                     </div>
                   </div>
                 )}
-              </>
+        </div>
             );
           })}
-        </div>
       </div>
     );
   }
@@ -477,7 +474,7 @@ class OpAlerts extends React.Component {
 
   makeTable(alerts) {
     let header = (
-      <div className="col-sm-12 flex_center">
+      <div key={'header'} className="col-sm-12 flex_center">
         <div className="full-width">
           <div className="row flex_center">
             <div className="col flex_center sm-title p-0">#</div>
@@ -548,7 +545,7 @@ class OpAlerts extends React.Component {
         selectedAlertDay === alertDate &&
         selectedPutCall === a.putCall;
       return (
-        <div className="col-sm-12 flex_center">
+        <div key={iA} className="col-sm-12 flex_center">
           <div className="full-width">
             <div
               onClick={() =>
@@ -585,7 +582,7 @@ class OpAlerts extends React.Component {
                       return (
                         <>
                           {/* <div className="full-width"> */}
-                          <div className="row flex_center opAlertData dynamicText">
+                          <div key={iA} className="row flex_center opAlertData dynamicText">
                             {/* <div className="col flex_center">
                                 putCall: {a.putCall}
                               </div> */}

@@ -286,33 +286,26 @@ class Main_Nav extends React.Component {
   render() {
     let isLoggedIn = this.props.user.isLoggedIn;
     let { pathname } = this.props.location;
-
     return (
       <nav className="navbar navbar-dark bg-dark relative ">
-        <Link activeclassname="active" className="navbar-brand " to="/">
+        <Link title="Home" activeclassname="active" className="navbar-brand " to="/">
           Home
         </Link>
 
-        {/* <button
-          className="navbar-toggler"
-          type="button"
-          data-toggle="collapse"
-          data-target="#navbarSupportedContent"
-          aria-controls="navbarSupportedContent"
-          aria-expanded="false"
-          aria-label="Toggle navigation"
-        >
-          <span className="navbar-toggler-icon" />
-        </button> */}
+        <Link title='Option Alerts' activeclassname="active" className="navbar-brand " to="/op-alerts">
+          Op Alerts
+        </Link>
+
+
 
         {/* <div className="collapse navbar-collapse" id="navbarSupportedContent"> */}
         <ul className="nav-bar-links">
           {!isLoggedIn && <Register_Login_Links pathname={pathname} />}
           {isLoggedIn && (
-            <Logout_Link pathname={pathname} handleLogout={this.handleLogout} />
+            <Logout_Link username={this.props.user.user.primary_email.split('@')[0]} pathname={pathname} handleLogout={this.handleLogout} />
           )}
 
-          {isLoggedIn && <TradesLink />}
+          {/* {isLoggedIn && <TradesLink />} */}
 
         </ul>
         <Navbar_Search
@@ -378,10 +371,10 @@ const TradesLink = ({ pathname }) => (
 );
 
 
-const Logout_Link = ({ pathname, handleLogout }) => (
+const Logout_Link = ({ username, pathname, handleLogout }) => (
   <>
     <Navbar_Links
-      name="Profile"
+      name={`${username} Profile`}
       path={"/account-profile"}
       pathname={pathname}
     />
