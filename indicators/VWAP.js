@@ -72,6 +72,8 @@ function addVWAP(data) {
 }
 
 function createAllVWAP_data(data) {
+  let {timeframe} = data[0]
+  if(timeframe != '1Min')return data
   let cumulativeVol = 0;
   let cumulativeAvgPriceVol = 0;
   data.forEach((d, iD) => {
@@ -87,9 +89,7 @@ function createAllVWAP_data(data) {
     }
     let VWAP = cumulativeAvgPriceVol / cumulativeVol;
     d.VWAP = { VWAP, cumulativeAvgPriceVol, cumulativeVol };
-    if(iD>180){
 
-    }
   });
   return data;
 }

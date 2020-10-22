@@ -2,12 +2,12 @@ const { sum, mean, median, deviation, max, min, extent } = require("d3-array");
 const { makeEMA, getClose } = require("./indicatorHelpers/MovingAverage.js");
 const { maxDiffFromPrice } = require("./indicatorHelpers/dataParser.js");
 
-const {TICKS} = require("./indicatorHelpers/utils.js");
-const TICK_SIZE = TICKS()
+const { TICKS } = require("./indicatorHelpers/utils.js");
+const TICK_SIZE = TICKS();
 const indicatorName = "ema";
 
-module.exports =  {
-    createAllEMAData,
+module.exports = {
+  createAllEMAData,
   EMA_Analysis,
   addEMAVals,
   addNewEMAVal,
@@ -16,44 +16,49 @@ module.exports =  {
   emaPriceCheck,
   emaProximityCheck,
   evalEMA,
-  emaPullBackCheck
+  emaPullBackCheck,
 };
 
 const emaValues = [20, 50, 200];
 
-
-function emaPullBackCheck(allData){
-  let data = allData.slice(-1)[0]
-  let {ema} = data
+function emaPullBackCheck(allData) {
+  let data = allData.slice(-1)[0];
+  let { ema } = data;
 
   if (!ema) return;
   let trend = getEMA_Trend(data);
   let proximityCheck = emaProximityCheck(data);
-  if(trend === 'bullishPullback'){
-    if(proximityCheck===20){
-      console.log('near the 20?')
-      return('Buy')
-
-    }else if(proximityCheck===50){
-      return 'Buy'
-    }else if(proximityCheck===200){
-      return 'Buy'
-    } 
-
-  }else if(trend ==='bearishPullback'){
-    if(proximityCheck===20){
-      console.log('near the 20?')
-      return 'Sell'
-    }else if(proximityCheck===50){
-      return 'Sell'
-    }else if(proximityCheck===200){
-      return 'Sell'
-    } 
+  if (trend === "bullishPullback") {
+    if (proximityCheck === 20) {
+      console.log("near the 20?");
+      return "Buy";
+    } else if (proximityCheck === 50) {
+      return "Buy";
+    } else if (proximityCheck === 200) {
+      return "Buy";
+    }
+  } else if (trend === "bearishPullback") {
+    if (proximityCheck === 20) {
+      console.log("near the 20?");
+      return "Sell";
+    } else if (proximityCheck === 50) {
+      return "Sell";
+    } else if (proximityCheck === 200) {
+      return "Sell";
+    }
+  }
+  if (proximityCheck === 200 || proximityCheck === 50) {
+    if (trend === "bullishPullback" || trend === "uptrend") {
+      return "Buy";
+    }
+    if (trend === "bullishPullback" || trend === "downtrend") {
+      return "Sell";
+    }
   }
 }
 function evalEMA(allData) {
-  let data = allData.slice(-1)[0]
-  let {ema} = data
+  let data = allData.slice(-1)[0];
+  let { ema } = data;
 
   if (!ema) return;
 
@@ -109,32 +114,17 @@ function evalEMA(allData) {
   }
 }
 
-
 function addNewEMAVal(data) {
-  //if data is longer than 1, and previous data holds ema then simple
-
-  //adding only the latest EMA
-  let emaData = {};
   data[data.length - 1].ema = {};
-
   emaValues.forEach((emaVal) => {
-    if (emaVal > data.length) return (emaData[emaVal] = []);
-    if (emaVal == data.length) {
-      let window = data;
-      //just get SMA
-      let MA = mean(window, getClose);
-      emaCalc = parseFloat(MA.toFixed(3));
-      data[data.length - 1].ema[emaVal] = MA;
-    } else {
-      const multiplier = 2 / (emaVal + 1);
-      // use the previous ema value
-      let currentDay = data[data.length - 1];
-      let close = currentDay.close;
-      let prevDay = data[data.length - 2];
-      let prevEMA = prevDay.ema[emaVal];
-      let emaCalc = (close - prevEMA) * multiplier + prevEMA;
-      data[data.length - 1].ema[emaVal] = emaCalc;
-    }
+    const multiplier = 2 / (emaVal + 1);
+    // use the previous ema value
+    let currentDay = data[data.length - 1];
+    let close = currentDay.close;
+    let prevDay = data[data.length - 2];
+    let prevEMA = prevDay.ema[emaVal];
+    let emaCalc = (close - prevEMA) * multiplier + prevEMA;
+    data[data.length - 1].ema[emaVal] = emaCalc;
   });
   return data;
 }
@@ -208,21 +198,21 @@ function considerCurrentEMA(data) {
   return { trend, percDiff, biggerTrend };
 }
 
-function emaSpread(data){
-  let {ema, symbol,timeframe} = data
+function emaSpread(data) {
+  let { ema, symbol, timeframe } = data;
 
-  let vals = []
+  let vals = [];
 
-  let spread = 0
-  Object.keys(ema).forEach(emaVal=>{
-    vals.push( +emaVal)
-  })
-  vals.forEach(v1=>{
-    vals.forEach(v2=> spread+= Math.abs(ema[v1]-ema[v2]))
-  })
+  let spread = 0;
+  Object.keys(ema).forEach((emaVal) => {
+    vals.push(+emaVal);
+  });
+  vals.forEach((v1) => {
+    vals.forEach((v2) => (spread += Math.abs(ema[v1] - ema[v2])));
+  });
   // console.log(`-----EMA spread for ${symbol} ${timeframe} ${spread}`)
-  spread = spread/TICK_SIZE[symbol].toFixed(2)
-  return spread
+  spread = spread / TICK_SIZE[symbol].toFixed(2);
+  return spread;
 }
 
 function getEMA_Trend({ ema, close }) {
@@ -245,24 +235,23 @@ function getEMA_Trend({ ema, close }) {
   }, null);
   //if not all ema in uptrend order, just check the 50/200
   //maybe a pullback is causing this
-  let bullishPullback = false
-  let bearishPullback = false
-  if(!emaOrderUpTrend){
-    if(ema['50'] > ema['200']) bullishPullback = true
+  let bullishPullback = false;
+  let bearishPullback = false;
+  if (!emaOrderUpTrend) {
+    if (ema["50"] > ema["200"]) bullishPullback = true;
   }
-  if(!emaOrderDownTrend){
-    if(ema['50'] < ema['200']) bearishPullback = true
+  if (!emaOrderDownTrend) {
+    if (ema["50"] < ema["200"]) bearishPullback = true;
   }
 
-  
   let biggerTrend = emaOrderUpTrend
     ? "uptrend"
     : emaOrderDownTrend
     ? "downtrend"
     : bullishPullback
-    ? 'bullishPullback'
+    ? "bullishPullback"
     : bearishPullback
-    ? 'bearishPullback'
+    ? "bearishPullback"
     : "range";
 
   return biggerTrend;
@@ -287,13 +276,13 @@ function checkPercentDiff(ema, close) {
 }
 
 function emaProximityCheck(data) {
-  let { ema, close, symbol, timeframe } = data
+  let { ema, close, symbol, timeframe } = data;
   const PROX_LIMIT = 0.005;
   let ema20 = ema["20"];
   let ema50 = ema["50"];
   let ema200 = ema["200"];
   let tickSize = TICK_SIZE[symbol];
-  let limit = 4
+  let limit = 4;
   let prox20 = checkProx(close, ema20, tickSize, limit);
   let prox50 = checkProx(close, ema50, tickSize, limit);
   let prox200 = checkProx(close, ema200, tickSize, limit);
