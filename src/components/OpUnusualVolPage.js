@@ -658,7 +658,7 @@ class OpAlerts extends React.Component {
       return 0;
     });
     expDates = makeSetSortAndFilter(expDates, true, true);
-    allDateTimes = makeSetSortAndFilter(allDateTimes, true);
+    allDateTimes = makeSetSortAndFilter(allDateTimes, true, true);
 
     strikePrices = makeSetSortAndFilter(strikePrices);
     lastPrices = makeSetSortAndFilter(lastPrices);
