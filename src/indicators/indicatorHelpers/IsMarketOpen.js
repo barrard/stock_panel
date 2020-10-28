@@ -26,7 +26,7 @@ function futuresAreTrading(date) {
   let { day, hour, minute, second } = eastCoastTime(date);
 
   //any day from 4:15-4:29
-  if(hour === 14){
+  if(hour === 16){
     if(minute >= 15 && minute <=29)return false
   }
   if (hour === 17) {
