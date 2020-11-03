@@ -71,7 +71,7 @@ function eastCoastTime(date) {
   date = date || new Date().getTime();
   utc = new Date(date).getTime() + new Date().getTimezoneOffset() * 60000;
 
-  let eastCoastTime = new Date(utc + 3600000 * -4); //get East coast time
+  let eastCoastTime = new Date(utc + 3600000 * -5); //get East coast time
   let day = new Date(eastCoastTime).getDay();
   let hour = new Date(eastCoastTime).getHours();
   let minute = new Date(eastCoastTime).getMinutes();
