@@ -223,8 +223,8 @@ function getTimestampForTodaysOpen() {
 }
 function isOptionsTime(){
   let date =  new Date()
-  // let futsOpen = futuresAreTrading(date);
-  // if (!futsOpen) return false;
+  let futsOpen = futuresAreTrading(date);
+  if (!futsOpen) return false;
   let { day, hour, minute } = eastCoastTime(date);
   // if(hour <= 18) return false
 
