@@ -229,7 +229,7 @@ function isOptionsTime(){
   // if(hour <= 18) return false
 
   let startHour = 9 //9:00am
-  let startMin = 30 //00:30
+  let startMin = 00 //00:30
   let endHour = 16 //4:00pm
   let endMin = 30 // 00:30
   if (hour <= endHour && hour >= startHour) {
@@ -251,7 +251,17 @@ function isOptionsTime(){
   }
 }
 
+function getExpStr(date){
+  let today = date || new Date().getTime();
+  let year = new Date(today).getFullYear();
+  let month = new Date(today).getMonth() + 1;
+  let day = new Date(today).getDate();
+  return `${year}-${month}-${day}`
+}
+
+
 export {
+  getExpStr,
   isOptionsTime,
   getTimestampForTodaysOpen,
   getTimestampForPreviousSession,

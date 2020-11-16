@@ -530,48 +530,7 @@ class OpAlerts extends React.Component {
                     />
                   }
                   {selectedAlerts &&
-                    selectedAlerts.map((a, iA) => {
-                      return (
-                        <>
-                          {/* <div className="full-width"> */}
-                          <div
-                            key={iA}
-                            className="row flex_center opAlertData dynamicText"
-                          >
-                            {/* <div className="col flex_center">
-                                putCall: {a.putCall}
-                              </div> */}
-                            <AlertDetails
-                              title="Alert Date"
-                              col={12}
-                              value={new Date(a.timestamp).toLocaleString()}
-                            />
-                            <AlertDetails
-                              title="Strike"
-                              col={12}
-                              value={a.strike}
-                            />
-                            <AlertDetails title="Exp" col={12} value={a.exp} />
-                            <AlertDetails
-                              title="Alert Price"
-                              col={12}
-                              value={a.last}
-                            />
-                            <AlertDetails
-                              title="Max Profit"
-                              col={12}
-                              value={a.maxPL}
-                            />
-                            <AlertDetails
-                              title="Max Profit %"
-                              col={12}
-                              value={a.maxPercentPL}
-                            />
-                          </div>
-                          {/* </div> */}
-                        </>
-                      );
-                    })}
+                    selectedAlerts.map(this.ShowAllAlerts)}
                 </div>
               )}
             </div>
@@ -581,6 +540,49 @@ class OpAlerts extends React.Component {
     });
 
     return [header, ...rows];
+  }
+
+  ShowAllAlerts = (a, iA) => {
+    return (
+      <>
+        {/* <div className="full-width"> */}
+        <div
+          key={iA}
+          className="row flex_center opAlertData dynamicText"
+        >
+          {/* <div className="col flex_center">
+              putCall: {a.putCall}
+            </div> */}
+          <AlertDetails
+            title="Alert Date"
+            col={12}
+            value={new Date(a.timestamp).toLocaleString()}
+          />
+          <AlertDetails
+            title="Strike"
+            col={12}
+            value={a.strike}
+          />
+          <AlertDetails title="Exp" col={12} value={a.exp} />
+          <AlertDetails
+            title="Alert Price"
+            col={12}
+            value={a.last}
+          />
+          <AlertDetails
+            title="Max Profit"
+            col={12}
+            value={a.maxPL}
+          />
+          <AlertDetails
+            title="Max Profit %"
+            col={12}
+            value={a.maxPercentPL}
+          />
+        </div>
+        {/* </div> */}
+      </>
+    );
   }
 
   render() {
@@ -709,7 +711,7 @@ class OpAlerts extends React.Component {
             {/* Last Select */}
             {this.FilterSelect(
               "Underlying Prices",
-              "underlying",
+              "underlyingPrice",
               allUnderlying
             )}
 
