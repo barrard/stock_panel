@@ -8,7 +8,7 @@ let {
 } = require("./indicatorHelpers/utils.js");
 
 module.exports = {
-  makeFibonacciData
+  makeFibonacciData, determineSupportsAndResistances, addFibsToSwings
 }
 
  function makeFibonacciData(data) {

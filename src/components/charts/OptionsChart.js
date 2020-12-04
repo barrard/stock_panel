@@ -711,6 +711,7 @@ class OptionsChart extends React.Component {
   }
 
   drawCurrentPrice(selectedAlert, highPricePoint, drawData, chartWindow) {
+    debugger
     let { xBottomScale, yRightScale } = this.state;
     let highPriceTime = new Date(highPricePoint.timestamp).toLocaleString();
     let { currentLast, last, timestamp, highPrice } = selectedAlert;

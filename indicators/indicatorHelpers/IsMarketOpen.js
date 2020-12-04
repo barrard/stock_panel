@@ -26,8 +26,8 @@ function futuresAreTrading(date) {
   let { day, hour, minute, second } = eastCoastTime(date);
 
   //any day from 4:15-4:29
-  if(hour === 16){
-    if(minute >= 15 && minute <=29)return false
+  if (hour === 16) {
+    if (minute >= 15 && minute <= 29) return false;
   }
   if (hour === 17) {
     return false;
@@ -68,7 +68,7 @@ function stocksAreTrading(date) {
 
 function eastCoastTime(date) {
   let utc;
-  date = date || new Date().getTime()
+  date = date || new Date().getTime();
   utc = new Date(date).getTime() + new Date().getTimezoneOffset() * 60000;
 
   let eastCoastTime = new Date(utc + 3600000 * -5); //get East coast time
@@ -223,21 +223,21 @@ function getTimestampForTodaysOpen() {
   return tenPM_UTC;
 }
 
-function isOptionsTime(){
-  let date =  new Date()
+function isOptionsTime() {
+  let date = new Date();
   let futsOpen = futuresAreTrading(date);
   if (!futsOpen) return false;
   let { day, hour, minute } = eastCoastTime(date);
   // if(hour <= 18) return false
-//start half hour before market open
-// and run half hour after
-  let startHour = 9 //9:00am
-  let startMin = 00 //00:00
-  let endHour = 16 //4:00pm
-  let endMin = 30 // 00:30
+  //start half hour before market open
+  // and run half hour after
+  let startHour = 9; //9:00am
+  let startMin = 00; //00:00
+  let endHour = 16; //4:00pm
+  let endMin = 30; // 00:30
   if (hour <= endHour && hour >= startHour) {
-    if(hour === endHour && minute > endMin){
-      return false
+    if (hour === endHour && minute > endMin) {
+      return false;
     }
     if (hour === startHour) {
       if (minute >= startMin) {
@@ -254,15 +254,20 @@ function isOptionsTime(){
   }
 }
 
-function getExpStr(date){
+function getExpStr(date) {
   let today = date || new Date().getTime();
   let year = new Date(today).getFullYear();
   let month = new Date(today).getMonth() + 1;
   let day = new Date(today).getDate();
-  return `${year}-${month}-${day}`
+  
+  if (month.toString().length === 1) {
+    month = `0${month}`;
+  }
+  if (day.toString().length === 1) {
+    day = `0${day}`;
+  }
+  return `${year}-${month}-${day}`;
 }
-
-
 
 module.exports = {
   isOptionsTime,

@@ -475,6 +475,7 @@ async function fetchCommodityData({ timeframe, symbol, from, to }) {
 async function fetchOpAlerts() {
   let data = await fetch(`${API_SERVER}/options/alerts`);
   data = await data.json();
+  console.log(data)
   if (data.err) throw data.err;
   let processedAlerts = [];
 
