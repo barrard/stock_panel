@@ -49,35 +49,35 @@ class Account_Profile extends React.Component {
             <div className="white">Temp indicator spot {new Date().toLocaleString()}</div>
             <ul className="white">
               <li>
-                COMPX {priceLevelIndicator.COMPX.last} %
+                COMPX {priceLevelIndicator.COMPX.lastPrice} %
                 {priceLevelIndicator.COMPX.netPercentChangeInDouble}
               </li>
               <li>
-                DJI {priceLevelIndicator.DJI.last} %
+                DJI {priceLevelIndicator.DJI.lastPrice} %
                 {priceLevelIndicator.DJI.netPercentChangeInDouble}
               </li>
               <li>
-                SPX {priceLevelIndicator.SPX.last} %
+                SPX {priceLevelIndicator.SPX.lastPrice} %
                 {priceLevelIndicator.SPX.netPercentChangeInDouble}
               </li>
               <li>
-                VIX {priceLevelIndicator.VIX.last} %
+                VIX {priceLevelIndicator.VIX.lastPrice} %
                 {priceLevelIndicator.VIX.netPercentChangeInDouble}
               </li>
               <li>
-                UVOL {priceLevelIndicator.UVOL.last} %
+                UVOL {priceLevelIndicator.UVOL.lastPrice} %
                 {priceLevelIndicator.UVOL.netPercentChangeInDouble}
               </li>
               <li>
-                DVOL {priceLevelIndicator.DVOL.last} %
+                DVOL {priceLevelIndicator.DVOL.lastPrice} %
                 {priceLevelIndicator.DVOL.netPercentChangeInDouble}
               </li>
               <li>
-                TICK {priceLevelIndicator.TICK.last} %
+                TICK {priceLevelIndicator.TICK.lastPrice} %
                 {priceLevelIndicator.TICK.netPercentChangeInDouble}
               </li>
               <li>
-                TRIN {priceLevelIndicator.TRIN.last} %
+                TRIN {priceLevelIndicator.TRIN.lastPrice} %
                 {priceLevelIndicator.TRIN.netPercentChangeInDouble}
               </li>
               <li>dailyCount {priceLevelIndicator.dailyCount}</li>
