@@ -275,8 +275,15 @@ class CandleStickChart extends React.Component {
       this.props.dispatch(updateStockData(stockQuotes, "tick"));
     });
     Socket.on("current_minute_data", (newTickData) => {
+      console.log("current_minute_data");
+
       this.props.dispatch(updateCommodityData(newTickData, "tick"));
     });
+  }
+  componentWillUnmount(){
+    Socket.off('current_minute_data')
+    Socket.off('stock_quotes')
+  
   }
   componentDidUpdate(prevProps, prevState) {
     if (!this.props.stock_data.has_symbols_data) {
@@ -1343,7 +1350,7 @@ class CandleStickChart extends React.Component {
     //   bins: volProfileBins,
     // });
     this.setState({ volProfile });
-    this.draw();
+    // this.draw();//this is causing a crash
   }
 
   regressionNearbyPoints(data, chartWindow, { priceScale, timeScale }) {

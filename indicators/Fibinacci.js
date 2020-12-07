@@ -32,7 +32,6 @@ module.exports = {
       tolerance,
       minMaxMostRecentData
     );
-    debugger;
     maxValues = dropDuplicateMinMax(maxValues);
 
     var { minValues } = diff.minMax(

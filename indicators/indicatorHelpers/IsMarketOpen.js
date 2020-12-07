@@ -232,7 +232,7 @@ function isOptionsTime() {
   //start half hour before market open
   // and run half hour after
   let startHour = 9; //9:00am
-  let startMin = 00; //00:00
+  let startMin = '00'; //00:00
   let endHour = 16; //4:00pm
   let endMin = 30; // 00:30
   if (hour <= endHour && hour >= startHour) {
@@ -268,7 +268,6 @@ function getExpStr(date) {
   }
   return `${year}-${month}-${day}`;
 }
-
 
 //random function that returns how long till 9pm
 function getTimeTillEvening(){
