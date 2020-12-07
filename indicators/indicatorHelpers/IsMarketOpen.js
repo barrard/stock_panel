@@ -232,7 +232,7 @@ function isOptionsTime() {
   //start half hour before market open
   // and run half hour after
   let startHour = 9; //9:00am
-  let startMin = '00'; //00:00
+  let startMin = 00; //00:00
   let endHour = 16; //4:00pm
   let endMin = 30; // 00:30
   if (hour <= endHour && hour >= startHour) {
@@ -269,6 +269,7 @@ function getExpStr(date) {
   return `${year}-${month}-${day}`;
 }
 
+
 //random function that returns how long till 9pm
 function getTimeTillEvening(){
   let now = new Date().getTime()
@@ -278,8 +279,17 @@ function getTimeTillEvening(){
 }
 
 function getTimeTillRTH(){
+  // if(isRTH())return 0
   let _630AM = new Date().setHours(6)
   _630AM = new Date(_630AM).setMinutes(30)
+  _630AM = new Date(_630AM).setSeconds(0)
+  let now = new Date().getTime()
+  _630AM= new Date(_630AM).getTime()
+  if(now <_630AM){
+    return _630AM - now
+  }else{
+    return _630AM + (1000*60*60*24) - now
+  }
 }
 
 module.exports = {
