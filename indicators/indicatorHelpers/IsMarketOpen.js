@@ -269,7 +269,23 @@ function getExpStr(date) {
   return `${year}-${month}-${day}`;
 }
 
+
+//random function that returns how long till 9pm
+function getTimeTillEvening(){
+  let now = new Date().getTime()
+  let _8PM = new Date().setHours(20)
+  return _8PM - now < 0 ? 0 : _8PM - now
+
+}
+
+function getTimeTillRTH(){
+  let _630AM = new Date().setHours(6)
+  _630AM = new Date(_630AM).setMinutes(30)
+}
+
 module.exports = {
+  getTimeTillRTH,
+  getTimeTillEvening,
   isOptionsTime,
   getExpStr,
   getTimestampForTodaysOpen,
