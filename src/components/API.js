@@ -34,7 +34,20 @@ export default {
   isLoggedIn,
   fetchSEC_Filings,
   fetchStockBotTrades,
+  loadStockDataIndicator
 };
+
+
+async function loadStockDataIndicator() {
+  let trades = await fetch(
+    `${process.env.REACT_APP_API_SERVER}/API/loadStockDataIndicator`,
+    {
+      method: "GET",
+    }
+  );
+  trades = await trades.json();
+  return trades;
+}
 
 async function fetchStockBotTrades() {
   let trades = await fetch(

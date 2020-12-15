@@ -1,3 +1,4 @@
+
 @keyframes upTick {
   0% {
     box-shadow: 0px 0px 0px 0px rgba(207, 195, 195, 0.15);
@@ -226,9 +227,6 @@ text {
   z-index: 10;
 }
 
-body {
-  background: #333;
-}
 .overflowHidden {
   overflow-x: hidden;
 }
@@ -273,6 +271,15 @@ html {
 }
 body {
   height: 100%;
+  background: #333;
+  --color-background: rgb(251, 51, 51);
+--color-on-background:#fff;
+
+--color-tooltip: rgba(0,5,11,0.9);
+--color-on-tooltip: #fff;
+
+--color-handle: #67c2e4;
+--color-handle-drag: #2c343a;
 }
 
 
