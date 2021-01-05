@@ -1,8 +1,15 @@
+const { lstat } = require('fs/promises');
+const tulind = require('tulind');
+
 const { average, windowAvg } = require("./indicatorHelpers/MovingAverage.js");
 let stochasticPeriods = [14, 24, 50, 100];
 let indicatorName = "stochastics";
+const STOCH_PERIOD = 14
+const STOCK_K = 3
+const STOCK_D = 3
 
 module.exports = {
+  STOCH_PERIOD,
   stochasticsAnalysis,
   stochasticPeriods,
   calcStochastics,
@@ -12,6 +19,8 @@ module.exports = {
   evalStoch,
   checkMultiPeriodStoch,
 };
+
+console.log(tulind.indicators)
 
 function decide({ dir }) {
   /**
@@ -153,49 +162,49 @@ function evalStoch(data) {
   return dir;
 }
 
-function addNewestStochastics(data) {
-  let { timeframe } = data[0];
-
+async function addNewestStochastics({high, low, close, data}) {
+  
   let latestData = data.slice(-1)[0];
   if (!data || !latestData) {
     throw new Error("NO DATA");
   }
 
   latestData[indicatorName] = {};
-  let fastKAvg = 14;
-  let slowKAvg = 3;
+  // let fastKAvg = 14;
+  // let slowKAvg = 3;
+  let [stoch_k, stoch_d] = await tulind.indicators.stoch.indicator([high, low, close], [STOCH_PERIOD, STOCK_K, STOCK_D])
+  latestData[indicatorName][STOCH_PERIOD] = {stoch_k:stoch_k.slice(-1)[0], stoch_d:stoch_d.slice(-1)[0] }
+  // stochasticPeriods.forEach((period) => {
+    // if (data.length < period) return;
+    // let window = data.slice(-period);
 
-  stochasticPeriods.forEach((period) => {
-    if (data.length < period) return;
-    let window = data.slice(-period);
+    // let stochastics = calcStochastics(window);
 
-    let stochastics = calcStochastics(window);
+    // latestData[indicatorName][period] = stochastics;
+    // if (period === fastKAvg) {
+    //   latestData[indicatorName]["K"] = stochastics;
+    //   let allK = [];
+    //   window.slice(-slowKAvg).forEach((d) => {
+    //     let K;
+    //     try {
+    //       K = d[indicatorName][fastKAvg];
+    //     } catch (err) {
+    //       console.log(err);
+    //       console.log(`WTF happening on`);
+    //       console.log(window);
+    //     }
+    //     if (!K && isNaN(K)) return;
+    //     allK.push({ timestamp: d.timestamp, K: K });
+    //   });
+    //   if (allK.length < slowKAvg) return;
+    //   let slowK = windowAvg(allK, slowKAvg, "K");
+    //   if (!slowK.length) {
+    //     return;
+    //   }
 
-    latestData[indicatorName][period] = stochastics;
-    if (period === fastKAvg) {
-      latestData[indicatorName]["K"] = stochastics;
-      let allK = [];
-      window.slice(-slowKAvg).forEach((d) => {
-        let K;
-        try {
-          K = d[indicatorName][fastKAvg];
-        } catch (err) {
-          console.log(err);
-          console.log(`WTF happening on`);
-          console.log(window);
-        }
-        if (!K && isNaN(K)) return;
-        allK.push({ timestamp: d.timestamp, K: K });
-      });
-      if (allK.length < slowKAvg) return;
-      let slowK = windowAvg(allK, slowKAvg, "K");
-      if (!slowK.length) {
-        return;
-      }
-
-      latestData[indicatorName]["D"] = slowK[0][`K${slowKAvg}Avg`];
-    }
-  });
+      // latestData[indicatorName]["D"] = slowK[0][`K${slowKAvg}Avg`];
+    // }
+  // });
 
   return data;
 }
@@ -230,58 +239,72 @@ async function stochasticsAnalysis(data) {
   };
 }
 
-function addStochastics(data) {
+async function addStochastics({data, open, high, low, close, volume}) {
   let dataLength = data.length;
   console.log(`Running stochastics on ${data.length} bars`);
 
-  data.forEach((d, dIndex) => {
-    d[indicatorName] = {};
-    stochasticPeriods.forEach((period, pIndex) => {
-      //i.e index 4 i want to run period = 5
-      if (dIndex < period - 1) return;
-      let end = dIndex + 1;
-      let start = end - period;
-      if (end > dataLength) {
-        return { end, dataLength };
+  // stochasticPeriods.forEach(period=>{
+
+    let [stoch_k, stoch_d] = await tulind.indicators.stoch.indicator([high, low, close], [STOCH_PERIOD, STOCK_K, STOCK_D])
+    for(let i = 0; i < stoch_k.length; i++){
+      let dataIndex = i+((STOCH_PERIOD+STOCK_D+STOCK_K)-3)
+      if(!data[dataIndex][indicatorName]){
+        data[dataIndex][indicatorName]={}
       }
-      let window = data.slice(start, end);
-      //calc CCI
-      let stochastics = calcStochastics(window);
-      d = {
-        ...d,
-        [indicatorName]: {
-          ...d[indicatorName],
-          [`${period}`]: stochastics,
-        },
-      };
-      data[dIndex] = d;
-    });
-  });
+      data[dataIndex][indicatorName][STOCH_PERIOD] ={stoch_k:stoch_k[i], stoch_d:stoch_d[i]}
+    }
+  // })
+
+
+
+  // data.forEach((d, dIndex) => {
+  //   d[indicatorName] = {};
+  //   stochasticPeriods.forEach((period, pIndex) => {
+  //     //i.e index 4 i want to run period = 5
+  //     if (dIndex < period - 1) return;
+  //     let end = dIndex + 1;
+  //     let start = end - period;
+  //     if (end > dataLength) {
+  //       return { end, dataLength };
+  //     }
+  //     let window = data.slice(start, end);
+  //     //calc CCI
+  //     let stochastics = calcStochastics(window);
+  //     d = {
+  //       ...d,
+  //       [indicatorName]: {
+  //         ...d[indicatorName],
+  //         [`${period}`]: stochastics,
+  //       },
+  //     };
+  //     data[dIndex] = d;
+  //   });
+  // });
 
   //add K, and D?
   //TODO make dynamic
-  let fastKAvg = 14;
-  let slowKAvg = 3;
-  let allK = data.map((d) => {
-    return { timestamp: d.timestamp, K: d[indicatorName][fastKAvg] };
-  });
-  let slowK = windowAvg(allK, slowKAvg, "K");
+  // let fastKAvg = 14;
+  // let slowKAvg = 3;
+  // let allK = data.map((d) => {
+  //   return { timestamp: d.timestamp, K: d[indicatorName][fastKAvg] };
+  // });
+  // let slowK = windowAvg(allK, slowKAvg, "K");
 
-  slowK.forEach((sk, iSk) => {
-    let d = data[iSk + (slowKAvg - 1)];
-    let K = allK[iSk + (slowKAvg - 1)];
-    if (
-      (!K.K && isNaN(K.K)) ||
-      (!sk[`K${slowKAvg}Avg`] && isNaN(sk[`K${slowKAvg}Avg`]))
-    )
-      return;
-    //timestamps SHOULD match up
-    if (d.timestamp !== sk.timestamp && d.timestamp !== K.timestamp) {
-      return console.log("The time stamps dont match up");
-    }
-    d[indicatorName].K = K.K;
-    d[indicatorName].D = sk[`K${slowKAvg}Avg`];
-  });
+  // slowK.forEach((sk, iSk) => {
+  //   let d = data[iSk + (slowKAvg - 1)];
+  //   let K = allK[iSk + (slowKAvg - 1)];
+  //   if (
+  //     (!K.K && isNaN(K.K)) ||
+  //     (!sk[`K${slowKAvg}Avg`] && isNaN(sk[`K${slowKAvg}Avg`]))
+  //   )
+  //     return;
+  //   //timestamps SHOULD match up
+  //   if (d.timestamp !== sk.timestamp && d.timestamp !== K.timestamp) {
+  //     return console.log("The time stamps dont match up");
+  //   }
+  //   d[indicatorName].K = K.K;
+  //   d[indicatorName].D = sk[`K${slowKAvg}Avg`];
+  // });
 
   return data;
 }

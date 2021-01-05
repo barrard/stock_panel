@@ -30,65 +30,13 @@ class Account_Profile extends React.Component {
 
   async componentDidMount() {
     Socket.on("PriceLevelIndicator", (priceLevelIndicator) => {
-      let {
-        createdAt,
-        TICK,
-        TRIN,
-        DJI,
-        SPX,
-        UVOL,
-        DVOL,
-        VIX,
-        totalWeeklySupport,
-        totalWeeklyResistance,
-        totalDailySupport,
-        totalDailyResistance,
-        totalHourlySupport,
-        totalHourlyResistance,
-      } = priceLevelIndicator;
+      let { createdAt } = priceLevelIndicator;
       //add new data?
 
-      let valsObj = {}; //update TRIN
-      let valsArray = [
-        "TRIN",
-        "TICK",
-        "DJI",
-        "SPX",
-        "VIX",
-        // 'totalWeeklySupport',
-        // 'totalWeeklyResistance',
-        // 'totalDailySupport',
-        // 'totalDailyResistance',
-        // 'totalHourlySupport',
-        // 'totalHourlyResistance',
-      ];
-      let hourlySupRes = this.state.hourlySupRes;
-      let dailySuppRes = this.state.dailySuppRes;
-      let weeklySupRes = this.state.weeklySupRes;
-      hourlySupRes[0].data.push({
-        key: new Date(),
-        data: priceLevelIndicator.totalHourlySupport,
-      });
-      dailySuppRes[0].data.push({
-        key: new Date(),
-        data: priceLevelIndicator.totalDailySupport,
-      });
-      weeklySupRes[0].data.push({
-        key: new Date(),
-        data: priceLevelIndicator.totalWeeklySupport,
-      });
-      hourlySupRes[1].data.push({
-        key: new Date(),
-        data: priceLevelIndicator.totalHourlyResistance,
-      });
-      dailySuppRes[1].data.push({
-        key: new Date(),
-        data: priceLevelIndicator.totalDailyResistance,
-      });
-      weeklySupRes[1].data.push({
-        key: new Date(),
-        data: priceLevelIndicator.totalWeeklyResistance,
-      });
+      let valsObj = {};
+      let valsArray = ["TRIN", "TICK", "DJI", "SPX", "VIX"];
+
+      this.addNewCombinedData(priceLevelIndicator);
       valsArray.forEach((val) => (valsObj[val] = [...this.state[val]]));
 
       valsArray.forEach((val) =>
@@ -105,7 +53,6 @@ class Account_Profile extends React.Component {
     });
 
     let data = await API.loadStockDataIndicator();
-    debugger;
     data.reverse();
     this.shapeData(data);
   }
@@ -123,7 +70,7 @@ class Account_Profile extends React.Component {
       "totalHourlyResistance",
       data
     );
-    let dailySuppRes = combineKeyData(
+    let dailySupRes = combineKeyData(
       "totalDailySupport",
       "totalDailyResistance",
       data
@@ -143,11 +90,10 @@ class Account_Profile extends React.Component {
       VIX,
       UD_VOL,
       hourlySupRes,
-      dailySuppRes,
+      dailySupRes,
       weeklySupRes,
     });
 
-    function addNewCombinedData(key1, key2, data) {}
     function combineKeyData(key1, key2, data) {
       return [
         {
@@ -181,6 +127,42 @@ class Account_Profile extends React.Component {
   }
 
   componentDidUpdate(prevProps) {}
+
+  addNewCombinedData(priceLevelIndicator) {
+
+    let hourlySupRes = this.state.hourlySupRes;
+    let dailySupRes = this.state.dailySupRes;
+    let weeklySupRes = this.state.weeklySupRes;
+    hourlySupRes[0].data.push({
+      key: new Date(),
+      data: priceLevelIndicator.totalHourlySupport,
+    });
+    dailySupRes[0].data.push({
+      key: new Date(),
+      data: priceLevelIndicator.totalDailySupport,
+    });
+    weeklySupRes[0].data.push({
+      key: new Date(),
+      data: priceLevelIndicator.totalWeeklySupport,
+    });
+    hourlySupRes[1].data.push({
+      key: new Date(),
+      data: priceLevelIndicator.totalHourlyResistance,
+    });
+    dailySupRes[1].data.push({
+      key: new Date(),
+      data: priceLevelIndicator.totalDailyResistance,
+    });
+    weeklySupRes[1].data.push({
+      key: new Date(),
+      data: priceLevelIndicator.totalWeeklyResistance,
+    });
+    this.setState({
+      hourlySupRes,
+      dailySupRes,
+      weeklySupRes,
+    });
+  }
 
   render() {
     let { priceLevelIndicator } = this.state;
@@ -281,3 +263,36 @@ const ReavizChartContainer = styled.div`
   width: 100%;
   height: 400px;
 `;
+
+
+
+/**
+ * 
+ * https://eminimind.com/nyse-tick-and-breadth-thinkorswim-chart-setup/
+ * Breadth Box Code
+Same as above, copy this code into a new study, save and activate.
+def A = close(“$UVOL”);
+def D = close (“$DVOL”);
+def ADL = Round(A / D, 1);
+def ADR = if A > D then Round(A / D, 1) else Round(-D / A, 1);
+input mode = {default Ratio};
+def modeSwitch = if mode == mode.Ratio then 1 else 0;
+AddLabel(yes, Concat(
+if modeSwitch then ADR else ADL, Concat(” “,
+if modeSwitch then “:1” else ” “)),
+if modeSwitch then if ADR > ADR[1] then Color.GREEN else Color.RED else if ADL > ADL[1] then Color.GREEN else Color.RED);
+plot null = Double.NaN;
+
+Advance/Decline Box Code
+def A = close(“$ADVN”);
+def D = close (“$DECN”);
+def ADL = Round(A / D);
+def ADR = if A > D then Round(A – D) else Round (-D + A);
+input mode = {default Ratio};
+def modeSwitch = if mode == mode.Ratio then 1 else 0;
+AddLabel(yes, Concat(
+if modeSwitch then ADR else ADL, Concat(” “,
+if modeSwitch then ” ” else ” “)),
+if modeSwitch then if ADR > ADR[1] then Color.GREEN else Color.RED else if ADL > ADL[1] then Color.GREEN else Color.RED);
+plot null = Double.NaN;
+ */

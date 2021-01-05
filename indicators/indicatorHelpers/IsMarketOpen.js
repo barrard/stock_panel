@@ -292,7 +292,51 @@ function getTimeTillRTH(){
   }
 }
 
+function isPreMarket(date){
+  let now = date || new Date()
+  now = new Date(now)
+  now = new Date(now).getTime()
+  console.log(now)
+  let timeTill = makeTime(4, 30, 'AM')//4:30am
+  let timeStop = makeTime(6, 30, 'AM')//6:30am
+  return timeTill <= now && now <= timeStop
+
+
+  return now 
+}
+
+function makeTime(hr, min, amPM){
+  hr = amPM === "AM" ? hr : hr+12
+  let time = new Date()
+  time =new Date(time).setHours(hr)
+  time = new Date(time).setMinutes(min)
+  time = new Date(time).setSeconds(0)
+  return new Date(time).getTime()
+
+}
+
+
+/**
+ * @param {*} time 
+ */
+function getTimeTill(time){
+  // if(isRTH())return 0
+  time = new Date()
+  time =new Date(time).setHours(6)
+  time = new Date(time).setMinutes(30)
+  time = new Date(time).setSeconds(0)
+  let now = new Date().getTime()
+  time= new Date(time).getTime()
+  if(now <time){
+    return time - now
+  }else{
+    return time + (1000*60*60*24) - now
+  }
+}
+
 module.exports = {
+  isPreMarket,
+  getTimeTill,
   getTimeTillRTH,
   getTimeTillEvening,
   isOptionsTime,

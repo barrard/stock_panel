@@ -1,3 +1,4 @@
+const tulind = require('tulind');
 const { sum, mean, median, deviation, max, min, extent } = require("d3-array");
 const { makeEMA, getClose } = require("./indicatorHelpers/MovingAverage.js");
 const { maxDiffFromPrice } = require("./indicatorHelpers/dataParser.js");
@@ -114,18 +115,19 @@ function evalEMA(allData) {
   }
 }
 
-function addNewEMAVal(data) {
+async function addNewEMAVal({close, data}) {
   data[data.length - 1].ema = {};
-  emaValues.forEach((emaVal) => {
-    const multiplier = 2 / (emaVal + 1);
-    // use the previous ema value
-    let currentDay = data[data.length - 1];
-    let close = currentDay.close;
-    let prevDay = data[data.length - 2];
-    let prevEMA = prevDay.ema[emaVal];
-    let emaCalc = (close - prevEMA) * multiplier + prevEMA;
-    data[data.length - 1].ema[emaVal] = emaCalc;
-  });
+  await Promise.all(emaValues.map(async(emaPeriod) => {
+    let [ema] = await tulind.indicators.ema.indicator([close], [emaPeriod])
+    // const multiplier = 2 / (emaPeriod + 1);
+    // // use the previous ema value
+    // let currentDay = data[data.length - 1];
+    // let close = currentDay.close;
+    // let prevDay = data[data.length - 2];
+    // let prevEMA = prevDay.ema[emaPeriod];
+    // let emaCalc = (close - prevEMA) * multiplier + prevEMA;
+    data[data.length - 1].ema[emaPeriod] = ema;
+  }));
   return data;
 }
 
@@ -156,25 +158,36 @@ function addEMAVals(data) {
   };
 }
 
-function createAllEMAData(data) {
+async function createAllEMAData({close, data}) {
   let emaData = {};
 
-  emaValues.forEach((emaVal) => {
-    emaData[emaVal] = makeEMA(data, emaVal);
-  });
-  emaValues.forEach((emaVal) => {
-    let ema = emaData[emaVal];
-    ema.forEach((EMA, iEma) => {
-      // console.log(EMA);
-      let currentData = data[iEma + (emaVal - 1)];
+  await Promise.all(emaValues.map(async (emaPeriod) => {
+
+    // emaData[emaPeriod] = makeEMA(data, emaPeriod);
+    let [tulipEMA] = await tulind.indicators.ema.indicator([close], [emaPeriod])
+    emaData[emaPeriod] = tulipEMA
+    emaData[emaPeriod].forEach((ema, iEma)=>{
+
+      let currentData = data[iEma];
       if (!currentData.ema) currentData.ema = {};
-      // console.log(currentData)
-      if (EMA.x !== currentData.timestamp) {
-        throw new Error("Timestamps do not match");
-      }
-      currentData.ema[emaVal] = EMA.y;
-    });
-  });
+      currentData.ema[emaPeriod] = ema
+
+    })
+  }))
+  console.log(data)
+  // emaValues.forEach((emaPeriod) => {
+  //   let ema = emaData[emaPeriod];
+  //   ema.forEach((EMA, iEma) => {
+  //     // console.log(EMA);
+  //     let currentData = data[iEma + (emaPeriod - 1)];
+  //     if (!currentData.ema) currentData.ema = {};
+  //     // console.log(currentData)
+  //     if (EMA.x !== currentData.timestamp) {
+  //       throw new Error("Timestamps do not match");
+  //     }
+  //     currentData.ema[emaPeriod] = EMA.y;
+  //   });
+  // });
 
   return data;
 }
@@ -204,8 +217,8 @@ function emaSpread(data) {
   let vals = [];
 
   let spread = 0;
-  Object.keys(ema).forEach((emaVal) => {
-    vals.push(+emaVal);
+  Object.keys(ema).forEach((emaPeriod) => {
+    vals.push(+emaPeriod);
   });
   vals.forEach((v1) => {
     vals.forEach((v2) => (spread += Math.abs(ema[v1] - ema[v2])));
@@ -259,13 +272,13 @@ function getEMA_Trend({ ema, close }) {
 
 function checkPercentDiff(ema, close) {
   let diffData = {};
-  emaValues.forEach((emaVal) => {
-    let emaData = ema[emaVal];
+  emaValues.forEach((emaPeriod) => {
+    let emaData = ema[emaPeriod];
     if (!emaData) return;
 
     let diff = Math.abs(close - emaData);
     let perc = diff / close;
-    diffData[emaVal] = perc;
+    diffData[emaPeriod] = perc;
 
     //todo need to define perc cuttoffs for when its a lot?
 
@@ -310,18 +323,18 @@ function checkProx(close, priceLevel, TICK_SIZE, limit) {
 function emaPriceCheck(data) {
   let { ema, close } = data;
   let isPriceBelowAll = true;
-  emaValues.forEach((emaVal) => {
-    // console.log(emaVal)
-    let emaData = ema[emaVal];
+  emaValues.forEach((emaPeriod) => {
+    // console.log(emaPeriod)
+    let emaData = ema[emaPeriod];
     if (close > emaData) {
       isPriceBelowAll = false;
     }
   });
 
   let isPriceAboveAll = true;
-  emaValues.forEach((emaVal) => {
-    // console.log(emaVal)
-    let emaData = ema[emaVal];
+  emaValues.forEach((emaPeriod) => {
+    // console.log(emaPeriod)
+    let emaData = ema[emaPeriod];
     if (close < emaData) {
       isPriceAboveAll = false;
     }
@@ -344,12 +357,12 @@ function EMA_Analysis(OHLC_data) {
   console.log("EMA analysis");
   let emaData = {};
   let distanceFromPriceData = {};
-  emaValues.forEach((emaVal) => {
+  emaValues.forEach((emaPeriod) => {
     //First get all the EMA values
-    emaData[emaVal] = makeEMA(OHLC_data, emaVal);
+    emaData[emaPeriod] = makeEMA(OHLC_data, emaPeriod);
     //get the distance from price data
-    distanceFromPriceData[emaVal] = maxDiffFromPrice(
-      emaData[emaVal],
+    distanceFromPriceData[emaPeriod] = maxDiffFromPrice(
+      emaData[emaPeriod],
       OHLC_data
     );
   });
@@ -384,21 +397,21 @@ function backTestWithResults({ finalResults, filteredResults }) {
   let sortedCloserLook = {};
 
   //lets look closer at events that came from 00, or 11, or 22
-  for (let emaVal in finalResults) {
-    closerLook[emaVal] = {};
-    for (let percDiff in finalResults[emaVal]) {
-      closerLook[emaVal][percDiff] = {};
-      for (let results in finalResults[emaVal][percDiff]) {
-        let xy = finalResults[emaVal][percDiff][results];
+  for (let emaPeriod in finalResults) {
+    closerLook[emaPeriod] = {};
+    for (let percDiff in finalResults[emaPeriod]) {
+      closerLook[emaPeriod][percDiff] = {};
+      for (let results in finalResults[emaPeriod][percDiff]) {
+        let xy = finalResults[emaPeriod][percDiff][results];
         results = results.split("");
         results.pop();
         results = results.join("");
         // console.log(results);
-        if (!closerLook[emaVal][percDiff][results])
-          closerLook[emaVal][percDiff][results] = [];
-        closerLook[emaVal][percDiff][results] = [
+        if (!closerLook[emaPeriod][percDiff][results])
+          closerLook[emaPeriod][percDiff][results] = [];
+        closerLook[emaPeriod][percDiff][results] = [
           ...xy,
-          ...closerLook[emaVal][percDiff][results],
+          ...closerLook[emaPeriod][percDiff][results],
         ];
         xy.forEach((emaEventData) => {
           let { x } = emaEventData;
@@ -504,21 +517,21 @@ function backTestWithResults({ finalResults, filteredResults }) {
 function analyzeEMA(emaData, distanceFromPriceData, OHLC_data) {
   let finalResults = {};
   let filteredResults = {};
-  for (let emaVal in emaData) {
-    filteredResults[emaVal] = {};
-    emaVal = +emaVal;
-    // if(emaVal!=200)continue//DEBUGGING
-    finalResults[emaVal] = {};
-    console.log(`Evaluating ${emaVal}`);
+  for (let emaPeriod in emaData) {
+    filteredResults[emaPeriod] = {};
+    emaPeriod = +emaPeriod;
+    // if(emaPeriod!=200)continue//DEBUGGING
+    finalResults[emaPeriod] = {};
+    console.log(`Evaluating ${emaPeriod}`);
 
-    let diffFromPriceData = distanceFromPriceData[emaVal];
+    let diffFromPriceData = distanceFromPriceData[emaPeriod];
 
     let { percDiffCount, percDiffArray } = diffFromPriceData;
 
     //sooo, lets find percDiffs that occur less than 4% percAmount of the time
     //and sort them by percAmount, which is how often it occured
     let limit = 4;
-    filteredResults[emaVal] = percDiffCount.sort(
+    filteredResults[emaPeriod] = percDiffCount.sort(
       (a, b) => b.percAmount - a.percAmount
     );
     // .filter((data, i) => {
@@ -526,18 +539,18 @@ function analyzeEMA(emaData, distanceFromPriceData, OHLC_data) {
     //   //   if()
     //   if (percAmount < limit) return data;
     // })
-    console.log(filteredResults[emaVal]);
+    console.log(filteredResults[emaPeriod]);
 
     //loop through this filtered, sorted array
     //use the percentDiff value, to search trough the
     //percDiffArray, and find times to then look up the
     //OHLC
-    filteredResults[emaVal].forEach((data) => {
+    filteredResults[emaPeriod].forEach((data) => {
       let { percAmount, percDiff } = data;
       if (percAmount > limit) return;
-      finalResults[emaVal][percDiff] = {};
+      finalResults[emaPeriod][percDiff] = {};
       // console.log(
-      //   `looking for times when the price was %${percDiff} away from the ${emaVal}EMA, which only happened %${percAmount} of the time.`
+      //   `looking for times when the price was %${percDiff} away from the ${emaPeriod}EMA, which only happened %${percAmount} of the time.`
       // );
       //using the percDiffArray, look for the rare occurring percDiffs and get the timestamp
       let timesWhenPercDiff = percDiffArray.filter((percDiffTime) => {
@@ -553,15 +566,15 @@ function analyzeEMA(emaData, distanceFromPriceData, OHLC_data) {
           OHLC_data,
           percDiffArray,
           emaData,
-          emaVal
+          emaPeriod
         );
         // console.log({cameFrom_goTo_firstGo})
         if (cameFrom_goTo_firstGo === undefined) return;
-        if (!finalResults[emaVal][percDiff][cameFrom_goTo_firstGo]) {
-          finalResults[emaVal][percDiff][cameFrom_goTo_firstGo] = [];
+        if (!finalResults[emaPeriod][percDiff][cameFrom_goTo_firstGo]) {
+          finalResults[emaPeriod][percDiff][cameFrom_goTo_firstGo] = [];
         }
 
-        finalResults[emaVal][percDiff][cameFrom_goTo_firstGo].push(xy);
+        finalResults[emaPeriod][percDiff][cameFrom_goTo_firstGo].push(xy);
       });
     });
   }
@@ -569,12 +582,12 @@ function analyzeEMA(emaData, distanceFromPriceData, OHLC_data) {
   return { finalResults, filteredResults };
 }
 
-function windowAssessment({ x, y }, OHLC_data, percDiffArray, emaData, emaVal) {
+function windowAssessment({ x, y }, OHLC_data, percDiffArray, emaData, emaPeriod) {
   //x and y represent time and percDiff
   // console.log(`Percent diff ${y}`);
   //we dont really care about percDiff, just the time
   //we will look for this time in the OHLC data
-  let windowLength = emaVal;
+  let windowLength = emaPeriod;
   // and grab a window view, +-10 bars?
   //to determine, where we came from and where we went...
   let timeIndex = OHLC_data.findIndex(({ timestamp }) => +timestamp === x);
@@ -594,13 +607,13 @@ function windowAssessment({ x, y }, OHLC_data, percDiffArray, emaData, emaVal) {
   if (!allDataSameDay(percValuesWindow)) return; //console.log("Not the same day");
   // console.log(window)
   // console.log("whereDidYouComeFromWhereDidYouGo");
-  if (percValuesWindow.length != emaVal) {
+  if (percValuesWindow.length != emaPeriod) {
     console.log("stop");
   }
   let { cameFrom, goTo, firstGo } = whereDidYouComeFromWhereDidYouGo(
     percValuesWindow,
     emaDataWindow,
-    emaVal
+    emaPeriod
   );
   return `${cameFrom}${goTo}${firstGo}`;
 }
@@ -610,11 +623,11 @@ function windowAssessment({ x, y }, OHLC_data, percDiffArray, emaData, emaVal) {
  *
  * @param {array} percValuesWindow array of data before and after rare price event
  * @param {object} emaData ema values, key is ema
- * @param {number} emaVal which ema looking at currently
+ * @param {number} emaPeriod which ema looking at currently
  */
-function whereDidYouComeFromWhereDidYouGo(percValuesWindow, emaData, emaVal) {
+function whereDidYouComeFromWhereDidYouGo(percValuesWindow, emaData, emaPeriod) {
   let windowLength = percValuesWindow.length / 2;
-  // console.log({windowLength, emaVal})
+  // console.log({windowLength, emaPeriod})
   let cameFrom = percValuesWindow.slice(0, windowLength);
   let goTo = percValuesWindow.slice(windowLength);
 
@@ -623,8 +636,8 @@ function whereDidYouComeFromWhereDidYouGo(percValuesWindow, emaData, emaVal) {
   //check if the maxVal is pos or neg to indicate being above or below
   let firstGo = whereGoFirst([...goTo]);
 
-  cameFrom = checkWhereCameFrom(cameFrom, emaData.cameFrom, emaVal);
-  goTo = checkWhereGoTo(goTo, emaData.goTo, emaVal);
+  cameFrom = checkWhereCameFrom(cameFrom, emaData.cameFrom, emaPeriod);
+  goTo = checkWhereGoTo(goTo, emaData.goTo, emaPeriod);
   // console.log({ firstGo });
 
   return { cameFrom, goTo, firstGo };
@@ -648,11 +661,11 @@ function whereGoFirst(data) {
   return whereGo;
 }
 
-function checkWhereCameFrom(data, emaData, emaVal) {
-  if (checkAllBelow(data, emaData, emaVal)) {
+function checkWhereCameFrom(data, emaData, emaPeriod) {
+  if (checkAllBelow(data, emaData, emaPeriod)) {
     // console.log("Came from a down trend");
     return "0";
-  } else if (checkAllAbove(data, emaData, emaVal)) {
+  } else if (checkAllAbove(data, emaData, emaPeriod)) {
     // console.log("Came from an up trend");
     return "1";
   } else {
@@ -661,11 +674,11 @@ function checkWhereCameFrom(data, emaData, emaVal) {
   }
 }
 
-function checkWhereGoTo(data, emaData, emaVal) {
-  if (checkAllBelow(data, emaData, emaVal)) {
+function checkWhereGoTo(data, emaData, emaPeriod) {
+  if (checkAllBelow(data, emaData, emaPeriod)) {
     // console.log("Go to a down trend");
     return "0";
-  } else if (checkAllAbove(data, emaData, emaVal)) {
+  } else if (checkAllAbove(data, emaData, emaPeriod)) {
     // console.log("Go to an up trend");
     return "1";
   } else {
@@ -676,14 +689,14 @@ function checkWhereGoTo(data, emaData, emaVal) {
 
 function windowEmaData(emaData, timeIndex, windowLength) {
   let windowedEmaData = { cameFrom: {}, goTo: {} };
-  Object.keys(emaData).forEach((emaVal) => {
-    let window = emaData[emaVal].slice(
+  Object.keys(emaData).forEach((emaPeriod) => {
+    let window = emaData[emaPeriod].slice(
       timeIndex - windowLength / 2,
       timeIndex + windowLength / 2
     );
 
-    windowedEmaData.cameFrom[emaVal] = window.slice(0, windowLength / 2);
-    windowedEmaData.goTo[emaVal] = window.slice(windowLength / 2);
+    windowedEmaData.cameFrom[emaPeriod] = window.slice(0, windowLength / 2);
+    windowedEmaData.goTo[emaPeriod] = window.slice(windowLength / 2);
   });
   return windowedEmaData;
 }
@@ -698,7 +711,7 @@ function allDataSameDay(data) {
   return sameDay;
 }
 
-function checkAllBelow(data, emaData, emaVal) {
+function checkAllBelow(data, emaData, emaPeriod) {
   // let maxValuesBelow = true;
   let emaValuesBelow = true; //20 below 50, 50 below 200
   //check if the maxVal seen was ever positive (above the MA)
@@ -709,12 +722,12 @@ function checkAllBelow(data, emaData, emaVal) {
   //check if the ema show down
   for (let ema in emaData) {
     ema = +ema;
-    if (ema === emaVal) continue;
-    if (ema > emaVal) {
+    if (ema === emaPeriod) continue;
+    if (ema > emaPeriod) {
       emaData[ema].forEach((d, i) => {
         let _ema = ema;
         let _emaData = emaData;
-        // console.log({i, ema, emaVal})
+        // console.log({i, ema, emaPeriod})
         // console.log(data[i])
         // console.log(data)
         if (!data[i]) {
@@ -722,7 +735,7 @@ function checkAllBelow(data, emaData, emaVal) {
         }
         if (d.y < data[i].MAval) emaValuesBelow = false;
       });
-    } else if (ema < emaVal) {
+    } else if (ema < emaPeriod) {
       emaData[ema].forEach((d, i) => {
         if (d.y > data[i].MAval) emaValuesBelow = false;
       });
@@ -731,7 +744,7 @@ function checkAllBelow(data, emaData, emaVal) {
   return emaValuesBelow;
   // return { maxValuesBelow, emaValuesBelow };
 }
-function checkAllAbove(data, emaData, emaVal) {
+function checkAllAbove(data, emaData, emaPeriod) {
   // let maxValuesAbove = true;
   // data.map((d) => {
   //   if (d.maxVal < 0) maxValuesAbove = false;
@@ -740,12 +753,12 @@ function checkAllAbove(data, emaData, emaVal) {
   //check if the ema show down
   for (let ema in emaData) {
     ema = +ema;
-    if (ema === emaVal) continue;
-    if (ema > emaVal) {
+    if (ema === emaPeriod) continue;
+    if (ema > emaPeriod) {
       emaData[ema].map((d, i) => {
         if (d.y > data[i].MAval) emaValuesAbove = false;
       });
-    } else if (ema < emaVal) {
+    } else if (ema < emaPeriod) {
       emaData[ema].map((d, i) => {
         if (d.y < data[i].MAval) emaValuesAbove = false;
       });
