@@ -474,10 +474,10 @@ class CandleStickChart extends React.Component {
         addNewBollingerBands(rawCurrentData);
         addNewTradingRange(rawCurrentData);
         makeNewSuperTrendData(rawCurrentData);
-        addNewRSI(rawCurrentData);
-        addNewestStochastics(rawCurrentData);
-        addNewestCCI_data(rawCurrentData);
-        addNewestMomentumAnalysis(rawCurrentData);
+        // addNewRSI(rawCurrentData);
+        // addNewestStochastics(rawCurrentData);
+        // addNewestCCI_data(rawCurrentData);
+        // addNewestMomentumAnalysis(rawCurrentData);
         this.setState({
           allOHLCdata: [...currentData],
           rawOHLCData: [...rawCurrentData],
