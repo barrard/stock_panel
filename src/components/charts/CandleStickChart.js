@@ -1863,7 +1863,7 @@ class CandleStickChart extends React.Component {
         {this.props.meta.is_loading && (
           <Loader width={this.props.width} height={this.state.height} />
         )}
-        <div
+        {/* <div
           onClick={() =>
             this.setState({
               showIndicatorCharts: !this.state.showIndicatorCharts,
@@ -1915,7 +1915,7 @@ class CandleStickChart extends React.Component {
               height={150}
             />
           </div>
-        </div>
+        </div> */}
 
         <ToggleIndicators
           toggleIndicators={(indicator) => this.toggleIndicators(indicator)}

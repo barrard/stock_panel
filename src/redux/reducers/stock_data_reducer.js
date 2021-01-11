@@ -233,10 +233,10 @@ export default (state = initial_state, action) => {
       makeSuperTrendData(rawCommodityChartData);
       //bollingerBands
       addBollingerBands(rawCommodityChartData);
-      addStochastics(rawCommodityChartData);
-      momentumAnalysis(rawCommodityChartData);
-      addRSI(rawCommodityChartData);
-      addAllCCI_data(rawCommodityChartData);
+      // addStochastics(rawCommodityChartData);
+      // momentumAnalysis(rawCommodityChartData);
+      // addRSI(rawCommodityChartData);
+      // addAllCCI_data(rawCommodityChartData);
 
       commodity_data[symbol][timeframe] = [...chart_data, ...currentData];
       rawCommodityCharts[symbol][timeframe] = rawCommodityChartData;
