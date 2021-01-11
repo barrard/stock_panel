@@ -19,12 +19,12 @@ function evalSuperTrend(d) {
     data = d;
   }
   let { close, timeframe, superTrend } = data;
-  if(!data.superTrend || !data.superTrend.superTrend){
-    return console.log(`No Super Trend for ${timeframe}`)
+  if (!data.superTrend || !data.superTrend.superTrend) {
+    return console.log(`No Super Trend for ${timeframe}`);
   }
   //is price above or below ST
   // console.log(data)
-  let ST = data.superTrend.superTrend
+  let ST = data.superTrend.superTrend;
   return close > ST ? 1 : 0;
 }
 
@@ -69,7 +69,9 @@ function calcSuperTrend(data) {
 function makeSuperTrendData(data, prevST) {
   if (data.length < tradingRangeAvg) return data;
   //need to make a rolling avg on the trading range
-  let ATR = windowAvg(data, tradingRangeAvg, "tradingRange");
+  // let ATR = data.slice(-1)[0].ATR
+
+  // // let ATR = windowAvg(data, tradingRangeAvg, "tradingRange");
 
   // console.log(ATR);
   let prevUpper, prevLower, prevSuperTrend;
@@ -82,17 +84,25 @@ function makeSuperTrendData(data, prevST) {
     prevLower = 0;
     prevSuperTrend = 0;
   }
-  ATR.forEach((d, iD) => {
-    let dataIndex = iD + (tradingRangeAvg - 1);
-    //requires a previous value
-    // if (iD === 0) {
-    //   return;
-    // }
-    let atr = d[`tradingRange${tradingRangeAvg}Avg`];
-    let { high, low, close, timestamp } = data[dataIndex];
-    let prevClose = data[dataIndex - 1].close;
+  data.forEach((d, iD) => {
+    // let ATR = d.ATR;
+    let { high, low, close, timestamp, ATR } = d;
+    if (!ATR) {
+      return
+    }
+    // let dataIndex = iD + (tradingRangeAvg - 1);
 
-    let atrMultiple = atr * MULTIPLYER;
+    // let atr = d[`tradingRange${tradingRangeAvg}Avg`];
+    let prev = data[iD - 1];
+    let prevClose
+    if(!prev){
+      prevClose = 0
+    }else{
+
+     prevClose = prev.close;
+    }
+
+    let atrMultiple = ATR * MULTIPLYER;
     let upperBandBasic = (high + low) / 2 + atrMultiple;
     let lowerBandBasic = (high + low) / 2 - atrMultiple;
 
@@ -123,7 +133,7 @@ function makeSuperTrendData(data, prevST) {
       superTrend = upperBand;
     }
     prevSuperTrend = superTrend;
-    data[dataIndex].superTrend = { superTrend, prevLower, prevUpper };
+    data[iD].superTrend = { superTrend, prevLower, prevUpper };
   });
   return data;
 }

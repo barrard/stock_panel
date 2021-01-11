@@ -1,4 +1,4 @@
-const tulind = require('tulind');
+const tulind = require("tulind");
 const { sum, mean, median, deviation, max, min, extent } = require("d3-array");
 const { makeEMA, getClose } = require("./indicatorHelpers/MovingAverage.js");
 const { maxDiffFromPrice } = require("./indicatorHelpers/dataParser.js");
@@ -72,10 +72,7 @@ function evalEMA(allData) {
   // let spaceBetween = emaSpread(data)
   // console.log('----- ema')
   // console.log({ priceCheck, proximityCheck, spaceBetween });
-  if (
-    (trend === "downtrend" || priceCheck === "downtrend") &&
-    !proximityCheck
-  ) {
+  if ((trend === "downtrend" || priceCheck === "downtrend") && !proximityCheck) {
     return "down";
   } else if (
     (trend === "uptrend" || priceCheck === "uptrend") &&
@@ -85,13 +82,13 @@ function evalEMA(allData) {
   } else if (
     trend === "uptrend" &&
     priceCheck === "uptrend" &&
-    proximityCheck
+    !proximityCheck
   ) {
     return "up";
   } else if (
     trend === "downtrend" &&
     priceCheck === "downtrend" &&
-    proximityCheck
+    !proximityCheck
   ) {
     return "down";
   } else if (proximityCheck) {
@@ -115,19 +112,15 @@ function evalEMA(allData) {
   }
 }
 
-async function addNewEMAVal({close, data}) {
+async function addNewEMAVal({ close, data }) {
   data[data.length - 1].ema = {};
-  await Promise.all(emaValues.map(async(emaPeriod) => {
-    let [ema] = await tulind.indicators.ema.indicator([close], [emaPeriod])
-    // const multiplier = 2 / (emaPeriod + 1);
-    // // use the previous ema value
-    // let currentDay = data[data.length - 1];
-    // let close = currentDay.close;
-    // let prevDay = data[data.length - 2];
-    // let prevEMA = prevDay.ema[emaPeriod];
-    // let emaCalc = (close - prevEMA) * multiplier + prevEMA;
-    data[data.length - 1].ema[emaPeriod] = ema;
-  }));
+  await Promise.all(
+    emaValues.map(async (emaPeriod) => {
+      let [ema] = await tulind.indicators.ema.indicator([close], [emaPeriod]);
+
+      data[data.length - 1].ema[emaPeriod] = ema.slice(-1)[0];
+    })
+  );
   return data;
 }
 
@@ -158,23 +151,25 @@ function addEMAVals(data) {
   };
 }
 
-async function createAllEMAData({close, data}) {
+async function createAllEMAData({ close, data }) {
   let emaData = {};
 
-  await Promise.all(emaValues.map(async (emaPeriod) => {
-
-    // emaData[emaPeriod] = makeEMA(data, emaPeriod);
-    let [tulipEMA] = await tulind.indicators.ema.indicator([close], [emaPeriod])
-    emaData[emaPeriod] = tulipEMA
-    emaData[emaPeriod].forEach((ema, iEma)=>{
-
-      let currentData = data[iEma];
-      if (!currentData.ema) currentData.ema = {};
-      currentData.ema[emaPeriod] = ema
-
+  await Promise.all(
+    emaValues.map(async (emaPeriod) => {
+      // emaData[emaPeriod] = makeEMA(data, emaPeriod);
+      let [tulipEMA] = await tulind.indicators.ema.indicator(
+        [close],
+        [emaPeriod]
+      );
+      emaData[emaPeriod] = tulipEMA;
+      emaData[emaPeriod].forEach((ema, iEma) => {
+        let currentData = data[iEma];
+        if (!currentData.ema) currentData.ema = {};
+        currentData.ema[emaPeriod] = ema;
+      });
     })
-  }))
-  console.log(data)
+  );
+  // console.log(data)
   // emaValues.forEach((emaPeriod) => {
   //   let ema = emaData[emaPeriod];
   //   ema.forEach((EMA, iEma) => {
@@ -582,7 +577,13 @@ function analyzeEMA(emaData, distanceFromPriceData, OHLC_data) {
   return { finalResults, filteredResults };
 }
 
-function windowAssessment({ x, y }, OHLC_data, percDiffArray, emaData, emaPeriod) {
+function windowAssessment(
+  { x, y },
+  OHLC_data,
+  percDiffArray,
+  emaData,
+  emaPeriod
+) {
   //x and y represent time and percDiff
   // console.log(`Percent diff ${y}`);
   //we dont really care about percDiff, just the time
@@ -625,7 +626,11 @@ function windowAssessment({ x, y }, OHLC_data, percDiffArray, emaData, emaPeriod
  * @param {object} emaData ema values, key is ema
  * @param {number} emaPeriod which ema looking at currently
  */
-function whereDidYouComeFromWhereDidYouGo(percValuesWindow, emaData, emaPeriod) {
+function whereDidYouComeFromWhereDidYouGo(
+  percValuesWindow,
+  emaData,
+  emaPeriod
+) {
   let windowLength = percValuesWindow.length / 2;
   // console.log({windowLength, emaPeriod})
   let cameFrom = percValuesWindow.slice(0, windowLength);

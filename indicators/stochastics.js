@@ -146,13 +146,13 @@ function evalStoch(data) {
     throw new Error(`Undefined K ${K} or D ${D}`);
   }
   let dir =
-    D > 80 && K > 80
+    D > 75 && K > 75
       ? "overbought" //2
-      : 20 > K && 20 > D
+      : 25 > K && 25 > D
       ? "oversold" //1
-      : K > 20 && D < 20
+      : K > 25 && D < 20
       ? "exitShort" //3
-      : K < 80 && D > 80
+      : K < 75 && D > 80
       ? "exitLong" //4
       : "middle"; //5;
 
@@ -169,42 +169,12 @@ async function addNewestStochastics({high, low, close, data}) {
     throw new Error("NO DATA");
   }
 
-  latestData[indicatorName] = {};
+  if(!latestData[indicatorName])latestData[indicatorName] = {};
   // let fastKAvg = 14;
   // let slowKAvg = 3;
   let [stoch_k, stoch_d] = await tulind.indicators.stoch.indicator([high, low, close], [STOCH_PERIOD, STOCK_K, STOCK_D])
-  latestData[indicatorName][STOCH_PERIOD] = {stoch_k:stoch_k.slice(-1)[0], stoch_d:stoch_d.slice(-1)[0] }
-  // stochasticPeriods.forEach((period) => {
-    // if (data.length < period) return;
-    // let window = data.slice(-period);
-
-    // let stochastics = calcStochastics(window);
-
-    // latestData[indicatorName][period] = stochastics;
-    // if (period === fastKAvg) {
-    //   latestData[indicatorName]["K"] = stochastics;
-    //   let allK = [];
-    //   window.slice(-slowKAvg).forEach((d) => {
-    //     let K;
-    //     try {
-    //       K = d[indicatorName][fastKAvg];
-    //     } catch (err) {
-    //       console.log(err);
-    //       console.log(`WTF happening on`);
-    //       console.log(window);
-    //     }
-    //     if (!K && isNaN(K)) return;
-    //     allK.push({ timestamp: d.timestamp, K: K });
-    //   });
-    //   if (allK.length < slowKAvg) return;
-    //   let slowK = windowAvg(allK, slowKAvg, "K");
-    //   if (!slowK.length) {
-    //     return;
-    //   }
-
-      // latestData[indicatorName]["D"] = slowK[0][`K${slowKAvg}Avg`];
-    // }
-  // });
+  latestData[indicatorName] = {K:stoch_k.slice(-1)[0], D:stoch_d.slice(-1)[0] }
+  
 
   return data;
 }
@@ -218,10 +188,7 @@ async function stochasticsAnalysis(data) {
     hourlyData,
   } = data;
 
-  // OHLC_data = OHLC_data.slice(-3000)//TODO hmmm?
-  //always ensure data is low to high
-  //  data = data.sort((a,b)=>a.timestamp-b.timestamp)
-  //get data
+
   tickMinutes = addStochastics(tickMinutes);
   fiveMinData = addStochastics(fiveMinData);
   fifteenMinData = addStochastics(fifteenMinData);
@@ -251,7 +218,7 @@ async function addStochastics({data, open, high, low, close, volume}) {
       if(!data[dataIndex][indicatorName]){
         data[dataIndex][indicatorName]={}
       }
-      data[dataIndex][indicatorName][STOCH_PERIOD] ={stoch_k:stoch_k[i], stoch_d:stoch_d[i]}
+      data[dataIndex][indicatorName] ={K:stoch_k[i], D:stoch_d[i]}
     }
   // })
 

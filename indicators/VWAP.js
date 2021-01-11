@@ -24,6 +24,9 @@ function addNewVWAP(data) {
 
   let dl = data.length;
   let prevData = data[dl - 2];
+  if(!prevData || !prevData.VWAP){
+    console.log('dbug')
+  }
   let cumulativeAvgPriceVol
   let cumulativeVol
   if (prevData) {
@@ -78,6 +81,9 @@ function createAllVWAP_data(data) {
   let cumulativeAvgPriceVol = 0;
   data.forEach((d, iD) => {
     let { open, high, low, close, volume, timestamp } = d;
+    if(volume<0){
+      console.log('vol less than zero is bad')
+    }
     if(checkBeginningNewDay(timestamp)){
       cumulativeVol = 0;
       cumulativeAvgPriceVol = 0;
@@ -86,6 +92,7 @@ function createAllVWAP_data(data) {
     cumulativeAvgPriceVol = typicalPrice * volume + cumulativeAvgPriceVol;
     cumulativeVol += volume;
     if(cumulativeVol < 0){
+      console.log('wtf')
     }
     let VWAP = cumulativeAvgPriceVol / cumulativeVol;
     d.VWAP = { VWAP, cumulativeAvgPriceVol, cumulativeVol };

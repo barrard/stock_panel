@@ -7,7 +7,6 @@ module.exports =  {
     analyzeIndicators
 }
 
-
 function analyzeIndicators(data, timeframe){
     if(timeframe==='daily'){
         // console.log(`Analyze ${timeframe} data`)
