@@ -13,6 +13,7 @@ import LandingPage from "./components/landingPage.js";
 import SignupPage from "./components/SignupPage.js";
 import LoginPage from "./components/LoginPage.js";
 import StockChart from "./components/StockChartPage.js";
+import MiniCharts from './components/MiniCharts.js'
 import AccountProfile from "./components/AccountProfilePage.js";
 import OpAlerts from "./components/OpUnusualVolPage.js";
 
@@ -81,6 +82,12 @@ class App extends React.Component {
             path="/commodities"
             // component={QuoteContainer}
             render={(props) => <QuoteContainer {...props} Socket={Socket} />}
+          />{" "}
+                 <Route
+            exact
+            path="/mini-charts"
+            // component={QuoteContainer}
+            render={(props) => <MiniCharts {...props} Socket={Socket} />}
           />{" "}
           <Route
             exact
