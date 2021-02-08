@@ -29,7 +29,7 @@ export function addOptionAlert(alert) {
   console.log(alert);
   // return;
   let { exp, putCall, strike, symbol, timestamp, alerts } = alert;
-  let newAlert = alert.alert;
+  let newAlert = alert;
   newAlert.dateTime = new Date().toLocaleString();
   let alertMsg = newAlert.alert;
   let toastrOpts = {
