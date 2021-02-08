@@ -29,9 +29,12 @@ class OpAlerts extends React.Component {
             filter_totalVolume: "",
             filter_strike: "",
             filter_dateTime: "",
+            filter_percOTM: "",
             filter_maxPL: "",
             filter_maxPercentPL: "",
             filter_PL: "",
+            filter_volumeIncrease: "",
+            filter_daysToExpiration: "",
             filter_percentPL: "",
             selectedAlerts: [],
             snapshots: {}, //AML_EXP_CALL_44
@@ -46,6 +49,7 @@ class OpAlerts extends React.Component {
             sortBy: "symbol",
             sortOrder: true,
             filterNames: [
+                "daysToExpiration",
                 "symbol",
                 "exp",
                 "totalVolume",
@@ -53,6 +57,8 @@ class OpAlerts extends React.Component {
                 "underlying",
                 "dateTime",
                 "PL",
+                "percOTM",
+                "volumeIncrease",
                 "percentPL",
                 "maxPL",
                 "maxPercentPL",
@@ -419,17 +425,17 @@ class OpAlerts extends React.Component {
                         <div onClick={() => this.sortBy("symbol")} className="col flex_center sm-title p-0">
                             Symbol
                         </div>
-                        <div onClick={() => this.sortBy("exp")} className="col flex_center sm-title p-0">
-                            Expiration
+                        <div onClick={() => this.sortBy("daysToExpiration")} className="col flex_center sm-title p-0">
+                            Days to Expire
                         </div>
-                        <div onClick={() => this.sortBy("strike")} className="col flex_center sm-title p-0">
-                            Strike
+                        <div onClick={() => this.sortBy("percOTM")} className="col flex_center sm-title p-0">
+                            % OTM
                         </div>
-                        <div onClick={() => this.sortBy("underlyingPrice")} className="col flex_center sm-title p-0">
-                            Underlying
+                        <div onClick={() => this.sortBy("volumeIncrease")} className="col flex_center sm-title p-0">
+                            Vol Increase
                         </div>
-                        <div onClick={() => this.sortBy("maxPL")} className="col flex_center sm-title p-0">
-                            Max PL
+                        <div onClick={() => this.sortBy("last")} className="col flex_center sm-title p-0">
+                            Alert Price
                         </div>
                         <div onClick={() => this.sortBy("maxPercentPL")} className="col flex_center sm-title p-0">
                             Max %PL
@@ -470,10 +476,10 @@ class OpAlerts extends React.Component {
                             <div className={`col flex_center p-0`}>{iA + 1}</div>
                             <div className={`col flex_center p-0`}>{a.putCall}</div>
                             <div className={`col flex_center p-0`}>{a.symbol}</div>
-                            <div className={`col flex_center`}>{a.exp}</div>
-                            <div className={`col flex_center p-0`}>{a.strike}</div>
-                            <div className={`col flex_center p-0`}>{underlyingPrice}</div>
-                            <div className={`col flex_center p-0`}>{maxPL}</div>
+                            <div className={`col flex_center`}>{a.daysToExpiration}</div>
+                            <div className={`col flex_center p-0`}>{a.percOTM}</div>
+                            <div className={`col flex_center p-0`}>{a.volumeIncrease}</div>
+                            <div className={`col flex_center p-0`}>{a.last}</div>
                             <div className={`col flex_center p-0`}>{maxPercentPL}</div>
                             {selectedContract && (
                                 <div id="selectedContractChart" className="floating ">
@@ -533,7 +539,10 @@ class OpAlerts extends React.Component {
         let lastPrices = [];
         let allIVs = [];
         let allDateTimes = [];
+        let allPercOTM = [];
+        let allDaysToExpiration = [];
         let allTotalVols = [];
+        let allVolumeIncrease = [];
         let allUnderlying = [];
         let allPL = [];
         let allMaxPL = [];
@@ -567,6 +576,10 @@ class OpAlerts extends React.Component {
             lastPrices.push(alert.last);
             allIVs.push(alert.IV);
             allDateTimes.push(alert.dateTime.split(",")[0]);
+            allPercOTM.push(alert.percOTM);
+
+            allDaysToExpiration.push(alert.daysToExpiration);
+            allVolumeIncrease.push(alert.volumeIncrease);
             allTotalVols.push(alert.totalVolume);
             allUnderlying.push(alert.underlyingPrice);
             // });
@@ -599,6 +612,9 @@ class OpAlerts extends React.Component {
         allUnderlying = makeSetSortAndFilter(allUnderlying);
         allMaxPL = makeSetSortAndFilter(allMaxPL);
         allMaxPercentPL = makeSetSortAndFilter(allMaxPercentPL);
+        allPercOTM = makeSetSortAndFilter(allPercOTM);
+        allVolumeIncrease = makeSetSortAndFilter(allVolumeIncrease);
+        allDaysToExpiration = makeSetSortAndFilter(allDaysToExpiration);
 
         return (
             <div className="row flex_center white">
@@ -632,6 +648,9 @@ class OpAlerts extends React.Component {
                         {/* Symbol Select */}
                         {this.FilterSelect("Filter symbols", "symbol", allSymbols)}
 
+                        {/* Days To Expire */}
+                        {this.FilterSelect("Days To Expire", "daysToExpiration", allDaysToExpiration)}
+
                         {/* total Vol Select */}
                         {this.FilterSelect("Total Volume", "totalVolume", allTotalVols)}
 
@@ -640,6 +659,12 @@ class OpAlerts extends React.Component {
 
                         {/* Last Select */}
                         {this.FilterSelect("Underlying Prices", "underlyingPrice", allUnderlying)}
+
+                        {/* total Vol Select */}
+                        {this.FilterSelect("% OTM", "percOTM", allPercOTM)}
+
+                        {/* total Vol Select */}
+                        {this.FilterSelect("Volume Increase", "volumeIncrease", allVolumeIncrease)}
 
                         {/* Profit Select */}
                         {/* {this.FilterSelect("Filter P&L", "PL", allPL)} */}
