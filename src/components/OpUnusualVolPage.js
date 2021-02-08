@@ -264,10 +264,8 @@ class OpAlerts extends React.Component {
                         if (filteredArray) return true;
                     });
                 } else if (f === "daysToExpiration") {
-                    debugger;
                     alerts = alerts.filter((a) => a.daysToExpiration === parseInt(filterValue));
                 } else {
-                    debugger;
                     alerts = filterByFilter(f, alerts);
                 }
 
