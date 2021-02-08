@@ -27,12 +27,12 @@ export function getOpAlerts(symbol) {
 
 export function addOptionAlert(alert) {
     console.log(alert);
-    return;
+    // return;
     let { exp, putCall, strike, symbol, timestamp, alerts } = alert;
     let newAlert = alerts.slice(-1)[0];
     let alertMsg = newAlert.alert;
     let toastrOpts = {
-        timeOut: 6000,
+        timeOut: 1000,
     };
     toastr.success(`Option Alert`, `${putCall} ${symbol} ${exp} ${strike}: ${alertMsg}`, toastrOpts);
     return {

@@ -43,6 +43,8 @@ class OpAlerts extends React.Component {
             includeExpiredContracts: false,
 
             lessThan_last: true,
+            lessThan_percOTM: true,
+            lessThan_volumeIncrease: true,
             lessThan_totalVolume: true,
             lessThan_underlying: true,
             lessThan_maxPercentPL: true,
@@ -109,6 +111,8 @@ class OpAlerts extends React.Component {
                     name === "maxPL" ||
                     name === "maxPercentPL" ||
                     name === "exp" ||
+                    name === "percOTM" ||
+                    name === "volumeIncrease" ||
                     name === "underlying" ||
                     name === "totalVolume") && (
                     <>
@@ -259,6 +263,9 @@ class OpAlerts extends React.Component {
                         // });
                         if (filteredArray) return true;
                     });
+                } else if (f === "daysToExpiration") {
+                    debugger;
+                    alerts = alerts.filter((a) => a.daysToExpiration === parseInt(filterValue));
                 } else {
                     alerts = filterByFilter(f, alerts);
                 }

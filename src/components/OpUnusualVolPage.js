@@ -41,6 +41,8 @@ class OpAlerts extends React.Component {
             includeExpiredContracts: false,
 
             lessThan_last: true,
+            lessThan_percOTM: true,
+            lessThan_volumeIncrease: true,
             lessThan_totalVolume: true,
             lessThan_underlying: true,
             lessThan_maxPercentPL: true,
@@ -105,9 +107,11 @@ class OpAlerts extends React.Component {
                 {/* <div className='col-sm-6 flex_center'> */}
                 {(name === "last" ||
                     name === "maxPL" ||
+                    name === "percOTM" ||
                     name === "maxPercentPL" ||
                     name === "exp" ||
                     name === "underlying" ||
+                    name === "volumeIncrease" ||
                     name === "totalVolume") && (
                     <>
                         <Switch
@@ -259,6 +263,9 @@ class OpAlerts extends React.Component {
                         // });
                         if (filteredArray) return true;
                     });
+                } else if (f === "daysToExpiration") {
+                    debugger;
+                    alerts = alerts.filter((a) => a.daysToExpiration === parseInt(filterValue));
                 } else {
                     debugger;
                     alerts = filterByFilter(f, alerts);
