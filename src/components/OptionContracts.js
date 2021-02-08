@@ -8,7 +8,7 @@ import API from "./API.js";
 import Tree from "react-d3-tree";
 import OptionsChart from "./charts/OptionsChart.js";
 import Switch from "react-switch";
-import { saveAs } from "file-saver";
+// import { saveAs } from "file-saver";
 import XLSX from "xlsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileExcel, faFileExport, faFileDownload } from "@fortawesome/free-solid-svg-icons";
@@ -21,18 +21,23 @@ class OpAlerts extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
+            symbol: props.match.params.symbol,
             selectedContractRef: null,
-            filter_symbol: "",
-            filter_exp: "",
-            filter_underlying: "",
-            filter_last: "",
-            filter_totalVolume: "",
-            filter_strike: "",
+            // filter_symbol: "",
             filter_dateTime: "",
+            filter_daysToExpiration: "",
+            filter_exp: "",
+            filter_last: "",
             filter_maxPL: "",
             filter_maxPercentPL: "",
             filter_PL: "",
+            filter_percOTM: "",
             filter_percentPL: "",
+            filter_strike: "",
+            filter_totalVolume: "",
+            filter_volumeIncrease: "",
+
+            filter_underlying: "",
             selectedAlerts: [],
             snapshots: {}, //AML_EXP_CALL_44
             includeExpiredContracts: false,
@@ -43,26 +48,29 @@ class OpAlerts extends React.Component {
             lessThan_maxPercentPL: true,
             lessThan_maxPL: true,
             lessThan_exp: true,
-            sortBy: "symbol",
+            sortBy: "dateTime",
             sortOrder: true,
             filterNames: [
-                "symbol",
-                "exp",
-                "totalVolume",
-                "last",
-                "underlying",
+                "daysToExpiration",
                 "dateTime",
-                "PL",
-                "percentPL",
+                "exp",
+                "last",
                 "maxPL",
                 "maxPercentPL",
+                "PL",
+                "percOTM",
+                "percentPL",
+                // "symbol",
+                "totalVolume",
+                "volumeIncrease",
+                "underlying",
             ],
         };
         this.resetFilters = this.resetFilters.bind(this);
     }
 
     componentDidMount() {
-        this.props.dispatch(getOpAlerts());
+        this.props.dispatch(getOpAlerts(this.state.symbol));
         this.setChartWidth();
         window.addEventListener("resize", this.setChartWidth.bind(this));
     }
@@ -227,9 +235,7 @@ class OpAlerts extends React.Component {
             // console.log(filterValue);
             if (filterValue) {
                 // console.log(`got ${filterValue} for filter_${f}`);
-                if (f === "symbol") {
-                    alerts = alerts.filter((a) => a.symbol === filterValue);
-                } else if (f === "exp") {
+                if (f === "exp") {
                     filterValue = new Date(filterValue).getTime();
                     alerts = alerts.filter((a) => {
                         let filteredArray = false;
@@ -254,7 +260,6 @@ class OpAlerts extends React.Component {
                         if (filteredArray) return true;
                     });
                 } else {
-                    debugger;
                     alerts = filterByFilter(f, alerts);
                 }
 
@@ -416,20 +421,18 @@ class OpAlerts extends React.Component {
                         <div onClick={() => this.sortBy("putCall")} className="col flex_center sm-title p-0">
                             Put/Call
                         </div>
-                        <div onClick={() => this.sortBy("symbol")} className="col flex_center sm-title p-0">
-                            Symbol
+
+                        <div onClick={() => this.sortBy("daysToExpiration")} className="col flex_center sm-title p-0">
+                            Days to Expire
                         </div>
-                        <div onClick={() => this.sortBy("exp")} className="col flex_center sm-title p-0">
-                            Expiration
+                        <div onClick={() => this.sortBy("percOTM")} className="col flex_center sm-title p-0">
+                            % OTM
                         </div>
-                        <div onClick={() => this.sortBy("strike")} className="col flex_center sm-title p-0">
-                            Strike
+                        <div onClick={() => this.sortBy("volumeIncrease")} className="col flex_center sm-title p-0">
+                            Vol Increase
                         </div>
-                        <div onClick={() => this.sortBy("underlyingPrice")} className="col flex_center sm-title p-0">
-                            Underlying
-                        </div>
-                        <div onClick={() => this.sortBy("maxPL")} className="col flex_center sm-title p-0">
-                            Max PL
+                        <div onClick={() => this.sortBy("last")} className="col flex_center sm-title p-0">
+                            Alert Price
                         </div>
                         <div onClick={() => this.sortBy("maxPercentPL")} className="col flex_center sm-title p-0">
                             Max %PL
@@ -469,11 +472,10 @@ class OpAlerts extends React.Component {
                         >
                             <div className={`col flex_center p-0`}>{iA + 1}</div>
                             <div className={`col flex_center p-0`}>{a.putCall}</div>
-                            <div className={`col flex_center p-0`}>{a.symbol}</div>
-                            <div className={`col flex_center`}>{a.exp}</div>
-                            <div className={`col flex_center p-0`}>{a.strike}</div>
-                            <div className={`col flex_center p-0`}>{underlyingPrice}</div>
-                            <div className={`col flex_center p-0`}>{maxPL}</div>
+                            <div className={`col flex_center`}>{a.daysToExpiration}</div>
+                            <div className={`col flex_center p-0`}>{a.percOTM}</div>
+                            <div className={`col flex_center p-0`}>{a.volumeIncrease}</div>
+                            <div className={`col flex_center p-0`}>{a.last}</div>
                             <div className={`col flex_center p-0`}>{maxPercentPL}</div>
                             {selectedContract && (
                                 <div id="selectedContractChart" className="floating ">
@@ -526,14 +528,17 @@ class OpAlerts extends React.Component {
         let { sortBy, sortOrder, includeExpiredContracts } = this.state;
         let allAlerts = options.alerts;
         //filter out selected values
-        let allSymbols = [];
+        // let allSymbols = [];
         let expDates = [];
         let strikePrices = [];
-        let alertMessages = [];
+        // let alertMessages = [];
         let lastPrices = [];
         let allIVs = [];
         let allDateTimes = [];
+        let allPercOTM = [];
+        let allDaysToExpiration = [];
         let allTotalVols = [];
+        let allVolumeIncrease = [];
         let allUnderlying = [];
         let allPL = [];
         let allMaxPL = [];
@@ -548,7 +553,7 @@ class OpAlerts extends React.Component {
         allAlerts.forEach((alert) => {
             // allAlerts[alertDay].map(()=>{
 
-            allSymbols.push(alert.symbol);
+            // allSymbols.push(alert.symbol);
 
             expDates.push(alert.exp);
             strikePrices.push(alert.strike);
@@ -563,12 +568,17 @@ class OpAlerts extends React.Component {
             allMaxPL.push(maxPL);
             allMaxPercentPL.push(maxPercentPL);
             // allPercentPL.push(percentPL);
-            alertMessages.push(alert.alert);
+            // alertMessages.push(alert.alert);
             lastPrices.push(alert.last);
             allIVs.push(alert.IV);
             allDateTimes.push(alert.dateTime.split(",")[0]);
+
+            allPercOTM.push(alert.percOTM);
             allTotalVols.push(alert.totalVolume);
-            allUnderlying.push(alert.underlyingPrice);
+
+            allDaysToExpiration.push(alert.daysToExpiration);
+            allVolumeIncrease.push(alert.volumeIncrease);
+            // allUnderlying.push(alert.underlyingPrice);
             // });
         });
         let filteredAlerts = this.filterAlerts(allAlerts);
@@ -584,11 +594,11 @@ class OpAlerts extends React.Component {
             }
         });
 
-        allSymbols = Array.from(new Set(allSymbols)).sort((a, b) => {
-            if (a > b) return 1;
-            if (a < b) return -1;
-            return 0;
-        });
+        // allSymbols = Array.from(new Set(allSymbols)).sort((a, b) => {
+        //     if (a > b) return 1;
+        //     if (a < b) return -1;
+        //     return 0;
+        // });
         expDates = makeSetSortAndFilter(expDates, true, true);
         allDateTimes = makeSetSortAndFilter(allDateTimes, true, true);
 
@@ -596,14 +606,17 @@ class OpAlerts extends React.Component {
         lastPrices = makeSetSortAndFilter(lastPrices);
         allIVs = makeSetSortAndFilter(allIVs);
         allTotalVols = makeSetSortAndFilter(allTotalVols);
-        allUnderlying = makeSetSortAndFilter(allUnderlying);
+        // allUnderlying = makeSetSortAndFilter(allUnderlying);
         allMaxPL = makeSetSortAndFilter(allMaxPL);
         allMaxPercentPL = makeSetSortAndFilter(allMaxPercentPL);
+        allPercOTM = makeSetSortAndFilter(allPercOTM);
+        allVolumeIncrease = makeSetSortAndFilter(allVolumeIncrease);
+        allDaysToExpiration = makeSetSortAndFilter(allDaysToExpiration);
 
         return (
             <div className="row flex_center white">
                 <div className="col-sm-12 flex_center">
-                    <h2>Option Alerts</h2>
+                    <h2>Option Alerts For {this.state.symbol}</h2>
                 </div>
                 {/* <div className="col-sm-6 flex_center"></div> */}
                 <div className="col-sm-4 flex_center">
@@ -629,17 +642,23 @@ class OpAlerts extends React.Component {
                         {/* Date Select */}
                         {this.FilterSelect("Alert Date", "dateTime", allDateTimes)}
 
-                        {/* Symbol Select */}
-                        {this.FilterSelect("Filter symbols", "symbol", allSymbols)}
+                        {/* Days To Expire */}
+                        {this.FilterSelect("Days To Expire", "daysToExpiration", allDaysToExpiration)}
 
                         {/* total Vol Select */}
                         {this.FilterSelect("Total Volume", "totalVolume", allTotalVols)}
+
+                        {/* total Vol Select */}
+                        {this.FilterSelect("% OTM", "percOTM", allPercOTM)}
+
+                        {/* total Vol Select */}
+                        {this.FilterSelect("Volume Increase", "volumeIncrease", allVolumeIncrease)}
 
                         {/* Last Select */}
                         {this.FilterSelect("Alert Price", "last", lastPrices)}
 
                         {/* Last Select */}
-                        {this.FilterSelect("Underlying Prices", "underlyingPrice", allUnderlying)}
+                        {/* {this.FilterSelect("Underlying Prices", "underlyingPrice", allUnderlying)} */}
 
                         {/* Profit Select */}
                         {/* {this.FilterSelect("Filter P&L", "PL", allPL)} */}
@@ -664,7 +683,6 @@ class OpAlerts extends React.Component {
                             <ExcelBtn
                                 title="Download Excel"
                                 onClick={() => {
-                                    debugger;
                                     var workbook = XLSX.utils.book_new();
                                     filteredAlerts = filteredAlerts.map((a) => {
                                         delete a._id;
@@ -683,7 +701,6 @@ class OpAlerts extends React.Component {
                             >
                                 <span style={{ paddingRight: "5px" }}>Download Excel</span>
                                 <FontAwesomeIcon icon={faFileDownload} />
-                                {/* <FontAwesomeIcon icon={faFileExcel} /> */}
                             </ExcelBtn>
                         </div>
                         <div className="col-sm-12">
@@ -693,26 +710,7 @@ class OpAlerts extends React.Component {
                         </div>
                     </div>
                 </div>
-                {/* <div className="col-sm-4 flex_center">
-          <div className="row flex_center">
-            <div className="col-sm-12 flex_center">
-              <div className="sm-title">Total P&L</div>
-            </div>
-            <div className="col-sm-12 flex_center">
-              <p>${totalMaxPL}</p>
-            </div>
-          </div>
-        </div> */}
-                {/* <div className="col-sm-4 flex_center">
-          <div className="row flex_center">
-            <div className="col-sm-12 flex_center">
-              <div className="sm-title">Total %P&L</div>
-            </div>
-            <div className="col-sm-12 flex_center">
-              <p>%{totalMaxPercPL}</p>
-            </div>
-          </div>
-        </div> */}
+
                 <LineBreak />
                 <div className="container dynamicText">{this.makeTable(filteredAlerts)}</div>
             </div>
