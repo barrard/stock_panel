@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { toastr } from "react-redux-toastr";
 import { withRouter } from "react-router";
 import styled from "styled-components";
-import { getOpAlerts } from "../redux/actions/opActions.js";
+import { getAlertByDate } from "../redux/actions/opActions.js";
 import API from "./API.js";
 import Tree from "react-d3-tree";
 import OptionsChart from "./charts/OptionsChart.js";
@@ -72,11 +72,10 @@ class OpAlerts extends React.Component {
 	}
 
 	componentDidMount() {
-		console.log(this.state.month);
-		console.log(this.state.day);
-		console.log(this.state.year);
+		let { day, month, year } = this.props.match.params;
+
 		debugger;
-		this.props.dispatch(getOpAlerts(this.state.symbol));
+		this.props.dispatch(getAlertByDate({ day, month, year }));
 		this.setChartWidth();
 		window.addEventListener("resize", this.setChartWidth.bind(this));
 	}
