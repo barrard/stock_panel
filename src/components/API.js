@@ -472,7 +472,7 @@ async function fetchOpAlerts(symbol) {
 	return processedAlerts;
 }
 
-async function fetchOpAlertsByDate(date) {
+async function fetchOpAlertsByDate({ month, day, year }) {
 	let data;
 	data = await fetch(`${API_SERVER}/option-date/${month}/${day}/${year}`);
 
