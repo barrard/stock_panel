@@ -31,8 +31,8 @@ function emaPullBackCheck(allData) {
     let proximityCheck = emaProximityCheck(data);
     if (trend === "bullishPullback") {
         if (proximityCheck === 20) {
-            console.log("near the 20?");
-            return "Buy";
+            // console.log("near the 20?");
+            return "";
         } else if (proximityCheck === 50) {
             return "Buy";
         } else if (proximityCheck === 200) {
@@ -40,8 +40,8 @@ function emaPullBackCheck(allData) {
         }
     } else if (trend === "bearishPullback") {
         if (proximityCheck === 20) {
-            console.log("near the 20?");
-            return "Sell";
+            // console.log("near the 20?");
+            return "";
         } else if (proximityCheck === 50) {
             return "Sell";
         } else if (proximityCheck === 200) {
@@ -225,10 +225,10 @@ function getEMA_Trend({ ema, close }) {
     let bullishPullback = false;
     let bearishPullback = false;
     if (!emaOrderUpTrend) {
-        if (ema["50"] > ema["200"] && ema["4"] > ema["200"]) bullishPullback = true;
+        if (ema["50"] > ema["200"] && ema["4"] > ema["20"] && ema["4"] > ema["200"]) bullishPullback = true;
     }
     if (!emaOrderDownTrend) {
-        if (ema["50"] < ema["200"] && ema["4"] < ema["200"]) bearishPullback = true;
+        if (ema["50"] < ema["200"] && ema["4"] < ema["20"] && ema["4"] < ema["200"]) bearishPullback = true;
     }
 
     let biggerTrend = emaOrderUpTrend

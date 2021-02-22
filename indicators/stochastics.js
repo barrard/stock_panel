@@ -2,7 +2,7 @@ const { lstat } = require("fs/promises");
 const tulind = require("tulind");
 
 const { average, windowAvg } = require("./indicatorHelpers/MovingAverage.js");
-let stochasticPeriods = [14, 24, 50, 100];
+let stochasticPeriods = [5, 14, 24, 50, 100];
 let indicatorName = "stochastics";
 const STOCH_PERIOD = 14;
 const STOCK_K = 3;
@@ -67,7 +67,7 @@ function checkMultiPeriodStoch(data, symbol, TF) {
     }
 
     function evalMultiPeriodStoch(d) {
-        if (!d.stochastics || !d.stochastics.K || !d.stochastics.D || !d.stochastics["50"]) return;
+        if (!d.stochastics || !d.stochastics.K || !d.stochastics.D || !d.stochastics["14"]) return;
 
         let { K, D } = d.stochastics;
         let fity = d.stochastics["50"];
@@ -103,13 +103,14 @@ function checkMultiPeriodStoch(data, symbol, TF) {
 
 function prevCurrentStoch(data) {
     if (!data) {
-        console.log("no data?");
+        return console.log("no data?");
     }
     let prev = data.slice(-2)[0];
     let curr = data.slice(-1)[0];
     let prevStoch = evalStoch(prev);
     let currStoch = evalStoch(curr);
     let { symbol, timeframe } = curr;
+    console.log({ prevStoch, currStoch });
     let dir;
     if (prevStoch === "oversold" && currStoch === "oversold") {
         dir = "oversold"; //"oversold";sell
@@ -140,16 +141,17 @@ function evalStoch(data) {
         throw new Error(`Undefined K ${K} or D ${D}`);
     }
     let dir =
-        D > 80 && K > 90
+        D >= 85 && K >= 85 && D < 92 && K < 95
             ? "overbought" //2
-            : 10 > K && 20 > D
+            : 20 >= K && 20 >= D && K > 5 && D > 8
             ? "oversold" //1
-            : K > 50 && D < 30
-            ? "exitShort" //3
-            : K < 50 && D > 70
-            ? "exitLong" //4
-            : "middle"; //5;
+            : // : K >= 50 && D <= 30
+              // ? "exitShort" //3
+              // : K <= 50 && D >= 70
+              // ? "exitLong" //4
+              "middle"; //5;
 
+    console.log({ K, D, dir });
     if (!dir) {
         console.log("dbug");
     }
