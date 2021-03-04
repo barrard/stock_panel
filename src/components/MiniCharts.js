@@ -1,6 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
-import { axisRight, axisBottom, curveCardinal, extent, line, scaleBand, scaleLinear, select } from "d3";
+import {
+	axisRight,
+	axisBottom,
+	curveCardinal,
+	extent,
+	line,
+	scaleBand,
+	scaleLinear,
+	select,
+	zoom,
+	zoomTransform,
+} from "d3";
 import API from "./API.js";
 
 console.log("RUN THIS SHIT");
@@ -26,21 +37,21 @@ let lastTradePrice = {};
 let lastTradeTime = {};
 // let lastTradeVol = {};
 export default function MiniCharts({ Socket }) {
-	const [levelOne, setLevelOne] = useState([]);
-	const [timeAndSales, setTimeAndSales] = useState([]);
-	console.log("MiniCharts");
+	// console.log("MiniCharts");
+	const [levelOneData, setLevelOneData] = useState({});
+	const [currentZoom, setCurrentZoom] = useState();
 
 	// on load hook
 	useEffect(() => {
+		console.log("Add socket listeners");
 		Socket.on("levelOne", (levelOne) => {
 			let levelOneDataChange = {};
-
+			setLevelOneData({ ...levelOne });
 			let levelOneData = handleLevelOne(levelOne);
-			//compare to the lastradeVolPerSect level one data
+
 			Object.entries(levelOneData).forEach(([symbol, data]) => {
 				if (!lastLevelOneData[symbol]) lastLevelOneData[symbol] = {};
 				if (!levelOneDataChange[symbol]) levelOneDataChange[symbol] = {};
-
 				Object.keys(data).forEach((prop) => {
 					let val = data[prop];
 					if (val === undefined) return;
@@ -53,6 +64,7 @@ export default function MiniCharts({ Socket }) {
 					lastLevelOneData[symbol][prop] = val;
 				});
 			});
+
 			levelOneDataChange.timestamp = new Date().toLocaleString();
 			levelOneDataChangeArray.push(levelOneDataChange);
 		});
@@ -61,7 +73,7 @@ export default function MiniCharts({ Socket }) {
 			let { timeSalesData, tradeVol, tradeCount, volWeightedTradePrice, volPerTrade } = handelTimeAndSales(
 				timeAndSales
 			);
-			console.log({ timeSalesData, tradeVol, tradeCount, volWeightedTradePrice, volPerTrade });
+			// console.log({ timeSalesData, tradeVol, tradeCount, volWeightedTradePrice, volPerTrade });
 			for (let symbol in tradeCount) {
 				if (!tradeCountPerSec[symbol]) tradeCountPerSec[symbol] = 0;
 				tradeCountPerSec[symbol] += tradeCount[symbol];
@@ -86,12 +98,41 @@ export default function MiniCharts({ Socket }) {
 			Socket.off("timeAndSales");
 		};
 	}, []);
+	let symbols = ["/ES", "/NQ", "/YM", "/GC", "/CL", "/RT"];
+	let titles = [
+		`Trades Per Sec, `,
+		`Trade Vol Per Sec, `,
+		// `Vol Weighted Per Sec, `,
+		// `Vol Per Trades Per Sec, `,
+		// `Time between Trades Per Sec, `,
+		// "Price Change",
+	];
+	let datas = [
+		tradeCountPerSecHistory,
+		tradeVolPerSecHistory,
+		// volWeightedPerSecHistory,
+		// volPerTradePerSecHistory,
+		// tradeTimeChangeHistory,
+		// tradePriceChangeHistory,
+	];
+	let getTitle = (i, symbol, data) => `${titles[i]} - ${symbol} :  ${data[symbol] ? data[symbol].slice(-1)[0] : ""}`;
 
-	return (
-		<div className="white">
-			<MiniChart symbol="/ES" />
-		</div>
-	);
+	let tradesPerSecCharts = symbols
+		.map((symbol) => {
+			return datas.map((data, i) => (
+				<div className="white">
+					<MiniChart
+						currentZoom={currentZoom}
+						setCurrentZoom={setCurrentZoom}
+						data={data[symbol] ? [...data[symbol]] : []}
+						title={getTitle(i, symbol, data)}
+					/>
+				</div>
+			));
+		})
+		.flat();
+
+	return <>{tradesPerSecCharts}</>;
 }
 
 function handelTimeAndSales(timeSalesArray) {
@@ -132,13 +173,13 @@ function getStats(symbol, obj, tradeVol, tradeCount, volWeightedTradePrice, volP
 			tradeVolumeChanges[symbol] = [];
 			tradePriceChange[symbol] = [];
 			tradeTimeDiffs[symbol] = [];
-		}
-
-		if (!lastTradePrice[symbol]) {
 			lastTradePrice[symbol] = timeSandSale.lastPrice;
 			lastTradeTime[symbol] = timeSandSale.tradeTime;
-			// lastTradeVol[symbol] = timeSandSale.lastSize;
 		}
+
+		// if (!lastTradePrice[symbol]) {
+		// 	// lastTradeVol[symbol] = timeSandSale.lastSize;
+		// }
 		let lastPrice = lastTradePrice[symbol]; //Note this is the LAST trade price
 		let tradeTime = lastTradeTime[symbol]; //Note this is the LAST trade time
 		// let lastSize = lastTradeVol[symbol]; //Note this is the LAST trade volume
@@ -192,8 +233,65 @@ function parseTimeSales(data, obj) {
 	obj[symbol].push({ lastPrice, tradeTime, lastSize, lastSequence });
 }
 
+let timer = setInterval(() => {
+	for (let symbol in tradeCountPerSec) {
+		if (!tradeCountPerSecHistory[symbol]) {
+			tradeCountPerSecHistory[symbol] = [];
+			tradeVolPerSecHistory[symbol] = [];
+			volWeightedPerSecHistory[symbol] = [];
+			volPerTradePerSecHistory[symbol] = [];
+			tradeTimeChangeHistory[symbol] = [];
+			tradePriceChangeHistory[symbol] = [];
+		}
+
+		tradeCountPerSecHistory[symbol].push(tradeCountPerSec[symbol]);
+		tradeCountPerSec[symbol] = 0;
+
+		tradeVolPerSecHistory[symbol].push(tradeVolPerSec[symbol]);
+		tradeVolPerSec[symbol] = 0;
+		if (volWeightedPerSec[symbol]) {
+			volWeightedPerSecHistory[symbol].push(volWeightedPerSec[symbol]);
+		}
+
+		volWeightedPerSec[symbol] = 0;
+		volPerTradePerSecHistory[symbol].push(volPerTradePerSec[symbol]);
+		volPerTradePerSec[symbol] = 0;
+
+		// console.log({ symbol, tradeTimeDiffs: tradeTimeDiffs[symbol] });
+
+		// tradeTimeDiffs[symbol].forEach((timeDelta) => {});
+
+		if (tradeTimeDiffs[symbol].length) {
+			tradeTimeChangeHistory[symbol].push(
+				tradeTimeDiffs[symbol].reduce((total, timeDiff) => Math.abs(timeDiff) + total, 0) /
+					tradeTimeDiffs[symbol].length
+			);
+		} else {
+			tradeTimeChangeHistory[symbol].push(0);
+		}
+		tradeTimeDiffs[symbol] = [];
+
+		// console.log({ symbol });
+		tradePriceChange[symbol].forEach((priceDiff, index) => {
+			let volDiff = tradeVolumeChanges[symbol][index];
+			// console.log({ volDiff, priceDiff });
+		});
+		if (tradePriceChange[symbol].length) {
+			tradePriceChangeHistory[symbol].push(
+				tradePriceChange[symbol].reduce((total, priceDiff) => Math.abs(priceDiff) + total, 0) /
+					tradePriceChange[symbol].length
+			);
+		} else {
+			tradePriceChangeHistory[symbol].push(0);
+		}
+
+		tradeVolumeChanges[symbol] = [];
+		tradePriceChange[symbol] = [];
+	}
+}, 1000);
+
 let width = 1000;
-let height = 500;
+let height = 200;
 let margin = {
 	left: 20,
 	right: 40,
@@ -204,136 +302,82 @@ let innerHeight = height - (margin.top + margin.bottom);
 let innerWidth = width - (margin.left + margin.right);
 
 let yScale = scaleLinear().range([innerHeight, 0]);
-// let xScale = scaleLinear().range([margin.left, innerWidth]);
-let xScale = scaleBand().range([margin.left, innerWidth]);
-let rScale = scaleLinear().range([1, 10]);
+let xScale = scaleLinear().range([margin.left, innerWidth]);
+// let xScale = scaleBand().range([margin.left, innerWidth]);
+let rScale = scaleLinear().range([1, 5]);
 
-function MiniChart({ symbol, timeAndSales }) {
+function MiniChart({ title, data, setCurrentZoom, currentZoom }) {
 	const svgRef = useRef();
-
-	const [data, setData] = useState([timeAndSales]);
 	const [chartSvg, setChartSvg] = useState(undefined);
-
-	console.log(`mini chart ${symbol}`);
-	console.log(new Date().toLocaleString());
+	const [myData, setMyData] = useState(data);
 
 	useEffect(() => {
-		// draw();
-	}, [data]);
+		draw();
+	}, [data, currentZoom]);
 
 	useEffect(() => {
+		console.log("MINI CHART ON LOAD");
 		setChartSvg(select(svgRef.current));
-		console.log(chartSvg);
-
-		let timer = setInterval(() => {
-			for (let symbol in tradeCountPerSec) {
-				if (!tradeCountPerSecHistory[symbol]) tradeCountPerSecHistory[symbol] = [];
-				tradeCountPerSecHistory[symbol].push(tradeCountPerSec[symbol]);
-				tradeCountPerSec[symbol] = 0;
-			}
-
-			for (let symbol in tradeVolPerSec) {
-				if (!tradeVolPerSecHistory[symbol]) tradeVolPerSecHistory[symbol] = [];
-				tradeVolPerSecHistory[symbol].push(tradeVolPerSec[symbol]);
-				tradeVolPerSec[symbol] = 0;
-			}
-			for (let symbol in volWeightedPerSec) {
-				if (!volWeightedPerSecHistory[symbol]) volWeightedPerSecHistory[symbol] = [];
-				volWeightedPerSecHistory[symbol].push(volWeightedPerSec[symbol]);
-
-				volWeightedPerSec[symbol] = 0;
-			}
-
-			for (let symbol in volPerTradePerSec) {
-				if (!volPerTradePerSecHistory[symbol]) volPerTradePerSecHistory[symbol] = [];
-				volPerTradePerSecHistory[symbol].push(volPerTradePerSec[symbol]);
-				volPerTradePerSec[symbol] = 0;
-			}
-
-			for (let symbol in tradeTimeDiffs) {
-				if (!tradeTimeChangeHistory[symbol]) tradeTimeChangeHistory[symbol] = [];
-				//loop over the trade times?
-				console.log({ tradeTimeDiffs: tradeTimeDiffs[symbol] });
-
-				tradeTimeDiffs[symbol].forEach((timeDelta) => {});
-
-				tradeTimeChangeHistory[symbol].push(tradeTimeDiffs[symbol]);
-				tradeTimeDiffs[symbol] = [];
-			}
-			for (let symbol in tradePriceChange) {
-				if (!tradePriceChangeHistory[symbol]) tradePriceChangeHistory[symbol] = [];
-
-				console.log({ symbol });
-				tradePriceChange[symbol].forEach((priceDiff, index) => {
-					let volDiff = tradeVolumeChanges[symbol][index];
-					console.log({ volDiff, priceDiff });
-				});
-				//this will be an array of price changes in the last second,
-				// match them up to volume changes
-				tradePriceChangeHistory[symbol].push(tradePriceChange[symbol]);
-				tradeVolumeChanges[symbol] = [];
-				tradePriceChange[symbol] = [];
-			}
-
-			console.log({
-				tradeCountPerSecHistory,
-				tradeVolPerSecHistory,
-				volWeightedPerSecHistory,
-				volPerTradePerSecHistory,
-			});
-		}, 1000);
-		return () => {
-			clearInterval(timer);
-		};
 	}, []);
 
 	const draw = () => {
-		let xData = data.map();
-		debugger;
-		let yData = data.map((d) => d["DJI"].lastPrice);
-		console.log(yData, data);
-		//chart setup
-		let [yMin, yMax] = extent(yData);
-		debugger;
+		if (!data || !data.length) return;
+		let [yMin, yMax] = extent(data);
 
 		// yScale.domain([yMax, yMin]);
-		// xScale.domain([0, yData.length - 1]);
-		xScale.domain(data.map((d) => new Date(d["1"]).toLocaleTimeString())).paddingInner(0.05);
+		xScale.domain([0, data.length - 1]);
+		// xScale.domain(data.map((d) => new Date(d["1"]).toLocaleTimeString())).paddingInner(0.05);
+		yScale.domain([yMin - yMin * 0.0005, yMax + yMax * 0.0005]);
+		rScale.domain([yMin, yMax]);
 
-		yScale.domain([yMin - yMin * 0.05, yMax + yMax * 0.05]);
+		if (currentZoom) {
+			let newXScale = currentZoom.rescaleX(xScale);
+			// console.log(newXScale);
+			let [start, end] = newXScale.domain();
+			debugger;
+			xScale.domain(newXScale.domain());
+			console.log(data.slice(Math.floor(start), Math.floor(end)));
+			let [yMin, yMax] = extent(data.slice(Math.floor(start), Math.floor(end)));
 
-		console.log(xScale.domain().filter((d, i) => i % 100 === 0));
+			yScale.domain([yMin ? yMin - yMin * 0.0005 : 0, yMax ? yMax + yMax * 0.0005 : 1]);
+		}
+
 		let xAxis = axisBottom(xScale).tickValues(xScale.domain().filter((d, i) => i % 100 === 0));
 		let yAxis = axisRight(yScale).tickSize(-innerWidth);
 		// xAxis.attr('fill', 'white')
 
 		if (!chartSvg) return;
 
-		console.log("DRAW!!!!  ");
-
 		chartSvg.select(".x-axis").call(xAxis);
 		chartSvg.select(".y-axis").call(yAxis);
 		chartSvg.selectAll(".myLine").remove();
 
 		const myLine = line()
-			.x((d, i) => xScale(new Date(d.createdAt).toLocaleString()))
-			.y((d) => yScale(d.DJI.lastPrice))
+			// .x((d, i) => xScale(new Date(d.x).toLocaleString()))
+			.x((d, i) => {
+				let x = xScale(i);
+				return x;
+			})
+			.y((d) => {
+				let y = yScale(d);
+				return y;
+			})
 			.curve(curveCardinal);
 
-		// chartSvg
-		//     .selectAll("circle")
-		//     .data(yData)
-		//     .join(
-		//         "circle"
-		//         // (enter) => enter.append("circle").attr("class", "new"),
-		//         // (update) => update.append("circle").attr("class", "updated"),
-		//         // (exit) => exit.remove()
-		//     )
-		//     .attr("r", rScale)
-		//     .attr("cx", (_, i) => xScale(i))
-		//     .attr("cy", yScale)
-		//     .attr("stroke", "red")
-		//     .exit();
+		chartSvg
+			.selectAll("circle")
+			.data(data)
+			.join(
+				"circle"
+				// (enter) => enter.append("circle").attr("class", "new"),
+				// (update) => update.append("circle").attr("class", "updated"),
+				// (exit) => exit.remove()
+			)
+			.attr("r", rScale)
+			.attr("cx", (_, i) => xScale(i))
+			.attr("cy", yScale)
+			.attr("stroke", "red")
+			.exit();
 
 		chartSvg
 			.selectAll(".myLine")
@@ -345,10 +389,24 @@ function MiniChart({ symbol, timeAndSales }) {
 			.attr("stroke", "blue")
 			// .attr("class", "new")
 			.exit();
+
+		const zoomBehavior = zoom()
+			.scaleExtent([0.1, 10]) //zoom in and out limit
+			.translateExtent([
+				[0, 0],
+				[width, height],
+			]) //pan left and right
+			.on("zoom", () => {
+				const zoomState = zoomTransform(chartSvg.node());
+				setCurrentZoom(zoomState);
+			});
+
+		chartSvg.call(zoomBehavior);
 	};
 
 	return (
 		<div>
+			<h3>{title}</h3>
 			<StyledSVG ref={svgRef}>
 				<StyledXAxis className="x-axis white" />
 				<StyledYAxis className="y-axis white" />
