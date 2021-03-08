@@ -31,7 +31,8 @@ let tradeVolumeChanges = {};
 let tradeTimeDiffs = {};
 
 let lastLevelOneData = {};
-let levelOneDataChangeArray = [];
+let levelOneDataChangeArrays = {};
+let levelOneDataArrays = {};
 
 let lastTradePrice = {};
 let lastTradeTime = {};
@@ -45,28 +46,41 @@ export default function MiniCharts({ Socket }) {
 	useEffect(() => {
 		console.log("Add socket listeners");
 		Socket.on("levelOne", (levelOne) => {
-			let levelOneDataChange = {};
+			// let levelOneDataChange = {};
 			setLevelOneData({ ...levelOne });
 			let levelOneData = handleLevelOne(levelOne);
+			console.log({ levelOneData });
 
 			Object.entries(levelOneData).forEach(([symbol, data]) => {
-				if (!lastLevelOneData[symbol]) lastLevelOneData[symbol] = {};
-				if (!levelOneDataChange[symbol]) levelOneDataChange[symbol] = {};
+				if (!lastLevelOneData[symbol]) {
+					lastLevelOneData[symbol] = {};
+					// levelOneDataChange[symbol] = {};
+					levelOneDataChangeArrays[symbol] = {};
+					levelOneDataArrays[symbol] = {};
+				}
+
 				Object.keys(data).forEach((prop) => {
+					if (!levelOneDataChangeArrays[symbol][prop]) {
+						levelOneDataChangeArrays[symbol][prop] = [];
+						levelOneDataArrays[symbol][prop] = [];
+					}
 					let val = data[prop];
 					if (val === undefined) return;
+					levelOneDataArrays[symbol][prop].push(val);
 					let lastVal = lastLevelOneData[symbol][prop];
 					if (lastVal && val) {
 						let delta = val - lastVal;
-						levelOneDataChange[symbol][prop] = delta;
+						levelOneDataChangeArrays[symbol][prop].push(delta);
+						// levelOneDataChange[symbol][prop] = delta;
 					}
 
 					lastLevelOneData[symbol][prop] = val;
 				});
 			});
 
-			levelOneDataChange.timestamp = new Date().toLocaleString();
-			levelOneDataChangeArray.push(levelOneDataChange);
+			// levelOneDataChange.timestamp = new Date().toLocaleString();
+			// levelOneDataChangeArrays.push(levelOneDataChange);
+			console.log({ levelOneDataChangeArrays, lastLevelOneData, levelOneDataArrays });
 		});
 
 		Socket.on("timeAndSales", (timeAndSales) => {
@@ -85,12 +99,16 @@ export default function MiniCharts({ Socket }) {
 			}
 			for (let symbol in volWeightedTradePrice) {
 				if (!volWeightedPerSec[symbol]) volWeightedPerSec[symbol] = 0;
-				volWeightedPerSec[symbol] += volWeightedTradePrice[symbol];
+				volWeightedPerSec[symbol] = volWeightedPerSec[symbol]
+					? (volWeightedPerSec[symbol] + volWeightedTradePrice[symbol]) / 2
+					: volWeightedTradePrice[symbol];
 			}
 
 			for (let symbol in volPerTrade) {
 				if (!volPerTradePerSec[symbol]) volPerTradePerSec[symbol] = 0;
-				volPerTradePerSec[symbol] += volPerTrade[symbol];
+				volPerTradePerSec[symbol] += volPerTradePerSec[symbol]
+					? (volPerTrade[symbol] + volPerTradePerSec[symbol]) / 2
+					: volPerTrade[symbol];
 			}
 		});
 		return () => {
@@ -98,24 +116,43 @@ export default function MiniCharts({ Socket }) {
 			Socket.off("timeAndSales");
 		};
 	}, []);
-	let symbols = ["/ES", "/NQ", "/YM", "/GC", "/CL", "/RT"];
+	let symbols = [
+		"/ES",
+		// "/NQ",
+		// "/YM",
+		// "/GC",
+		//"/CL", "/RT"
+	];
 	let titles = [
-		`Trades Per Sec, `,
-		`Trade Vol Per Sec, `,
-		// `Vol Weighted Per Sec, `,
-		// `Vol Per Trades Per Sec, `,
-		// `Time between Trades Per Sec, `,
-		// "Price Change",
+		[`Trades Per Sec, `, ["bidSize", "askSize"]],
+		[`Trade Vol Per Sec, `, ["bidSize", "askSize"]],
+		[`Vol Weighted Per Sec, `, ["bidPrice", "askPrice"]],
+		[`Vol Per Trades Per Sec, `, ["bidSize", "askSize"]],
+		// [`Time between Trades Per Sec, `, ["bidSize", "askSize"]],
+		// ["Price Change", ["bidSize", "askSize"]],
 	];
 	let datas = [
 		tradeCountPerSecHistory,
 		tradeVolPerSecHistory,
-		// volWeightedPerSecHistory,
-		// volPerTradePerSecHistory,
+		volWeightedPerSecHistory,
+		volPerTradePerSecHistory,
 		// tradeTimeChangeHistory,
 		// tradePriceChangeHistory,
 	];
 	let getTitle = (i, symbol, data) => `${titles[i]} - ${symbol} :  ${data[symbol] ? data[symbol].slice(-1)[0] : ""}`;
+	let getLevelOneData = (levelOneDataArrays, levelOneDataChangeArrays, symbol, i) => {
+		if (i === 0) {
+			return levelOneDataChangeArrays[symbol];
+		} else if (i === 1) {
+			return levelOneDataArrays[symbol];
+		} else if (i === 2) {
+			return levelOneDataArrays[symbol];
+		} else if (i === 3) {
+			return levelOneDataChangeArrays[symbol];
+		} else {
+			return levelOneDataArrays[symbol];
+		}
+	};
 
 	let tradesPerSecCharts = symbols
 		.map((symbol) => {
@@ -125,6 +162,8 @@ export default function MiniCharts({ Socket }) {
 						currentZoom={currentZoom}
 						setCurrentZoom={setCurrentZoom}
 						data={data[symbol] ? [...data[symbol]] : []}
+						levelOneData={getLevelOneData(levelOneDataArrays, levelOneDataChangeArrays, symbol, i)}
+						levelOneKeys={titles[i][1]}
 						title={getTitle(i, symbol, data)}
 					/>
 				</div>
@@ -202,6 +241,7 @@ function getStats(symbol, obj, tradeVol, tradeCount, volWeightedTradePrice, volP
 	});
 
 	volWeightedTradePrice[symbol] /= tradeVol[symbol];
+
 	volPerTrade[symbol] = tradeVol[symbol] / tradeCount[symbol];
 }
 
@@ -243,23 +283,21 @@ let timer = setInterval(() => {
 			tradeTimeChangeHistory[symbol] = [];
 			tradePriceChangeHistory[symbol] = [];
 		}
+		debugger;
 
 		tradeCountPerSecHistory[symbol].push(tradeCountPerSec[symbol]);
 		tradeCountPerSec[symbol] = 0;
 
 		tradeVolPerSecHistory[symbol].push(tradeVolPerSec[symbol]);
 		tradeVolPerSec[symbol] = 0;
+
 		if (volWeightedPerSec[symbol]) {
 			volWeightedPerSecHistory[symbol].push(volWeightedPerSec[symbol]);
 		}
-
 		volWeightedPerSec[symbol] = 0;
+
 		volPerTradePerSecHistory[symbol].push(volPerTradePerSec[symbol]);
 		volPerTradePerSec[symbol] = 0;
-
-		// console.log({ symbol, tradeTimeDiffs: tradeTimeDiffs[symbol] });
-
-		// tradeTimeDiffs[symbol].forEach((timeDelta) => {});
 
 		if (tradeTimeDiffs[symbol].length) {
 			tradeTimeChangeHistory[symbol].push(
@@ -271,10 +309,8 @@ let timer = setInterval(() => {
 		}
 		tradeTimeDiffs[symbol] = [];
 
-		// console.log({ symbol });
 		tradePriceChange[symbol].forEach((priceDiff, index) => {
 			let volDiff = tradeVolumeChanges[symbol][index];
-			// console.log({ volDiff, priceDiff });
 		});
 		if (tradePriceChange[symbol].length) {
 			tradePriceChangeHistory[symbol].push(
@@ -303,13 +339,11 @@ let innerWidth = width - (margin.left + margin.right);
 
 let yScale = scaleLinear().range([innerHeight, 0]);
 let xScale = scaleLinear().range([margin.left, innerWidth]);
-// let xScale = scaleBand().range([margin.left, innerWidth]);
 let rScale = scaleLinear().range([1, 5]);
 
-function MiniChart({ title, data, setCurrentZoom, currentZoom }) {
+function MiniChart({ title, data, setCurrentZoom, currentZoom, levelOneData, levelOneKeys }) {
 	const svgRef = useRef();
 	const [chartSvg, setChartSvg] = useState(undefined);
-	const [myData, setMyData] = useState(data);
 
 	useEffect(() => {
 		draw();
@@ -324,25 +358,24 @@ function MiniChart({ title, data, setCurrentZoom, currentZoom }) {
 		if (!data || !data.length) return;
 		let [yMin, yMax] = extent(data);
 
-		// yScale.domain([yMax, yMin]);
 		xScale.domain([0, data.length - 1]);
-		// xScale.domain(data.map((d) => new Date(d["1"]).toLocaleTimeString())).paddingInner(0.05);
 		yScale.domain([yMin - yMin * 0.0005, yMax + yMax * 0.0005]);
 		rScale.domain([yMin, yMax]);
 
 		if (currentZoom) {
 			let newXScale = currentZoom.rescaleX(xScale);
-			// console.log(newXScale);
 			let [start, end] = newXScale.domain();
-			debugger;
+
 			xScale.domain(newXScale.domain());
-			console.log(data.slice(Math.floor(start), Math.floor(end)));
-			let [yMin, yMax] = extent(data.slice(Math.floor(start), Math.floor(end)));
+			let [yMin, yMax] = extent([
+				...data.slice(Math.floor(start), Math.ceil(end)),
+				...levelOneKeys.map((key) => [...levelOneData[key]].slice(Math.floor(start), Math.ceil(end))).flat(),
+			]);
 
 			yScale.domain([yMin ? yMin - yMin * 0.0005 : 0, yMax ? yMax + yMax * 0.0005 : 1]);
 		}
 
-		let xAxis = axisBottom(xScale).tickValues(xScale.domain().filter((d, i) => i % 100 === 0));
+		let xAxis = axisBottom(xScale).tickValues(xScale.domain().filter((d, i) => i % 10 === 0));
 		let yAxis = axisRight(yScale).tickSize(-innerWidth);
 		// xAxis.attr('fill', 'white')
 
@@ -351,6 +384,9 @@ function MiniChart({ title, data, setCurrentZoom, currentZoom }) {
 		chartSvg.select(".x-axis").call(xAxis);
 		chartSvg.select(".y-axis").call(yAxis);
 		chartSvg.selectAll(".myLine").remove();
+		levelOneKeys.forEach((levelOneProp) => {
+			chartSvg.selectAll(`.${levelOneProp}_line`).remove();
+		});
 
 		const myLine = line()
 			// .x((d, i) => xScale(new Date(d.x).toLocaleString()))
@@ -367,17 +403,35 @@ function MiniChart({ title, data, setCurrentZoom, currentZoom }) {
 		chartSvg
 			.selectAll("circle")
 			.data(data)
-			.join(
-				"circle"
-				// (enter) => enter.append("circle").attr("class", "new"),
-				// (update) => update.append("circle").attr("class", "updated"),
-				// (exit) => exit.remove()
-			)
-			.attr("r", rScale)
+			.join("circle")
+			// .attr("r", rScale)
 			.attr("cx", (_, i) => xScale(i))
 			.attr("cy", yScale)
 			.attr("stroke", "red")
 			.exit();
+
+		levelOneKeys.forEach((levelOneProp) => {
+			chartSvg
+				.selectAll(`.${levelOneProp}_circle`)
+				.data(levelOneData[levelOneProp])
+				.join("circle")
+				// .attr("r", rScale)
+				.attr("cx", (_, i) => xScale(i))
+				.attr("cy", yScale)
+				.attr("stroke", levelOneProp.includes("bid") ? "green" : "red")
+				.exit();
+
+			chartSvg
+				.selectAll(`.${levelOneProp}_line`)
+				.data([levelOneData[levelOneProp]])
+				.join("path")
+				.attr("class", `${levelOneProp}_line`)
+				.attr("d", myLine)
+				.attr("fill", "none")
+				.attr("stroke", levelOneProp.includes("bid") ? "green" : "red")
+				// .attr("class", "new")
+				.exit();
+		});
 
 		chartSvg
 			.selectAll(".myLine")
