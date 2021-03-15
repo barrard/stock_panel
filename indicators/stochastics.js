@@ -141,13 +141,13 @@ function evalStoch(data) {
 		throw new Error(`Undefined K ${K} or D ${D}`);
 	}
 	let dir =
-		D >= 70 && K >= 80 && D <= 90 && K <= 90
+		D >= 70 && K >= 80 && D <= 95 && K <= 95
 			? "overbought" //2
-			: 20 >= K && 30 >= D && K > 11 && D > 11
+			: 20 >= K && 30 >= D && K > 6 && D > 6
 			? "oversold" //1
-			: D >= 90 && K >= 90
+			: D >= 95 && K >= 95
 			? "oversold"
-			: K < 11 && D < 11
+			: K <= 6 && D <= 6
 			? "overbought"
 			: "middle"; //5;
 

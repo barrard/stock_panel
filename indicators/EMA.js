@@ -19,8 +19,12 @@ module.exports = {
 	evalEMA,
 	emaPullBackCheck,
 };
+const EMA9 = 9;
+const EMA20 = 20;
+const EMA50 = 50;
+const EMA200 = 200;
 
-const emaValues = [9, 20, 50, 200];
+const emaValues = [EMA9, EMA20, EMA50, EMA200];
 
 function emaPullBackCheck(allData) {
 	let data = allData.slice(-1)[0];
@@ -31,25 +35,25 @@ function emaPullBackCheck(allData) {
 	let proximityCheck = emaProximityCheck(data);
 	console.log({ trend, proximityCheck });
 	if (trend === "bullishPullback") {
-		if (proximityCheck === 20) {
-			// console.log("near the 20?");
+		if (proximityCheck === EMA20) {
+			// console.log("near the EMA20?");
 			return "";
-		} else if (proximityCheck === 50) {
+		} else if (proximityCheck === EMA50) {
 			return "Buy";
-		} else if (proximityCheck === 200) {
+		} else if (proximityCheck === EMA200) {
 			return "Buy";
 		}
 	} else if (trend === "bearishPullback") {
-		if (proximityCheck === 20) {
-			// console.log("near the 20?");
+		if (proximityCheck === EMA20) {
+			// console.log("near the EMA20?");
 			return "";
-		} else if (proximityCheck === 50) {
+		} else if (proximityCheck === EMA50) {
 			return "Sell";
-		} else if (proximityCheck === 200) {
+		} else if (proximityCheck === EMA200) {
 			return "Sell";
 		}
 	}
-	if (proximityCheck === 200 || proximityCheck === 50) {
+	if (proximityCheck === EMA200 || proximityCheck === EMA50) {
 		if (trend === "bullishPullback" || trend === "uptrend") {
 			return "Buy";
 		}
@@ -82,17 +86,17 @@ function evalEMA(allData) {
 	} else if (trend === "downtrend" && priceCheck === "downtrend" && !proximityCheck) {
 		return "down";
 	} else if (proximityCheck) {
-		if (proximityCheck === 20 && trend === "bullishPullback") {
+		if (proximityCheck === EMA20 && trend === "bullishPullback") {
 			return "up";
-		} else if (proximityCheck === 50 && trend === "bullishPullback") {
+		} else if (proximityCheck === EMA50 && trend === "bullishPullback") {
 			return "up";
-		} else if (proximityCheck === 200 && trend === "bullishPullback") {
+		} else if (proximityCheck === EMA200 && trend === "bullishPullback") {
 			return "up";
-		} else if (proximityCheck === 20 && trend === "bearishPullback") {
+		} else if (proximityCheck === EMA20 && trend === "bearishPullback") {
 			return "down";
-		} else if (proximityCheck === 50 && trend === "bearishPullback") {
+		} else if (proximityCheck === EMA50 && trend === "bearishPullback") {
 			return "down";
-		} else if (proximityCheck === 200 && trend === "bearishPullback") {
+		} else if (proximityCheck === EMA200 && trend === "bearishPullback") {
 			return "down";
 		} else {
 			return "middle";
@@ -207,7 +211,7 @@ function getEMA_Trend({ ema, close }) {
 	let emaVals = Object.keys(ema).map((k) => +k);
 	emaVals.sort((a, b) => a - b); //low to high
 	//were the emas in order low to high, were in a
-	//20 ema > 50 ema > 200 ema === uptrend
+	//EMA20 ema > EMA50 ema > 200 ema === uptrend
 	let emaOrderUpTrend = emaVals.reduce((a, b) => {
 		if (a === false) return false;
 		if (a === null) return (a = ema[b]);
@@ -221,15 +225,15 @@ function getEMA_Trend({ ema, close }) {
 		if (a > ema[b]) return false;
 		return ema[b];
 	}, null);
-	//if not all ema in uptrend order, just check the 50/200
+	//if not all ema in uptrend order, just check the EMA50/200
 	//maybe a pullback is causing this
 	let bullishPullback = false;
 	let bearishPullback = false;
 	if (!emaOrderUpTrend) {
-		if (ema["50"] > ema["200"] && ema["4"] > ema["20"] && ema["4"] > ema["200"]) bullishPullback = true;
+		if (ema[EMA50] > ema[EMA200] && ema[EMA9] < ema[EMA50] && ema[EMA9] > ema[EMA200]) bullishPullback = true;
 	}
 	if (!emaOrderDownTrend) {
-		if (ema["50"] < ema["200"] && ema["4"] < ema["20"] && ema["4"] < ema["200"]) bearishPullback = true;
+		if (ema[EMA50] < ema[EMA200] && ema[EMA9] > ema[EMA50] && ema[EMA9] < ema[EMA200]) bearishPullback = true;
 	}
 
 	let biggerTrend = emaOrderUpTrend
@@ -266,9 +270,9 @@ function checkPercentDiff(ema, close) {
 function emaProximityCheck(data) {
 	let { ema, close, symbol, timeframe } = data;
 	const PROX_LIMIT = 0.0006;
-	let ema20 = ema["20"];
-	let ema50 = ema["50"];
-	let ema200 = ema["200"];
+	let ema20 = ema[EMA20];
+	let ema50 = ema[EMA50];
+	let ema200 = ema[EMA200];
 	let tickSize = TICK_SIZE[symbol];
 	let limit = 4;
 	let prox20 = checkProx(close, ema20, PROX_LIMIT);
@@ -276,11 +280,11 @@ function emaProximityCheck(data) {
 	let prox200 = checkProx(close, ema200, PROX_LIMIT);
 	// console.log({ prox20, prox50, prox200 });
 	if (prox200) {
-		return 200;
+		return EMA200;
 	} else if (prox50) {
-		return 50;
+		return EMA50;
 	} else if (prox20) {
-		return 20;
+		return EMA20;
 	} else {
 		return false;
 	}
