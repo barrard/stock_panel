@@ -1,4 +1,5 @@
 const tulind = require("tulind");
+const talib = require("../node_modules/talib/build/Release/talib");
 const { sum, mean, median, deviation, max, min, extent } = require("d3-array");
 const { makeEMA, getClose } = require("./indicatorHelpers/MovingAverage.js");
 const { maxDiffFromPrice } = require("./indicatorHelpers/dataParser.js");
@@ -63,7 +64,7 @@ function emaPullBackCheck(allData) {
 	}
 }
 function evalEMA(allData) {
-	let data = allData.slice(-1)[0];
+	let data = allData.slice(-2)[0];
 	let { ema } = data;
 
 	if (!ema) return;
@@ -72,38 +73,16 @@ function evalEMA(allData) {
 
 	let priceCheck = emaPriceCheck(data);
 
-	let proximityCheck = emaProximityCheck(data);
+	// let proximityCheck = emaProximityCheck(data);
 
 	// let spaceBetween = emaSpread(data)
 	// console.log('----- ema')
 	// console.log({ priceCheck, proximityCheck, spaceBetween });
-	if ((trend === "downtrend" || priceCheck === "downtrend") && !proximityCheck) {
+	if (trend === "downtrend" || priceCheck === "downtrend") {
 		return "down";
-	} else if ((trend === "uptrend" || priceCheck === "uptrend") && !proximityCheck) {
+	} else if (trend === "uptrend" || priceCheck === "uptrend") {
 		return "up";
-	} else if (trend === "uptrend" && priceCheck === "uptrend" && !proximityCheck) {
-		return "up";
-	} else if (trend === "downtrend" && priceCheck === "downtrend" && !proximityCheck) {
-		return "down";
-	} else if (proximityCheck) {
-		if (proximityCheck === EMA20 && trend === "bullishPullback") {
-			return "up";
-		} else if (proximityCheck === EMA50 && trend === "bullishPullback") {
-			return "up";
-		} else if (proximityCheck === EMA200 && trend === "bullishPullback") {
-			return "up";
-		} else if (proximityCheck === EMA20 && trend === "bearishPullback") {
-			return "down";
-		} else if (proximityCheck === EMA50 && trend === "bearishPullback") {
-			return "down";
-		} else if (proximityCheck === EMA200 && trend === "bearishPullback") {
-			return "down";
-		} else {
-			return "middle";
-		}
-	} else {
-		return "middle";
-	}
+	} else return "middle";
 }
 
 async function addNewEMAVal({ close, data }) {
@@ -138,35 +117,25 @@ function addEMAVals(data) {
 	};
 }
 
-async function createAllEMAData({ close, data }) {
-	let emaData = {};
+function createAllEMAData({ close, data }) {
+	emaValues.map((emaPeriod) => {
+		let {
+			result: { outReal },
+		} = talib.execute({
+			startIdx: 0,
+			endIdx: close.length - 1,
+			name: "EMA",
 
-	await Promise.all(
-		emaValues.map(async (emaPeriod) => {
-			// emaData[emaPeriod] = makeEMA(data, emaPeriod);
-			let [tulipEMA] = await tulind.indicators.ema.indicator([close], [emaPeriod]);
-			emaData[emaPeriod] = tulipEMA;
-			emaData[emaPeriod].forEach((ema, iEma) => {
-				let currentData = data[iEma];
-				if (!currentData.ema) currentData.ema = {};
-				currentData.ema[emaPeriod] = ema;
-			});
-		})
-	);
-	// console.log(data)
-	// emaValues.forEach((emaPeriod) => {
-	//   let ema = emaData[emaPeriod];
-	//   ema.forEach((EMA, iEma) => {
-	//     // console.log(EMA);
-	//     let currentData = data[iEma + (emaPeriod - 1)];
-	//     if (!currentData.ema) currentData.ema = {};
-	//     // console.log(currentData)
-	//     if (EMA.x !== currentData.timestamp) {
-	//       throw new Error("Timestamps do not match");
-	//     }
-	//     currentData.ema[emaPeriod] = EMA.y;
-	//   });
-	// });
+			inReal: close,
+			optInTimePeriod: emaPeriod,
+		});
+
+		outReal.forEach((ema, iEma) => {
+			let currentData = data[iEma + (emaPeriod - 1)];
+			if (!currentData.ema) currentData.ema = {};
+			currentData.ema[emaPeriod] = ema;
+		});
+	});
 
 	return data;
 }
@@ -227,24 +196,18 @@ function getEMA_Trend({ ema, close }) {
 	}, null);
 	//if not all ema in uptrend order, just check the EMA50/200
 	//maybe a pullback is causing this
+	if (emaOrderUpTrend) return "uptrend";
+	if (emaOrderDownTrend) return "downtrend";
 	let bullishPullback = false;
 	let bearishPullback = false;
 	if (!emaOrderUpTrend) {
-		if (ema[EMA50] > ema[EMA200] && ema[EMA9] < ema[EMA50] && ema[EMA9] > ema[EMA200]) bullishPullback = true;
+		if (ema[EMA50] > ema[EMA200] && ema[EMA20] > ema[EMA200]) bullishPullback = true;
 	}
 	if (!emaOrderDownTrend) {
-		if (ema[EMA50] < ema[EMA200] && ema[EMA9] > ema[EMA50] && ema[EMA9] < ema[EMA200]) bearishPullback = true;
+		if (ema[EMA50] < ema[EMA200] && ema[EMA20] < ema[EMA200]) bearishPullback = true;
 	}
 
-	let biggerTrend = emaOrderUpTrend
-		? "uptrend"
-		: emaOrderDownTrend
-		? "downtrend"
-		: bullishPullback
-		? "bullishPullback"
-		: bearishPullback
-		? "bearishPullback"
-		: "range";
+	let biggerTrend = bullishPullback ? "uptrend" : bearishPullback ? "downtrend" : "range";
 
 	return biggerTrend;
 }

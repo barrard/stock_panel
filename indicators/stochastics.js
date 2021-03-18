@@ -1,5 +1,6 @@
-const { lstat } = require("fs/promises");
+// const { lstat } = require("fs/promises");
 const tulind = require("tulind");
+const talib = require("../node_modules/talib/build/Release/talib");
 
 const { average, windowAvg } = require("./indicatorHelpers/MovingAverage.js");
 let stochasticPeriods = [5, 14, 24, 50, 100];
@@ -105,24 +106,29 @@ function prevCurrentStoch(data) {
 	if (!data) {
 		return console.log("no data?");
 	}
-	let prev = data.slice(-2)[0];
-	let curr = data.slice(-1)[0];
-	let prevStoch = evalStoch(prev);
-	let currStoch = evalStoch(curr);
-	let { symbol, timeframe } = curr;
-	console.log({ prevStoch, currStoch });
-	let dir;
-	if (prevStoch === "oversold" && currStoch === "oversold") {
-		dir = "oversold"; //"oversold";sell
-	} else if (prevStoch === "overbought" && currStoch === "overbought") {
-		dir = "overbought"; //"overbought"; buy
-	} else if (prevStoch === "exitShort" && currStoch === "exitShort") {
-		dir = "being bought"; //"reverse up";exit sell
-	} else if (prevStoch === "exitLong" && currStoch === "exitLong") {
-		dir = "being sold"; //"reverse down"; exit buy
-	} else {
-		dir = null; //"middle";
-	}
+	let prev = data.slice(-3)[0];
+	let curr = data.slice(-2)[0];
+	// let prevStoch = evalStoch(prev);
+	// let currStoch = evalStoch(curr);
+
+	//check if prev was above 80 or below 20
+	//check if k is above or below d
+	let dir = evalStoch(prev, curr);
+
+	// let { symbol, timeframe } = curr;
+	// console.log({ prevStoch, currStoch });
+	// let dir;
+	// if (prevStoch === "oversold" && currStoch === "oversold") {
+	// 	dir = "oversold"; //"oversold";sell
+	// } else if (prevStoch === "overbought" && currStoch === "overbought") {
+	// 	dir = "overbought"; //"overbought"; buy
+	// } else if (prevStoch === "exitShort" && currStoch === "exitShort") {
+	// 	dir = "being bought"; //"reverse up";exit sell
+	// } else if (prevStoch === "exitLong" && currStoch === "exitLong") {
+	// 	dir = "being sold"; //"reverse down"; exit buy
+	// } else {
+	// 	dir = null; //"middle";
+	// }
 
 	// let tradeDecision = decide({ dir });
 	return dir;
@@ -133,29 +139,42 @@ function prevCurrentStoch(data) {
  * @param {Object} data Contains stochastic data
  * returns overBought, overSold, exitLong, exitShort, middle
  */
-function evalStoch(data) {
-	if (!data.stochastics || !data.stochastics.K || !data.stochastics.D) return;
+function evalStoch(prev, curr) {
+	if (
+		!prev.stochastics ||
+		!prev.stochastics.K ||
+		!prev.stochastics.D ||
+		!prev.stochastics ||
+		!prev.stochastics.K ||
+		!prev.stochastics.D
+	)
+		return;
 
-	let { K, D } = data.stochastics;
+	var { K, D } = prev.stochastics;
 	if ((!K && K !== 0) || (!D && D !== 0)) {
 		throw new Error(`Undefined K ${K} or D ${D}`);
 	}
-	let dir =
-		D >= 70 && K >= 80 && D <= 95 && K <= 95
+
+	let prevDir =
+		D >= 80 && K >= 80 && K >= D
 			? "overbought" //2
-			: 20 >= K && 30 >= D && K > 6 && D > 6
+			: K <= 20 && D <= 20 && K <= D
 			? "oversold" //1
-			: D >= 95 && K >= 95
-			? "oversold"
-			: K <= 6 && D <= 6
-			? "overbought"
+			: "middle"; //5;
+	if (prev == "middle") return "middle";
+	var { K, D } = curr.stochastics;
+
+	let currDir =
+		K < D && prevDir == "overbought"
+			? "overbought" //2
+			: K > D && prevDir == "oversold"
+			? "oversold" //1
 			: "middle"; //5;
 
-	console.log({ K, D, dir });
-	if (!dir) {
+	if (!currDir) {
 		console.log("dbug");
 	}
-	return dir;
+	return currDir;
 }
 
 async function addNewestStochastics({ high, low, close, data }) {
@@ -196,72 +215,31 @@ async function stochasticsAnalysis(data) {
 }
 
 async function addStochastics({ data, open, high, low, close, volume }) {
-	let dataLength = data.length;
-	// console.log(`Running stochastics on ${data.length} bars`);
+	var {
+		result: { outSlowK, outSlowD },
+	} = talib.execute({
+		startIdx: 0,
+		endIdx: close.length - 1,
+		name: "STOCH",
+		high,
+		low,
+		close,
+		optInFastK_Period: STOCH_PERIOD,
+		optInSlowK_Period: STOCK_K,
+		optInSlowK_MAType: 0,
+		optInSlowD_Period: STOCK_D,
+		optInSlowD_MAType: 0,
+	});
 
-	// stochasticPeriods.forEach(period=>{
+	let diff = data.length - outSlowD.length;
 
-	let [stoch_k, stoch_d] = await tulind.indicators.stoch.indicator(
-		[high, low, close],
-		[STOCH_PERIOD, STOCK_K, STOCK_D]
-	);
-	for (let i = 0; i < stoch_k.length; i++) {
-		let dataIndex = i + (STOCH_PERIOD + STOCK_D + STOCK_K - 3);
-		if (!data[dataIndex][indicatorName]) {
-			data[dataIndex][indicatorName] = {};
+	for (let i = diff; i < data.length; i++) {
+		let dataIndex = i - diff;
+		if (!data[i][indicatorName]) {
+			data[i][indicatorName] = {};
 		}
-		data[dataIndex][indicatorName] = { K: stoch_k[i], D: stoch_d[i] };
+		data[i][indicatorName] = { K: outSlowK[dataIndex], D: outSlowD[dataIndex] };
 	}
-	// })
-
-	// data.forEach((d, dIndex) => {
-	//   d[indicatorName] = {};
-	//   stochasticPeriods.forEach((period, pIndex) => {
-	//     //i.e index 4 i want to run period = 5
-	//     if (dIndex < period - 1) return;
-	//     let end = dIndex + 1;
-	//     let start = end - period;
-	//     if (end > dataLength) {
-	//       return { end, dataLength };
-	//     }
-	//     let window = data.slice(start, end);
-	//     //calc CCI
-	//     let stochastics = calcStochastics(window);
-	//     d = {
-	//       ...d,
-	//       [indicatorName]: {
-	//         ...d[indicatorName],
-	//         [`${period}`]: stochastics,
-	//       },
-	//     };
-	//     data[dIndex] = d;
-	//   });
-	// });
-
-	//add K, and D?
-	//TODO make dynamic
-	// let fastKAvg = 14;
-	// let slowKAvg = 3;
-	// let allK = data.map((d) => {
-	//   return { timestamp: d.timestamp, K: d[indicatorName][fastKAvg] };
-	// });
-	// let slowK = windowAvg(allK, slowKAvg, "K");
-
-	// slowK.forEach((sk, iSk) => {
-	//   let d = data[iSk + (slowKAvg - 1)];
-	//   let K = allK[iSk + (slowKAvg - 1)];
-	//   if (
-	//     (!K.K && isNaN(K.K)) ||
-	//     (!sk[`K${slowKAvg}Avg`] && isNaN(sk[`K${slowKAvg}Avg`]))
-	//   )
-	//     return;
-	//   //timestamps SHOULD match up
-	//   if (d.timestamp !== sk.timestamp && d.timestamp !== K.timestamp) {
-	//     return console.log("The time stamps dont match up");
-	//   }
-	//   d[indicatorName].K = K.K;
-	//   d[indicatorName].D = sk[`K${slowKAvg}Avg`];
-	// });
 
 	return data;
 }
