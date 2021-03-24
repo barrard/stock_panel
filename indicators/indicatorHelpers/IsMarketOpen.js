@@ -291,15 +291,15 @@ function getTimeTillRTH() {
 }
 
 function isPreMarket(date) {
+	if (!futuresAreTrading()) return false;
 	let now = date || new Date();
 	now = new Date(now);
 	now = new Date(now).getTime();
-	console.log(now);
+
 	let timeTill = makeTime(4, 30, "AM"); //4:30am
 	let timeStop = makeTime(6, 30, "AM"); //6:30am
+	console.log(timeTill <= now && now <= timeStop);
 	return timeTill <= now && now <= timeStop;
-
-	return now;
 }
 
 function makeTime(hr, min, amPM) {

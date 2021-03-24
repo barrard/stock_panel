@@ -14,6 +14,7 @@ import SignupPage from "./components/SignupPage.js";
 import LoginPage from "./components/LoginPage.js";
 import StockChart from "./components/StockChartPage.js";
 import MiniCharts from "./components/MiniCharts.js";
+import StratBuilder from "./components/StratBuilder";
 import AccountProfile from "./components/AccountProfilePage.js";
 import OpAlerts from "./components/OpUnusualVolPage.js";
 import OptionContracts from "./components/OptionContracts.js";
@@ -106,6 +107,7 @@ class App extends React.Component {
 					<Route path="/options/:symbol" render={(props) => <OptionContracts {...props} />} />
 					<Route path="/option-date/:month/:day/:year" render={(props) => <OptionByDate {...props} />} />
 					<Route path="/account-profile" render={(props) => <AccountProfile {...props} Socket={Socket} />} />
+					<Route path="/strat-builder" render={(props) => <StratBuilder {...props} />} />
 					{/* Keep at bottom */}
 					<Route exact path="/sign-up" component={SignupPage} />
 					<Route path="/login" component={LoginPage} />

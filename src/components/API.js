@@ -12,6 +12,9 @@ import {
 } from "../redux/actions/stock_actions.js";
 import { login_success } from "../redux/actions/user_actions.js";
 
+const API_SERVER = process.env.REACT_APP_STOCK_DATA_URL;
+const LOCAL_SERVER = process.env.REACT_APP_LOCAL_DATA;
+const REACT_APP_API_SERVER = process.env.REACT_APP_API_SERVER;
 export default {
 	getMovers,
 	getAllSymbolsData,
@@ -36,10 +39,117 @@ export default {
 	fetchSEC_Filings,
 	fetchStockBotTrades,
 	loadStockDataIndicator,
+	getStrategies,
+	getPriceDatas,
+	addStrategy,
+	addPriceData,
+	linkPriceData,
+	getBackTestData,
 };
 
+async function getBackTestData({ symbol, timeframe }) {
+	try {
+		debugger;
+		symbol = symbol.slice(1);
+		let strategy = await fetch(`${REACT_APP_API_SERVER}/API/getBackTestData/${symbol}/${timeframe}`, {
+			credentials: "include",
+			method: "GET",
+		});
+		strategy = await handleResponse(strategy);
+
+		return strategy;
+	} catch (err) {
+		debugger;
+		console.log(err);
+		toastr.error(err);
+	}
+}
+
+async function linkPriceData(stratId, priceDataId) {
+	try {
+		let strategy = await fetch(`${REACT_APP_API_SERVER}/API/linkPriceData`, {
+			credentials: "include",
+			...POST({ stratId, priceDataId }),
+		});
+		strategy = await handleResponse(strategy);
+
+		return strategy;
+	} catch (err) {
+		debugger;
+		console.log(err);
+		toastr.error(err);
+	}
+}
+
+async function addPriceData(symbol, timeframe) {
+	try {
+		let newPriceData = await fetch(`${REACT_APP_API_SERVER}/API/addPriceData`, {
+			credentials: "include",
+			...POST({ symbol, timeframe }),
+		});
+		newPriceData = await handleResponse(newPriceData);
+
+		return newPriceData;
+	} catch (err) {
+		console.log(err);
+		toastr.error(err.message);
+	}
+}
+
+async function addStrategy(strat) {
+	try {
+		let strategy = await fetch(`${REACT_APP_API_SERVER}/API/addStrategy`, {
+			credentials: "include",
+			...POST(strat),
+		});
+		strategy = await handleResponse(strategy);
+
+		return strategy;
+	} catch (err) {
+		console.log(err);
+		toastr.error(err.message);
+	}
+}
+
+async function getStrategies() {
+	try {
+		let strategies = await fetch(`${REACT_APP_API_SERVER}/API/getStrategies`, {
+			method: "GET",
+			credentials: "include",
+		});
+
+		strategies = await handleResponse(strategies);
+		console.log({ strategies });
+		if (Array.isArray(strategies)) {
+			return strategies;
+		} else return [];
+	} catch (err) {
+		console.log(err);
+		toastr.error(err.message);
+		return [];
+	}
+}
+
+async function getPriceDatas() {
+	try {
+		let priceDatas = await fetch(`${REACT_APP_API_SERVER}/API/getPriceDatas`, {
+			method: "GET",
+			credentials: "include",
+		});
+
+		priceDatas = await handleResponse(priceDatas);
+		if (Array.isArray(priceDatas)) {
+			return priceDatas;
+		} else return [];
+	} catch (err) {
+		console.log(err);
+		toastr.error(err.message);
+		return [];
+	}
+}
+
 async function loadStockDataIndicator() {
-	let trades = await fetch(`${process.env.REACT_APP_API_SERVER}/API/loadStockDataIndicator`, {
+	let trades = await fetch(`${REACT_APP_API_SERVER}/API/loadStockDataIndicator`, {
 		method: "GET",
 	});
 	trades = await trades.json();
@@ -47,7 +157,7 @@ async function loadStockDataIndicator() {
 }
 
 async function fetchStockBotTrades() {
-	let trades = await fetch(`${process.env.REACT_APP_API_SERVER}/API/stockbot-trades`, {
+	let trades = await fetch(`${REACT_APP_API_SERVER}/API/stockbot-trades`, {
 		method: "GET",
 	});
 	trades = await trades.json();
@@ -56,19 +166,20 @@ async function fetchStockBotTrades() {
 
 async function handleResponse(res) {
 	try {
-		let res = await res.json();
+		res = await res.json();
 		console.log("returning API response");
 		if (res.err) throw res.err;
 		return res;
 	} catch (err) {
-		toastr.error("API error", err);
+		console.log(err);
+		toastr.error("API error", err.message || err.errmsg);
 		return false;
 	}
 }
 
 async function fetchSEC_Filings(symbol) {
 	try {
-		let fillingsData = await fetch(`${process.env.REACT_APP_API_SERVER}/sec-filings/${symbol}`, {
+		let fillingsData = await fetch(`${REACT_APP_API_SERVER}/sec-filings/${symbol}`, {
 			method: "GET",
 		});
 		fillingsData = await fillingsData.json();
@@ -81,7 +192,7 @@ async function fetchSEC_Filings(symbol) {
 
 async function isLoggedIn(dispatch) {
 	try {
-		let user = await fetch(`${process.env.REACT_APP_API_SERVER}/auth/isLoggedIn`, {
+		let user = await fetch(`${REACT_APP_API_SERVER}/auth/isLoggedIn`, {
 			method: "GET",
 			credentials: "include",
 		});
@@ -93,9 +204,6 @@ async function isLoggedIn(dispatch) {
 		console.log({ err });
 	}
 }
-
-const API_SERVER = process.env.REACT_APP_STOCK_DATA_URL;
-const LOCAL_SERVER = process.env.REACT_APP_LOCAL_DATA;
 
 function handleTradeSuccess(trade) {
 	let { buyOrSell, entryPrice, orderStatus, order_limit, symbol, order_type } = trade;
