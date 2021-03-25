@@ -13,6 +13,7 @@ import {
 	Title,
 	Container,
 	LoadingButton,
+	Chart,
 } from "./components";
 
 export default function StratBuilder() {
@@ -56,10 +57,6 @@ export default function StratBuilder() {
 		}
 	};
 
-	const onSelectStrat = (strat) => {
-		console.log(strat);
-		setSelectedStrat(strat);
-	};
 	const updateStrat = (strat) => {
 		let _id = strat._id;
 		//find by id
@@ -68,18 +65,29 @@ export default function StratBuilder() {
 		setStrategies([...strategies]);
 	};
 	const addChart = async ({ symbol, timeframe }) => {
-		debugger;
 		if (!charts[symbol]) {
 			charts[symbol] = {};
 		}
 		if (!charts[symbol][timeframe]) {
 			//load data
 			let data = await API.getBackTestData({ symbol, timeframe });
-			console.log(data);
+			// console.log(data);
 			charts[symbol][timeframe] = data;
 		}
 		setCharts({ ...charts });
 	};
+	console.log(charts);
+	let c = Object.keys(charts)
+		.map((symbol) =>
+			Object.keys(charts[symbol]).map((timeframe) => (
+				<ChartsContainer>
+					<Chart data={charts[symbol][timeframe]} title={`${symbol} ${timeframe}`} />
+				</ChartsContainer>
+			))
+		)
+		.flat();
+	console.log(c);
+
 	return (
 		<StratContext.Provider value={charts}>
 			<Container>
@@ -100,7 +108,7 @@ export default function StratBuilder() {
 							isSending={creatingStrat}
 						/>
 					)}
-					<StrategiesList strategies={strategies} selectStrat={onSelectStrat} />
+					<StrategiesList strategies={strategies} selectStrat={setSelectedStrat} />
 				</StratListContainer>
 				{selectedStrat && (
 					<StrategyWindow
@@ -111,7 +119,21 @@ export default function StratBuilder() {
 						strat={selectedStrat}
 					/>
 				)}
-				{!!Object.keys(charts).length && <ChartsContainer>somewhat</ChartsContainer>}
+				{
+					// 	/		<ChartsContainer>
+					// 	<Chart data={charts["/NQ"]["1Min"]} title={`${"/NQ"} ${"1Min"}`} />
+					// </ChartsContainer>
+					!!Object.keys(charts).length &&
+						Object.keys(charts).map((symbol) =>
+							Object.keys(charts[symbol])
+								.map((timeframe) => (
+									<ChartsContainer key={`${symbol}${timeframe}`}>
+										<Chart data={charts[symbol][timeframe]} title={`${symbol} ${timeframe}`} />
+									</ChartsContainer>
+								))
+								.flat()
+						)
+				}
 			</Container>
 		</StratContext.Provider>
 	);
@@ -163,9 +185,7 @@ const StrategyWindow = ({ strat, setPriceDatas, priceDatas, updateStrat, addChar
 				<>
 					<h2>{`You have ${strat.priceData.length} Data Feed${strat.priceData.length > 1 ? "s" : ""}`}</h2>
 					{strat.priceData.map((data, i) => (
-						<>
-							<DataFeedItem addChart={addChart} key={i} index={i} data={data} />
-						</>
+						<DataFeedItem addChart={addChart} key={i} index={i} data={data} />
 					))}
 				</>
 			)}
@@ -190,7 +210,7 @@ const DataFeedItem = ({ data, index, addChart }) => {
 				onClick={() => console.log("click")}
 				icon={faSquareRootAlt}
 			/>
-			<IconButton title="Add Indicator" index={index} onClick={() => console.log("click")} icon={faPlusSquare} />
+			<IconButton title="Add Indicator" index={index} onClick={() => console.log("?")} icon={faPlusSquare} />
 		</LinkedDataFeed>
 	);
 };
@@ -279,5 +299,5 @@ const HoverIcon = styled.div`
 const ChartsContainer = styled.div`
 	border: 1px solid green;
 	width: 100%;
-	min-height: 500px;
+	/* min-height: 500px; */
 `;

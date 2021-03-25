@@ -49,7 +49,6 @@ export default {
 
 async function getBackTestData({ symbol, timeframe }) {
 	try {
-		debugger;
 		symbol = symbol.slice(1);
 		let strategy = await fetch(`${REACT_APP_API_SERVER}/API/getBackTestData/${symbol}/${timeframe}`, {
 			credentials: "include",
@@ -59,7 +58,6 @@ async function getBackTestData({ symbol, timeframe }) {
 
 		return strategy;
 	} catch (err) {
-		debugger;
 		console.log(err);
 		toastr.error(err);
 	}
@@ -75,7 +73,6 @@ async function linkPriceData(stratId, priceDataId) {
 
 		return strategy;
 	} catch (err) {
-		debugger;
 		console.log(err);
 		toastr.error(err);
 	}

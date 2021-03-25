@@ -6,7 +6,9 @@ export default function StrategiesList({ strategies, selectStrat }) {
 			<p>STRATEGIES</p>
 			{strategies.length === 0 && <span>No Strategies found... </span>}
 			{strategies.length > 0 &&
-				strategies.map((strat, index) => <ListItem select={selectStrat} index={index} strat={strat} />)}
+				strategies.map((strat, index) => (
+					<ListItem key={strat._id} select={selectStrat} index={index} strat={strat} />
+				))}
 		</>
 	);
 }
