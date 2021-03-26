@@ -11,6 +11,7 @@ import {
 	AddThingBtn,
 	StratListContainer,
 	Title,
+	IconButton,
 	Container,
 	LoadingButton,
 	Chart,
@@ -116,25 +117,25 @@ export default function StratBuilder() {
 					<StrategiesList strategies={strategies} selectStrat={setSelectedStrat} />
 				</StratListContainer>
 				{selectedStrat && <StrategyWindow />}
-				{
-					// 	/		<ChartsContainer>
-					// 	<Chart data={charts["/NQ"]["1Min"]} title={`${"/NQ"} ${"1Min"}`} />
-					// </ChartsContainer>
-					!!Object.keys(charts).length &&
-						Object.keys(charts).map((symbol) =>
-							Object.keys(charts[symbol])
-								.map((timeframe) => (
-									<ChartsContainer key={`${symbol}${timeframe}`}>
-										<Chart data={charts[symbol][timeframe]} title={`${symbol} ${timeframe}`} />
-									</ChartsContainer>
-								))
-								.flat()
-						)
-				}
+				{!!Object.keys(charts).length &&
+					Object.keys(charts).map((symbol) =>
+						Object.keys(charts[symbol])
+							.map((timeframe) => (
+								<ChartsContainer key={`${symbol}${timeframe}`}>
+									<Chart data={charts[symbol][timeframe]} title={`${symbol} ${timeframe}`} />
+								</ChartsContainer>
+							))
+							.flat()
+					)}
 			</Container>
 		</StratContext.Provider>
 	);
 }
+
+const ChartsContainer = styled.div`
+	border: 1px solid green;
+	width: 100%;
+`;
 
 const StrategyWindow = () => {
 	const [showPriceDataModal, setShowPriceDataModal] = useState(false);
@@ -159,6 +160,7 @@ const StrategyWindow = () => {
 			console.log(err);
 		}
 	};
+
 	const addLinkPriceData = async (priceData) => {
 		let updatedStrat = await API.linkPriceData(selectedStrat._id, priceData._id);
 		updateStrat(updatedStrat);
@@ -266,42 +268,3 @@ const AddPriceDataModal = ({ submit, loading }) => {
 		</div>
 	);
 };
-
-const IconButton = ({ onClick, icon, index, title }) => {
-	const [isHovered, setIsHovered] = useState(false);
-
-	return (
-		<HoverIcon
-			title={title}
-			onClick={onClick}
-			index={index}
-			onMouseOver={() => setIsHovered(true)}
-			onMouseOut={() => setIsHovered(false)}
-			isHovered={isHovered}
-		>
-			<FontAwesomeIcon icon={icon} />
-		</HoverIcon>
-	);
-};
-
-const HoverIcon = styled.div`
-	padding: 0.5em;
-	background-color: ${({ isHovered, index }) => {
-		if (index % 2) {
-			if (isHovered) return "#333";
-			else return "#444";
-		} else {
-			if (isHovered) return "#444";
-			else return "#333";
-		}
-	}};
-	transition: all 0.3s;
-	border-radius: 10px;
-	cursor: pointer;
-`;
-
-const ChartsContainer = styled.div`
-	border: 1px solid green;
-	width: 100%;
-	/* min-height: 500px; */
-`;
