@@ -24,6 +24,7 @@ export default function StratBuilder() {
 	const [creatingStrat, setCreatingStrat] = useState(false);
 	const [selectedStrat, setSelectedStrat] = useState(false);
 	const [charts, setCharts] = useState({});
+	const [showIndicators, setShowIndicators] = useState(false);
 
 	useEffect(() => {
 		//fetch strats
@@ -77,19 +78,30 @@ export default function StratBuilder() {
 		setCharts({ ...charts });
 	};
 	console.log(charts);
-	let c = Object.keys(charts)
-		.map((symbol) =>
-			Object.keys(charts[symbol]).map((timeframe) => (
-				<ChartsContainer>
-					<Chart data={charts[symbol][timeframe]} title={`${symbol} ${timeframe}`} />
-				</ChartsContainer>
-			))
-		)
-		.flat();
-	console.log(c);
+	const GLOBAL = {
+		addChart,
+		charts,
+		creatingStrat,
+		newStrategyName,
+		priceDatas,
+		setStrategies,
+		setPriceDatas,
+		setShowModal,
+		setCreatingStrat,
+		selectedStrat,
+		setSelectedStrat,
+		setCharts,
+		setNewStrategyName,
+		setShowIndicators,
+		showModal,
+		showIndicators,
+		strategies,
+		submitNewStrat,
+		updateStrat,
+	};
 
 	return (
-		<StratContext.Provider value={charts}>
+		<StratContext.Provider value={GLOBAL}>
 			<Container>
 				{/* Title */}
 				<Title title="Strategy Builder" />
@@ -100,25 +112,10 @@ export default function StratBuilder() {
 						name={showModal ? "Cancel" : "Create New Strategy"}
 						onClick={() => setShowModal(!showModal)}
 					/>
-					{showModal && (
-						<AddStratModal
-							submit={submitNewStrat}
-							value={newStrategyName}
-							onChange={setNewStrategyName}
-							isSending={creatingStrat}
-						/>
-					)}
+					{showModal && <AddStratModal />}
 					<StrategiesList strategies={strategies} selectStrat={setSelectedStrat} />
 				</StratListContainer>
-				{selectedStrat && (
-					<StrategyWindow
-						addChart={addChart}
-						updateStrat={updateStrat}
-						setPriceDatas={setPriceDatas}
-						priceDatas={priceDatas}
-						strat={selectedStrat}
-					/>
-				)}
+				{selectedStrat && <StrategyWindow />}
 				{
 					// 	/		<ChartsContainer>
 					// 	<Chart data={charts["/NQ"]["1Min"]} title={`${"/NQ"} ${"1Min"}`} />
@@ -139,9 +136,10 @@ export default function StratBuilder() {
 	);
 }
 
-const StrategyWindow = ({ strat, setPriceDatas, priceDatas, updateStrat, addChart }) => {
+const StrategyWindow = () => {
 	const [showPriceDataModal, setShowPriceDataModal] = useState(false);
 	const [addingPriceData, setAddingPriceData] = useState(false);
+	const { selectedStrat, updateStrat, setPriceDatas, priceDatas } = React.useContext(StratContext);
 
 	const submitAddPriceData = async ({ timeframe, symbol }) => {
 		try {
@@ -162,13 +160,13 @@ const StrategyWindow = ({ strat, setPriceDatas, priceDatas, updateStrat, addChar
 		}
 	};
 	const addLinkPriceData = async (priceData) => {
-		let updatedStrat = await API.linkPriceData(strat._id, priceData._id);
+		let updatedStrat = await API.linkPriceData(selectedStrat._id, priceData._id);
 		updateStrat(updatedStrat);
 	};
 
 	return (
 		<StrategyWindowContainer>
-			<h2>{strat.name}</h2>
+			<h2>{selectedStrat.name}</h2>
 			<AddThingBtn
 				name={showPriceDataModal ? "Cancel" : "Create New Price Data"}
 				onClick={() => {
@@ -180,12 +178,14 @@ const StrategyWindow = ({ strat, setPriceDatas, priceDatas, updateStrat, addChar
 
 			{showPriceDataModal && <AddPriceDataModal submit={submitAddPriceData} loading={addingPriceData} />}
 
-			{!strat.priceData.length && <div>No Linked Price Data Feeds, Please Select Price Data to Link</div>}
-			{!!strat.priceData.length && (
+			{!selectedStrat.priceData.length && <div>No Linked Price Data Feeds, Please Select Price Data to Link</div>}
+			{!!selectedStrat.priceData.length && (
 				<>
-					<h2>{`You have ${strat.priceData.length} Data Feed${strat.priceData.length > 1 ? "s" : ""}`}</h2>
-					{strat.priceData.map((data, i) => (
-						<DataFeedItem addChart={addChart} key={i} index={i} data={data} />
+					<h2>{`You have ${selectedStrat.priceData.length} Data Feed${
+						selectedStrat.priceData.length > 1 ? "s" : ""
+					}`}</h2>
+					{selectedStrat.priceData.map((data, i) => (
+						<DataFeedItem key={i} index={i} data={data} />
 					))}
 				</>
 			)}
@@ -193,7 +193,9 @@ const StrategyWindow = ({ strat, setPriceDatas, priceDatas, updateStrat, addChar
 	);
 };
 
-const DataFeedItem = ({ data, index, addChart }) => {
+const DataFeedItem = ({ data, index }) => {
+	let { showIndicators, addChart } = React.useContext(StratContext);
+
 	let { symbol, timeframe } = data;
 	return (
 		<LinkedDataFeed index={index}>
@@ -210,7 +212,7 @@ const DataFeedItem = ({ data, index, addChart }) => {
 				onClick={() => console.log("click")}
 				icon={faSquareRootAlt}
 			/>
-			<IconButton title="Add Indicator" index={index} onClick={() => console.log("?")} icon={faPlusSquare} />
+			<IconButton title="Add Indicator" index={index} onClick={showIndicators} icon={faPlusSquare} />
 		</LinkedDataFeed>
 	);
 };
@@ -227,14 +229,16 @@ const StrategyWindowContainer = styled.div`
 	display: inline-block;
 `;
 
-const AddStratModal = ({ onChange, value, submit, isSending }) => {
+const AddStratModal = () => {
+	const { submitNewStrat, newStrategyName, setNewStrategyName, creatingStrat } = React.useContext(StratContext);
+
 	return (
 		<>
 			{/* {show && ( */}
 			<div>
 				<label htmlFor="New Strategy Name">New Strategy Name</label>
-				<input onChange={(e) => onChange(e.target.value)} value={value} type="text" />
-				<LoadingButton isAddingStrat={isSending} name="Create" submit={submit} />
+				<input onChange={(e) => setNewStrategyName(e.target.value)} value={newStrategyName} type="text" />
+				<LoadingButton loading={creatingStrat} name="Create" submit={submitNewStrat} />
 			</div>
 			{/* )} */}
 		</>

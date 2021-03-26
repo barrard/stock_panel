@@ -27,7 +27,7 @@ let innerWidth = width - (margin.left + margin.right);
 let yScale = scaleLinear().range([innerHeight, 0]);
 let xScale = scaleLinear().range([margin.left, innerWidth]);
 
-export default function MiniChart({ data, title }) {
+export default function MiniChart({ data, title, indicators }) {
 	const svgRef = useRef();
 	const [chartSvg, setChartSvg] = useState(undefined);
 	const [currentZoom, setCurrentZoom] = useState();
@@ -59,6 +59,8 @@ export default function MiniChart({ data, title }) {
 			let [start, end] = newXScale.domain();
 
 			xScale.domain(newXScale.domain());
+			if (start < 0) start = 0;
+
 			let [yMin, yMax] = getYMinMax(data.slice(Math.floor(start), Math.ceil(end)));
 
 			yScale.domain([yMin ? yMin - yMin * 0.0005 : 0, yMax ? yMax + yMax * 0.0005 : 1]);
