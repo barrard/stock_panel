@@ -1,8 +1,12 @@
-import React from "react";
-import styled from "styled-components";
+import React, { useState } from "react";
+import styled, { keyframes } from "styled-components";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner } from "@fortawesome/free-solid-svg-icons";
-export const AddThingBtn = ({ onClick, name }) => <Button onClick={onClick}>{name}</Button>;
+export const AddThingBtn = ({ disabled, onClick, name }) => (
+	<Button disabled={disabled} onClick={onClick}>
+		{name}
+	</Button>
+);
 
 const Button = styled.button``;
 
@@ -19,9 +23,10 @@ const TitleContainer = styled.h1`
 
 export const Container = styled.div`
 	color: white;
+	padding: 2em;
 `;
 
-export const LoadingButton = ({ loading, submit, name }) => {
+export const LoadingButton = ({ disabled = false, loading, submit, name }) => {
 	if (loading)
 		name = (
 			<>
@@ -32,44 +37,70 @@ export const LoadingButton = ({ loading, submit, name }) => {
 		);
 	return (
 		<AddThingBtn
+			disabled={loading ? true : disabled}
 			// style={{ width: "inherit" }}
 			className="btn"
-			disabled={loading}
 			onClick={submit}
 			name={name}
 		/>
 	);
 };
 
-export const IconButton = ({ onClick, icon, index, title }) => {
-	const [isHovered, setIsHovered] = useState(false);
-
+export const IconButton = ({ onClick, icon, index, title, color, bgColor }) => {
 	return (
 		<HoverIcon
 			title={title}
 			onClick={onClick}
 			index={index}
-			onMouseOver={() => setIsHovered(true)}
-			onMouseOut={() => setIsHovered(false)}
-			isHovered={isHovered}
+			color={color}
+			bgColor={bgColor}
 		>
 			<FontAwesomeIcon icon={icon} />
 		</HoverIcon>
 	);
 };
 
+const springAnimation = keyframes`
+ 0% {  transform :scale(1)    }
+ 50% {  transform :scale(1.1)    }
+ 100% {  transform :scale(1)    }
+`;
+
 const HoverIcon = styled.div`
 	padding: 0.5em;
-	background-color: ${({ isHovered, index }) => {
-		if (index % 2) {
-			if (isHovered) return "#333";
-			else return "#444";
+	color: ${({ color }) => (color ? color : "inherit")};
+	background-color: ${({ index, bgColor }) => {
+		if (bgColor) return bgColor;
+		else if (index % 2) {
+			return "#333";
 		} else {
-			if (isHovered) return "#444";
-			else return "#333";
+			return "#444";
 		}
 	}};
 	transition: all 0.3s;
 	border-radius: 10px;
 	cursor: pointer;
+	display: inline;
+
+	/* animation-iteration-count: infinite; */
+	&:hover {
+		animation-name: ${springAnimation};
+		animation-duration: 0.3s;
+		background-color: ${({ index, bgColor }) => {
+			if (bgColor) return bgColor;
+			else if (index % 2) {
+				return "#555";
+			} else {
+				return "#222";
+			}
+		}};
+		box-shadow: ${({ index, bgColor }) => {
+			if (bgColor) return bgColor;
+			else if (index % 2) {
+				return "0 0 0 2px #222";
+			} else {
+				return "0 0 0 2px #555";
+			}
+		}};
+	}
 `;

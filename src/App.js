@@ -84,30 +84,60 @@ class App extends React.Component {
 						exact
 						path="/commodities"
 						// component={QuoteContainer}
-						render={(props) => <QuoteContainer {...props} Socket={Socket} />}
+						render={(props) => (
+							<QuoteContainer {...props} Socket={Socket} />
+						)}
 					/>{" "}
 					<Route
 						exact
 						path="/mini-charts"
 						// component={QuoteContainer}
-						render={(props) => <MiniCharts {...props} Socket={Socket} />}
+						render={(props) => (
+							<MiniCharts {...props} Socket={Socket} />
+						)}
 					/>{" "}
 					<Route
 						exact
 						path="/stockbot"
 						// component={QuoteContainer}
-						render={(props) => <StockBot {...props} Socket={Socket} />}
+						render={(props) => (
+							<StockBot {...props} Socket={Socket} />
+						)}
 					/>
-					<Route path="/chart/:symbol" render={(props) => <StockChart {...props} Socket={Socket} />} />
+					<Route
+						path="/chart/:symbol"
+						render={(props) => (
+							<StockChart {...props} Socket={Socket} />
+						)}
+					/>
 					<Route
 						path="/commodity/:symbol"
-						render={(props) => <CommodityChartPage {...props} Socket={Socket} />}
+						render={(props) => (
+							<CommodityChartPage {...props} Socket={Socket} />
+						)}
 					/>
-					<Route path="/op-alerts" render={(props) => <OpAlerts {...props} />} />
-					<Route path="/options/:symbol" render={(props) => <OptionContracts {...props} />} />
-					<Route path="/option-date/:month/:day/:year" render={(props) => <OptionByDate {...props} />} />
-					<Route path="/account-profile" render={(props) => <AccountProfile {...props} Socket={Socket} />} />
-					<Route path="/strat-builder" render={(props) => <StratBuilder {...props} />} />
+					<Route
+						path="/op-alerts"
+						render={(props) => <OpAlerts {...props} />}
+					/>
+					<Route
+						path="/options/:symbol"
+						render={(props) => <OptionContracts {...props} />}
+					/>
+					<Route
+						path="/option-date/:month/:day/:year"
+						render={(props) => <OptionByDate {...props} />}
+					/>
+					<Route
+						path="/account-profile"
+						render={(props) => (
+							<AccountProfile {...props} Socket={Socket} />
+						)}
+					/>
+					<Route
+						path="/strat-builder"
+						render={(props) => <StratBuilder {...props} />}
+					/>
 					{/* Keep at bottom */}
 					<Route exact path="/sign-up" component={SignupPage} />
 					<Route path="/login" component={LoginPage} />

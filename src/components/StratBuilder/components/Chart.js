@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import styled from "styled-components";
 import {
 	axisRight,
@@ -12,25 +12,105 @@ import {
 	zoom,
 	zoomTransform,
 } from "d3";
+import {
+	faEye,
+	faPlusSquare,
+	faTrashAlt,
+	faPencilAlt,
+	faEyeSlash,
+	faWindowClose,
+	faTimes,
+} from "@fortawesome/free-solid-svg-icons";
+import { MA_SELECT } from "./IndicatorComponents";
+import AddIndicatorModal from "./AddIndicatorModal";
+import { IconButton, LoadingButton } from "./components";
+import StratContext from "../StratContext";
+import API from "../../API";
+import { MA_TYPE_OPTS } from "./IndicatorComponents";
 
 let width = 1000;
-let height = 200;
-let margin = {
-	left: 20,
-	right: 40,
-	bottom: 20,
-	top: 20,
-};
-let innerHeight = height - (margin.top + margin.bottom);
-let innerWidth = width - (margin.left + margin.right);
 
-let yScale = scaleLinear().range([innerHeight, 0]);
-let xScale = scaleLinear().range([margin.left, innerWidth]);
-
-export default function MiniChart({ data, title, indicators }) {
+export default function Chart({ symbol, timeframe }) {
+	let margin = {
+		left: 20,
+		right: 40,
+		bottom: 20,
+		top: 20,
+	};
+	let indicatorHeight = 100;
+	let mainChartHeight = 250;
+	let height = mainChartHeight;
+	let innerHeight = height - (margin.top + margin.bottom);
+	let innerWidth = width - (margin.left + margin.right);
+	const {
+		charts,
+		setCharts,
+		setSelectedStrat,
+		selectedStrat,
+		indicatorResults,
+		updateIndicatorResults,
+	} = useContext(StratContext);
+	const { data, id: priceDataId } = charts[symbol][timeframe];
+	const title = `${symbol} ${timeframe}`;
 	const svgRef = useRef();
 	const [chartSvg, setChartSvg] = useState(undefined);
 	const [currentZoom, setCurrentZoom] = useState();
+	const [addIndicators, setAddIndicators] = useState(false);
+	const [yScales, setYScales] = useState({
+		mainChart: {
+			yScale: scaleLinear().range([innerHeight, 0]),
+			data: data,
+			name: "mainChart",
+			fullName: `${symbol} OHLC ${timeframe}`,
+			yOffset: 0,
+			color: "green",
+			group: "Overlap Studies",
+		},
+	});
+	let chartIndicators = selectedStrat.indicators.filter(
+		(ind) => ind.priceData === priceDataId
+	);
+
+	let xScale = scaleLinear().range([margin.left, innerWidth]);
+
+	useEffect(() => {
+		debugger;
+		let indicators = indicatorResults[symbol][timeframe];
+		let indicatorCount = 0;
+		for (let _id in indicators) {
+			if (yScales[_id]) continue;
+			let {
+				indicator: { name, fullName, outputs },
+				result: { result, group },
+			} = indicators[_id];
+			let isOverlap = group === "Overlap Studies";
+			let isCandle = group === "Pattern Recognition";
+			let yScale = isOverlap
+				? yScales["mainChart"].yScale
+				: scaleLinear().range([indicatorHeight, 0]);
+			yScales[_id] = {
+				name,
+				fullName,
+				yScale,
+				yOffset: mainChartHeight + indicatorCount * indicatorHeight,
+				height: indicatorHeight,
+				color: "red",
+				data: result,
+				group: group,
+				outputs: outputs,
+			};
+			if (!isOverlap && !isCandle) {
+				height += indicatorHeight;
+				indicatorCount++;
+				debugger;
+			}
+		}
+		setYScales({ ...yScales });
+		// yScale = scaleLinear().range([innerHeight, 0]);
+		innerHeight = height - (margin.top + margin.bottom);
+
+		draw();
+	}, [Object.keys(indicatorResults[symbol][timeframe]).length]);
 
 	useEffect(() => {
 		draw();
@@ -38,21 +118,81 @@ export default function MiniChart({ data, title, indicators }) {
 
 	useEffect(() => {
 		setChartSvg(select(svgRef.current));
+		//fetch indicator results
+		// let indicators = indicatorResults[symbol][timeframe];
+		chartIndicators.forEach(async (ind) => {
+			console.log(ind);
+
+			let inputs = {};
+			ind.inputs.forEach((inp) => {
+				let { name } = inp;
+				if (name === "inReal") {
+					let flag = ind.selectedInputs[0];
+					inputs[name] = data.map((d) => d[flag]);
+				} else if (name === "inPeriods") {
+					inputs[name] = ind.variablePeriods;
+				} else if (inp.flags) {
+					Object.values(inp.flags).map((flag) => {
+						inputs[flag] = data.map((d) => d[flag]);
+					});
+				} else {
+					console.log("ok");
+				}
+			});
+			// ind.selectedInputs.forEach((input) => {
+			// 	inputs[input] = data.map((d) => d[input]);
+			// });
+
+			let results = await API.getIndicatorResults(ind, inputs);
+			if (!results || results.err) {
+				console.log(results);
+				console.log("err?");
+				return;
+			}
+			console.log(results);
+			updateIndicatorResults({
+				indicator: ind,
+				result: results.result,
+				symbol,
+				timeframe,
+			});
+		});
 	}, []);
 
-	const getYMinMax = (data, indicators) => {
-		let [_, dataMax] = extent(data, (d) => d.high);
-		let [dataMin, __] = extent(data, (d) => d.low);
+	const getYMinMax = (data) => {
+		if (Array.isArray(data)) {
+			let [_, dataMax] = extent(data, (d) => d.high);
+			let [dataMin, __] = extent(data, (d) => d.low);
+			return [dataMin, dataMax];
+		} else {
+			let { result } = data;
+			data = Object.keys(result)
+				.map((lineName) => result[lineName])
+				.flat();
+			let [dataMin, dataMax] = extent(data, (d) => d);
 
-		return [dataMin, dataMax];
+			return [dataMin, dataMax];
+		}
 	};
 
 	const draw = () => {
 		if (!data || !data.length) return;
-		let [yMin, yMax] = getYMinMax(data);
 
 		xScale.domain([0, data.length - 1]);
-		yScale.domain([yMin - yMin * 0.0005, yMax + yMax * 0.0005]);
+		for (let key in yScales) {
+			let { data, group, yScale } = yScales[key];
+			let [yMin, yMax] = getYMinMax(data);
+			if (yMin === undefined || yMax === undefined) continue;
+			if (group === "Overlap Studies") {
+				let [min, max] = yScale.domain();
+				//first time through this is unset, and default to [0, 1]
+				if (max !== 1 && min !== 0) {
+					yMin = yMin < min ? yMin : min;
+					yMax = yMax > max ? yMax : max;
+				}
+			}
+			yScale.domain([yMin - yMin * 0.0005, yMax + yMax * 0.0005]);
+		}
 
 		if (currentZoom) {
 			let newXScale = currentZoom.rescaleX(xScale);
@@ -61,41 +201,61 @@ export default function MiniChart({ data, title, indicators }) {
 			xScale.domain(newXScale.domain());
 			if (start < 0) start = 0;
 
-			let [yMin, yMax] = getYMinMax(data.slice(Math.floor(start), Math.ceil(end)));
+			let [yMin, yMax] = getYMinMax(
+				data.slice(Math.floor(start), Math.ceil(end))
+			);
 
-			yScale.domain([yMin ? yMin - yMin * 0.0005 : 0, yMax ? yMax + yMax * 0.0005 : 1]);
+			for (let key in yScales) {
+				let [yMin, yMax] = getYMinMax(yScales[key].data);
+				yScales[key].yScale.domain([
+					yMin ? yMin - yMin * 0.0005 : 0,
+					yMax ? yMax + yMax * 0.0005 : 1,
+				]);
+			}
 		}
 
-		let xAxis = axisBottom(xScale).tickValues(xScale.domain().filter((d, i) => i % 10 === 0));
-		let yAxis = axisRight(yScale).tickSize(-innerWidth);
+		let xAxis = axisBottom(xScale).tickValues(
+			xScale.domain().filter((d, i) => i % 10 === 0)
+		);
+
+		for (let key in yScales) {
+			yScales[key].axis = axisRight(yScales[key].yScale).tickSize(
+				-innerWidth
+			);
+		}
 
 		if (!chartSvg) return;
 
 		chartSvg.select(".x-axis").call(xAxis);
-		chartSvg.select(".y-axis").call(yAxis);
-		chartSvg.selectAll(".myLine").remove();
+		for (let key in yScales) {
+			let { name, axis, yScale, color, yOffset, data } = yScales[key];
+			let className = `${name}-myLine`;
+			chartSvg.select(`.${name}-y-axis`).call(axis);
 
-		const myLine = line()
-			.x((d, i) => {
-				let x = xScale(i);
-				return x;
-			})
-			.y((d) => {
-				let y = yScale(d.close);
-				return y;
-			})
-			.curve(curveCardinal);
+			chartSvg.selectAll(`.${className}`).remove();
+			debugger;
+			const myLine = line()
+				.x((d, i) => {
+					let x = xScale(i);
+					return x;
+				})
+				.y((d) => {
+					let y = yScale(d.close || d) + yOffset;
+					return y;
+				})
+				.curve(curveCardinal);
 
-		chartSvg
-			.selectAll(".myLine")
-			.data([data])
-			.join("path")
-			.attr("class", "myLine")
-			.attr("d", myLine)
-			.attr("fill", "none")
-			.attr("stroke", "blue")
-			// .attr("class", "new")
-			.exit();
+			chartSvg
+				.selectAll(`.${className}`)
+				.data([data])
+				.join("path")
+				.attr("class", className)
+				.attr("d", myLine)
+				.attr("fill", "none")
+				.attr("stroke", color)
+				// .attr("class", "new")
+				.exit();
+		}
 
 		const zoomBehavior = zoom()
 			.scaleExtent([0.1, 10]) //zoom in and out limit
@@ -111,30 +271,236 @@ export default function MiniChart({ data, title, indicators }) {
 		chartSvg.call(zoomBehavior);
 	};
 
+	const CloseChart = () => {
+		return (
+			<IconButton
+				title={"Close Chart"}
+				onClick={() => {
+					delete charts[symbol][timeframe];
+					setCharts({ ...charts });
+				}}
+				icon={faWindowClose}
+			/>
+		);
+	};
+
+	let indicatorList = React.useMemo(
+		() =>
+			chartIndicators.map((ind) => {
+				console.log(ind);
+				return <IndicatorItem key={ind._id} ind={ind} />;
+			}),
+		[selectedStrat.indicators.length]
+	);
+
 	return (
 		<div className="white">
-			<div>{title}</div>
-			<StyledSVG ref={svgRef}>
-				<StyledXAxis className="x-axis white" />
-				<StyledYAxis className="y-axis white" />
+			<div>
+				{title} <CloseChart />
+			</div>
+
+			<Flex>
+				<IconButton
+					title="Add Indicator"
+					onClick={() => setAddIndicators(!addIndicators)}
+					icon={faPlusSquare}
+				/>
+			</Flex>
+			{addIndicators && (
+				<AddIndicatorModal
+					setAddIndicators={setAddIndicators}
+					symbol={symbol}
+					timeframe={timeframe}
+				/>
+			)}
+
+			<StyledSVG height={height} ref={svgRef}>
+				{Object.keys(yScales).map((key) => {
+					let { name, yOffset } = yScales[key];
+					return (
+						<StyledYAxis
+							yOffset={yOffset}
+							width={width}
+							margin={margin}
+							className={`${name}-y-axis white`}
+						/>
+					);
+				})}
+				<StyledXAxis
+					margin={margin}
+					innerHeight={innerHeight}
+					className="x-axis white"
+				/>
 			</StyledSVG>
+
+			<div>INDICATORS</div>
+			<div>{indicatorList}</div>
 		</div>
 	);
 }
 
+const Small = styled.span`
+	font-size: 10px;
+	padding: 0.2em;
+	cursor: default;
+	/* background-color: #333; */
+	&:hover {
+		background-color: #666;
+	}
+`;
+
 const StyledSVG = styled.svg`
 	border: 1px solid red;
 	width: ${width}px;
-	height: ${height}px;
+	height: ${({ height }) => height}px;
 	background: #444;
 `;
 
 const StyledXAxis = styled.g`
 	user-select: none;
-	transform: translate(${margin.left}px, ${innerHeight}px);
+	transform: ${({ margin, innerHeight }) =>
+		`translate(${margin.left}px, ${innerHeight}px)`};
 `;
 
 const StyledYAxis = styled.g`
 	user-select: none;
-	transform: translate(${width - margin.right}px);
+	transform: ${({ yOffset, width, margin }) =>
+		`translate(${width - margin.right}px, ${yOffset}px)`};
 `;
+
+const Flex = styled.div`
+	display: flex;
+`;
+
+const IndicatorItem = ({ ind }) => {
+	const [edit, setEdit] = useState(false);
+	const [show, setShow] = useState(false);
+	let { selectedStrat, setSelectedStrat, API } = useContext(StratContext);
+	return (
+		<div key={ind._id}>
+			{ind.fullName}{" "}
+			<IconButton
+				title={show ? "Hide" : "Show"}
+				onClick={() => setShow(!show)}
+				icon={show ? faEye : faEyeSlash}
+			/>
+			<IconButton
+				title="Delete"
+				onClick={async () => {
+					await API.deleteIndicator(ind, selectedStrat);
+					//pull the data from strat
+					debugger;
+					selectedStrat.indicators = selectedStrat.indicators.filter(
+						({ _id }) => _id !== ind._id
+					);
+					debugger;
+					setSelectedStrat({ ...selectedStrat });
+				}}
+				icon={faTrashAlt}
+			/>
+			<IconButton
+				title="Edit"
+				onClick={() => setEdit(!edit)}
+				icon={faPencilAlt}
+			/>
+			{ind.optInputs && (
+				<OptInputs setEdit={setEdit} edit={edit} ind={ind} />
+			)}
+			{ind.selectedInputs &&
+				ind.selectedInputs.map((i) => (
+					<Small title={i}>{i.slice(0, 1).toUpperCase()}</Small>
+				))}
+		</div>
+	);
+};
+
+const OptInputs = ({ edit, ind, setEdit }) => {
+	let data = ind.optInputs;
+	const [values, setValues] = useState(data);
+	let { updatingIndicator, setUpdatingIndicator, API } = useContext(
+		StratContext
+	);
+
+	return (
+		<>
+			<EditableIndOpts
+				data={data}
+				setEdit={setEdit}
+				values={values}
+				setValues={setValues}
+				edit={edit}
+			/>
+			{edit && (
+				<Small>
+					<IconButton
+						title={"Cancel"}
+						onClick={() => setEdit(false)}
+						icon={faTimes}
+					/>
+					<LoadingButton
+						disabled={updatingIndicator}
+						loading={updatingIndicator}
+						name="Update Indicator"
+						submit={async () => {
+							setUpdatingIndicator(true);
+							console.log("UPDATE");
+							let resp = await API.updateIndicatorOpts({
+								...values,
+								_id: ind._id,
+							});
+
+							setUpdatingIndicator(false);
+							setEdit(false);
+						}}
+					/>
+				</Small>
+			)}
+		</>
+	);
+};
+
+const EditableIndOpts = ({ data, setEdit, values, setValues, edit }) => {
+	return (
+		<>
+			{Object.keys(data).map((name) => {
+				let { hint, displayName, defaultValue } = data[name];
+
+				return (
+					<Small
+						onClick={() => setEdit(true)}
+						key={name}
+						title={hint}
+					>
+						{displayName}
+						{" : "}
+						{edit && displayName !== "MA Type" && (
+							<input
+								type={"number"}
+								style={{}}
+								value={values[name].defaultValue}
+								onChange={(e) => {
+									values[name].defaultValue = e.target.value;
+									setValues({
+										...values,
+									});
+								}}
+							/>
+						)}
+						{edit && displayName === "MA Type" && (
+							<MA_SELECT
+								name={name}
+								indicatorOpts={values}
+								setIndicatorOpts={setValues}
+							/>
+						)}
+
+						{!edit &&
+							displayName === "MA Type" &&
+							MA_TYPE_OPTS[defaultValue]}
+						{!edit && displayName !== "MA Type" && defaultValue}
+					</Small>
+				);
+			})}
+		</>
+	);
+};
