@@ -39,9 +39,7 @@ export default function Chart({ symbol, timeframe }) {
 	};
 	let indicatorHeight = 100;
 	let mainChartHeight = 250;
-	let height = mainChartHeight;
-	let innerHeight = height - (margin.top + margin.bottom);
-	let innerWidth = width - (margin.left + margin.right);
+
 	const {
 		charts,
 		setCharts,
@@ -53,20 +51,27 @@ export default function Chart({ symbol, timeframe }) {
 	const { data, id: priceDataId } = charts[symbol][timeframe];
 	const title = `${symbol} ${timeframe}`;
 	const svgRef = useRef();
+	const [height, setHeight] = useState(mainChartHeight);
 	const [chartSvg, setChartSvg] = useState(undefined);
 	const [currentZoom, setCurrentZoom] = useState();
 	const [addIndicators, setAddIndicators] = useState(false);
+	const [indicatorCount, setIndicatorCount] = useState(0);
+	const [indicatorColors, setIndicatorColors] = useState({ close: "yellow" });
 	const [yScales, setYScales] = useState({
 		mainChart: {
-			yScale: scaleLinear().range([innerHeight, 0]),
+			yScale: scaleLinear().range([mainChartHeight, 0]),
 			data: data,
+			height: mainChartHeight,
 			name: "mainChart",
 			fullName: `${symbol} OHLC ${timeframe}`,
 			yOffset: 0,
-			color: "green",
 			group: "Overlap Studies",
 		},
 	});
+
+	let innerHeight = height - (margin.top + margin.bottom);
+	let innerWidth = width - (margin.left + margin.right);
+
 	let chartIndicators = selectedStrat.indicators.filter(
 		(ind) => ind.priceData === priceDataId
 	);
@@ -74,9 +79,9 @@ export default function Chart({ symbol, timeframe }) {
 	let xScale = scaleLinear().range([margin.left, innerWidth]);
 
 	useEffect(() => {
-		debugger;
+		let _height = height;
+		let _indicatorCount = indicatorCount;
 		let indicators = indicatorResults[symbol][timeframe];
-		let indicatorCount = 0;
 		for (let _id in indicators) {
 			if (yScales[_id]) continue;
 			let {
@@ -85,32 +90,54 @@ export default function Chart({ symbol, timeframe }) {
 			} = indicators[_id];
 			let isOverlap = group === "Overlap Studies";
 			let isCandle = group === "Pattern Recognition";
-			let yScale = isOverlap
-				? yScales["mainChart"].yScale
-				: scaleLinear().range([indicatorHeight, 0]);
+			let yScale, yOffset;
+			if (isOverlap || isCandle) {
+				yScale = yScales["mainChart"].yScale;
+				yOffset = 0;
+			} else {
+				for (let line in result.result) {
+					debugger;
+					let leftPadding = [];
+					if (result.result.begIndex) {
+						let startVal = result.result[line][0];
+						for (let x = 0; x < result.result.begIndex; x++) {
+							leftPadding.push(startVal);
+						}
+					}
+					debugger;
+					result.result[line] = [
+						...leftPadding,
+						...result.result[line],
+					];
+				}
+
+				yScale = scaleLinear().range([indicatorHeight, 0]);
+				yOffset = mainChartHeight + _indicatorCount * indicatorHeight;
+				console.log(yOffset);
+			}
 			yScales[_id] = {
 				name,
 				fullName,
 				yScale,
-				yOffset: mainChartHeight + indicatorCount * indicatorHeight,
+				yOffset,
 				height: indicatorHeight,
-				color: "red",
 				data: result,
 				group: group,
 				outputs: outputs,
 			};
 			if (!isOverlap && !isCandle) {
-				height += indicatorHeight;
-				indicatorCount++;
-				debugger;
+				_height += indicatorHeight;
+				_indicatorCount++;
 			}
 		}
 		setYScales({ ...yScales });
-		// yScale = scaleLinear().range([innerHeight, 0]);
-		innerHeight = height - (margin.top + margin.bottom);
+		setHeight(_height);
+		setIndicatorCount(_indicatorCount);
 
 		draw();
 	}, [Object.keys(indicatorResults[symbol][timeframe]).length]);
+
+	innerHeight = height - (margin.top + margin.bottom);
 
 	useEffect(() => {
 		draw();
@@ -119,7 +146,7 @@ export default function Chart({ symbol, timeframe }) {
 	useEffect(() => {
 		setChartSvg(select(svgRef.current));
 		//fetch indicator results
-		// let indicators = indicatorResults[symbol][timeframe];
+
 		chartIndicators.forEach(async (ind) => {
 			console.log(ind);
 
@@ -139,9 +166,6 @@ export default function Chart({ symbol, timeframe }) {
 					console.log("ok");
 				}
 			});
-			// ind.selectedInputs.forEach((input) => {
-			// 	inputs[input] = data.map((d) => d[input]);
-			// });
 
 			let results = await API.getIndicatorResults(ind, inputs);
 			if (!results || results.err) {
@@ -164,7 +188,7 @@ export default function Chart({ symbol, timeframe }) {
 			let [_, dataMax] = extent(data, (d) => d.high);
 			let [dataMin, __] = extent(data, (d) => d.low);
 			return [dataMin, dataMax];
-		} else {
+		} else if (data.result) {
 			let { result } = data;
 			data = Object.keys(result)
 				.map((lineName) => result[lineName])
@@ -175,24 +199,62 @@ export default function Chart({ symbol, timeframe }) {
 		}
 	};
 
+	const padLeft = (data) => {
+		let paddedLines = {};
+
+		for (let lineName in data.result) {
+			if (data.begIndex) {
+				let leftPadding = [];
+				if (data.begIndex) {
+					let startVal = data.result[lineName][0];
+					for (let x = 0; x < data.begIndex; x++) {
+						leftPadding.push(startVal);
+					}
+					paddedLines[lineName] = [
+						...leftPadding,
+						...data.result[lineName],
+					];
+				} else {
+					paddedLines[lineName] = data.result[lineName];
+				}
+			}
+
+			return paddedLines;
+		}
+	};
+
 	const draw = () => {
 		if (!data || !data.length) return;
 
 		xScale.domain([0, data.length - 1]);
+
+		let mainChartData = {};
 		for (let key in yScales) {
 			let { data, group, yScale } = yScales[key];
-			let [yMin, yMax] = getYMinMax(data);
-			if (yMin === undefined || yMax === undefined) continue;
-			if (group === "Overlap Studies") {
-				let [min, max] = yScale.domain();
-				//first time through this is unset, and default to [0, 1]
-				if (max !== 1 && min !== 0) {
-					yMin = yMin < min ? yMin : min;
-					yMax = yMax > max ? yMax : max;
-				}
+			if (group === "Cycle Indicators") {
+				debugger;
 			}
-			yScale.domain([yMin - yMin * 0.0005, yMax + yMax * 0.0005]);
+			if (group === "Overlap Studies") {
+				if (data.result) {
+					for (let lineName in data.result) {
+						mainChartData[lineName] = data.result[lineName];
+					}
+				} else {
+					//OHLC data
+					mainChartData.close = data.map((d) => d.close);
+				}
+			} else if (group === "Pattern Recognition") {
+				continue; //candle patterns will be charted as markers
+			} else {
+				debugger;
+				let [yMin, yMax] = getYMinMax(data);
+
+				yScale.domain([yMin, yMax]);
+			}
 		}
+
+		let [yMin, yMax] = getYMinMax({ result: mainChartData });
+		yScales["mainChart"].yScale.domain([yMin, yMax]);
 
 		if (currentZoom) {
 			let newXScale = currentZoom.rescaleX(xScale);
@@ -201,17 +263,39 @@ export default function Chart({ symbol, timeframe }) {
 			xScale.domain(newXScale.domain());
 			if (start < 0) start = 0;
 
-			let [yMin, yMax] = getYMinMax(
-				data.slice(Math.floor(start), Math.ceil(end))
-			);
-
+			let mainChartData = {};
 			for (let key in yScales) {
-				let [yMin, yMax] = getYMinMax(yScales[key].data);
-				yScales[key].yScale.domain([
-					yMin ? yMin - yMin * 0.0005 : 0,
-					yMax ? yMax + yMax * 0.0005 : 1,
-				]);
+				let { data, group, yScale } = yScales[key];
+
+				if (group === "Overlap Studies") {
+					if (data.result) {
+						let paddedLines = padLeft(data);
+						for (let lineName in paddedLines) {
+							mainChartData[lineName] = paddedLines[
+								lineName
+							].slice(Math.floor(start), Math.ceil(end));
+						}
+					}
+				} else if (group === "Pattern Recognition") {
+					continue; //candle patterns will be charted as markers
+				} else {
+					let tempLineData = {};
+					let paddedLines = padLeft(data);
+					for (let lineName in paddedLines) {
+						tempLineData[lineName] = paddedLines[lineName].slice(
+							Math.floor(start),
+							Math.ceil(end)
+						);
+					}
+
+					let [yMin, yMax] = getYMinMax({ result: tempLineData });
+
+					yScale.domain([yMin, yMax]);
+				}
 			}
+
+			let [yMin, yMax] = getYMinMax({ result: mainChartData });
+			yScales["mainChart"].yScale.domain([yMin, yMax]);
 		}
 
 		let xAxis = axisBottom(xScale).tickValues(
@@ -227,34 +311,64 @@ export default function Chart({ symbol, timeframe }) {
 		if (!chartSvg) return;
 
 		chartSvg.select(".x-axis").call(xAxis);
+
 		for (let key in yScales) {
-			let { name, axis, yScale, color, yOffset, data } = yScales[key];
-			let className = `${name}-myLine`;
-			chartSvg.select(`.${name}-y-axis`).call(axis);
+			let { name, axis, yScale, color, yOffset, data, group } = yScales[
+				key
+			];
+			let lines = {};
+			if (!data.result) {
+				lines.close = data.map((d) => d.close);
+			} else {
+				let paddedLines = padLeft(data);
+				lines = { ...lines, ...paddedLines };
 
-			chartSvg.selectAll(`.${className}`).remove();
-			debugger;
-			const myLine = line()
-				.x((d, i) => {
-					let x = xScale(i);
-					return x;
-				})
-				.y((d) => {
-					let y = yScale(d.close || d) + yOffset;
-					return y;
-				})
-				.curve(curveCardinal);
+				// for (let line in data.result) {
+				// let leftPadding = [];
+				// if (data.begIndex) {
+				// 	let startVal = data.result[line][0];
+				// 	for (let x = 0; x < data.begIndex; x++) {
+				// 		leftPadding.push(startVal);
+				// 	}
+				// }
+				// lines[line] = data.result[line];
+				// lines[line] = [...leftPadding, ...data.result[line]];
+				// }
+			}
+			if (name === "mainChart") {
+				chartSvg.select(`.${name}-y-axis`).call(axis);
+			} else if (group !== "Overlap Studies") {
+				chartSvg.select(`.${name}-y-axis`).call(axis);
+			}
 
-			chartSvg
-				.selectAll(`.${className}`)
-				.data([data])
-				.join("path")
-				.attr("class", className)
-				.attr("d", myLine)
-				.attr("fill", "none")
-				.attr("stroke", color)
-				// .attr("class", "new")
-				.exit();
+			for (let lineName in lines) {
+				let lineData = lines[lineName];
+
+				let className = `${lineName}-myLine`;
+				// let className = `${lineName}-myLine ${group}-lineGroup ${name}-indicatorName`;
+
+				chartSvg.selectAll(`.${className}`).remove();
+				const myLine = line()
+					.x((d, i) => {
+						let x = xScale(i);
+						return x;
+					})
+					.y((d) => {
+						let y = yScale(d.close || d) + yOffset + margin.top;
+						return y;
+					});
+
+				chartSvg
+					.selectAll(`.${className}`)
+					.data([lineData])
+					.join("path")
+					.attr("class", className)
+					.attr("d", myLine)
+					.attr("fill", "none")
+					.attr("stroke", indicatorColors[name] || "red")
+					// .attr("class", "new")
+					.exit();
+			}
 		}
 
 		const zoomBehavior = zoom()
@@ -293,6 +407,8 @@ export default function Chart({ symbol, timeframe }) {
 		[selectedStrat.indicators.length]
 	);
 
+	console.log(yScales);
+
 	return (
 		<div className="white">
 			<div>
@@ -314,9 +430,16 @@ export default function Chart({ symbol, timeframe }) {
 				/>
 			)}
 
-			<StyledSVG height={height} ref={svgRef}>
+			<StyledSVG margin={margin} height={height} ref={svgRef}>
 				{Object.keys(yScales).map((key) => {
-					let { name, yOffset } = yScales[key];
+					let { name, yOffset, group } = yScales[key];
+					if (
+						name !== "mainChart" &&
+						(group === "Overlap Studies" ||
+							group === "Pattern Recognition")
+					) {
+						return <></>;
+					}
 					return (
 						<StyledYAxis
 							yOffset={yOffset}
@@ -328,7 +451,7 @@ export default function Chart({ symbol, timeframe }) {
 				})}
 				<StyledXAxis
 					margin={margin}
-					innerHeight={innerHeight}
+					height={height}
 					className="x-axis white"
 				/>
 			</StyledSVG>
@@ -352,20 +475,20 @@ const Small = styled.span`
 const StyledSVG = styled.svg`
 	border: 1px solid red;
 	width: ${width}px;
-	height: ${({ height }) => height}px;
+	height: ${({ height, margin }) => height + margin.top + margin.bottom}px;
 	background: #444;
 `;
 
 const StyledXAxis = styled.g`
 	user-select: none;
-	transform: ${({ margin, innerHeight }) =>
-		`translate(${margin.left}px, ${innerHeight}px)`};
+	transform: ${({ margin, height }) =>
+		`translate(${margin.left}px, ${height + margin.bottom}px)`};
 `;
 
 const StyledYAxis = styled.g`
 	user-select: none;
 	transform: ${({ yOffset, width, margin }) =>
-		`translate(${width - margin.right}px, ${yOffset}px)`};
+		`translate(${width - margin.right}px, ${yOffset + margin.top}px)`};
 `;
 
 const Flex = styled.div`

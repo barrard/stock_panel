@@ -170,8 +170,7 @@ async function getBackTestData({ symbol, timeframe }) {
 
 		return strategy;
 	} catch (err) {
-		console.log(err);
-		toastr.error(err);
+		handleError(err);
 	}
 }
 
@@ -188,8 +187,7 @@ async function linkPriceData(stratId, priceDataId) {
 
 		return strategy;
 	} catch (err) {
-		console.log(err);
-		toastr.error(err);
+		handleError(err);
 	}
 }
 
@@ -206,8 +204,7 @@ async function addPriceData(symbol, timeframe) {
 
 		return newPriceData;
 	} catch (err) {
-		console.log(err);
-		toastr.error(err.message);
+		handleError(err);
 	}
 }
 
@@ -221,8 +218,7 @@ async function addStrategy(strat) {
 
 		return strategy;
 	} catch (err) {
-		console.log(err);
-		toastr.error(err.message);
+		handleError(err);
 	}
 }
 
@@ -242,8 +238,8 @@ async function getStrategies() {
 			return strategies;
 		} else return [];
 	} catch (err) {
-		console.log(err);
-		toastr.error(err.message);
+		handleError(err);
+
 		return [];
 	}
 }
@@ -263,8 +259,8 @@ async function getPriceDatas() {
 			return priceDatas;
 		} else return [];
 	} catch (err) {
-		console.log(err);
-		toastr.error(err.message);
+		handleError(err);
+
 		return [];
 	}
 }
@@ -293,8 +289,7 @@ function handleError(err) {
 	if (err.message) {
 		return toastr.error(err.message);
 	}
-	console.log(err);
-	toastr.error(err);
+	handleError(err);
 }
 
 async function handleResponse(res) {
