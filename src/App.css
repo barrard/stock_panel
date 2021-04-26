@@ -129,6 +129,10 @@ text {
   fill: black;
 }
 
+.selectedLine{
+  stroke-width: 5px;
+
+}
 .line .crosshair {
   fill: none;
   stroke-width: 1px;

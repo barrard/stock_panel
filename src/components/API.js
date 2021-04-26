@@ -50,7 +50,25 @@ export default {
 	deleteIndicator,
 	updateIndicatorOpts,
 	getIndicatorResults,
+	getAllChartPatterns,
 };
+
+async function getAllChartPatterns(inputs) {
+	try {
+		let list = await fetch(
+			`${REACT_APP_API_SERVER}/API/getAllChartPatterns`,
+			{
+				credentials: "include",
+				...POST({ inputs }),
+			}
+		);
+		list = await handleResponse(list);
+		console.log(list);
+		return list;
+	} catch (err) {
+		handleError(err);
+	}
+}
 
 async function getIndicatorResults(ind, inputs) {
 	try {
@@ -108,13 +126,12 @@ async function submitIndicator({
 	indicatorOpts,
 	indicatorName,
 	options,
+	color,
 	inputs,
 	dataInputs,
 	variablePeriods,
 }) {
 	try {
-		console.log({ variablePeriods });
-		console.log({ variablePeriods });
 		console.log({ variablePeriods });
 		let list = await fetch(`${REACT_APP_API_SERVER}/API/addIndicator`, {
 			credentials: "include",
@@ -125,12 +142,13 @@ async function submitIndicator({
 				indicatorOpts,
 				indicatorName,
 				options,
+				color,
 				inputs,
 				dataInputs,
 				variablePeriods,
 			}),
 		});
-
+		debugger;
 		list = await handleResponse(list);
 
 		return list;

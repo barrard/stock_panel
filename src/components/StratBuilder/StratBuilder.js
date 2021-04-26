@@ -89,31 +89,42 @@ export default function StratBuilder() {
 		}
 		setCharts({ ...charts });
 	};
+
+	const deleteIndicatorResults = ({ symbol, timeframe, indicator }) => {
+		delete indicatorResults[symbol][timeframe][indicator._id];
+		setIndicatorResults({ ...indicatorResults });
+	};
 	const updateIndicatorResults = ({
 		indicator,
 		result,
 		symbol,
 		timeframe,
 	}) => {
-		if (!indicator || !indicator._id)
-			return console.log("you done fucked up");
-		if (!indicatorResults[symbol]) indicatorResults[symbol] = {};
-		if (!indicatorResults[symbol][timeframe])
-			indicatorResults[symbol][timeframe] = {};
-		indicatorResults[symbol][timeframe][indicator._id] = {
-			indicator,
-			result,
-		};
+		try {
+			if (!indicator || !indicator._id)
+				return console.log("you done fucked up");
+			if (!indicatorResults[symbol]) indicatorResults[symbol] = {};
+			if (!indicatorResults[symbol][timeframe])
+				indicatorResults[symbol][timeframe] = {};
+			indicatorResults[symbol][timeframe][indicator._id] = {
+				indicator,
+				result,
+			};
 
-		console.log(indicatorResults);
-		setIndicatorResults({ ...indicatorResults });
+			console.log(indicatorResults);
+			setIndicatorResults({ ...indicatorResults });
+		} catch (err) {
+			console.error(err);
+		}
 	};
 	console.log(charts);
+	console.log(indicatorResults);
 	const GLOBAL = {
 		API,
 		addChart,
 		charts,
 		creatingStrat,
+		deleteIndicatorResults,
 		indicatorList,
 		indicatorResults,
 		setIndicatorList,

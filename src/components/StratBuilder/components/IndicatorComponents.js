@@ -48,13 +48,31 @@ export function SelectIndicatorName({
 					)[0];
 					setIndicator(indicator);
 					console.log({ indicator });
+					let selectedInputTypes = {};
+					debugger;
 					indicator.inputs.forEach((input) => {
+						debugger;
+
 						if (input.flags) {
-							setSelectedInput(Object.values(input.flags));
+							selectedInputTypes = {
+								...selectedInputTypes,
+								...Object.values(input.flags).reduce(
+									(data, v) => ({
+										...data,
+										[v]: v,
+									}),
+									{}
+								),
+							};
 						} else {
-							setSelectedInput(["close"]);
+							selectedInputTypes = {
+								...selectedInputTypes,
+								[input.name]: "close",
+							};
 						}
 					});
+					debugger;
+					setSelectedInput({ ...selectedInputTypes });
 					//set default values
 					let dValues = {};
 					indicator.optInputs.forEach(
@@ -103,24 +121,44 @@ export function InputTypes({
 	variablePeriods,
 }) {
 	return indicator.inputs.map((input, i) => {
-		if (input.name === "inReal") {
+		if (input.name.includes("inReal")) {
 			return (
-				<InputDataType
+				<InputRealDataSource
 					key={i}
-					setSelectedInput={setSelectedInput}
+					name={input.name}
+					setSelectedInput={(value) =>
+						setSelectedInput({
+							...selectedInput,
+							[input.name]: value,
+						})
+					}
 					selectedInput={selectedInput}
 				/>
 			);
 		} else if (input.name === "inPeriods") {
 			return (
 				<VariablePeriodsInput
-					setVariablePeriods={setVariablePeriods}
+					setSelectedInput={(value) =>
+						setSelectedInput({
+							...selectedInput,
+							[input.name]: value,
+						})
+					}
 					variablePeriods={variablePeriods}
 				/>
 			);
 		}
 
 		if (input.flags && Object.values(input.flags).length) {
+			Object.values(input.flags).forEach((v) => {
+				if (!selectedInput[v]) {
+					debugger;
+					setSelectedInput({ ...selectedInput, [v]: v });
+				}
+			});
+			debugger;
+
+			debugger;
 			return <InputDataPreset key={i} input={input} />;
 		}
 	});
@@ -168,15 +206,15 @@ export function InputDataPreset({ input }) {
 		</div>
 	));
 }
-export function InputDataType({ setSelectedInput, selectedInput }) {
+export function InputRealDataSource({ name, setSelectedInput, selectedInput }) {
 	return ["open", "high", "low", "close", "volume"].map((val) => (
 		<div style={{ paddingRight: "1em" }} key={val}>
 			<label htmlFor="">{capitalize(val)}</label>
 			<input
-				onChange={(e) => setSelectedInput([e.target.value])}
-				checked={selectedInput.indexOf(val) >= 0}
+				onChange={(e) => setSelectedInput(e.target.value)}
+				checked={selectedInput[name] === val}
 				name="inReal"
-				type="radio"
+				type="checkbox"
 				value={val}
 			/>
 		</div>

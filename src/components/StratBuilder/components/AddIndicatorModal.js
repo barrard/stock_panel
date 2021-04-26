@@ -3,6 +3,8 @@ import { LoadingButton } from "./components";
 import API from "../../API";
 import StratContext from "../StratContext";
 import { getGroups } from "./utilFuncs";
+import { SketchPicker } from "react-color";
+import ChartContext from "./ChartContext";
 
 import {
 	SelectIndicatorGroup,
@@ -10,12 +12,16 @@ import {
 	InputTypes,
 	IndicatorInputs,
 	InputDataPreset,
-	InputDataType,
+	InputRealDataSource,
 	MA_Options,
 	Ind_Input,
 	MA_SELECT,
 } from "./IndicatorComponents";
 
+let PATTERN_RESULTS = {
+	rankings: [],
+	results: {},
+};
 export default function AddIndicatorModal({
 	symbol,
 	timeframe,
@@ -32,6 +38,8 @@ export default function AddIndicatorModal({
 	const [selectedInput, setSelectedInput] = useState(["close"]);
 	const [loadingIndicator, setLoadingIndicator] = useState(false);
 	const [variablePeriods, setVariablePeriods] = useState([]);
+	const [color, setColor] = useState("red");
+	const [patternResults, setPatternResults] = useState(PATTERN_RESULTS);
 	const {
 		indicatorList,
 		setSelectedStrat,
@@ -41,6 +49,10 @@ export default function AddIndicatorModal({
 		setStrategies,
 		updateIndicatorResults,
 	} = React.useContext(StratContext);
+	let {
+		selectedPatternResults,
+		setSelectedPatternResults,
+	} = React.useContext(ChartContext);
 
 	useEffect(() => {
 		console.log("IndicatorModal OPEN");
@@ -67,15 +79,15 @@ export default function AddIndicatorModal({
 				options[name] = indicatorOpts[name].defaultValue;
 			}
 			//is this "inReal"?
-			let isInReal;
-			if (indicator.inputs[0].name === "inReal") isInReal = true;
+			// let isInReal;
+			// if (indicator.inputs[0].name === "inReal") isInReal = true;
 			let dataInputs = {};
-			let selectedInputs = [];
-			selectedInput.forEach((input) => {
-				selectedInputs.push(input);
-				dataInputs[isInReal ? "inReal" : input] = data.map(
-					(d) => d[input]
-				);
+			let selectedInputs = {};
+			Object.keys(selectedInput).forEach((input) => {
+				selectedInputs[input] = selectedInput[input];
+				debugger;
+				dataInputs[input] = data.map((d) => d[selectedInput[input]]);
+				debugger;
 			});
 
 			let resp = await API.submitIndicator({
@@ -87,6 +99,7 @@ export default function AddIndicatorModal({
 				dataInputs,
 				selectedInputs,
 				priceDataId: id,
+				color,
 				variablePeriods,
 			});
 			setLoadingIndicator(false);
@@ -95,16 +108,8 @@ export default function AddIndicatorModal({
 				//lets assume this all worked, so we can close the indicator model
 				setAddIndicators(false);
 				let { newIndicator, result } = resp;
-				// selectedStrat.indicators.push(newIndicator);
-				//update selected strategy
-				// setSelectedStrat(selectedStrat);
-				//update strategy list
-				let stratIndex = strategies.findIndex(
-					(strat) => strat._id === selectedStrat._id
-				);
-				strategies[stratIndex].indicators.push(newIndicator);
-				setStrategies([...strategies]);
 
+				debugger;
 				//ADD indicator data
 				updateIndicatorResults({
 					symbol,
@@ -112,14 +117,79 @@ export default function AddIndicatorModal({
 					indicator: newIndicator,
 					result,
 				});
+
+				let stratIndex = strategies.findIndex(
+					(strat) => strat._id === selectedStrat._id
+				);
+				strategies[stratIndex].indicators.push(newIndicator);
+				setStrategies([...strategies]);
+				setSelectedStrat({ ...strategies[stratIndex] });
 			}
 		} catch (err) {
 			setLoadingIndicator(false);
 			console.log(err);
 		}
 	};
+	debugger;
+	console.log({
+		selectedPatternResults,
+	});
 	return (
 		<div>
+			<div>
+				<button
+					onClick={async () => {
+						let results = await API.getAllChartPatterns(
+							charts[symbol][timeframe]
+						);
+						if (!results || !results.results) {
+							return console.error("no results?!");
+						}
+
+						results = results.results;
+						let rankings = [];
+						for (let line in results) {
+							let patternCount = {
+								patternName: line,
+								count: 0,
+							};
+							console.log(results[line]);
+							console.log(results[line].result);
+							results[line].result.outInteger.forEach((v) =>
+								v !== 0 ? patternCount.count++ : undefined
+							);
+							rankings.push(patternCount);
+						}
+						rankings = rankings.sort((a, b) => b.count - a.count);
+						if (rankings.length) {
+							PATTERN_RESULTS = { rankings, results };
+						}
+						setPatternResults({ rankings, results });
+					}}
+				>
+					Get all Patterns
+				</button>
+				{patternResults.rankings.length > 0 && (
+					<select
+						name=""
+						id=""
+						value={selectedPatternResults.pattern}
+						onChange={(e) => {
+							setSelectedPatternResults({
+								pattern: e.target.value,
+								result: patternResults.results[e.target.value],
+							});
+						}}
+					>
+						{patternResults.rankings.map((rank) => (
+							<option
+								key={rank.patternName}
+								value={rank.patternName}
+							>{`${rank.patternName} ${rank.count}`}</option>
+						))}
+					</select>
+				)}
+			</div>
 			<SelectIndicatorGroup
 				setSelectedGroup={setSelectedGroup}
 				groupLIst={groupLIst}
@@ -149,6 +219,12 @@ export default function AddIndicatorModal({
 						selectedInput={selectedInput}
 						setVariablePeriods={setVariablePeriods}
 						variablePeriods={variablePeriods}
+					/>
+					<SketchPicker
+						color={color}
+						onChangeComplete={({ hex }) => {
+							setColor(hex);
+						}}
 					/>
 				</>
 			)}
