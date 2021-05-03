@@ -128,7 +128,9 @@ g.tick {
 text {
   fill: black;
 }
-
+.selectedCandle{
+  stroke: white;
+}
 .selectedLine{
   stroke-width: 5px;
 

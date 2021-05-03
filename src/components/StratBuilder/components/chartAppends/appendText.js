@@ -8,7 +8,12 @@ export function removeIndicatorName(chartSvg, fullName, key) {
 	chartSvg.selectAll(`.${className}`).remove();
 }
 
-export function appendIndicatorName(chartSvg, margin, yScales) {
+export function appendIndicatorName(
+	chartSvg,
+	margin,
+	yScales,
+	setLineSettings
+) {
 	const textSize = 20;
 
 	let mainChartCount = 0;
@@ -77,7 +82,7 @@ export function appendIndicatorName(chartSvg, margin, yScales) {
 		label.on("mouseout", function () {
 			background.remove();
 		});
-		textG
+		textG //the Cog Icon
 			.append("text")
 			.attr("class", "fa clickable")
 			.attr("x", w + 22)
@@ -87,6 +92,7 @@ export function appendIndicatorName(chartSvg, margin, yScales) {
 			.attr("stroke", "white")
 			.attr("stroke-width", "0.3px")
 			.style("fill", "black")
-			.style("font-size", textSize + "px");
+			.style("font-size", textSize + "px")
+			.on("click", () => setLineSettings(yScales[key], "outReal", key));
 	}
 }

@@ -86,6 +86,20 @@ export default function StratBuilder() {
 			// console.log(data);
 			charts[symbol][timeframe].data = data;
 			charts[symbol][timeframe].id = _id;
+
+			// addOHLC("close");
+			// addOHLC("open");
+			// addOHLC("high");
+			// addOHLC("low");
+
+			// function addOHLC(ohlc) {
+			// 	updateIndicatorResults({
+			// 		indicator: { _id: ohlc },
+			// 		result: { result: data.map((d) => d[ohlc]) },
+			// 		symbol,
+			// 		timeframe,
+			// 	});
+			// }
 		}
 		setCharts({ ...charts });
 	};
@@ -101,6 +115,7 @@ export default function StratBuilder() {
 		timeframe,
 	}) => {
 		try {
+			// debugger;
 			if (!indicator || !indicator._id)
 				return console.log("you done fucked up");
 			if (!indicatorResults[symbol]) indicatorResults[symbol] = {};

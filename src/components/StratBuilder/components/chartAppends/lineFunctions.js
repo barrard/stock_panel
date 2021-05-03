@@ -106,12 +106,6 @@ function appendPatternMarkers(
 		// .attr("stroke-width", "0.3px")
 		.style("fill", color)
 		.on("mouseover", function (a, e, i) {
-			console.log(a);
-			console.log(e);
-			console.log(i);
-			console.log(select(this));
-			console.log(select(this).attr("cy"));
-			console.log(select(this).attr("cx"));
 			let x = select(this).attr("cx");
 			let y = select(this).attr("cy");
 			chartSvg

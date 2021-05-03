@@ -1,4 +1,13 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import {
+	SketchPicker,
+	SwatchesPicker,
+	TwitterPicker,
+	CirclePicker,
+	CompactPicker,
+} from "react-color";
+import API from "../../API";
+
 import { capitalize } from "./utilFuncs";
 export function SelectIndicatorGroup({
 	setSelectedGroup,
@@ -49,10 +58,8 @@ export function SelectIndicatorName({
 					setIndicator(indicator);
 					console.log({ indicator });
 					let selectedInputTypes = {};
-					debugger;
-					indicator.inputs.forEach((input) => {
-						debugger;
 
+					indicator.inputs.forEach((input) => {
 						if (input.flags) {
 							selectedInputTypes = {
 								...selectedInputTypes,
@@ -71,7 +78,7 @@ export function SelectIndicatorName({
 							};
 						}
 					});
-					debugger;
+
 					setSelectedInput({ ...selectedInputTypes });
 					//set default values
 					let dValues = {};
@@ -97,19 +104,26 @@ export function SelectIndicatorName({
 	);
 }
 
-export function VariablePeriodsInput({ setVariablePeriods, variablePeriods }) {
+export function VariablePeriodsInput({
+	name,
+	setSelectedInput,
+	variablePeriods,
+}) {
 	useEffect(() => {
-		setVariablePeriods(["5", "10", "15"]);
+		setSelectedInput(["5", "10", "15"]);
 	}, []);
 	return (
-		<input
-			value={variablePeriods.join(",")}
-			onChange={(e) =>
-				setVariablePeriods([
-					...e.target.value.split(",").map((v) => v.trim()),
-				])
-			}
-		/>
+		<div style={{ border: "1px solid yellow" }}>
+			<p>{name}</p>
+			<input
+				value={variablePeriods.join(",")}
+				onChange={(e) =>
+					setSelectedInput([
+						...e.target.value.split(",").map((v) => v.trim()),
+					])
+				}
+			/>
+		</div>
 	);
 }
 
@@ -120,48 +134,52 @@ export function InputTypes({
 	setVariablePeriods,
 	variablePeriods,
 }) {
-	return indicator.inputs.map((input, i) => {
-		if (input.name.includes("inReal")) {
-			return (
-				<InputRealDataSource
-					key={i}
-					name={input.name}
-					setSelectedInput={(value) =>
-						setSelectedInput({
-							...selectedInput,
-							[input.name]: value,
-						})
+	return (
+		<>
+			<div style={{ display: "flex" }}>
+				{indicator.inputs.map((input, i) => {
+					if (input.name.includes("inReal")) {
+						return (
+							<InputRealDataSource
+								key={i}
+								name={input.name}
+								setSelectedInput={(value) =>
+									setSelectedInput({
+										...selectedInput,
+										[input.name]: value,
+									})
+								}
+								selectedInput={selectedInput}
+							/>
+						);
+					} else if (input.name === "inPeriods") {
+						return (
+							<VariablePeriodsInput
+								name={input.name}
+								setSelectedInput={(value) =>
+									setSelectedInput({
+										...selectedInput,
+										[input.name]: value,
+									})
+								}
+								variablePeriods={variablePeriods}
+							/>
+						);
 					}
-					selectedInput={selectedInput}
-				/>
-			);
-		} else if (input.name === "inPeriods") {
-			return (
-				<VariablePeriodsInput
-					setSelectedInput={(value) =>
-						setSelectedInput({
-							...selectedInput,
-							[input.name]: value,
-						})
+
+					if (input.flags && Object.values(input.flags).length) {
+						Object.values(input.flags).forEach((v) => {
+							if (!selectedInput[v]) {
+								setSelectedInput({ ...selectedInput, [v]: v });
+							}
+						});
+
+						return <InputDataPreset key={i} input={input} />;
 					}
-					variablePeriods={variablePeriods}
-				/>
-			);
-		}
-
-		if (input.flags && Object.values(input.flags).length) {
-			Object.values(input.flags).forEach((v) => {
-				if (!selectedInput[v]) {
-					debugger;
-					setSelectedInput({ ...selectedInput, [v]: v });
-				}
-			});
-			debugger;
-
-			debugger;
-			return <InputDataPreset key={i} input={input} />;
-		}
-	});
+				})}
+			</div>
+		</>
+	);
 }
 
 export function IndicatorInputs({ indicatorOpts, setIndicatorOpts }) {
@@ -207,18 +225,33 @@ export function InputDataPreset({ input }) {
 	));
 }
 export function InputRealDataSource({ name, setSelectedInput, selectedInput }) {
-	return ["open", "high", "low", "close", "volume"].map((val) => (
-		<div style={{ paddingRight: "1em" }} key={val}>
-			<label htmlFor="">{capitalize(val)}</label>
-			<input
-				onChange={(e) => setSelectedInput(e.target.value)}
-				checked={selectedInput[name] === val}
-				name="inReal"
-				type="checkbox"
-				value={val}
-			/>
+	return (
+		<div
+			style={{
+				border: "1px solid white",
+				padding: "1em",
+				margin: "0.5em",
+				display: "flex",
+				flexDirection: "column",
+				alignContent: "center",
+				justifyContent: "center",
+			}}
+		>
+			<h6 style={{ textDecoration: "underline" }}>{name}</h6>
+			{["open", "high", "low", "close", "volume"].map((val) => (
+				<div style={{ paddingRight: "1em" }} key={val}>
+					<label htmlFor="">{capitalize(val)}</label>
+					<input
+						onChange={(e) => setSelectedInput(e.target.value)}
+						checked={selectedInput[name] === val}
+						name="inReal"
+						type="checkbox"
+						value={val}
+					/>
+				</div>
+			))}
 		</div>
-	));
+	);
 }
 
 export function MA_Options(func) {
@@ -272,16 +305,12 @@ export function MA_SELECT({ name, indicatorOpts, setIndicatorOpts }) {
 		<select
 			value={indicatorOpts[name].defaultValue}
 			onChange={(e) => {
-				console.log(e.target.value);
-
 				indicatorOpts[name].defaultValue = e.target.value;
-
 				setIndicatorOpts({
 					...indicatorOpts,
 				});
 			}}
 			name="MA_Type"
-			id=""
 		>
 			{MA_TYPE_OPTS.map((opt, i) => (
 				<option
@@ -291,14 +320,83 @@ export function MA_SELECT({ name, indicatorOpts, setIndicatorOpts }) {
 					{MA_TYPE_OPTS[i]}
 				</option>
 			))}
-			{/* <option value="1"></option>
-			<option value="2"></option>
-			<option value="3"></option>
-			<option value="4"></option>
-			<option value="5"></option>
-			<option value="6"></option>
-			<option value="7"></option>
-			<option value="8"></option> */}
 		</select>
 	);
 }
+
+export function LineColors({ indicator, color, setColor }) {
+	return (
+		<div style={{ display: "flex" }}>
+			{indicator.outputs.map((line) => {
+				return (
+					<div style={{ margin: "1.5em" }}>
+						<p>{line.name}</p>
+
+						<Swatch
+							setColor={(newColor) =>
+								setColor({ ...color, ...newColor })
+							}
+							line={line}
+							color={color[line.name]}
+						/>
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
+const Swatch = ({ setColor, color, line }) => {
+	const [show, setShow] = useState(false);
+
+	const styles = {
+		color: {
+			width: "36px",
+			height: "14px",
+			borderRadius: "2px",
+			background: `${color}`,
+		},
+		swatch: {
+			padding: "5px",
+			background: "#fff",
+			borderRadius: "1px",
+			boxShadow: "0 0 0 1px rgba(0,0,0,.1)",
+			display: "inline-block",
+			cursor: "pointer",
+		},
+		popover: {
+			position: "absolute",
+			zIndex: "2",
+		},
+		cover: {
+			position: "fixed",
+			top: "0px",
+			right: "0px",
+			bottom: "0px",
+			left: "0px",
+		},
+	};
+
+	return (
+		<div>
+			<div style={styles.swatch} onClick={() => setShow(!show)}>
+				<div style={styles.color} />
+			</div>
+			{show ? (
+				<div style={styles.popover}>
+					<div style={styles.cover} onClick={() => setShow(false)} />
+					{show && (
+						<CompactPicker
+							color={color[line.name]}
+							onChangeComplete={({ hex }) => {
+								let newColor = { [line.name]: hex };
+								console.log(newColor);
+								setColor(newColor);
+							}}
+						/>
+					)}
+				</div>
+			) : null}
+		</div>
+	);
+};

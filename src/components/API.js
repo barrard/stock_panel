@@ -51,7 +51,22 @@ export default {
 	updateIndicatorOpts,
 	getIndicatorResults,
 	getAllChartPatterns,
+	updateLineColor,
 };
+
+async function updateLineColor(key, color) {
+	try {
+		let list = await fetch(`${REACT_APP_API_SERVER}/API/updateLineColor`, {
+			credentials: "include",
+			...POST({ key, color }),
+		});
+		list = await handleResponse(list);
+		console.log(list);
+		return list;
+	} catch (err) {
+		handleError(err);
+	}
+}
 
 async function getAllChartPatterns(inputs) {
 	try {
@@ -148,9 +163,7 @@ async function submitIndicator({
 				variablePeriods,
 			}),
 		});
-		debugger;
 		list = await handleResponse(list);
-
 		return list;
 	} catch (err) {
 		handleError(err);

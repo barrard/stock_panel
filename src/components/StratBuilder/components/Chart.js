@@ -17,6 +17,7 @@ import {
 	select,
 	zoom,
 	zoomTransform,
+	mouse,
 } from "d3";
 import {
 	faEye,
@@ -27,7 +28,9 @@ import {
 	faWindowClose,
 	faTimes,
 } from "@fortawesome/free-solid-svg-icons";
-import { MA_SELECT } from "./IndicatorComponents";
+import WinBox from "winbox";
+
+import { MA_SELECT, LineColors } from "./IndicatorComponents";
 import AddIndicatorModal from "./AddIndicatorModal";
 import { IconButton, LoadingButton } from "./components";
 import StratContext from "../StratContext";
@@ -38,6 +41,13 @@ import {
 	appendIndicatorName,
 	removeIndicatorName,
 	handleLineClick,
+	drawOHLC,
+	drawCrossHair,
+	appendXLabel,
+	appendYLabel,
+	drawXAxis,
+	drawYAxis,
+	appendOHLCVLabel,
 } from "./chartAppends";
 import ChartContext from "./ChartContext";
 let width = 700;
@@ -45,7 +55,7 @@ let width = 700;
 export default function Chart({ symbol, timeframe }) {
 	let margin = {
 		left: 20,
-		right: 40,
+		right: 50,
 		bottom: 20,
 		top: 20,
 	};
@@ -62,6 +72,7 @@ export default function Chart({ symbol, timeframe }) {
 		deleteIndicatorResults,
 	} = useContext(StratContext);
 	const { data, id: priceDataId } = charts[symbol][timeframe];
+	let candleCount = data.length;
 	const title = `${symbol} ${timeframe}`;
 	const svgRef = useRef();
 	const [height, setHeight] = useState(mainChartHeight);
@@ -72,9 +83,9 @@ export default function Chart({ symbol, timeframe }) {
 	const [lineSettings, setLineSettings] = useState({});
 	const [selectedPatternResults, setSelectedPatternResults] = useState({});
 
-	const [indicatorColors, setIndicatorColors] = useState({
-		mainChart: "yellow",
-	});
+	// const [indicatorColors, setIndicatorColors] = useState({
+	// 	mainChart: "yellow",
+	// });
 	let innerWidth = width - (margin.left + margin.right);
 	let xScale = scaleLinear().range([margin.left, innerWidth]);
 	const [yScales, setYScales] = useState({
@@ -83,6 +94,7 @@ export default function Chart({ symbol, timeframe }) {
 			xScale,
 			data: data,
 			sliceData: {},
+			color: { close: "yellow" },
 			margin,
 			height: mainChartHeight,
 			name: "mainChart",
@@ -144,13 +156,13 @@ export default function Chart({ symbol, timeframe }) {
 				group: group,
 				outputs: outputs,
 			};
-			indicatorColors[name] = color;
+			// indicatorColors[name] = color;
 			if (!isOverlap && !isCandle) {
 				_height += indicatorHeight;
 				_indicatorCount++;
 			}
 		}
-		setIndicatorColors(indicatorColors);
+		// setIndicatorColors(indicatorColors);
 		setYScales({ ...yScales });
 		setHeight(_height);
 		setIndicatorCount(_indicatorCount);
@@ -173,7 +185,6 @@ export default function Chart({ symbol, timeframe }) {
 	}, []);
 
 	const fetchAndUpdateIndicatorResults = async (ind) => {
-		console.log(ind);
 		let inputs = {};
 		ind.inputs.forEach((inp) => {
 			let { name } = inp;
@@ -260,7 +271,7 @@ export default function Chart({ symbol, timeframe }) {
 			xScale.domain(newXScale.domain());
 			if (start < 0) start = 0;
 
-			//this is jsut to get the minMax scale
+			//this is just to get the minMax scale
 			let mainChartData = {};
 			for (let key in yScales) {
 				let { data, group, yScale } = yScales[key];
@@ -277,8 +288,11 @@ export default function Chart({ symbol, timeframe }) {
 						}
 					} else {
 						//wheres my close?
-						mainChartData.close = data
-							.map((d) => d.close)
+						mainChartData.high = data
+							.map((d) => d.high)
+							.slice(Math.floor(start), Math.ceil(end));
+						mainChartData.low = data
+							.map((d) => d.low)
 							.slice(Math.floor(start), Math.ceil(end));
 					}
 				} else if (group === "Pattern Recognition") {
@@ -300,6 +314,7 @@ export default function Chart({ symbol, timeframe }) {
 					yScale.domain([yMin, yMax]);
 				}
 			}
+			candleCount = mainChartData.high.length;
 			let [yMin, yMax] = getYMinMax({ result: mainChartData });
 			yScales["mainChart"].yScale.domain([yMin, yMax]);
 		} else {
@@ -337,27 +352,86 @@ export default function Chart({ symbol, timeframe }) {
 		}
 
 		//CALLING THE MAIN X-Scale
-		let xAxis = axisBottom(xScale).tickValues(
-			xScale.domain().filter((d, i) => i % 10 === 0)
-		);
-
-		//CALLING ALL Y-SCALE
-		for (let key in yScales) {
-			yScales[key].axis = axisRight(yScales[key].yScale).tickSize(
-				-innerWidth
-			);
-		}
+		// let [start, end] = xScale.domain();
+		// let slicedOHLC = yScales["mainChart"].data.slice(
+		// 	Math.floor(start),
+		// 	Math.ceil(end)
+		// );
+		// console.log(slicedOHLC);
 
 		//RETURN IF THERE IS NO SVG
 		if (!chartSvg) return;
+		drawXAxis({ xScale, data, chartSvg, className: "x-axis" });
+		//CALLING ALL Y-SCALE
+		for (let key in yScales) {
+			// let { name, yScale } = yScales[key];
 
-		//CALLIG X-AXIS
-		chartSvg.select(".x-axis").call(xAxis);
+			drawYAxis({ yScales, chartSvg, key, innerWidth });
+			// yScales[key].axis = axisRight(yScale).tickSize(
+			// 	-innerWidth
+			// );
+			// if (name === "mainChart") {
+			// 	//TRY TO CALL THIS Y-AXIS JUST ONCE
+			// 	chartSvg.select(`.${name}-${key}-y-axis`).call(axis);
+			// } else if (group !== "Overlap Studies") {
+			// 	//ALL OVER NON-MAIN CHART Y_AXES
+			// 	// chartSvg.select(`.${name}-${key}-y-axis`).call(axis);
+			// 	drawYAxis({axis, yScale, chartSvg, className:`${name}-${key}-y-axis`})
+
+			// }
+		}
+
+		chartSvg.on("mousemove", function () {
+			let [mouseX, mouseY] = mouse(this);
+
+			drawCrossHair({
+				chartSvg,
+				mouseX,
+				mouseY,
+				xScale,
+				yScale: yScales["mainChart"].yScale,
+				margin,
+				height,
+			});
+			appendXLabel({
+				chartSvg,
+				mouseX,
+				mouseY,
+				data,
+				xScale,
+				yScale: yScales["mainChart"].yScale,
+				margin,
+				height,
+				hasBackground: true,
+			});
+
+			appendYLabel({
+				mainChartHeight,
+				indicatorHeight,
+				chartSvg,
+				mouseX,
+				mouseY,
+				data,
+				xScale,
+				yScales,
+				margin,
+				height,
+				hasBackground: true,
+			});
+			appendOHLCVLabel({
+				chartSvg,
+				xScale,
+				yScale: yScales["mainChart"].yScale,
+				margin,
+				mouseX,
+				data,
+			});
+		});
 
 		//STORE CHART PATTERNS
 		let chartPatterns = [];
 		let closeData = [];
-		//CALLING EACH Y-SCALE
+		//CALLING EACH Y-SCALE AND DRAWING INDICATOR LINE
 		for (let key in yScales) {
 			let {
 				name,
@@ -370,7 +444,6 @@ export default function Chart({ symbol, timeframe }) {
 				group,
 				fullName,
 			} = yScales[key];
-
 			if (group === "Pattern Recognition") {
 				chartPatterns.push(yScales[key]);
 				continue;
@@ -379,24 +452,27 @@ export default function Chart({ symbol, timeframe }) {
 			let lines = {};
 			if (!data.result) {
 				//ASSUMED OHLC
-				lines.close = closeData = data.map((d) => d.close);
+				//drawOHLC
+				drawOHLC(chartSvg, data, xScale, yScale, candleCount, margin);
+				// lines.close = closeData = data.map((d) => d.close);
 			} else {
 				//ASSUMED INDICATOR
 				let paddedLines = padLeft(data);
 				lines = { ...lines, ...paddedLines };
 			}
 			//NAME IS TALIB INDICATOR NAME
-			if (name === "mainChart") {
-				//TRY TO CALL THIS Y-AXIS JUST ONCE
-				chartSvg.select(`.${name}-${key}-y-axis`).call(axis);
-			} else if (group !== "Overlap Studies") {
-				//ALL OVER NON-MAIN CHART Y_AXES
-				chartSvg.select(`.${name}-${key}-y-axis`).call(axis);
-			}
+			// if (name === "mainChart") {
+			// 	//TRY TO CALL THIS Y-AXIS JUST ONCE
+			// 	chartSvg.select(`.${name}-${key}-y-axis`).call(axis);
+			// } else if (group !== "Overlap Studies") {
+			// 	//ALL OVER NON-MAIN CHART Y_AXES
+			// 	chartSvg.select(`.${name}-${key}-y-axis`).call(axis);
+			// }
 
 			//LOOP OVER ALL LINES AND DRAW
 			for (let lineName in lines) {
 				let lineData = lines[lineName];
+				let lineColor = color[lineName];
 				// console.log(lineData);
 
 				let className = `${lineName}-${key}-myLine`;
@@ -421,7 +497,7 @@ export default function Chart({ symbol, timeframe }) {
 					.attr("d", myLine)
 					.attr("fill", "none")
 					.attr("stroke-width", "3")
-					.attr("stroke", color || "red")
+					.attr("stroke", lineColor || "red")
 					.attr("pointer-events", "stroke")
 
 					.attr("pointer-events", "auto")
@@ -431,7 +507,10 @@ export default function Chart({ symbol, timeframe }) {
 					.on("mouseleave", function () {
 						this.classList.remove("selectedLine");
 					})
-					.on("click", () => openLineSettings(yScales[key], lineName))
+					.on("click", (e) => {
+						debugger;
+						openLineSettings(yScales[key], yScales[key].name, key);
+					})
 					.exit();
 			}
 		}
@@ -440,11 +519,10 @@ export default function Chart({ symbol, timeframe }) {
 		appendChartPatterns(chartSvg, chartPatterns, closeData);
 
 		//ADD FULL_NAME TO CHART
-		appendIndicatorName(chartSvg, margin, yScales);
+		appendIndicatorName(chartSvg, margin, yScales, setLineSettings);
 
 		//APPEND selectedPatternResults,
 		if (selectedPatternResults.pattern) {
-			debugger;
 			let someData = [
 				{
 					...yScales.mainChart,
@@ -456,7 +534,7 @@ export default function Chart({ symbol, timeframe }) {
 		}
 
 		const zoomBehavior = zoom()
-			.scaleExtent([0.1, 10]) //zoom in and out limit
+			.scaleExtent([0.1, 100]) //zoom in and out limit
 			.translateExtent([
 				[0, 0],
 				[width, height],
@@ -469,9 +547,9 @@ export default function Chart({ symbol, timeframe }) {
 		chartSvg.call(zoomBehavior);
 	};
 
-	function openLineSettings(indicatorData, lineName) {
+	function openLineSettings(indicatorData, lineName, key) {
 		//toggle, and set
-		setLineSettings({ indicatorData, lineName });
+		setLineSettings({ indicatorData, lineName, key });
 	}
 	const CloseChart = () => {
 		return (
@@ -504,9 +582,12 @@ export default function Chart({ symbol, timeframe }) {
 	);
 
 	const STATE = {
+		draw,
 		chartSvg,
+		chartIndicators,
 		setLineSettings,
 		yScales,
+		lineSettings,
 		setYScales,
 		fetchAndUpdateIndicatorResults,
 		selectedPatternResults,
@@ -516,7 +597,6 @@ export default function Chart({ symbol, timeframe }) {
 	return (
 		<ChartContext.Provider value={STATE}>
 			<div className="white">
-				{lineSettings.lineName && <LineSettings />}
 				<div>
 					{title} <CloseChart />
 				</div>
@@ -535,33 +615,37 @@ export default function Chart({ symbol, timeframe }) {
 						timeframe={timeframe}
 					/>
 				)}
-
-				<StyledSVG margin={margin} height={height} ref={svgRef}>
-					{Object.keys(yScales).map((key) => {
-						let { name, yOffset, group } = yScales[key];
-						if (
-							name !== "mainChart" &&
-							(group === "Overlap Studies" ||
-								group === "Pattern Recognition")
-						) {
-							return <React.Fragment key={key}></React.Fragment>;
-						}
-						return (
-							<StyledYAxis
-								key={key}
-								yOffset={yOffset}
-								width={width}
-								margin={margin}
-								className={`${name}-${key}-y-axis white`}
-							/>
-						);
-					})}
-					<StyledXAxis
-						margin={margin}
-						height={height}
-						className="x-axis white"
-					/>
-				</StyledSVG>
+				<div style={{ border: "1px solid blue", position: "relative" }}>
+					{lineSettings.lineName && <LineSettings />}
+					<StyledSVG margin={margin} height={height} ref={svgRef}>
+						{Object.keys(yScales).map((key) => {
+							let { name, yOffset, group } = yScales[key];
+							if (
+								name !== "mainChart" &&
+								(group === "Overlap Studies" ||
+									group === "Pattern Recognition")
+							) {
+								return (
+									<React.Fragment key={key}></React.Fragment>
+								);
+							}
+							return (
+								<StyledYAxis
+									key={key}
+									yOffset={yOffset}
+									width={width}
+									margin={margin}
+									className={`${name}-${key}-y-axis white`}
+								/>
+							);
+						})}
+						<StyledXAxis
+							margin={margin}
+							height={height}
+							className="x-axis white"
+						/>
+					</StyledSVG>
+				</div>
 
 				<div>INDICATORS</div>
 				<div>{indicatorList}</div>
@@ -720,7 +804,7 @@ const OptInputs = ({ edit, ind, setEdit, fetchAndUpdateIndicatorResults }) => {
 								_id: ind._id,
 							});
 							if (!resp.indicator) {
-								return console.error("ERRR");
+								return console.error("ERR");
 							}
 							await fetchAndUpdateIndicatorResults(
 								resp.indicator
@@ -783,19 +867,62 @@ const EditableIndOpts = ({ data, setEdit, values, setValues, edit }) => {
 };
 
 function LineSettings() {
-	let { setLineSettings } = useContext(ChartContext);
+	const [color, setColor] = useState({});
+	let { setLineSettings, lineSettings, chartIndicators, draw } = useContext(
+		ChartContext
+	);
+	console.log(color);
+	console.log(lineSettings);
+	let { key, lineName, indicatorData } = lineSettings;
+	//now i need to find the ind in chartIndicators
+	console.log(chartIndicators);
+	debugger;
+	let chartIndicator = chartIndicators.filter(({ _id }) => _id === key)[0];
+	console.log({ chartIndicator });
+
+	useEffect(() => {
+		setColor(indicatorData.color);
+		console.log("set color");
+	}, [chartIndicator.color]);
+
+	useEffect(() => {
+		let isNew = false;
+		for (let line in color) {
+			if (indicatorData.color[line] !== color[line]) isNew = true;
+		}
+		if (isNew) {
+			debugger;
+			indicatorData.color = color;
+			console.log("set color");
+			API.updateLineColor(key, color);
+
+			draw();
+		}
+	}, [color]);
 
 	return (
 		<LineSettingsModalContainer>
-			<button onClick={() => setLineSettings({})}>{"CLOSE"}</button>
-			LINE
+			{/* <CreateModal /> */}
+			<button onClick={() => setLineSettings({})}>{"X"}</button>
+			<p>{lineSettings.lineName}</p>
+			<p>{lineSettings.indicatorData.fullName}</p>
+			<IndicatorItem key={key} ind={chartIndicator} />
+			<LineColors
+				indicator={chartIndicator}
+				color={color}
+				setColor={setColor}
+			/>
+			{/* some line detailrs */}
 		</LineSettingsModalContainer>
 	);
 }
 
 const LineSettingsModalContainer = styled.div`
-	width: 300px;
-	height: 300px;
+	top: 20%;
+	left: 10%;
+	position: absolute;
+	/* width: 300px;
+	height: 300px; */
 	background-color: #333;
 	border: 1px solid #fff;
 `;

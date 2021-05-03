@@ -1,15 +1,32 @@
 import React, { useState } from "react";
 import styled from "styled-components";
-export default function PriceDatasList({ priceDatas, link }) {
-	const [selectedPriceData, setSelectedPriceData] = useState({});
+import StratContext from "../StratContext";
+
+export default function PriceDatasList({ link }) {
+	const { selectedStrat, priceDatas } = React.useContext(StratContext);
+
 	return (
 		<>
 			<p>Price Data Available</p>
 			{priceDatas.length === 0 && <span>No priceDatas found... </span>}
 			{priceDatas.length > 0 &&
-				priceDatas.map((priceData, index) => {
-					return <ListItem key={priceData._id} link={link} index={index} item={priceData} />;
-				})}
+				priceDatas
+					.filter(
+						(pds) =>
+							selectedStrat.priceData.findIndex(
+								(_pd) => pds._id == _pd._id
+							) < 0
+					)
+					.map((priceData, index) => {
+						return (
+							<ListItem
+								key={priceData._id}
+								link={link}
+								index={index}
+								item={priceData}
+							/>
+						);
+					})}
 		</>
 	);
 }

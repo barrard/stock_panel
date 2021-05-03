@@ -60,7 +60,7 @@ export default function StrategyWindow() {
 				}}
 			/>
 			<h2>Price Feeds</h2>
-			<PriceDatasList priceDatas={priceDatas} link={addLinkPriceData} />
+			<PriceDatasList link={addLinkPriceData} />
 
 			{showPriceDataModal && (
 				<AddPriceDataModal
@@ -90,7 +90,6 @@ export default function StrategyWindow() {
 
 const DataFeedItem = ({ data, index }) => {
 	let { addChart } = React.useContext(StratContext);
-	console.log(data);
 	let { symbol, timeframe, _id } = data;
 	return (
 		<LinkedDataFeed index={index}>

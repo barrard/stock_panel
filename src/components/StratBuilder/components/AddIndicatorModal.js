@@ -3,7 +3,6 @@ import { LoadingButton } from "./components";
 import API from "../../API";
 import StratContext from "../StratContext";
 import { getGroups } from "./utilFuncs";
-import { SketchPicker } from "react-color";
 import ChartContext from "./ChartContext";
 
 import {
@@ -16,6 +15,7 @@ import {
 	MA_Options,
 	Ind_Input,
 	MA_SELECT,
+	LineColors,
 } from "./IndicatorComponents";
 
 let PATTERN_RESULTS = {
@@ -38,7 +38,7 @@ export default function AddIndicatorModal({
 	const [selectedInput, setSelectedInput] = useState(["close"]);
 	const [loadingIndicator, setLoadingIndicator] = useState(false);
 	const [variablePeriods, setVariablePeriods] = useState([]);
-	const [color, setColor] = useState("red");
+	const [color, setColor] = useState({});
 	const [patternResults, setPatternResults] = useState(PATTERN_RESULTS);
 	const {
 		indicatorList,
@@ -64,6 +64,13 @@ export default function AddIndicatorModal({
 		};
 	}, []);
 
+	useEffect(() => {
+		let colors = {};
+		if (!indicator.outputs?.length) return;
+		indicator.outputs.forEach((line) => (colors[line["name"]] = "red"));
+		setColor(colors);
+	}, [indicator.outputs]);
+
 	const addIndicator = async () => {
 		try {
 			let { data, id } = charts[symbol][timeframe];
@@ -85,9 +92,7 @@ export default function AddIndicatorModal({
 			let selectedInputs = {};
 			Object.keys(selectedInput).forEach((input) => {
 				selectedInputs[input] = selectedInput[input];
-				debugger;
 				dataInputs[input] = data.map((d) => d[selectedInput[input]]);
-				debugger;
 			});
 
 			let resp = await API.submitIndicator({
@@ -109,7 +114,6 @@ export default function AddIndicatorModal({
 				setAddIndicators(false);
 				let { newIndicator, result } = resp;
 
-				debugger;
 				//ADD indicator data
 				updateIndicatorResults({
 					symbol,
@@ -130,7 +134,7 @@ export default function AddIndicatorModal({
 			console.log(err);
 		}
 	};
-	debugger;
+
 	console.log({
 		selectedPatternResults,
 	});
@@ -220,11 +224,11 @@ export default function AddIndicatorModal({
 						setVariablePeriods={setVariablePeriods}
 						variablePeriods={variablePeriods}
 					/>
-					<SketchPicker
+
+					<LineColors
+						indicator={indicator}
 						color={color}
-						onChangeComplete={({ hex }) => {
-							setColor(hex);
-						}}
+						setColor={setColor}
 					/>
 				</>
 			)}
