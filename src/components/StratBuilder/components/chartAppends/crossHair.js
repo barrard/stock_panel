@@ -1,5 +1,5 @@
 import { line, curveLinear } from "d3-shape"
-
+import { toFixedIfNeed } from "../utilFuncs"
 export function drawCrossHair({
   chartSvg,
   mouseX,
@@ -112,13 +112,13 @@ export function appendYLabel({
     yScale = yScales["mainChart"].yScale
     yLabel = yScale.invert(mouseY).toFixed(2)
   } else {
-    console.log({ mouseY, mainChartHeight, indicatorHeight })
+    // console.log({ mouseY, mainChartHeight, indicatorHeight })
     //look for some scale with offset mouseY - mainChartHeight = ?
-    console.log(mouseY - mainChartHeight)
-    console.log((mouseY - mainChartHeight) / indicatorHeight)
+    // console.log(mouseY - mainChartHeight)
+    // console.log((mouseY - mainChartHeight) / indicatorHeight)
     let t = Math.floor((mouseY - mainChartHeight) / indicatorHeight).toFixed(0)
     let crypticScaleOffset = mainChartHeight + t * indicatorHeight
-    console.log(t, crypticScaleOffset)
+    // console.log(t, crypticScaleOffset)
     yScale = Object.values(yScales).filter(
       ({ yOffset }) => yOffset === crypticScaleOffset
     )[0]
@@ -277,7 +277,6 @@ export function appendOHLCVLabel({
 function appendOHLCText({ OHLCBoxG, data, rect }) {
   if (!data) return
   const fontSize = 12
-  console.log(data)
   let time = new Date(data.timestamp).toLocaleString()
   let open = data.open
   let close = data.close
@@ -285,24 +284,26 @@ function appendOHLCText({ OHLCBoxG, data, rect }) {
   let high = data.high
   let volume = data.volume
 
-  let OHLCString = `${time} | O:${open}| H:${high}| L:${low}| C:${close}| V:${volume}`
-  console.log(OHLCString)
+  //   let OHLCString = `${time} | O:${open}| H:${high}| L:${low}| C:${close}| V:${volume}`
+  let X = 0
+  let timeWidth = 65
+  let labelWidth = 11
+  let dataWidth = 25
+  appendText(time, X)
+  appendText(`| O:`, (X += timeWidth))
+  appendText(`${toFixedIfNeed(open)}`, (X += labelWidth))
+  appendText(`| H:`, (X += dataWidth))
+  appendText(`${toFixedIfNeed(high)}`, (X += labelWidth))
+  appendText(`| L:`, (X += dataWidth))
+  appendText(`${toFixedIfNeed(low)}`, (X += labelWidth))
+  appendText(`| C:`, (X += dataWidth))
+  appendText(`${toFixedIfNeed(close)}`, (X += labelWidth))
+  appendText(`| V:`, (X += dataWidth))
+  appendText(`${toFixedIfNeed(volume)}`, (X += labelWidth))
 
-  appendText(time, 0)
-  appendText(`| O:`, 140)
-  appendText(`${open}`, 160)
-  appendText(`| H:`, 210)
-  appendText(`${high}`, 230)
-  appendText(`| L:`, 280)
-  appendText(`${low}`, 300)
-  appendText(`| C:`, 350)
-  appendText(`${close}`, 370)
-  appendText(`| V:`, 420)
-  appendText(`${volume}`, 440)
-
-  function appendText(text, x, color) {
+  function appendText(text, x = 0, color) {
     OHLCBoxG.append("g")
-      .attr("transform", `translateX(${x})`)
+      .attr("transform", `translate(${x}, 0)`)
 
       .append("text")
       .text(text)

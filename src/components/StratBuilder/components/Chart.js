@@ -49,7 +49,7 @@ import {
   appendOHLCVLabel,
 } from "./chartAppends"
 import ChartContext from "./ChartContext"
-let width = 700
+let width = 1000
 
 export default function Chart({ symbol, timeframe }) {
   let margin = {
@@ -378,48 +378,34 @@ export default function Chart({ symbol, timeframe }) {
 
     chartSvg.on("mousemove", function () {
       let [mouseX, mouseY] = mouse(this)
+      let chartData = {
+        chartSvg,
+        indicatorHeight,
+        mainChartHeight,
+        mouseX,
+        mouseY,
+        xScale,
+        data,
+        margin,
+        height,
+        yScales,
+        yScale: yScales["mainChart"].yScale,
+      }
 
       drawCrossHair({
-        chartSvg,
-        mouseX,
-        mouseY,
-        xScale,
-        yScale: yScales["mainChart"].yScale,
-        margin,
-        height,
+        ...chartData,
       })
       appendXLabel({
-        chartSvg,
-        mouseX,
-        mouseY,
-        data,
-        xScale,
-        yScale: yScales["mainChart"].yScale,
-        margin,
-        height,
+        ...chartData,
         hasBackground: true,
       })
 
       appendYLabel({
-        mainChartHeight,
-        indicatorHeight,
-        chartSvg,
-        mouseX,
-        mouseY,
-        data,
-        xScale,
-        yScales,
-        margin,
-        height,
+        ...chartData,
         hasBackground: true,
       })
       appendOHLCVLabel({
-        chartSvg,
-        xScale,
-        yScale: yScales["mainChart"].yScale,
-        margin,
-        mouseX,
-        data,
+        ...chartData,
       })
     })
 
@@ -440,6 +426,7 @@ export default function Chart({ symbol, timeframe }) {
         fullName,
       } = yScales[key]
       if (group === "Pattern Recognition") {
+        debugger
         chartPatterns.push(yScales[key])
         continue
       }
@@ -511,7 +498,7 @@ export default function Chart({ symbol, timeframe }) {
     }
 
     //APPEND CHART PATTERNS
-    appendChartPatterns(chartSvg, chartPatterns, closeData)
+    appendChartPatterns(chartSvg, chartPatterns, data)
 
     //ADD FULL_NAME TO CHART
     appendIndicatorName(chartSvg, margin, yScales, setLineSettings)
@@ -525,7 +512,7 @@ export default function Chart({ symbol, timeframe }) {
           fullName: selectedPatternResults.pattern,
         },
       ]
-      appendChartPatterns(chartSvg, someData, closeData)
+      appendChartPatterns(chartSvg, someData, data)
     }
 
     const zoomBehavior = zoom()
