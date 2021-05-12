@@ -63,3 +63,7 @@ export const Scrollable = styled.div`
   border: 10px solid red;
   height: ${({ height }) => (height ? height : "unset")};
 `
+
+export const Button = styled.button`
+  padding: 10px;
+`

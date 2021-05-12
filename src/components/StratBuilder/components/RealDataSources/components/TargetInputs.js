@@ -4,6 +4,7 @@ import RealDataContext from "../context"
 import { Input, Select } from "../../components"
 import { StyledInputLabel } from "../../styled"
 import { Small } from "./styled"
+import { toFixedIfNeed } from "../../utilFuncs"
 export default function TargetInputs({ value, setValue, label }) {
   let {
     selectingTargetInput,
@@ -14,7 +15,6 @@ export default function TargetInputs({ value, setValue, label }) {
     targetsData,
   } = React.useContext(RealDataContext)
 
-  console.log({ value })
   const [target, setTarget] = useState(0)
   const [indexOrRangeValue, setIndexOrRangeValue] = useState(0)
   const [indexOrRange, setIndexOrRange] = useState("index")
@@ -31,7 +31,7 @@ export default function TargetInputs({ value, setValue, label }) {
       delete value.indicator
       delete value.result
       delete value.resultLine
-      delete value.type
+      value.type = "value"
     }
     setValue({
       ...value,
@@ -59,10 +59,11 @@ export default function TargetInputs({ value, setValue, label }) {
   let dataValue = () => {
     let dataStr = ""
     if (!isIndex && isSeries) {
-      dataStr += `${value.data.slice(-value.indexOrRangeValue)[0]} ... `
-      dataStr += `${value.data.slice(-1)[0]}`
+      dataStr += `${toFixedIfNeed(
+        value.data.slice(-value.indexOrRangeValue)[0]
+      )} ... `
+      dataStr += `${toFixedIfNeed(value.data.slice(-1)[0])}`
     } else {
-      debugger
       dataStr += `${
         value.data.slice(
           -(value.indexOrRangeValue === "0" ? 1 : value.indexOrRangeValue)
@@ -140,7 +141,6 @@ export default function TargetInputs({ value, setValue, label }) {
               <input
                 checked={!isIndex}
                 onChange={() => {
-                  debugger
                   setIndexOrRange(isIndex ? "range" : "index")
                 }}
                 type="checkbox"

@@ -27,6 +27,7 @@ export default function StratBuilder() {
   const [charts, setCharts] = useState({})
   const [indicatorList, setIndicatorList] = useState([])
   const [indicatorResults, setIndicatorResults] = useState({})
+  const [conditionals, setConditionals] = useState([])
 
   useEffect(() => {
     //fetch strats
@@ -42,6 +43,10 @@ export default function StratBuilder() {
     //fetch price datas
     API.getIndicatorList()
       .then((list) => setIndicatorList([...list]))
+      .catch((e) => console.log(e))
+
+    API.getConditionals()
+      .then((list) => setConditionals([...list]))
       .catch((e) => console.log(e))
   }, [])
 

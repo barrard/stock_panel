@@ -67,7 +67,7 @@ export default function RealDataSources() {
       let targetData = targetsData[selectingTargetInput]
 
       targetData = { ...targetData, ...target }
-      debugger
+
       if (targetData.inputType === "value") {
         targetData.resultLine = ""
         targetData.name = "Value " + targetData.indexOrRangeValue
@@ -117,7 +117,7 @@ export default function RealDataSources() {
           console.log(
             resultLines.find((lineOpt) => lineOpt == targetData.resultLine)
           )
-          debugger
+
           targetData.resultLine = resultLines[0]
         }
         targetData.data = result[targetData.resultLine]
