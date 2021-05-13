@@ -138,6 +138,7 @@ export default function StratBuilder() {
     API,
     addChart,
     charts,
+    conditionals,
     creatingStrat,
     deleteIndicatorResults,
     indicatorList,

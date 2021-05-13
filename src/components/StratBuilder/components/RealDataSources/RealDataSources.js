@@ -18,12 +18,8 @@ import StratContext from "../../StratContext"
 import { ShowDataTail, ListIndicators, ConditionalsSetup } from "./components"
 import { IconButton } from "../components"
 export default function RealDataSources() {
-  let {
-    selectedStrat,
-    charts,
-    indicatorResults,
-    priceDatas,
-  } = React.useContext(StratContext)
+  let { selectedStrat, charts, indicatorResults, priceDatas } =
+    React.useContext(StratContext)
 
   const [isNewAlert, setIsNewAlert] = useState(false)
   const [selectingTargetInput, setSelectingTargetInput] = useState(false)
@@ -174,19 +170,21 @@ export default function RealDataSources() {
         resultLineOpts,
       }}
     >
-      <MainTitle>RealDataSources</MainTitle>
-      <IconButton
-        onClick={() => {
-          setIsNewAlert(!isNewAlert)
-        }}
-        icon={faBell}
-        title={"Add Alert"}
-        color={"goldenrod"}
-        bgColor={isNewAlert ? "#222" : null}
-        borderColor={`lawngreen`}
-      />
+      <div style={{ display: "flex", flexDirection: "row-reverse" }}>
+        <MainTitle>RealDataSources</MainTitle>
+        <IconButton
+          onClick={() => {
+            setIsNewAlert(!isNewAlert)
+          }}
+          icon={faBell}
+          title={"Add Alert"}
+          color={"goldenrod"}
+          bgColor={isNewAlert ? "#222" : null}
+          borderColor={`lawngreen`}
+        />
+      </div>
       <div>
-        <ConditionalsSetup />
+        {isNewAlert && <ConditionalsSetup />}
         {Object.keys(charts).map((symbol) => {
           return (
             <>
@@ -207,6 +205,7 @@ export default function RealDataSources() {
                     <PriceContainer>
                       {datas.map((name) => (
                         <IsSelectable
+                          disabled={!selectingTargetInput}
                           onClick={() =>
                             selectTarget({ ohlc: data }, "OHLC", name)
                           }

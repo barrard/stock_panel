@@ -6,26 +6,13 @@ import { TargetInputs } from "./"
 import StratContext from "../../../StratContext"
 
 export default function ConditionalsSetup() {
-  let {
-    isSelectingInput,
-    target1,
-    setTarget1,
-    target2,
-    setTarget2,
-    equality,
-    setEquality,
-    targetsData,
-    setTargetsData,
-    selectTarget,
-  } = React.useContext(RealDataContext)
+  let { equality, setEquality, targetsData, setTargetsData, selectTarget } =
+    React.useContext(RealDataContext)
   let { selectedStrat, API } = React.useContext(StratContext)
   const [conditionalName, setConditionalName] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
   const submitConditional = () => {
-    //some api call here
-    console.log("gooo")
-    console.log(targetsData, equality, conditionalName)
     let { target1, target2 } = targetsData
     //validate the data
     let valid1 = validate(target1)

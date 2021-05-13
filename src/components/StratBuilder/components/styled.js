@@ -44,7 +44,7 @@ export const Clickable = styled.div`
 `
 
 export const IsSelectable = styled.div`
-  border: ${({ isSelecting, isSelected }) =>
+  border: ${({ isSelecting, isSelected, disabled }) =>
     isSelected
       ? `3px solid green`
       : isSelecting
@@ -52,7 +52,7 @@ export const IsSelectable = styled.div`
       : null};
   /* margin: ${({ isSelecting }) => (isSelecting ? `0.3em` : null)};
   padding: ${({ isSelecting }) => (isSelecting ? `0.3em` : null)}; */
-  cursor: pointer;
+  cursor: ${({ disabled }) => (disabled ? "" : "pointer")};
   &:hover {
     background-color: ${({ isSelecting }) => (isSelecting ? `#888` : null)};
   }
