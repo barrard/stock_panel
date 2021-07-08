@@ -36,17 +36,19 @@ import StratContext from "../StratContext"
 import API from "../../API"
 import { MA_TYPE_OPTS } from "./IndicatorComponents"
 import {
+  appendConditionals,
   appendChartPatterns,
+  appendOHLCVLabel,
   appendIndicatorName,
-  removeIndicatorName,
-  handleLineClick,
-  drawOHLC,
-  drawCrossHair,
   appendXLabel,
   appendYLabel,
+  drawOHLC,
+  drawVolume,
+  drawCrossHair,
   drawXAxis,
   drawYAxis,
-  appendOHLCVLabel,
+  handleLineClick,
+  removeIndicatorName,
 } from "./chartAppends"
 import ChartContext from "./ChartContext"
 let width = 1000
@@ -69,9 +71,10 @@ export default function Chart({ symbol, timeframe }) {
     indicatorResults,
     updateIndicatorResults,
     deleteIndicatorResults,
+    chartConditionals,
   } = useContext(StratContext)
   const { data, id: priceDataId } = charts[symbol][timeframe]
-  let candleCount = data.length
+  let candleWidth = data.length / width
   const title = `${symbol} ${timeframe}`
   const svgRef = useRef()
   const [height, setHeight] = useState(mainChartHeight)
@@ -101,7 +104,22 @@ export default function Chart({ symbol, timeframe }) {
       yOffset: 0,
       group: "Overlap Studies",
     },
+    mainChartVolume: {
+      yScale: scaleLinear().range([indicatorHeight, 0]),
+      xScale,
+      data: data.map(({ volume }) => volume),
+      sliceData: {},
+      color: { close: "yellow" },
+      margin,
+      height: indicatorHeight,
+      name: "mainChartVolume",
+      fullName: `${symbol} VOL ${timeframe}`,
+      yOffset: mainChartHeight,
+      group: "Volume",
+    },
   })
+
+  // debugger
 
   let innerHeight = height - (margin.top + margin.bottom)
 
@@ -110,8 +128,9 @@ export default function Chart({ symbol, timeframe }) {
   )
 
   useEffect(() => {
-    let _height = 250
-    let _indicatorCount = 0
+    // debugger
+    let _height = mainChartHeight + yScales.mainChartVolume.height
+    let _indicatorCount = 1 //this is to include volume
     let indicators = indicatorResults[symbol][timeframe]
     for (let _id in indicators) {
       let {
@@ -222,8 +241,11 @@ export default function Chart({ symbol, timeframe }) {
     draw()
   }
 
-  const getYMinMax = (data) => {
-    if (Array.isArray(data)) {
+  const getYMinMax = (data, isVolume) => {
+    if (isVolume) {
+      let [dataMin, dataMax] = extent(data, (d) => d)
+      return [dataMin, dataMax]
+    } else if (Array.isArray(data)) {
       let [_, dataMax] = extent(data, (d) => d.high)
       let [dataMin, __] = extent(data, (d) => d.low)
       return [dataMin, dataMax]
@@ -263,7 +285,10 @@ export default function Chart({ symbol, timeframe }) {
 
     if (currentZoom) {
       let newXScale = currentZoom.rescaleX(xScale)
+
       let [start, end] = newXScale.domain()
+
+      let [rStart, rEnd] = newXScale.range()
       xScale.domain(newXScale.domain())
       if (start < 0) start = 0
 
@@ -271,9 +296,11 @@ export default function Chart({ symbol, timeframe }) {
       let mainChartData = {}
       for (let key in yScales) {
         let { data, group, yScale } = yScales[key]
+
         yScales[key].xScale = xScale
         if (group === "Overlap Studies") {
           if (data.result) {
+            //These are indicators
             let paddedLines = padLeft(data)
             for (let lineName in paddedLines) {
               yScales[key].sliceData[lineName] = paddedLines[lineName]
@@ -284,32 +311,54 @@ export default function Chart({ symbol, timeframe }) {
             }
           } else {
             //wheres my close?
+            //needs to always be OHLC candles
+
             mainChartData.high = data
               .map((d) => d.high)
               .slice(Math.floor(start), Math.ceil(end))
             mainChartData.low = data
               .map((d) => d.low)
               .slice(Math.floor(start), Math.ceil(end))
+
+            let s = (rEnd - rStart) / mainChartData.high.length
+            candleWidth = (rEnd - rStart) / mainChartData.high.length
+
+            if (end > width) {
+              candleWidth =
+                candleWidth - candleWidth * ((end - width) / (end - start))
+            }
+            if (start < 0) {
+              console.log("TODO adjust candle width")
+            }
           }
         } else if (group === "Pattern Recognition") {
           continue //candle patterns will be charted as markers
         } else {
-          let tempLineData = {}
-          let paddedLines = padLeft(data)
-          for (let lineName in paddedLines) {
-            yScales[key].sliceData[lineName] = paddedLines[lineName]
-            tempLineData[lineName] = paddedLines[lineName].slice(
-              Math.floor(start),
-              Math.ceil(end)
-            )
+          if (group === "Volume") {
+            let tempLineData = [...data]
+
+            tempLineData = tempLineData.slice(Math.floor(start), Math.ceil(end))
+            let isVolume = true
+            let [yMin, yMax] = getYMinMax(tempLineData, isVolume)
+            console.log({ yMin, yMax })
+            yScale.domain([0, yMax])
+          } else {
+            let tempLineData = {}
+            let paddedLines = padLeft(data)
+            for (let lineName in paddedLines) {
+              yScales[key].sliceData[lineName] = paddedLines[lineName]
+              tempLineData[lineName] = paddedLines[lineName].slice(
+                Math.floor(start),
+                Math.ceil(end)
+              )
+            }
+
+            let [yMin, yMax] = getYMinMax({ result: tempLineData })
+
+            yScale.domain([yMin, yMax])
           }
-
-          let [yMin, yMax] = getYMinMax({ result: tempLineData })
-
-          yScale.domain([yMin, yMax])
         }
       }
-      candleCount = mainChartData.high.length
       let [yMin, yMax] = getYMinMax({ result: mainChartData })
       yScales["mainChart"].yScale.domain([yMin, yMax])
     } else {
@@ -334,6 +383,11 @@ export default function Chart({ symbol, timeframe }) {
           }
         } else if (group === "Pattern Recognition") {
           continue //candle patterns will be charted as markers
+        } else if (group === "Volume") {
+          let isVolume = true
+          let [yMin, yMax] = getYMinMax(data, isVolume)
+          console.log({ yMin, yMax })
+          yScale.domain([0, yMax])
         } else {
           // ;
           let [yMin, yMax] = getYMinMax(data)
@@ -433,10 +487,17 @@ export default function Chart({ symbol, timeframe }) {
       //LINES FOR THE CHART
       let lines = {}
       if (!data.result) {
-        //ASSUMED OHLC
-        //drawOHLC
-        drawOHLC(chartSvg, data, xScale, yScale, candleCount, margin)
-        // lines.close = closeData = data.map((d) => d.close);
+        // debugger
+        if (group === "Volume") {
+          console.log("draw volume")
+          let OHLC = yScales.mainChart.data
+          drawVolume(chartSvg, yScales[key], candleWidth, mainChartHeight, OHLC)
+        } else {
+          //ASSUMED OHLC
+          //drawOHLC
+          drawOHLC(chartSvg, data, xScale, yScale, candleWidth, margin)
+          // lines.close = closeData = data.map((d) => d.close);
+        }
       } else {
         //ASSUMED INDICATOR
         let paddedLines = padLeft(data)
@@ -580,6 +641,10 @@ export default function Chart({ symbol, timeframe }) {
         <div>
           {title} <CloseChart />
         </div>
+        <div>
+          Conditionals List
+          {Object.keys(chartConditionals).length}
+        </div>
 
         <Flex>
           <IconButton
@@ -675,12 +740,8 @@ const IndicatorItem = ({ ind }) => {
     API,
     deleteIndicatorResults,
   } = useContext(StratContext)
-  let {
-    chartSvg,
-    yScales,
-    setYScales,
-    fetchAndUpdateIndicatorResults,
-  } = useContext(ChartContext)
+  let { chartSvg, yScales, setYScales, fetchAndUpdateIndicatorResults } =
+    useContext(ChartContext)
   let { _id, fullName, priceData } = ind
   return (
     <div key={_id}>
@@ -747,9 +808,8 @@ const IndicatorItem = ({ ind }) => {
 const OptInputs = ({ edit, ind, setEdit, fetchAndUpdateIndicatorResults }) => {
   let data = ind.optInputs
   const [values, setValues] = useState(data)
-  let { updatingIndicator, setUpdatingIndicator, API } = useContext(
-    StratContext
-  )
+  let { updatingIndicator, setUpdatingIndicator, API } =
+    useContext(StratContext)
 
   return (
     <>
@@ -835,9 +895,8 @@ const EditableIndOpts = ({ data, setEdit, values, setValues, edit }) => {
 
 function LineSettings() {
   const [color, setColor] = useState({})
-  let { setLineSettings, lineSettings, chartIndicators, draw } = useContext(
-    ChartContext
-  )
+  let { setLineSettings, lineSettings, chartIndicators, draw } =
+    useContext(ChartContext)
   console.log(color)
   console.log(lineSettings)
   let { key, lineName, indicatorData } = lineSettings

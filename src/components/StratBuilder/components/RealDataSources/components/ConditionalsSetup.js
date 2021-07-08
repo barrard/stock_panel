@@ -8,24 +8,26 @@ import StratContext from "../../../StratContext"
 export default function ConditionalsSetup() {
   let { equality, setEquality, targetsData, setTargetsData, selectTarget } =
     React.useContext(RealDataContext)
-  let { selectedStrat, API } = React.useContext(StratContext)
+  let { selectedStrat, API, setConditionals, conditionals } =
+    React.useContext(StratContext)
   const [conditionalName, setConditionalName] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
-  const submitConditional = () => {
+  const submitConditional = async () => {
     let { target1, target2 } = targetsData
     //validate the data
     let valid1 = validate(target1)
     let valid2 = validate(target2)
     if (valid1 && valid2) {
       //submit them!!
-      API.submitConditional({
+      let newConditional = await API.submitConditional({
         equality: equality.value,
         target1: valid1,
         target2: valid2,
         conditionalName,
         stratId: selectedStrat._id,
       })
+      setConditionals([...conditionals, newConditional])
     }
 
     function validate(target) {

@@ -16,6 +16,8 @@ import {
   RealDataSources,
 } from "./components"
 
+import { updateConditionalsResults } from "./components/Conditionals/components/utils"
+
 export default function StratBuilder() {
   const [newStrategyName, setNewStrategyName] = useState("")
   const [strategies, setStrategies] = useState([])
@@ -28,6 +30,8 @@ export default function StratBuilder() {
   const [indicatorList, setIndicatorList] = useState([])
   const [indicatorResults, setIndicatorResults] = useState({})
   const [conditionals, setConditionals] = useState([])
+  // const [applyToChart, setApplyToChart] = useState(false)
+  const [chartConditionals, setChartConditionals] = useState({})
 
   useEffect(() => {
     //fetch strats
@@ -92,20 +96,44 @@ export default function StratBuilder() {
       // console.log(data);
       charts[symbol][timeframe].data = data
       charts[symbol][timeframe].id = _id
+      charts[symbol][timeframe].conditionals = {}
+    }
+    setCharts({ ...charts })
+  }
 
-      // addOHLC("close");
-      // addOHLC("open");
-      // addOHLC("high");
-      // addOHLC("low");
+  const addChartConditionalsData = (c) => {
+    for (let s in charts) {
+      for (let t in charts[s]) {
+        //  = c
 
-      // function addOHLC(ohlc) {
-      // 	updateIndicatorResults({
-      // 		indicator: { _id: ohlc },
-      // 		result: { result: data.map((d) => d[ohlc]) },
-      // 		symbol,
-      // 		timeframe,
-      // 	});
-      // }
+        // if (!charts[s][t].conditionalsResults) {
+        //   debugger
+        //   charts[s][t].conditionalsResults = [
+        //     ...charts[s][t].data.map(() => false),
+        //   ]
+        // }
+        let { data } = charts[s][t]
+        //finally now can we calc it?
+        let newConditionalsResults = updateConditionalsResults(
+          c,
+          data,
+          indicatorResults,
+          charts
+        )
+        charts[s][t].conditionals[c._id] = newConditionalsResults
+        console.log({ newConditionalsResults })
+        console.log(charts)
+      }
+    }
+
+    setCharts({ ...charts })
+  }
+
+  const removeChartConditionalsData = (c) => {
+    for (let s in charts) {
+      for (let t in charts[s]) {
+        delete charts[s][t].conditionals[c._id]
+      }
     }
     setCharts({ ...charts })
   }
@@ -137,7 +165,10 @@ export default function StratBuilder() {
   const GLOBAL = {
     API,
     addChart,
+    addChartConditionalsData,
+    // applyToChart,
     charts,
+    chartConditionals,
     conditionals,
     creatingStrat,
     deleteIndicatorResults,
@@ -146,8 +177,12 @@ export default function StratBuilder() {
     setIndicatorList,
     newStrategyName,
     priceDatas,
+    removeChartConditionalsData,
     selectedStrat,
+    // setApplyToChart,
     setCharts,
+    setChartConditionals,
+    setConditionals,
     setCreatingStrat,
     setIndicatorResults,
     setNewStrategyName,

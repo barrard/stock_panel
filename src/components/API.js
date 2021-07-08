@@ -54,6 +54,23 @@ export default {
   updateLineColor,
   submitConditional,
   getConditionals,
+  deleteConditional,
+}
+
+async function deleteConditional(item) {
+  try {
+    let list = await fetch(
+      `${REACT_APP_API_SERVER}/API/deleteConditional/${item._id}`,
+      {
+        credentials: "include",
+        method: "DELETE",
+      }
+    )
+    list = await handleResponse(list)
+    return list
+  } catch (err) {
+    handleError(err)
+  }
 }
 
 async function getConditionals() {
@@ -382,14 +399,8 @@ async function isLoggedIn(dispatch) {
 }
 
 function handleTradeSuccess(trade) {
-  let {
-    buyOrSell,
-    entryPrice,
-    orderStatus,
-    order_limit,
-    symbol,
-    order_type,
-  } = trade
+  let { buyOrSell, entryPrice, orderStatus, order_limit, symbol, order_type } =
+    trade
   let toastrOpts = {
     timeOut: 6000,
   }
@@ -599,7 +610,7 @@ async function setTimeframeActive(id, timeframe, props) {
     console.log(regressionData)
     if (regressionData.err) throw regressionData.err
     console.log(props)
-    //use an array becasue thats what the actions is expecting
+    //use an array because thats what the actions is expecting
     props.dispatch(commodityRegressionData([regressionData]))
     let { symbol } = regressionData
     toastr.success(`Success`, `Settings saved for ${symbol} ${timeframe}!`)

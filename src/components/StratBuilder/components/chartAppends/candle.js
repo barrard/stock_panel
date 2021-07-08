@@ -1,4 +1,4 @@
-export function drawOHLC(chartSvg, data, xScale, yScale, candleCount, margin) {
+export function drawOHLC(chartSvg, data, xScale, yScale, candleWidth, margin) {
   const className = "OHLC"
   const wickClass = "candle-wick"
   // yScale: scaleLinear().range([mainChartHeight, 0])
@@ -6,7 +6,7 @@ export function drawOHLC(chartSvg, data, xScale, yScale, candleCount, margin) {
 
   chartSvg.selectAll(`.${className}`).remove()
   chartSvg.selectAll(`.${wickClass}`).remove()
-  const width = (xRange[1] - xRange[0]) / candleCount
+  const width = candleWidth
 
   //APPEND WICK
   chartSvg

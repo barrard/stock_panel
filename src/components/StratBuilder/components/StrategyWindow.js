@@ -11,7 +11,7 @@ import API from "../../API"
 import { AddThingBtn, IconButton } from "./components"
 import PriceDatasList from "./PriceDatasList"
 import AddPriceDataModal from "./AddPriceDataModal"
-
+import { ConditionalsList } from "./Conditionals"
 export default function StrategyWindow() {
   const [showPriceDataModal, setShowPriceDataModal] = useState(false)
   const [addingPriceData, setAddingPriceData] = useState(false)
@@ -72,49 +72,6 @@ export default function StrategyWindow() {
         <ConditionalsList />
       </div>
     </StrategyWindowContainer>
-  )
-}
-
-const ConditionalsList = () => {
-  let { conditionals } = React.useContext(StratContext)
-
-  console.log({ conditionals })
-
-  //sort conditionals in the types,
-  //value, OHLC, indicator
-  let valueConditionals = conditionals.filter((c) => c.type === "value")
-  let indicatorConditionals = conditionals.filter((c) => c.type === "indicator")
-  let ohlcConditionals = conditionals.filter((c) => c.type === "OHLC")
-  let headerValues = ["Name", "Symbol", "Timeframe", "Value"]
-
-  return (
-    <>
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        <h2>Conditionals</h2>
-      </div>
-      <ConditionalListContainer>
-        <div style={{ display: "flex" }}>
-          {headerValues.map((h) => (
-            <StyledConditionalListHeader>{h}</StyledConditionalListHeader>
-          ))}
-        </div>
-        {conditionals.map((c) => (
-          <ConditionalItem item={c} />
-        ))}
-        {/* <h3>Values</h3>
-        {valueConditionals.map((c) => (
-          <ConditionalItem item={c} />
-        ))}
-        <h3>OHLC</h3>
-        {ohlcConditionals.map((c) => (
-          <ConditionalItem item={c} />
-        ))}
-        <h3>Indicators</h3>
-        {indicatorConditionals.map((c) => (
-          <ConditionalItem item={c} />
-        ))} */}
-      </ConditionalListContainer>
-    </>
   )
 }
 
@@ -194,89 +151,6 @@ const DataFeedItem = ({ data, index }) => {
     </LinkedDataFeed>
   )
 }
-
-function findIndicatorResults(target, indicatorResults) {
-  if (indicatorResults[`${target.symbol}`]) {
-    if (indicatorResults[`${target.symbol}`][target.timeframe]) {
-      console.log(indicatorResults[`${target.symbol}`][target.timeframe])
-
-      let IR = indicatorResults[`${target.symbol}`][target.timeframe]
-      if (IR[target.indicatorId]) {
-        let results = IR[target.indicatorId]
-        console.log(results)
-        return results
-      }
-      debugger
-    }
-  }
-}
-
-const ConditionalItem = ({ item }) => {
-  let { target1, target2 } = item
-
-  //get the data?
-  let { charts, indicatorResults } = React.useContext(StratContext)
-  //if type is indicator?
-  //find the indicator data in indicatorResults
-  console.log(indicatorResults, charts)
-  //target 1
-  debugger
-  if (target1.type === "indicator") {
-    let results = findIndicatorResults(target1, indicatorResults)
-    debugger
-  }
-  //target 2
-  debugger
-  if (target2.type === "indicator") {
-    let results = findIndicatorResults(target2, indicatorResults)
-    debugger
-  }
-
-  debugger
-  return (
-    <div style={{ border: "1px solid white", margin: "1em 0" }}>
-      <div style={{ display: "flex" }}>
-        <StyledConditionalTargetItem>{item.name}</StyledConditionalTargetItem>
-        <StyledConditionalTargetItem>
-          {target1.symbol}
-        </StyledConditionalTargetItem>
-        <StyledConditionalTargetItem>
-          {target1.timeframe}
-        </StyledConditionalTargetItem>
-      </div>
-      <div style={{ display: "flex" }}>
-        <StyledConditionalTargetItem>{item.name}</StyledConditionalTargetItem>
-        <StyledConditionalTargetItem>
-          {target2.symbol}
-        </StyledConditionalTargetItem>
-        <StyledConditionalTargetItem>
-          {target2.timeframe}
-        </StyledConditionalTargetItem>
-      </div>
-    </div>
-  )
-}
-
-const StyledConditionalTargetItem = styled.div`
-  border: 1px solid green;
-  display: flex;
-  justify-content: center;
-  font-size: 12px;
-  padding: 1em 3em;
-  width: 20%;
-`
-const StyledConditionalListHeader = styled.div`
-  border: 1px solid yellow;
-
-  display: flex;
-  justify-content: center;
-  font-size: 12px;
-  padding: 1em 3em;
-  width: 20%;
-`
-const ConditionalListContainer = styled.div`
-  border: 1px solid blue;
-`
 
 const StrategyWindowContainer = styled.div`
   border: 1px solid green;

@@ -9,7 +9,9 @@ const styles = {
 
 let tailLen = -10
 export const ShowDataTail = ({ data, type }) => {
+  if (!data) return <></>
   let isTime = type === "timestamp"
+  // console.log(data, type)
   return (
     <div style={styles.alignCenter}>
       <SmallLabel>{type} : </SmallLabel>

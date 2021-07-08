@@ -58,7 +58,8 @@ export default function TargetInputs({ value, setValue, label }) {
 
   let dataValue = () => {
     let dataStr = ""
-    if (!isIndex && isSeries) {
+    if (!isSeries) console.error("This is not a series")
+    if (!isIndex) {
       dataStr += `${toFixedIfNeed(
         value.data.slice(-value.indexOrRangeValue)[0]
       )} ... `
@@ -66,7 +67,9 @@ export default function TargetInputs({ value, setValue, label }) {
     } else {
       dataStr += `${
         value.data.slice(
-          -(value.indexOrRangeValue === "0" ? 1 : value.indexOrRangeValue)
+          value.indexOrRangeValue === "0"
+            ? -1
+            : value.indexOrRangeValue * -1 - 1
         )[0]
       }`
     }
