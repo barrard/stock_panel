@@ -21,6 +21,16 @@ function checkForMaintenance(date) {
   }
 }
 
+function maintenanceTime(date) {
+  date = date || new Date().getTime()
+
+  let { day, hour, minute, second } = eastCoastTime(date)
+  //markets closed from 5:00pm-5:59pm where hour = 17
+  if (hour === 17) {
+    return true
+  }
+}
+
 function futuresAreTrading(date) {
   date = date || new Date().getTime()
   let { day, hour, minute, second } = eastCoastTime(date)
@@ -29,6 +39,7 @@ function futuresAreTrading(date) {
   if (hour === 16) {
     if (minute >= 15 && minute <= 29) return false
   }
+  //markets closed from 5:00pm-5:59pm where hour = 17
   if (hour === 17) {
     return false
   }
@@ -36,7 +47,7 @@ function futuresAreTrading(date) {
   if (day === 0) {
     if (hour >= 18) return true
     else {
-      // log('Sunday morning, Markets aren\'t open yet')
+      // log("Sunday morning, Markets aren't open yet")
       return false
     }
   }
@@ -353,4 +364,5 @@ module.exports = {
   isAboutToClose,
   checkOpenTime,
   checkNewDay,
+  maintenanceTime,
 }

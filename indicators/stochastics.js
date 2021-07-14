@@ -21,8 +21,6 @@ module.exports = {
   checkMultiPeriodStoch,
 }
 
-console.log(tulind.indicators)
-
 function decide({ dir }) {
   /**
    * dir
