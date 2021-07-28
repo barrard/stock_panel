@@ -122,7 +122,7 @@ function isOpeningSession(date) {
   let { day, hour, minute } = eastCoastTime(date)
   // if(hour <= 18) return false
 
-  if ((hour === 10 && minute < 30) || (hour === 9 && minute >= 30)) return true
+  if ((hour === 9 && minute < 45) || (hour === 9 && minute >= 30)) return true
   else return false
 }
 
