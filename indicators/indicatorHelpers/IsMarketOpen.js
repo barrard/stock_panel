@@ -115,14 +115,22 @@ function isRTH(date) {
   }
 }
 
+let t = 0
 function isOpeningSession(date) {
+  // t++
+  // if (t == 1) {
+  //   return true
+  // } else if (t >= 2) {
+  //   return false
+  // }
+  date = date || new Date()
   let futsOpen = futuresAreTrading(date)
   if (!futsOpen) return false
 
   let { day, hour, minute } = eastCoastTime(date)
   // if(hour <= 18) return false
 
-  if ((hour === 9 && minute < 45) || (hour === 9 && minute >= 30)) return true
+  if (hour === 9 && minute < 45 && hour === 9 && minute >= 30) return true
   else return false
 }
 
