@@ -60,11 +60,13 @@ export default function ConditionalsList() {
       <ConditionalListContainer>
         <div style={{ display: "flex" }}>
           {headerValues.map((h) => (
-            <StyledConditionalListHeader>{h}</StyledConditionalListHeader>
+            <StyledConditionalListHeader key={h}>
+              {h}
+            </StyledConditionalListHeader>
           ))}
         </div>
         {conditionals.map((c) => (
-          <div onClick={() => addChartConditionals(c)}>
+          <div key={c._id} onClick={() => addChartConditionals(c)}>
             <ConditionalItem item={c} />
           </div>
         ))}

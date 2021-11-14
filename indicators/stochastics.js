@@ -146,27 +146,24 @@ function prevCurrentStoch(data) {
  */
 function evalStoch(prev, curr, meow) {
   if (
-    !prev.stochastics ||
-    !prev.stochastics.K ||
-    !prev.stochastics.D ||
-    !curr.stochastics ||
-    !curr.stochastics.K ||
-    !curr.stochastics.D ||
-    !meow.stochastics ||
-    !meow.stochastics.K ||
-    !meow.stochastics.D
+    prev.stochastics === undefined ||
+    prev.stochastics.K === undefined ||
+    prev.stochastics.D === undefined ||
+    curr.stochastics === undefined ||
+    curr.stochastics.K === undefined ||
+    curr.stochastics.D === undefined ||
+    meow.stochastics === undefined ||
+    meow.stochastics.K === undefined ||
+    meow.stochastics.D === undefined
   )
     return
 
   var { K, D } = prev.stochastics
-  if ((!K && K !== 0) || (!D && D !== 0)) {
-    throw new Error(`Undefined K ${K} or D ${D}`)
-  }
 
   let prevDir =
-    D >= 80 && K >= 80 && K >= D
+    D >= 85 && K >= 85
       ? "overbought" //2
-      : K <= 20 && D <= 20 && K <= D
+      : K <= 15 && D <= 15
       ? "oversold" //1
       : "middle" //5;
   if (prevDir == "middle") return "middle"
@@ -174,9 +171,9 @@ function evalStoch(prev, curr, meow) {
   let meowState = getStochState(meow)
 
   let currDir =
-    K < D && prevDir == "overbought" && meowState !== "up"
+    K < D && K < 80 && prevDir == "overbought" && meowState !== "up"
       ? "overbought"
-      : K > D && prevDir == "oversold" && meowState !== "down"
+      : K > D && K > 20 && prevDir == "oversold" && meowState !== "down"
       ? "oversold"
       : "middle"
 
@@ -190,9 +187,9 @@ function getStochState(data) {
   var { K, D } = data.stochastics
 
   let currDir =
-    K && D > 80
+    K >= 80 && D > 70 && K > D
       ? "up"
-      : K && D < 20
+      : K <= 20 && D < 30 && K < D
       ? "down" //1
       : "middle" //5;
 

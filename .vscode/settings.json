@@ -47,6 +47,7 @@
         "talib",
         "tdata",
         "tick",
+        "timeframe",
         "timeframes",
         "toastr",
         "total",
