@@ -207,12 +207,28 @@ export function evalConditional({ equality, val1, val2 }) {
             let v1 = val1[i1];
 
             if (Array.isArray(val2)) {
-                for (let i2 = 0; i2 < val2.length; i2++) {
-                    if (!isTrue) return;
+                // for (let i2 = 0; i2 < val2.length; i2++) {
+                if (!isTrue) return;
 
-                    let v2 = val2[i2];
-                    isTrue = checkEquality(v1, v2, equality);
-                }
+                let v2 = val2[i1];
+                isTrue = checkEquality(v1, v2, equality);
+                // }
+            } else {
+                isTrue = checkEquality(v1, val2, equality);
+            }
+        }
+    } else if (Array.isArray(val2)) {
+        for (let i2 = 0; i2 < val2.length; i2++) {
+            if (!isTrue) return;
+            let v1 = val2[i2];
+
+            if (Array.isArray(val1)) {
+                // for (let i2 = 0; i2 < val1.length; i2++) {
+                if (!isTrue) return;
+
+                let v2 = val1[i2];
+                isTrue = checkEquality(v1, v2, equality);
+                // }
             } else {
                 isTrue = checkEquality(v1, val2, equality);
             }
@@ -234,6 +250,9 @@ export function evalConditional({ equality, val1, val2 }) {
             else isTrue = false;
         } else if (equality === "<=") {
             if (v1 <= v2) isTrue = true;
+            else isTrue = false;
+        } else if (equality === ">=") {
+            if (v1 >= v2) isTrue = true;
             else isTrue = false;
         }
         return isTrue;
