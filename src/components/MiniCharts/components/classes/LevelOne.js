@@ -10,13 +10,16 @@ class LevelOne {
         ];
 
         //init level one? should move
+        this.reset();
         this.lastLevelOneData = this.initObj(0);
-        this.levelOneDataChangeArrays = this.initObj();
-        this.levelOneDataArrays = this.initObj();
         this.levelOneDataHistory = this.initObj();
         this.levelOneDataChangeHistory = this.initObj();
     }
 
+    reset() {
+        this.levelOneDataChangeArrays = this.initObj();
+        this.levelOneDataArrays = this.initObj();
+    }
     initObj(value) {
         return this.symbols.reduce(
             (acc, s) => ({ ...acc, [s]: this.initProps(value) }),
@@ -52,7 +55,7 @@ class LevelOne {
                 this.levelOneDataChangeHistory[s][p].push(data);
             });
         });
-        console.log(this.levelOneDataHistory);
+        this.reset();
     }
 
     parse(levelOneArray) {
@@ -72,9 +75,7 @@ class LevelOne {
         let lastPrice = data["3"];
         let bidSize = data["4"];
         let askSize = data["5"];
-        if (lastPrice) {
-            console.log("GOT LAST PRICE");
-        }
+
         obj[symbol] = { bidPrice, askPrice, askSize, bidSize, lastPrice };
     }
 

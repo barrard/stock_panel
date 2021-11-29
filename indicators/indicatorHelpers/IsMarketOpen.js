@@ -35,14 +35,6 @@ function futuresAreTrading(date) {
     date = date || new Date().getTime();
     let { day, hour, minute, second } = eastCoastTime(date);
 
-    //any day from 4:15-4:29
-    if (hour === 16) {
-        if (minute >= 15 && minute <= 29) return false;
-    }
-    //markets closed from 5:00pm-5:59pm where hour = 17
-    if (hour === 17) {
-        return false;
-    }
     //sunday evening 6pm
     if (day === 0) {
         //5:59 is ok too
@@ -52,6 +44,16 @@ function futuresAreTrading(date) {
             return false;
         }
     }
+
+    //any day from 4:15-4:29
+    if (hour === 16) {
+        if (minute >= 15 && minute <= 29) return false;
+    }
+    //markets closed from 5:00pm-5:59pm where hour = 17
+    if (hour === 17) {
+        return false;
+    }
+
     if (day >= 1 && day <= 4 && (hour >= 18 || hour < 17)) return true;
     if (day === 5) {
         //we need to get the 5:00pm minute to save 4:59pm

@@ -13,7 +13,7 @@ export function drawVolume(
 
     chartSvg.selectAll(`.${className}`).remove();
     const width = candleWidth;
-
+    const halfWidth = width / 2;
     //CANDLE BODY
     chartSvg
         .selectAll(`.${className}`)
@@ -21,13 +21,13 @@ export function drawVolume(
         .enter()
         .append("rect")
         .attr("class", `${className}`)
-        .attr("x", (_, i) => xScale(i) - width / 2)
+        .attr("x", (_, i) => xScale(i))
         .attr("y", (d) => height + yOffset + margin.top - (height - yScale(d)))
         .attr("width", width + "px")
-        .attr("stroke-width", width / 20)
+        // .attr("stroke-width", width / 20)
         .attr("fill", (_, i) => barColor(OHLC[i]))
         .attr("height", (d) => height - yScale(d))
-        .attr("stroke", "black")
+        .attr("stroke", "none")
         .on("mouseenter", function () {
             this.classList.add("selectedCandle");
         })

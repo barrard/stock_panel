@@ -5,6 +5,8 @@ export function drawOHLC(chartSvg, data, xScale, yScale, candleWidth, margin) {
     chartSvg.selectAll(`.${className}`).remove();
     chartSvg.selectAll(`.${wickClass}`).remove();
 
+    const wickWidth = candleWidth / 10;
+    const halfWidth = candleWidth / 2;
     //APPEND WICK
     chartSvg
         .selectAll(`.${wickClass}`)
@@ -13,10 +15,10 @@ export function drawOHLC(chartSvg, data, xScale, yScale, candleWidth, margin) {
         .append("line")
         .attr("class", `${wickClass}`)
         .style("stroke", "#000")
-        .style("stroke-width", candleWidth / 10)
-        .attr("x1", (_, i) => xScale(i))
+        .style("stroke-width", wickWidth)
+        .attr("x1", (_, i) => xScale(i) + halfWidth)
         .attr("y1", (d) => yScale(d.high) + margin.top)
-        .attr("x2", (_, i) => xScale(i))
+        .attr("x2", (_, i) => xScale(i) + halfWidth)
         .attr("y2", (d) => yScale(d.low) + margin.top)
         .attr("clip-path", "url(#mainChart-clipBox)"); //CORRECTION
 
@@ -27,13 +29,13 @@ export function drawOHLC(chartSvg, data, xScale, yScale, candleWidth, margin) {
         .enter()
         .append("rect")
         .attr("class", `${className}`)
-        .attr("x", (_, i) => xScale(i) - candleWidth / 2)
+        .attr("x", (_, i) => xScale(i))
         .attr("y", (d) => candleY(d) + margin.top)
-        .attr("width", candleWidth + "px")
-        .attr("stroke-width", candleWidth / 20)
+        .attr("width", candleWidth)
+        // .attr("stroke-width", candleWidth / 20)
         .attr("fill", barColor)
         .attr("height", barHeight)
-        .attr("stroke", "black")
+        .attr("stroke", "none")
         .on("mouseenter", function () {
             this.classList.add("selectedCandle");
         })

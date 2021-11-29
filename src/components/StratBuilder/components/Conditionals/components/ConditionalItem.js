@@ -26,7 +26,7 @@ export default function ConditionalItem({ item }) {
         chartConditionals,
     } = React.useContext(StratContext);
 
-    console.log(charts);
+    // console.log(charts);
     let applyToChart = chartConditionals[item._id] ? true : false;
 
     let target1Value, target2Value;
@@ -66,7 +66,7 @@ export default function ConditionalItem({ item }) {
 
     const deleteConditional = async () => {
         let resp = await API.deleteConditional(item);
-        console.log(resp);
+        // console.log(resp);
         setConditionals(conditionals.filter((c) => c._id !== item._id));
     };
     const DeleteBtn = () => {

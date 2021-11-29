@@ -15,6 +15,8 @@ import {
 } from "./crossHair.js";
 import { drawXAxis, drawYAxis } from "./axis";
 import drawIndicator from "./drawIndicator";
+import { drawHighLows } from "./drawHighLow";
+import drawPriceLevels from "./drawPriceLevels";
 export {
     appendConditionals,
     appendChartPatterns,
@@ -23,6 +25,8 @@ export {
     appendXLabel,
     appendYLabel,
     clearSelectedLine,
+    drawHighLows,
+    drawPriceLevels,
     drawXAxis,
     drawYAxis,
     drawIndicator,

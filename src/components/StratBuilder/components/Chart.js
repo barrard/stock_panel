@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
 import { extent, scaleLinear, select, zoom, zoomTransform, mouse } from "d3";
-import { faPlusSquare, faWindowClose } from "@fortawesome/free-solid-svg-icons";
+import {
+    faPlusSquare,
+    faWindowClose,
+    faGripLines,
+} from "@fortawesome/free-solid-svg-icons";
+import { faHackerrank } from "@fortawesome/free-brands-svg-icons";
 
 import AddIndicatorModal from "./AddIndicatorModal";
 import { IconButton, LoadingButton } from "./components";
@@ -16,6 +21,8 @@ import {
     drawXAxis,
     drawYAxis,
     drawIndicator,
+    drawHighLows,
+    drawPriceLevels,
 } from "./chartAppends";
 import { IndicatorItem, LineSettings } from "./chartComponents";
 import {
@@ -25,7 +32,11 @@ import {
     Flex,
 } from "./chartComponents/styled";
 import ChartContext from "./ChartContext";
-
+import { MinMax, PriceLevels } from "./chartComponents/classes";
+import {
+    priceRangeRed,
+    priceRangeGreen,
+} from "../../../components/charts/chartHelpers/utils";
 export default function Chart({ symbol, timeframe }) {
     let width = 750;
     let margin = {
@@ -46,6 +57,15 @@ export default function Chart({ symbol, timeframe }) {
         chartConditionals,
     } = useContext(StratContext);
 
+    const [toggleHighLow, setDrawHighLow] = useState(false);
+    const [minMaxTolerance, setMinMaxTolerance] = useState(10);
+    const [minMax, setMinMax] = useState({});
+
+    const [togglePriceLevels, setDrawPriceLevels] = useState(false);
+    const [priceLevelMinMax, setPriceLevelMinMax] = useState(10);
+    const [priceLevelTolerance, setPriceLevelTolerance] = useState(10);
+
+    const [priceLevels, setPriceLevels] = useState({});
     const { data, id: priceDataId } = charts[symbol][timeframe];
     // console.log("data.length", data.length);
     // console.log("width", width);
@@ -168,10 +188,39 @@ export default function Chart({ symbol, timeframe }) {
     }, [Object.keys(indicatorResults[symbol][timeframe]).length]);
 
     // innerHeight = height - (margin.top + margin.bottom);
+    useEffect(() => {
+        console.log(data);
+        let minMax = new MinMax(data, parseInt(minMaxTolerance));
+
+        let { lowNodes, highNodes, highLowerLows, highLowerHighs } = minMax;
+        setMinMax({ lowNodes, highNodes, highLowerLows, highLowerHighs });
+    }, [data, minMaxTolerance]);
 
     useEffect(() => {
+        let priceLevels = new PriceLevels(
+            data,
+            parseInt(priceLevelMinMax),
+            parseInt(priceLevelTolerance)
+        );
+        console.log(priceLevels);
+        setPriceLevels(priceLevels);
+    }, [data, priceLevelMinMax, priceLevelTolerance]);
+
+    useEffect(() => {
+        console.log("draw");
+        console.log(minMax);
         draw();
-    }, [data, currentZoom, chartSvg, yScales, selectedPatternResults.pattern]);
+    }, [
+        data,
+        currentZoom,
+        chartSvg,
+        yScales,
+        selectedPatternResults.pattern,
+        toggleHighLow,
+        minMax,
+        togglePriceLevels,
+        priceLevels,
+    ]);
 
     useEffect(() => {
         setChartSvg(select(svgRef.current));
@@ -205,6 +254,9 @@ export default function Chart({ symbol, timeframe }) {
             .attr("id", `${scale}-xSliceBox`)
             .attr("stroke", "yellow")
             .attr("stroke-width", 3.5);
+
+        priceRangeRed(chartSvg.select("defs"));
+        priceRangeGreen(chartSvg.select("defs"));
     };
 
     const fetchAndUpdateIndicatorResults = async (ind) => {
@@ -290,9 +342,9 @@ export default function Chart({ symbol, timeframe }) {
         if (!data || !data.length) return;
 
         xScale.domain([0, data.length - 1]);
-        let [start, end] = xScale.domain();
+        // let [start, end] = xScale.domain();
 
-        let [rStart, rEnd] = xScale.range();
+        // let [rStart, rEnd] = xScale.range();
 
         if (currentZoom) {
             let newXScale = currentZoom.rescaleX(xScale);
@@ -303,7 +355,7 @@ export default function Chart({ symbol, timeframe }) {
 
             xScale.domain(newXScale.domain());
 
-            let [zoomedStart, zoomedEnd] = xScale.domain();
+            // let [zoomedStart, zoomedEnd] = xScale.domain();
 
             //this is just to get the minMax scale
             let mainChartData = {};
@@ -445,6 +497,7 @@ export default function Chart({ symbol, timeframe }) {
             drawCrossHair({
                 ...chartData,
             });
+
             appendXLabel({
                 ...chartData,
                 hasBackground: true,
@@ -454,6 +507,7 @@ export default function Chart({ symbol, timeframe }) {
                 ...chartData,
                 hasBackground: true,
             });
+
             appendOHLCVLabel({
                 ...chartData,
             });
@@ -476,6 +530,26 @@ export default function Chart({ symbol, timeframe }) {
                 setLineSettings,
             });
         }
+
+        drawHighLows(
+            toggleHighLow,
+            chartSvg,
+            data,
+            minMax,
+            yScales["mainChart"],
+            margin
+        );
+
+        drawPriceLevels(
+            togglePriceLevels,
+            chartSvg,
+            data,
+            priceLevels,
+            yScales["mainChart"],
+            margin,
+            priceLevelTolerance,
+            innerWidth
+        );
 
         //APPEND CHART PATTERNS
         appendChartPatterns(chartSvg, chartPatterns, data);
@@ -569,6 +643,19 @@ export default function Chart({ symbol, timeframe }) {
                         onClick={() => setAddIndicators(!addIndicators)}
                         icon={faPlusSquare}
                     />
+
+                    <IconButton
+                        borderColor={toggleHighLow ? "green" : "none"}
+                        title="Highs and lows"
+                        onClick={() => setDrawHighLow(!toggleHighLow)}
+                        icon={faHackerrank}
+                    />
+                    <IconButton
+                        borderColor={togglePriceLevels ? "green" : "none"}
+                        title="Highs and lows"
+                        onClick={() => setDrawPriceLevels(!togglePriceLevels)}
+                        icon={faGripLines}
+                    />
                 </Flex>
                 {addIndicators && (
                     <AddIndicatorModal
@@ -577,6 +664,37 @@ export default function Chart({ symbol, timeframe }) {
                         timeframe={timeframe}
                     />
                 )}
+                {toggleHighLow && (
+                    <>
+                        <p>High Low</p>
+
+                        <input
+                            type="number"
+                            onChange={(e) => setMinMaxTolerance(e.target.value)}
+                            value={minMaxTolerance}
+                        />
+                    </>
+                )}
+                {togglePriceLevels && (
+                    <>
+                        <p>Price Levels</p>
+                        <input
+                            type="number"
+                            onChange={(e) =>
+                                setPriceLevelMinMax(e.target.value)
+                            }
+                            value={priceLevelMinMax}
+                        />
+                        <input
+                            type="number"
+                            onChange={(e) =>
+                                setPriceLevelTolerance(e.target.value)
+                            }
+                            value={priceLevelTolerance}
+                        />
+                    </>
+                )}
+
                 <div style={{ border: "1px solid blue", position: "relative" }}>
                     {lineSettings.lineName && <LineSettings />}
                     <StyledSVG

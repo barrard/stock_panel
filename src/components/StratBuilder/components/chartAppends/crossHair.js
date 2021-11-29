@@ -21,7 +21,7 @@ export function drawCrossHair({
         .attr("pointer-events", "none")
         .attr("x1", xScale.range()[0])
         .attr("y1", mouseY)
-        .attr("x2", xScale.range()[1] + margin.left)
+        .attr("x2", xScale.range()[1])
         .attr("y2", mouseY);
 
     //vertical
@@ -84,6 +84,9 @@ export function appendXLabel({
         .attr("x", x)
         .attr("y", y + fontSize + (margin.bottom - fontSize) / 2)
         .text(label)
+        .style("fill", "#FFFFFF")
+        .attr("stroke", "none")
+
         .attr("font-size", fontSize + "px")
         .attr("text-anchor", "middle");
 }
@@ -144,7 +147,7 @@ export function appendYLabel({
     let textG = chartSvg.append("g").attr("class", `${className}`);
 
     let [_, x] = xScale.range();
-    x = x + margin.left;
+    x = x;
     let y = mouseY + margin.top;
 
     if (hasBackground) {
@@ -167,6 +170,8 @@ export function appendYLabel({
         .attr("y", y)
         .text(yLabel)
         .attr("font-size", fontSize + "px")
+        .attr("stroke", "none")
+        .style("fill", "#FFFFFF")
         .attr("alignment-baseline", "middle");
 }
 

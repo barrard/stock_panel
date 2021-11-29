@@ -29,9 +29,7 @@ export default function MiniCharts({ Socket }) {
         });
 
         let timer = setInterval(() => {
-            console.log("TIMER");
             setUpdate((t) => t + 1);
-            console.log({ timeAndSalesCount, levelOneCount });
 
             TS.compile();
             L1.compile();

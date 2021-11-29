@@ -69,18 +69,14 @@ class TimeAndSales {
             this.tradeVolPerSecHistory[symbol].push(this._raw_totalVol[symbol]);
 
             //volume weight per second
-            if (this._raw_totalVol[symbol]) {
-                this.volWeightedPerSecHistory[symbol].push(
-                    this._raw_totalVol[symbol]
-                        ? this._raw_volWeightedTradePrices[symbol].reduce(
-                              (acc, b) => acc + b,
-                              0
-                          ) / this._raw_totalVol[symbol]
-                        : 0
-                );
-            } else if (this._raw_volWeightedTradePrices[symbol].length) {
-                throw new Error("How get trades and no volume?");
-            }
+            this.volWeightedPerSecHistory[symbol].push(
+                this._raw_totalVol[symbol]
+                    ? this._raw_volWeightedTradePrices[symbol].reduce(
+                          (acc, b) => acc + b,
+                          0
+                      ) / this._raw_totalVol[symbol]
+                    : 0
+            );
 
             //Average vol per trade this second
             this.volPerTradePerSecHistory[symbol].push(
