@@ -162,30 +162,30 @@ class Main_Nav extends React.Component {
         // console.log(full_list);
         /* list of possible arrays with data */
         var symbol_starts_with = [];
-        var name_starts_with = [];
+        var desc_starts_with = [];
         var symbol_list = [];
-        var name_list = [];
+        var desc_list = [];
         var filtered_stock_list = [];
 
         /* check symbol starts with */
         symbol_starts_with = full_list.filter((list_item) =>
-            list_item.Ticker.toUpperCase().startsWith(search_text)
+            list_item.symbol.toUpperCase().startsWith(search_text)
         );
         // console.log(symbol_starts_with);
         filtered_stock_list = [...filtered_stock_list, ...symbol_starts_with];
         if (filtered_stock_list.length < 100) {
             /* check name starts with */
-            name_starts_with = full_list.filter((list_item) =>
-                list_item.Name.toUpperCase().startsWith(search_text)
+            desc_starts_with = full_list.filter((list_item) =>
+                list_item.description?.toUpperCase().startsWith(search_text)
             );
-            // console.log(name_starts_with);
-            filtered_stock_list = [...filtered_stock_list, ...name_starts_with];
+            // console.log(desc_starts_with);
+            filtered_stock_list = [...filtered_stock_list, ...desc_starts_with];
         }
 
         if (filtered_stock_list.length < 100) {
             /* check symbols */
             symbol_list = full_list.filter((list_item) =>
-                list_item.Ticker.toUpperCase().includes(search_text)
+                list_item.symbol.toUpperCase().includes(search_text)
             );
             // console.log(symbol_list);
             filtered_stock_list = [...filtered_stock_list, ...symbol_list];
@@ -193,11 +193,11 @@ class Main_Nav extends React.Component {
 
         if (filtered_stock_list.length < 100) {
             /* check name */
-            name_list = full_list.filter((list_item) =>
-                list_item.Name.toUpperCase().includes(search_text)
+            desc_list = full_list.filter((list_item) =>
+                list_item.description?.toUpperCase().includes(search_text)
             );
-            // console.log(name_list);
-            filtered_stock_list = [...filtered_stock_list, ...name_list];
+            // console.log(desc_list);
+            filtered_stock_list = [...filtered_stock_list, ...desc_list];
         }
         /* Combine the lists */
         filtered_stock_list = [...new Set(filtered_stock_list)];
@@ -234,7 +234,8 @@ class Main_Nav extends React.Component {
 
     /* Items that make the list of filtered stocks, on click event resets some things */
     filtered_stock_list_item(data, index, search) {
-        let symbol = data.Ticker;
+        debugger;
+        let symbol = data.symbol;
         let { isCommodity } = data;
         let props = this.props;
         let timeframe = "day";
@@ -256,14 +257,14 @@ class Main_Nav extends React.Component {
             >
                 <span
                     dangerouslySetInnerHTML={this.highlight_search_letters(
-                        data.Ticker,
+                        data.symbol,
                         search
                     )}
                 />
                 {" - "}
                 <span
                     dangerouslySetInnerHTML={this.highlight_search_letters(
-                        data.Name,
+                        data.description,
                         search
                     )}
                 />

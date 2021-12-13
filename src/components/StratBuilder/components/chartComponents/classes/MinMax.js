@@ -43,7 +43,11 @@ class MinMax {
 
             const found = this.compare(left, right, middle, highLow);
             if (found) {
-                finds.push({ ...this.data[i], index: i });
+                finds.push({
+                    ...this.data[i],
+                    index: i,
+                    highLow: highLow === "high" ? "high" : "low",
+                });
                 i = i + t - 1;
             }
         }

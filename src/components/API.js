@@ -278,7 +278,7 @@ async function getTheStockData({ symbol }) {
                 method: "GET",
             }
         );
-        debugger;
+
         res = await handleResponse(res);
 
         return res;

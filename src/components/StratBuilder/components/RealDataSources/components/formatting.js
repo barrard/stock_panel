@@ -59,19 +59,27 @@ function ohlcColor(d, type) {
         const closeHighDiff = high - close;
         const openLowDiff = open - low;
         const closeLowDiff = close - low;
+        const openCloseDiff = Math.abs(open - close);
 
+        debugger;
         if (type === "open") {
-            if (openLowDiff < openHighDiff) {
+            if (openLowDiff < openHighDiff && openLowDiff < openCloseDiff) {
                 return "red";
-            } else if (openLowDiff > openHighDiff) {
+            } else if (
+                openHighDiff < openLowDiff &&
+                openHighDiff < openCloseDiff
+            ) {
                 return "green";
-            }
+            } else return "yellow";
         } else if (type === "close") {
-            if (closeLowDiff < closeHighDiff) {
+            if (closeLowDiff < closeHighDiff && closeLowDiff < openCloseDiff) {
                 return "red";
-            } else if (closeLowDiff > closeHighDiff) {
+            } else if (
+                closeHighDiff < closeLowDiff &&
+                closeHighDiff < openCloseDiff
+            ) {
                 return "green";
-            }
+            } else return "yellow";
         }
         return "red";
     }
