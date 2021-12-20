@@ -294,8 +294,8 @@ function getExpStr(date) {
 //random function that returns how long till 9pm
 function getTimeTillEvening() {
     let now = new Date().getTime();
-    let _5PM = new Date().setHours(17);
-    return _5PM - now < 0 ? 0 : _5PM - now;
+    let _3PM = new Date().setHours(13);
+    return _3PM - now < 0 ? 0 : _3PM - now;
 }
 
 function getTimeTillRTH() {
