@@ -4,8 +4,11 @@ import {
     faPlusSquare,
     faWindowClose,
     faGripLines,
+    faArrowTrendUp,
 } from "@fortawesome/free-solid-svg-icons";
+// import { faWavePulse } from "@fortawesome/fontawesome-svg-core";
 import { faHackerrank } from "@fortawesome/free-brands-svg-icons";
+import { GiAirZigzag } from "react-icons/gi";
 
 import AddIndicatorModal from "./AddIndicatorModal";
 import { IconButton, LoadingButton } from "./components";
@@ -23,6 +26,7 @@ import {
     drawIndicator,
     drawHighLows,
     drawPriceLevels,
+    drawZigZag,
 } from "./chartAppends";
 import { IndicatorItem, LineSettings } from "./chartComponents";
 import {
@@ -32,7 +36,7 @@ import {
     Flex,
 } from "./chartComponents/styled";
 import ChartContext from "./ChartContext";
-import { MinMax, PriceLevels } from "./chartComponents/classes";
+import { MinMax, PriceLevels, ZigZag } from "./chartComponents/classes";
 import {
     priceRangeRed,
     priceRangeGreen,
@@ -59,8 +63,10 @@ export default function Chart({ symbol, timeframe }) {
 
     const [toggleHighLow, setDrawHighLow] = useState(false);
     const [minMaxTolerance, setMinMaxTolerance] = useState(10);
+    const [zigZagTolerance, setZigZagTolerance] = useState(0.001);
     const [minMax, setMinMax] = useState({});
 
+    const [toggleZigZag, setDrawZigZag] = useState(false);
     const [togglePriceLevels, setDrawPriceLevels] = useState(false);
     const [priceLevelMinMax, setPriceLevelMinMax] = useState(10);
     const [priceLevelTolerance, setPriceLevelTolerance] = useState(10);
@@ -190,17 +196,30 @@ export default function Chart({ symbol, timeframe }) {
     // innerHeight = height - (margin.top + margin.bottom);
     useEffect(() => {
         console.log(data);
-        let minMax = new MinMax(data, parseInt(minMaxTolerance));
+        if (!parseFloat(minMaxTolerance) || !parseFloat(zigZagTolerance))
+            return console.log("Must not be 0");
+        let minMax = new MinMax(
+            data,
+            parseFloat(minMaxTolerance),
+            parseFloat(zigZagTolerance)
+        );
 
-        let { lowNodes, highNodes, highLowerLows, highLowerHighs } = minMax;
-        setMinMax({ lowNodes, highNodes, highLowerLows, highLowerHighs });
-    }, [data, minMaxTolerance]);
+        let { lowNodes, highNodes, highLowerLows, highLowerHighs, zigZag } =
+            minMax;
+        setMinMax({
+            lowNodes,
+            highNodes,
+            highLowerLows,
+            highLowerHighs,
+            zigZag,
+        });
+    }, [data, minMaxTolerance, zigZagTolerance]);
 
     useEffect(() => {
         let priceLevels = new PriceLevels(
             data,
-            parseInt(priceLevelMinMax),
-            parseInt(priceLevelTolerance)
+            parseFloat(priceLevelMinMax),
+            parseFloat(priceLevelTolerance)
         );
         console.log(priceLevels);
         setPriceLevels(priceLevels);
@@ -208,7 +227,7 @@ export default function Chart({ symbol, timeframe }) {
 
     useEffect(() => {
         console.log("draw");
-        console.log(minMax);
+        // console.log(minMax);
         draw();
     }, [
         data,
@@ -220,6 +239,7 @@ export default function Chart({ symbol, timeframe }) {
         minMax,
         togglePriceLevels,
         priceLevels,
+        toggleZigZag,
     ]);
 
     useEffect(() => {
@@ -515,7 +535,6 @@ export default function Chart({ symbol, timeframe }) {
 
         //STORE CHART PATTERNS
         let chartPatterns = [];
-        let closeData = [];
         //CALLING EACH Y-SCALE AND DRAWING INDICATOR LINE
         for (let key in yScales) {
             drawIndicator({
@@ -551,13 +570,22 @@ export default function Chart({ symbol, timeframe }) {
             innerWidth
         );
 
-        //APPEND CHART PATTERNS
-        appendChartPatterns(chartSvg, chartPatterns, data);
+        // console.log(data);
+
+        drawZigZag(
+            toggleZigZag,
+            chartSvg,
+            data,
+            minMax,
+            yScales["mainChart"],
+            margin
+        );
 
         //ADD FULL_NAME TO CHART
         appendIndicatorName(chartSvg, margin, yScales, setLineSettings);
 
         //APPEND selectedPatternResults,
+        //APPEND CHART PATTERNS
         if (selectedPatternResults.pattern) {
             let someData = [
                 {
@@ -652,9 +680,15 @@ export default function Chart({ symbol, timeframe }) {
                     />
                     <IconButton
                         borderColor={togglePriceLevels ? "green" : "none"}
-                        title="Highs and lows"
+                        title="Price Levels"
                         onClick={() => setDrawPriceLevels(!togglePriceLevels)}
                         icon={faGripLines}
+                    />
+                    <IconButton
+                        borderColor={toggleZigZag ? "green" : "none"}
+                        title="ZigZag"
+                        onClick={() => setDrawZigZag(!toggleZigZag)}
+                        rIcon={<GiAirZigzag />}
                     />
                 </Flex>
                 {addIndicators && (
@@ -691,6 +725,17 @@ export default function Chart({ symbol, timeframe }) {
                                 setPriceLevelTolerance(e.target.value)
                             }
                             value={priceLevelTolerance}
+                        />
+                    </>
+                )}
+                {toggleZigZag && (
+                    <>
+                        <p>ZigZag Tolerance</p>
+                        <input
+                            title={"Zig Zag Tolerance"}
+                            type="number"
+                            onChange={(e) => setZigZagTolerance(e.target.value)}
+                            value={zigZagTolerance}
                         />
                     </>
                 )}

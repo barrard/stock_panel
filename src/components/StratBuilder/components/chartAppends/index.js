@@ -17,22 +17,24 @@ import { drawXAxis, drawYAxis } from "./axis";
 import drawIndicator from "./drawIndicator";
 import { drawHighLows } from "./drawHighLow";
 import drawPriceLevels from "./drawPriceLevels";
+import drawZigZag from "./drawZigZag";
 export {
-    appendConditionals,
+    drawZigZag,
     appendChartPatterns,
+    appendConditionals,
     appendIndicatorName,
     appendOHLCVLabel,
     appendXLabel,
     appendYLabel,
     clearSelectedLine,
+    drawCrossHair,
     drawHighLows,
-    drawPriceLevels,
-    drawXAxis,
-    drawYAxis,
     drawIndicator,
     drawOHLC,
-    drawCrossHair,
+    drawPriceLevels,
     drawVolume,
+    drawXAxis,
+    drawYAxis,
     handleLineClick,
     removeIndicatorName,
 };

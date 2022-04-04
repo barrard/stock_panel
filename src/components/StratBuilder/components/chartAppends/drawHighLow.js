@@ -15,7 +15,6 @@ export function drawHighLows(
     chartSvg.selectAll(`.${lowClassName}`).remove();
     if (!drawHighLow) return;
 
-    debugger;
     //APPEND High Node
     chartSvg
         .selectAll(`.${highClassName}`)

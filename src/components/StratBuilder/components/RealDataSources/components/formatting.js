@@ -61,7 +61,6 @@ function ohlcColor(d, type) {
         const closeLowDiff = close - low;
         const openCloseDiff = Math.abs(open - close);
 
-        debugger;
         if (type === "open") {
             if (openLowDiff < openHighDiff && openLowDiff < openCloseDiff) {
                 return "red";

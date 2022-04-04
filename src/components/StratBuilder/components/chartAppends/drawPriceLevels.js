@@ -8,13 +8,13 @@ export default function drawPriceLevels(
     priceLevelSensitivity,
     innerWidth
 ) {
-    console.log("drawPriceLevels");
+    // console.log("drawPriceLevels");
 
     const highClassName = "importantPriceRangeHigh";
     const lowClassName = "importantPriceRangeLow";
     const priceLevelClassName = "importantPriceLevel";
     const nodesClassName = "nearByNodes";
-    console.log(data);
+    // console.log(data);
     const priceLevels = data.priceLevels.reduce((acc, priceLevel) => {
         if (Array.isArray(priceLevel)) {
             //get the minimum timestamp
@@ -31,7 +31,7 @@ export default function drawPriceLevels(
         return [...acc, { ...priceLevel, nodes: [priceLevel] }];
     }, []);
 
-    console.log(priceLevels);
+    // console.log(priceLevels);
 
     chartSvg.selectAll(`.${highClassName}`).remove();
     chartSvg.selectAll(`.${lowClassName}`).remove();

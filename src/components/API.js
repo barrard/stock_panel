@@ -270,6 +270,7 @@ async function getBackTestData({ symbol, timeframe }) {
 }
 
 async function getTheStockData({ symbol }) {
+    console.log("getTheStockData");
     try {
         let res = await fetch(
             `${REACT_APP_API_SERVER}/API/get-stock-data/${symbol}`,
@@ -768,8 +769,12 @@ async function saveRegressionValues({
 
 async function getMovers() {
     // console.log(API_SERVER);
-    let movers = await fetch(`${API_SERVER}/MOVERS/MOVERS.json`);
-    return movers;
+    try {
+        let movers = await fetch(`${API_SERVER}/MOVERS/MOVERS.json`);
+        return movers;
+    } catch (err) {
+        return false;
+    }
 }
 
 // async function getVolProfile({ symbol, date, bars, bins }) {
