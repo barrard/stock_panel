@@ -5,16 +5,19 @@ export default function drawZigZag(
     ohlc,
     data,
     { xScale, yScale },
-    margin
+    margin,
+    candleWidth
 ) {
     // console.log(data);
 
+    const zigZagLocalMinMaxClassName = "localMinMax-zigzag";
     const zigZagSwingHighClassName = "swingHighNodes";
     const zigZagSwingLowClassName = "swingLowNodes";
     const zigZagSwingHighLowClassName = "swingHighLow";
     const zigZagClassName = "ZIGZAG";
     // const wickClass = "candle-wick";
 
+    chartSvg.selectAll(`.${zigZagLocalMinMaxClassName}`).remove();
     chartSvg.selectAll(`.${zigZagSwingHighClassName}`).remove();
     chartSvg.selectAll(`.${zigZagSwingLowClassName}`).remove();
     chartSvg.selectAll(`.${zigZagSwingHighLowClassName}`).remove();
@@ -51,7 +54,7 @@ export default function drawZigZag(
     //APPEND ZIGZAG LINE
     const myLine = line()
         .x((d, i) => {
-            let x = xScale(d.index);
+            let x = xScale(d.index) + candleWidth / 2;
             return x;
         })
         .y((d) => {
@@ -67,10 +70,8 @@ export default function drawZigZag(
         .attr("d", myLine)
         .attr("fill", "none")
         .attr("stroke-width", "3")
-        .attr("stroke", (d, i, a) => {
-            console.log(d, i, a);
-            debugger;
-            return "red";
+        .attr("stroke", (d) => {
+            return d.name == "high" ? "red" : "green";
         })
         // .attr("pointer-events", "stroke")
 
@@ -88,6 +89,37 @@ export default function drawZigZag(
 
         .exit();
 
+    //append local min max
+    //APPEND smoothMinMax Node
+    // chartSvg
+    //     .selectAll(`.${zigZagLocalMinMaxClassName}`)
+    //     .data(data.zigZag.smoothMinMax)
+    //     .enter()
+    //     .append("circle")
+    //     .attr("class", `${zigZagLocalMinMaxClassName}`)
+    //     .attr("r", 4)
+    //     .attr("cx", (d) => xScale(d.index) + candleWidth / 2)
+    //     .attr("cy", (d) => {
+    //         if (d.val.y) {
+    //             return yScale(d.val.y) + margin.top;
+    //         } else {
+    //             return yScale(d.val.high) + margin.top;
+    //         }
+    //     })
+    //     .attr("fill", (d) => {
+    //         if (d.name === "both") {
+    //             return "blue";
+    //         } else {
+    //             return "goldenrod";
+    //         }
+    //     })
+    //     .attr("stroke", "none")
+    //     .attr("stroke-width", 1)
+
+    //     .attr("clip-path", "url(#mainChart-clipBox)") //CORRECTION
+
+    //     .exit();
+
     //APPEND High Node
     chartSvg
         .selectAll(`.${zigZagSwingHighClassName}`)
@@ -95,11 +127,11 @@ export default function drawZigZag(
         .enter()
         .append("circle")
         .attr("class", `${zigZagSwingHighClassName}`)
-        .attr("r", 5)
-        .attr("cx", (d) => xScale(d.index))
+        .attr("r", 6)
+        .attr("cx", (d) => xScale(d.index) + candleWidth / 2)
         .attr("cy", (d) => yScale(d.val.y) + margin.top)
-        .attr("fill", "red")
-        .attr("stroke", "white")
+        .attr("fill", "yellow")
+        .attr("stroke", "none")
         .attr("stroke-width", 1)
 
         .attr("clip-path", "url(#mainChart-clipBox)") //CORRECTION
@@ -113,10 +145,10 @@ export default function drawZigZag(
         .enter()
         .append("circle")
         .attr("class", `${zigZagSwingLowClassName}`)
-        .attr("r", 5)
-        .attr("cx", (d) => xScale(d.index))
+        .attr("r", 6)
+        .attr("cx", (d) => xScale(d.index) + candleWidth / 2)
         .attr("cy", (d) => yScale(d.val.y) + margin.top)
-        .attr("fill", "green")
+        .attr("fill", "purple")
         .attr("stroke", "white")
         .attr("stroke-width", 1)
 

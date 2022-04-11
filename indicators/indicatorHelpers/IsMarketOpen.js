@@ -85,7 +85,7 @@ function eastCoastTime(date) {
     date = date || new Date().getTime();
     utc = new Date(date).getTime() + new Date().getTimezoneOffset() * 60000;
 
-    let eastCoastTime = new Date(utc + 3600000 * -5); //get East coast time
+    let eastCoastTime = new Date(utc + 3600000 * -4); //SPRING TIME DST, SWITCH TO 5 when Fall Back
     let day = new Date(eastCoastTime).getDay();
     let hour = new Date(eastCoastTime).getHours();
     let minute = new Date(eastCoastTime).getMinutes();
@@ -318,10 +318,19 @@ function isPreMarket(date) {
     now = new Date(now);
     now = new Date(now).getTime();
 
-    let timeTill = makeTime(3, 30, "AM"); //4:30am
-    let timeStop = makeTime(6, 30, "AM"); //6:30am
-    console.log(timeTill <= now && now <= timeStop);
-    return timeTill <= now && now <= timeStop;
+    if (process.env.NODE_ENV === "DEV") {
+        //FOR LOCAL HAWAII DEVELOPMENT
+        let timeTill = makeTime(00, 00, "AM"); //4:30am
+        let timeStop = makeTime(3, 30, "AM"); //6:30am
+        console.log(timeTill <= now && now <= timeStop);
+        return timeTill <= now && now <= timeStop;
+    } else {
+        //FOR PROD SERVER WEST COAST
+        let timeTill = makeTime(3, 30, "AM"); //4:30am
+        let timeStop = makeTime(6, 30, "AM"); //6:30am
+        console.log(timeTill <= now && now <= timeStop);
+        return timeTill <= now && now <= timeStop;
+    }
 }
 
 function makeTime(hr, min, amPM) {

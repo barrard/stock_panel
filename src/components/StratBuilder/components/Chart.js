@@ -63,7 +63,7 @@ export default function Chart({ symbol, timeframe }) {
 
     const [toggleHighLow, setDrawHighLow] = useState(false);
     const [minMaxTolerance, setMinMaxTolerance] = useState(10);
-    const [zigZagTolerance, setZigZagTolerance] = useState(0.001);
+    const [zigZagTolerance, setZigZagTolerance] = useState(0.019);
     const [minMax, setMinMax] = useState({});
 
     const [toggleZigZag, setDrawZigZag] = useState(false);
@@ -226,7 +226,7 @@ export default function Chart({ symbol, timeframe }) {
     }, [data, priceLevelMinMax, priceLevelTolerance]);
 
     useEffect(() => {
-        console.log("draw");
+        // console.log("draw");
         // console.log(minMax);
         draw();
     }, [
@@ -578,7 +578,8 @@ export default function Chart({ symbol, timeframe }) {
             data,
             minMax,
             yScales["mainChart"],
-            margin
+            margin,
+            candleWidth
         );
 
         //ADD FULL_NAME TO CHART
@@ -734,6 +735,7 @@ export default function Chart({ symbol, timeframe }) {
                         <input
                             title={"Zig Zag Tolerance"}
                             type="number"
+                            step={0.001}
                             onChange={(e) => setZigZagTolerance(e.target.value)}
                             value={zigZagTolerance}
                         />

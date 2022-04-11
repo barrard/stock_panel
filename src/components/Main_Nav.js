@@ -234,7 +234,6 @@ class Main_Nav extends React.Component {
 
     /* Items that make the list of filtered stocks, on click event resets some things */
     filtered_stock_list_item(data, index, search) {
-        debugger;
         let symbol = data.symbol;
         let { isCommodity } = data;
         let props = this.props;
