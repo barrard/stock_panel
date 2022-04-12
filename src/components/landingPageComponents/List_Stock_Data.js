@@ -11,6 +11,7 @@ class List_Stock_Data extends React.Component {
         super(props);
         console.log(props);
         let { title, data, prices } = props;
+        debugger;
         data.forEach((d) => {
             d.price = prices[d.name];
         });
@@ -81,9 +82,11 @@ class List_Stock_Data extends React.Component {
 
     render() {
         let { title, data, prices } = this.props;
-        data.forEach((d) => {
-            d.quote = prices[d.name];
-        });
+        if (prices) {
+            data.forEach((d) => {
+                d.quote = prices[d.name];
+            });
+        }
 
         return (
             <>
@@ -121,17 +124,23 @@ export default withRouter(List_Stock_Data);
 
 function Display_Stock_Row({ stock_data, index, props }) {
     // console.log({stock_data})
-    debugger;
-    const {
+    let {
         name: symbol,
         quote = {},
         change,
         volTradeRatio,
         vol: totalVolume,
-        description,
+        nameDesc,
         direction,
     } = stock_data;
-    const { lastPrice, totalVol, percentChange, netChange } = quote;
+    let { lastPrice, totalVol, percentChange, netChange } = quote;
+    if (!symbol) {
+        symbol = stock_data.symbol;
+        totalVol = stock_data.totalVol;
+        percentChange = stock_data.percentChange;
+        lastPrice = stock_data.lastPrice;
+        netChange = stock_data.netChange;
+    }
     let class_name = index % 2 == 0 ? "ticker_row_light" : "ticker_row_dark";
     let timeframe = "day";
     let end = new Date().getTime();
@@ -139,12 +148,13 @@ function Display_Stock_Row({ stock_data, index, props }) {
         <div
             className={`row clickable ${class_name}`}
             onClick={
-                () => props.history.push(`/chart/${symbol}`)
+                () => console.log("click")
+                // props.history.push(`/chart/${symbol}`)
                 // view_selected_stock({ timeframe, end, symbol, props })
             }
         >
             <div className="col-2 flex">
-                <Symbol symbol={symbol} />
+                <Symbol symbol={nameDesc || symbol} />
             </div>
 
             <div className="col-2 flex_end">
