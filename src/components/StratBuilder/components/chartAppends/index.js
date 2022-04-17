@@ -18,8 +18,10 @@ import drawIndicator from "./drawIndicator";
 import { drawHighLows } from "./drawHighLow";
 import drawPriceLevels from "./drawPriceLevels";
 import drawZigZag from "./drawZigZag";
+import drawVolProfile from "./drawVolProfile";
 export {
     drawZigZag,
+    drawVolProfile,
     appendChartPatterns,
     appendConditionals,
     appendIndicatorName,

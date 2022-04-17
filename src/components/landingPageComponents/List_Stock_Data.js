@@ -68,18 +68,6 @@ class List_Stock_Data extends React.Component {
         this.setState({ sort_state });
     }
 
-    // load_more_data() {
-    //     console.log("LOAD MORE DATA");
-    //     const { number_rows } = this.state;
-    //     this.setState({
-    //         number_rows: this.state.number_rows + 30,
-    //     });
-    //     /* Wait for next loops cycle to update state... */
-    //     setTimeout(() => {
-    //         this.sort_by(this.state.sorted_prop, true);
-    //     }, 0);
-    // }
-
     render() {
         let { title, data, prices } = this.props;
         if (prices) {

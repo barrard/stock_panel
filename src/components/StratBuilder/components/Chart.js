@@ -8,7 +8,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 // import { faWavePulse } from "@fortawesome/fontawesome-svg-core";
 import { faHackerrank } from "@fortawesome/free-brands-svg-icons";
-import { GiAirZigzag } from "react-icons/gi";
+import { GiAirZigzag, GiHistogram } from "react-icons/gi";
 
 import AddIndicatorModal from "./AddIndicatorModal";
 import { IconButton, LoadingButton } from "./components";
@@ -27,6 +27,7 @@ import {
     drawHighLows,
     drawPriceLevels,
     drawZigZag,
+    drawVolProfile,
 } from "./chartAppends";
 import { IndicatorItem, LineSettings } from "./chartComponents";
 import {
@@ -36,7 +37,7 @@ import {
     Flex,
 } from "./chartComponents/styled";
 import ChartContext from "./ChartContext";
-import { MinMax, PriceLevels, ZigZag } from "./chartComponents/classes";
+import { MinMax, PriceLevels, CalcVolProfile } from "./chartComponents/classes";
 import {
     priceRangeRed,
     priceRangeGreen,
@@ -63,11 +64,18 @@ export default function Chart({ symbol, timeframe }) {
 
     const [toggleHighLow, setDrawHighLow] = useState(false);
     const [minMaxTolerance, setMinMaxTolerance] = useState(10);
-    const [zigZagTolerance, setZigZagTolerance] = useState(0.019);
+    const [zigZagTolerance, setZigZagTolerance] = useState(
+        initialZigZag(timeframe)
+    );
     const [minMax, setMinMax] = useState({});
+
+    const [volProfile, setVolProfile] = useState({});
+    const [volProfileEnd, setVolProfileEnd] = useState(null);
+    const [volProfileStart, setVolProfileStart] = useState(null);
 
     const [toggleZigZag, setDrawZigZag] = useState(false);
     const [togglePriceLevels, setDrawPriceLevels] = useState(false);
+    const [toggleVolProfile, setToggleVolProfile] = useState(false);
     const [priceLevelMinMax, setPriceLevelMinMax] = useState(10);
     const [priceLevelTolerance, setPriceLevelTolerance] = useState(10);
 
@@ -89,7 +97,7 @@ export default function Chart({ symbol, timeframe }) {
     // 	mainChart: "yellow",
     // });
     let innerWidth = width - (margin.left + margin.right);
-    let xScale = scaleLinear().range([margin.left, width - margin.right]);
+    let xScale = scaleLinear().range([0, width - (margin.right + margin.left)]);
     let candleWidth = data.length / innerWidth;
     const [yScales, setYScales] = useState({
         mainChart: {
@@ -127,6 +135,11 @@ export default function Chart({ symbol, timeframe }) {
     let chartIndicators = selectedStrat.indicators.filter(
         (ind) => ind.priceData === priceDataId
     );
+    useEffect(() => {
+        let volProfile = new CalcVolProfile(data);
+        console.log(volProfile);
+        setVolProfile(volProfile);
+    }, [volProfileStart, volProfileEnd]);
 
     useEffect(() => {
         // debugger
@@ -195,7 +208,7 @@ export default function Chart({ symbol, timeframe }) {
 
     // innerHeight = height - (margin.top + margin.bottom);
     useEffect(() => {
-        console.log(data);
+        // console.log(data);
         if (!parseFloat(minMaxTolerance) || !parseFloat(zigZagTolerance))
             return console.log("Must not be 0");
         let minMax = new MinMax(
@@ -240,6 +253,7 @@ export default function Chart({ symbol, timeframe }) {
         togglePriceLevels,
         priceLevels,
         toggleZigZag,
+        toggleVolProfile,
     ]);
 
     useEffect(() => {
@@ -582,6 +596,15 @@ export default function Chart({ symbol, timeframe }) {
             candleWidth
         );
 
+        drawVolProfile(
+            toggleVolProfile,
+            chartSvg,
+            volProfile.volProfile,
+            yScales["mainChart"],
+            margin,
+            width
+        );
+
         //ADD FULL_NAME TO CHART
         appendIndicatorName(chartSvg, margin, yScales, setLineSettings);
 
@@ -674,22 +697,32 @@ export default function Chart({ symbol, timeframe }) {
                     />
 
                     <IconButton
-                        borderColor={toggleHighLow ? "green" : "none"}
+                        borderColor={toggleHighLow ? "green" : false}
                         title="Highs and lows"
                         onClick={() => setDrawHighLow(!toggleHighLow)}
                         icon={faHackerrank}
                     />
                     <IconButton
-                        borderColor={togglePriceLevels ? "green" : "none"}
+                        borderColor={togglePriceLevels ? "green" : false}
                         title="Price Levels"
                         onClick={() => setDrawPriceLevels(!togglePriceLevels)}
                         icon={faGripLines}
                     />
                     <IconButton
-                        borderColor={toggleZigZag ? "green" : "none"}
+                        borderColor={toggleZigZag ? "green" : false}
                         title="ZigZag"
                         onClick={() => setDrawZigZag(!toggleZigZag)}
                         rIcon={<GiAirZigzag />}
+                    />
+                    <IconButton
+                        borderColor={toggleVolProfile ? "green" : false}
+                        title="Volume Profile"
+                        onClick={() => setToggleVolProfile(!toggleVolProfile)}
+                        rIcon={
+                            <GiHistogram
+                                style={{ transform: "rotate(-90deg)" }}
+                            />
+                        }
                     />
                 </Flex>
                 {addIndicators && (
@@ -735,7 +768,7 @@ export default function Chart({ symbol, timeframe }) {
                         <input
                             title={"Zig Zag Tolerance"}
                             type="number"
-                            step={0.001}
+                            step={getZigZagStep(timeframe)}
                             onChange={(e) => setZigZagTolerance(e.target.value)}
                             value={zigZagTolerance}
                         />
@@ -785,4 +818,44 @@ export default function Chart({ symbol, timeframe }) {
             </div>
         </ChartContext.Provider>
     );
+}
+
+function getZigZagStep(timeframe) {
+    switch (timeframe) {
+        case "1Min":
+        case "5Min":
+        case "15Min":
+        case "30Min":
+        case "60Min":
+            return 0.001;
+        case "hourly":
+            return 0.005;
+
+        case "daily":
+        case "weekly":
+            return 0.01;
+
+        default:
+            break;
+    }
+}
+
+function initialZigZag(timeframe) {
+    switch (timeframe) {
+        case "1Min":
+        case "5Min":
+        case "15Min":
+        case "30Min":
+        case "60Min":
+            return 0.001;
+        case "hourly":
+            return 0.005;
+
+        case "daily":
+        case "weekly":
+            return 0.01;
+
+        default:
+            break;
+    }
 }

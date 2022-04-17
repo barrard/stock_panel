@@ -44,7 +44,7 @@ class MinMax {
                     val = { y: this.data[i].low };
                 } else if (isHighLow === "both") {
                     //if both, send both high and low, then later check what the last value was.....
-                    console.log(this.data[i]);
+                    // console.log(this.data[i]);
                     // debugger;
                     //why no y, WE NEED A y
                     //based on last value.name, if high then check is this high, else, take the low value
@@ -75,7 +75,7 @@ class MinMax {
             }
         }
 
-        console.log({ smoothMinMax });
+        // console.log({ smoothMinMax });
 
         /**   Second Step, filtering out the smaller moves */
         /**  * Use zigzag tolerance to alter the output */
@@ -86,7 +86,16 @@ class MinMax {
             //diff1 = high | dif2 = low
             let diff1, diff2;
             let lastVal = swings[swings.length - 1];
-            if (minMaxValue.dateTime === "3/11/2022, 1:00:00 AM") {
+            if (minMaxValue.dateTime === "11/17/2019, 8:00:00 PM") {
+                console.log(
+                    'minMaxValue.dateTime === "11/17/2019, 8:00:00 PM"'
+                );
+                console.log(
+                    'minMaxValue.dateTime === "11/17/2019, 8:00:00 PM"'
+                );
+                console.log(
+                    'minMaxValue.dateTime === "11/17/2019, 8:00:00 PM"'
+                );
                 debugger;
             }
 
@@ -119,7 +128,8 @@ class MinMax {
                             return;
                         }
                     }
-                } else if (lastVal.name === "low") {
+                }
+                if (lastVal.name === "low") {
                     if (minMaxValue.name === "low") {
                         if (minMaxValue.val.y <= lastVal.val.y) {
                             swings[swings.length - 1] = minMaxValue;
@@ -282,7 +292,7 @@ class MinMax {
                 }
             }
         });
-        console.log(smoothMinMax);
+        // console.log(smoothMinMax);
 
         return { swings, smoothMinMax };
     }
@@ -389,7 +399,7 @@ class MinMax {
 
             // debugger;
             if (highVal && lowVal) {
-                console.log("huh?");
+                // console.log("huh?");
                 // if (highDiff > lowDiff) {
                 //     return "high";
                 // } else if (highDiff < lowDiff) {

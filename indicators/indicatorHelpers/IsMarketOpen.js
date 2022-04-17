@@ -312,25 +312,61 @@ function getTimeTillRTH() {
     }
 }
 
+function isAfterHours(date) {
+    // if (!futuresAreTrading()) return false;
+    date || new Date();
+    // console.log(new Date(date).toLocaleString());
+
+    let { day, hour, minute } = eastCoastTime(date);
+    if (hour >= 16) {
+        return true;
+    }
+    return false;
+}
+function isOpeningBell(date) {
+    date = date || new Date();
+    let { day, hour, minute } = eastCoastTime(date);
+    if (hour === 9 && minute === 30) {
+        return true;
+    }
+    return false;
+}
+function isClosingBell(date) {
+    date = date || new Date();
+    let { day, hour, minute } = eastCoastTime(date);
+    if (hour === 15 && minute === 59) {
+        return true;
+    }
+    return false;
+}
+
 function isPreMarket(date) {
-    if (!futuresAreTrading()) return false;
+    // if (!futuresAreTrading()) return false;
     let now = date || new Date();
     now = new Date(now);
     now = new Date(now).getTime();
 
-    if (process.env.NODE_ENV === "DEV") {
-        //FOR LOCAL HAWAII DEVELOPMENT
-        let timeTill = makeTime(00, 00, "AM"); //4:30am
-        let timeStop = makeTime(3, 30, "AM"); //6:30am
-        console.log(timeTill <= now && now <= timeStop);
-        return timeTill <= now && now <= timeStop;
-    } else {
-        //FOR PROD SERVER WEST COAST
-        let timeTill = makeTime(3, 30, "AM"); //4:30am
-        let timeStop = makeTime(6, 30, "AM"); //6:30am
-        console.log(timeTill <= now && now <= timeStop);
-        return timeTill <= now && now <= timeStop;
+    let { day, hour, minute } = eastCoastTime(date);
+    if (hour < 9) {
+        return true;
+    } else if (hour == 9 && minute < 30) {
+        return true;
     }
+    return false;
+
+    // if (process.env.NODE_ENV === "DEV") {
+    //     //FOR LOCAL HAWAII DEVELOPMENT
+    //     let timeTill = makeTime(00, 00, "AM"); //4:30am
+    //     let timeStop = makeTime(3, 30, "AM"); //6:30am
+    //     console.log(timeTill <= now && now <= timeStop);
+    //     return timeTill <= now && now <= timeStop;
+    // } else {
+    //     //FOR PROD SERVER WEST COAST
+    //     let timeTill = makeTime(3, 30, "AM"); //4:30am
+    //     let timeStop = makeTime(6, 30, "AM"); //6:30am
+    //     console.log(timeTill <= now && now <= timeStop);
+    //     return timeTill <= now && now <= timeStop;
+    // }
 }
 
 function makeTime(hr, min, amPM) {
@@ -361,28 +397,31 @@ function getTimeTill(time) {
 }
 
 module.exports = {
-    isPreMarket,
-    getTimeTill,
-    getTimeTillRTH,
-    getTimeTillEvening,
-    isOptionsTime,
-    getExpStr,
-    getTimestampForTodaysOpen,
-    getTimestampForPreviousSession,
-    getTimestampForLastSession,
-    timeAsEST,
     checkBeginningNewDay,
-    forbiddenTimestamp,
     checkEndOpeningSessionTime,
-    eastCoastTime,
-    futuresAreTrading,
-    stocksAreTrading,
     checkForMaintenance,
-    isRTH,
-    isOpeningSession,
-    isAboutToOpen,
-    isAboutToClose,
-    checkOpenTime,
     checkNewDay,
+    checkOpenTime,
+    eastCoastTime,
+    forbiddenTimestamp,
+    futuresAreTrading,
+    getExpStr,
+    getTimestampForLastSession,
+    getTimestampForPreviousSession,
+    getTimestampForTodaysOpen,
+    getTimeTill,
+    getTimeTillEvening,
+    getTimeTillRTH,
+    isAboutToClose,
+    isAboutToOpen,
+    isAfterHours,
+    isOpeningSession,
+    isOptionsTime,
+    isPreMarket,
+    isRTH,
     maintenanceTime,
+    stocksAreTrading,
+    timeAsEST,
+    isOpeningBell,
+    isClosingBell,
 };

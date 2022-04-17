@@ -99,7 +99,9 @@ const HoverIcon = styled.div`
     cursor: pointer;
     display: inline;
     border: ${({ borderColor }) =>
-        borderColor ? `1px solid ${borderColor}` : "none"};
+        borderColor
+            ? `1px solid ${borderColor}`
+            : `1px solid ${"rgba(50,50,50,0.5)"}`};
 
     /* animation-iteration-count: infinite; */
     &:hover {
