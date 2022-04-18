@@ -133,19 +133,18 @@ class MinMax {
                     if (minMaxValue.name === "low") {
                         if (minMaxValue.val.y <= lastVal.val.y) {
                             swings[swings.length - 1] = minMaxValue;
-
                             return;
-                        } else if (minMaxValue.name === "both") {
-                            if (minMaxValue.val.low <= lastVal.val.y) {
-                                const newValue = {
-                                    index: minMaxValue.index,
-                                    dateTime: minMaxValue.dateTime,
-                                    val: { y: minMaxValue.val.low },
-                                    name: "high",
-                                };
-                                swings[swings.length - 1] = newValue;
-                                return;
-                            }
+                        }
+                    } else if (minMaxValue.name === "both") {
+                        if (minMaxValue.val.low <= lastVal.val.y) {
+                            const newValue = {
+                                index: minMaxValue.index,
+                                dateTime: minMaxValue.dateTime,
+                                val: { y: minMaxValue.val.low },
+                                name: "low",
+                            };
+                            swings[swings.length - 1] = newValue;
+                            return;
                         }
                     }
                 }
@@ -181,7 +180,6 @@ class MinMax {
 
             if (minMaxValue.name == "both") {
                 // if it was a high, then, replace the high
-
                 const highDiff = lastVal.val.y * moveLimit < diff1;
                 const lowDiff = lastVal.val.y * moveLimit < diff2;
                 if (!highDiff && !lowDiff) {
@@ -190,10 +188,8 @@ class MinMax {
                     return;
                 }
 
-                // debugger;
                 if (lastVal.name === "high" && lowDiff) {
                     // && minMaxValue.name === "high"
-                    // debugger;
                     //replace the last val with this high
                     const newVal = {
                         dateTime: minMaxValue.dateTime,
@@ -202,14 +198,13 @@ class MinMax {
                         index: minMaxValue.index,
                         val: { y: minMaxValue.val.low },
                     };
-                    if (lastVal.name === minMaxValue.name) {
-                        swings[swings.length - 1] = newVal;
-                    } else if (minMaxValue.name === "both") {
-                        swings.push(newVal);
-                    }
+                    // if (lastVal.name === minMaxValue.name) {
+                    //     swings[swings.length - 1] = newVal;
+                    // } else if (minMaxValue.name === "both") {
+                    swings.push(newVal);
+                    // }
                 } else if (lastVal.name === "low" && highDiff) {
                     // && minMaxValue.name === "low"
-                    // debugger;
                     //replace the last val with this low
                     const newVal = {
                         name: "high",
@@ -217,19 +212,17 @@ class MinMax {
                         dateTime: minMaxValue.dateTime,
                         val: { y: minMaxValue.val.high },
                     };
-                    if (lastVal.name === minMaxValue.name) {
-                        swings[swings.length - 1] = newVal;
-                    } else {
-                        swings.push(newVal);
-                    }
+                    // if (lastVal.name === minMaxValue.name) {
+                    //     swings[swings.length - 1] = newVal;
+                    // } else {
+                    swings.push(newVal);
+                    // }
                 } else {
-                    debugger;
                     //we got a new high or low, sooo check for which
 
                     console.log("is this a new swing???");
                     //if last was a high, and we got a new low, add it
                     if (lastVal.name === "high") {
-                        // debugger;
                         const newValue = {
                             dateTime: minMaxValue.dateTime,
 
@@ -240,7 +233,6 @@ class MinMax {
                         swings.push(newValue);
                         lastVal = newValue;
                     } else if (lastVal.name === "low") {
-                        // debugger;
                         const newValue = {
                             name: "high",
                             dateTime: minMaxValue.dateTime,

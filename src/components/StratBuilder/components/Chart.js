@@ -599,7 +599,7 @@ export default function Chart({ symbol, timeframe }) {
         drawVolProfile(
             toggleVolProfile,
             chartSvg,
-            volProfile.volProfile,
+            volProfile,
             yScales["mainChart"],
             margin,
             width
