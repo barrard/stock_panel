@@ -48,7 +48,6 @@ class CalcVolProfile {
         let valAreaVolSum = volProfile[priceHVN];
         let topIndex = indexPOC;
         let bottomIndex = indexPOC;
-        debugger;
 
         const { valueHigh, valueLow } = sumValArea(topIndex, bottomIndex);
         this.valueAreaHigh = prices[valueHigh];
@@ -67,9 +66,9 @@ class CalcVolProfile {
                 (acc, price) => acc + volProfile[price],
                 0
             );
-            console.log({ _2Above, _2Below });
+            // console.log({ _2Above, _2Below });
             if (aboveSum === belowSum) {
-                console.log("hmm, take both?");
+                // console.log("hmm, take both?");
                 valAreaVolSum += belowSum;
                 valAreaVolSum += aboveSum;
                 bottomIndex = bottomIndex - 2;
@@ -86,7 +85,7 @@ class CalcVolProfile {
             if (valAreaVolSum >= valAreaVol) {
                 return { valueHigh: topIndex, valueLow: bottomIndex };
             } else {
-                console.log({ valAreaVolSum, valAreaVol });
+                // console.log({ valAreaVolSum, valAreaVol });
                 return sumValArea(topIndex, bottomIndex);
             }
         }

@@ -184,7 +184,7 @@ class MinMax {
                 const lowDiff = lastVal.val.y * moveLimit < diff2;
                 if (!highDiff && !lowDiff) {
                     //this is insignificunt
-                    console.log("this is insignificunt", { highDiff, lowDiff });
+                    // console.log("this is insignificunt", { highDiff, lowDiff });
                     return;
                 }
 

@@ -9,7 +9,7 @@ import {
 // import { faWavePulse } from "@fortawesome/fontawesome-svg-core";
 import { faHackerrank } from "@fortawesome/free-brands-svg-icons";
 import { GiAirZigzag, GiHistogram } from "react-icons/gi";
-
+import extrema from "../../../indicators/indicatorHelpers/extrema";
 import AddIndicatorModal from "./AddIndicatorModal";
 import { IconButton, LoadingButton } from "./components";
 import StratContext from "../StratContext";
@@ -43,7 +43,7 @@ import {
     priceRangeGreen,
 } from "../../../components/charts/chartHelpers/utils";
 export default function Chart({ symbol, timeframe }) {
-    let width = 750;
+    let width = 950;
     let margin = {
         left: 20,
         right: 50,
@@ -51,7 +51,7 @@ export default function Chart({ symbol, timeframe }) {
         top: 20,
     };
     let indicatorHeight = 100;
-    let mainChartHeight = 250;
+    let mainChartHeight = 650;
 
     const {
         charts,
@@ -79,10 +79,19 @@ export default function Chart({ symbol, timeframe }) {
     const [priceLevelMinMax, setPriceLevelMinMax] = useState(10);
     const [priceLevelTolerance, setPriceLevelTolerance] = useState(10);
 
+    const [zigzagRegression, setZigzagRegression] = useState(true);
+    const [zigzagFibs, setZigzagFibs] = useState(true);
+
     const [priceLevels, setPriceLevels] = useState({});
+
     const { data, id: priceDataId } = charts[symbol][timeframe];
-    // console.log("data.length", data.length);
-    // console.log("width", width);
+
+    let chartIndicators = selectedStrat.indicators.filter(
+        (ind) => ind.priceData === priceDataId
+    );
+
+    let xScale = scaleLinear().range([0, width - (margin.right + margin.left)]);
+
     const title = `${symbol} ${timeframe}`;
     const svgRef = useRef();
     const [height, setHeight] = useState(mainChartHeight);
@@ -92,13 +101,6 @@ export default function Chart({ symbol, timeframe }) {
     const [indicatorCount, setIndicatorCount] = useState(0);
     const [lineSettings, setLineSettings] = useState({});
     const [selectedPatternResults, setSelectedPatternResults] = useState({});
-
-    // const [indicatorColors, setIndicatorColors] = useState({
-    // 	mainChart: "yellow",
-    // });
-    let innerWidth = width - (margin.left + margin.right);
-    let xScale = scaleLinear().range([0, width - (margin.right + margin.left)]);
-    let candleWidth = data.length / innerWidth;
     const [yScales, setYScales] = useState({
         mainChart: {
             yScale: scaleLinear().range([mainChartHeight, 0]),
@@ -128,13 +130,6 @@ export default function Chart({ symbol, timeframe }) {
         },
     });
 
-    // debugger
-
-    // let innerHeight = height - (margin.top + margin.bottom);
-
-    let chartIndicators = selectedStrat.indicators.filter(
-        (ind) => ind.priceData === priceDataId
-    );
     useEffect(() => {
         let volProfile = new CalcVolProfile(data);
         console.log(volProfile);
@@ -254,7 +249,37 @@ export default function Chart({ symbol, timeframe }) {
         priceLevels,
         toggleZigZag,
         toggleVolProfile,
+        zigzagFibs,
+        zigZagTolerance,
     ]);
+
+    useEffect(() => {
+        if ((zigzagFibs, toggleZigZag)) {
+            console.log(data);
+            console.log("DO SOMETHING!! zigzagFibs, toggleZigZag");
+            console.log({ data, minMax });
+
+            const lows = minMax.zigZag.swings.filter((d) => d.name === "low");
+            const highs = minMax.zigZag.swings.filter((d) => d.name === "high");
+            const lowLines = extrema.regressionAnalysis(
+                lows.map((low) => ({ y: low.val.y, x: low.index })),
+                5
+            );
+            const highLines = extrema.regressionAnalysis(
+                highs.map((high) => ({ y: high.val.y, x: high.index })),
+                5
+            );
+
+            console.log({ highLines, lowLines });
+            console.log({ highLines, lowLines });
+        }
+    }, [zigzagFibs, toggleZigZag]);
+
+    useEffect(() => {
+        if ((zigzagRegression, toggleZigZag)) {
+            console.log("DO SOMETHING!! zigzagRegression, toggleZigZag");
+        }
+    }, [zigzagRegression, toggleZigZag]);
 
     useEffect(() => {
         setChartSvg(select(svgRef.current));
@@ -269,6 +294,29 @@ export default function Chart({ symbol, timeframe }) {
             addClipPath(yScales, scale);
         }
     }, [chartSvg]);
+
+    let indicatorList = React.useMemo(
+        () =>
+            chartIndicators.map((ind) => {
+                // console.log(ind);
+                return (
+                    <IndicatorItem
+                        fetchAndUpdateIndicatorResults={
+                            fetchAndUpdateIndicatorResults
+                        }
+                        key={ind._id}
+                        ind={ind}
+                    />
+                );
+            }),
+        [selectedStrat.indicators.length]
+    );
+
+    if (!data) {
+        return;
+    }
+    let innerWidth = width - (margin.left + margin.right);
+    let candleWidth = data.length / innerWidth;
 
     const addClipPath = (yScales, scale) => {
         const { xScale, yOffset, height } = yScales[scale];
@@ -648,23 +696,6 @@ export default function Chart({ symbol, timeframe }) {
         );
     };
 
-    let indicatorList = React.useMemo(
-        () =>
-            chartIndicators.map((ind) => {
-                // console.log(ind);
-                return (
-                    <IndicatorItem
-                        fetchAndUpdateIndicatorResults={
-                            fetchAndUpdateIndicatorResults
-                        }
-                        key={ind._id}
-                        ind={ind}
-                    />
-                );
-            }),
-        [selectedStrat.indicators.length]
-    );
-
     const STATE = {
         draw,
         chartSvg,
@@ -772,6 +803,28 @@ export default function Chart({ symbol, timeframe }) {
                             onChange={(e) => setZigZagTolerance(e.target.value)}
                             value={zigZagTolerance}
                         />
+                        <div>
+                            <span>zigzagRegression</span>
+                            <input
+                                checked={zigzagRegression}
+                                type="checkbox"
+                                name="regression"
+                                onChange={(e) => {
+                                    setZigzagRegression((val) => !val);
+                                }}
+                            />
+                        </div>
+                        <div>
+                            <span>zigzagFibs</span>
+                            <input
+                                checked={zigzagFibs}
+                                type="checkbox"
+                                name="fibs"
+                                onChange={(e) => {
+                                    setZigzagFibs((val) => !val);
+                                }}
+                            />
+                        </div>
                     </>
                 )}
 

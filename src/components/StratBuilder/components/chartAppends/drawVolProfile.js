@@ -9,8 +9,6 @@ export default function drawVolProfile(
     margin,
     width
 ) {
-    console.log("ok");
-    debugger;
     const profileBarClassName = "volProfileBar";
     const valueAreaClassName = "valueArea";
     const POC_ClassName = "POC_VolProfile";
