@@ -206,6 +206,7 @@ function getEMA_Trend({ ema, close }) {
     }, null);
     //if not all ema in uptrend order, just check the EMA50/200
     //maybe a pullback is causing this
+    console.log({ emaOrderDownTrend, emaOrderUpTrend });
     if (emaOrderUpTrend) return "uptrend";
     if (emaOrderDownTrend) return "downtrend";
     let bullishPullback = false;
@@ -301,7 +302,7 @@ function emaPriceCheck(data) {
             isPriceAboveAll = false;
         }
     });
-
+    console.log({ isPriceAboveAll, isPriceBelowAll });
     if (isPriceBelowAll) {
         return "downtrend";
     } else if (isPriceAboveAll) {

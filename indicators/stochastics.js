@@ -163,6 +163,7 @@ function evalStoch(prev, curr) {
             : K <= 20 && D <= 20
             ? "oversold" //1
             : "middle"; //5;
+    console.log({ prevDir, K, D });
     if (prevDir == "middle") return "middle";
     var { K, D } = curr.stochastics;
     // let meowState = getStochState(meow);
@@ -175,8 +176,9 @@ function evalStoch(prev, curr) {
             : D >= 90 && K >= 90 && prevDir == "overbought" //&& meowState !== "up"
             ? "oversold" //this means we want to buy....its racing up
             : D <= 10 && K <= 10 && prevDir == "oversold" //&& meowState !== "up"
-            ? "overbought" //this means we want to buy....its racing up
+            ? "overbought" //this means we want to sell....its racing up
             : "middle";
+    console.log({ currDir, K, D });
 
     if (!currDir) {
         console.log("dbug");
