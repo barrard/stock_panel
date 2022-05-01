@@ -295,6 +295,46 @@ export default function Chart({ symbol, timeframe }) {
         }
     }, [chartSvg]);
 
+    const fetchAndUpdateIndicatorResults = async (ind) => {
+        let inputs = {};
+        ind.inputs.forEach((inp) => {
+            let { name } = inp;
+            if (name.includes("inReal")) {
+                let flag = ind.selectedInputs[name];
+                inputs[name] = data.map((d) => d[flag]);
+            } else if (name === "inPeriods") {
+                inputs[name] = ind.variablePeriods;
+            } else if (inp.flags) {
+                Object.values(inp.flags).map((flag) => {
+                    inputs[flag] = data.map((d) => d[flag]);
+                });
+            } else {
+                console.log("ok");
+            }
+        });
+        let results = await API.getIndicatorResults(ind, inputs);
+        if (!results || !results.result || results.err) {
+            console.log(results);
+            console.log("err?");
+            return;
+        }
+        // console.log(results);
+        debugger;
+        updateIndicatorResults({
+            indicator: ind,
+            result: results.result,
+            symbol,
+            timeframe,
+        });
+        setYScales((yScales) => {
+            if (yScales[ind._id]) {
+                yScales[ind._id].data = results.result.result;
+            }
+            return { ...yScales };
+        });
+        draw();
+    };
+
     let indicatorList = React.useMemo(
         () =>
             chartIndicators.map((ind) => {
@@ -339,45 +379,6 @@ export default function Chart({ symbol, timeframe }) {
 
         priceRangeRed(chartSvg.select("defs"));
         priceRangeGreen(chartSvg.select("defs"));
-    };
-
-    const fetchAndUpdateIndicatorResults = async (ind) => {
-        let inputs = {};
-        ind.inputs.forEach((inp) => {
-            let { name } = inp;
-            if (name.includes("inReal")) {
-                let flag = ind.selectedInputs[name];
-                inputs[name] = data.map((d) => d[flag]);
-            } else if (name === "inPeriods") {
-                inputs[name] = ind.variablePeriods;
-            } else if (inp.flags) {
-                Object.values(inp.flags).map((flag) => {
-                    inputs[flag] = data.map((d) => d[flag]);
-                });
-            } else {
-                console.log("ok");
-            }
-        });
-        let results = await API.getIndicatorResults(ind, inputs);
-        if (!results || results.err) {
-            console.log(results);
-            console.log("err?");
-            return;
-        }
-        // console.log(results);
-        updateIndicatorResults({
-            indicator: ind,
-            result: results.result,
-            symbol,
-            timeframe,
-        });
-        setYScales((yScales) => {
-            if (yScales[ind._id]) {
-                yScales[ind._id].data = results.result.result;
-            }
-            return { ...yScales };
-        });
-        draw();
     };
 
     const getYMinMax = (data, isVolume) => {
@@ -676,8 +677,15 @@ export default function Chart({ symbol, timeframe }) {
                 [width, height],
             ]) //pan left and right
             .on("zoom", () => {
+                console.log("zoom");
                 const zoomState = zoomTransform(chartSvg.node());
                 setCurrentZoom(zoomState);
+            })
+            .on("start", () => {
+                console.log("start");
+            })
+            .on("end", () => {
+                console.log("end");
             });
 
         chartSvg.call(zoomBehavior);
