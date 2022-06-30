@@ -19,7 +19,9 @@ import { drawHighLows } from "./drawHighLow";
 import drawPriceLevels from "./drawPriceLevels";
 import drawZigZag from "./drawZigZag";
 import drawVolProfile from "./drawVolProfile";
+import drawZigZagRegression from "./drawZigZagRegression";
 export {
+    drawZigZagRegression,
     drawZigZag,
     drawVolProfile,
     appendChartPatterns,

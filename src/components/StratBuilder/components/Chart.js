@@ -9,7 +9,6 @@ import {
 // import { faWavePulse } from "@fortawesome/fontawesome-svg-core";
 import { faHackerrank } from "@fortawesome/free-brands-svg-icons";
 import { GiAirZigzag, GiHistogram } from "react-icons/gi";
-import extrema from "../../../indicators/indicatorHelpers/extrema";
 import AddIndicatorModal from "./AddIndicatorModal";
 import { IconButton, LoadingButton } from "./components";
 import StratContext from "../StratContext";
@@ -28,6 +27,7 @@ import {
     drawPriceLevels,
     drawZigZag,
     drawVolProfile,
+    drawZigZagRegression,
 } from "./chartAppends";
 import { IndicatorItem, LineSettings } from "./chartComponents";
 import {
@@ -35,6 +35,7 @@ import {
     StyledXAxis,
     StyledYAxis,
     Flex,
+    WhiteLine,
 } from "./chartComponents/styled";
 import ChartContext from "./ChartContext";
 import { MinMax, PriceLevels, CalcVolProfile } from "./chartComponents/classes";
@@ -63,7 +64,7 @@ export default function Chart({ symbol, timeframe }) {
     } = useContext(StratContext);
 
     const [toggleHighLow, setDrawHighLow] = useState(false);
-    const [minMaxTolerance, setMinMaxTolerance] = useState(10);
+    const [minMaxTolerance, setMinMaxTolerance] = useState(1);
     const [zigZagTolerance, setZigZagTolerance] = useState(
         initialZigZag(timeframe)
     );
@@ -78,9 +79,11 @@ export default function Chart({ symbol, timeframe }) {
     const [toggleVolProfile, setToggleVolProfile] = useState(false);
     const [priceLevelMinMax, setPriceLevelMinMax] = useState(10);
     const [priceLevelTolerance, setPriceLevelTolerance] = useState(10);
+    const [zigZagRegressionErrorLimit, setZigZagRegressionErrorLimit] =
+        useState(5);
 
-    const [zigzagRegression, setZigzagRegression] = useState(true);
-    const [zigzagFibs, setZigzagFibs] = useState(true);
+    const [toggleZigzagRegression, setToggleZigzagRegression] = useState(false);
+    const [toggleZigzagFibs, setToggleZigzagFibs] = useState(false);
 
     const [priceLevels, setPriceLevels] = useState({});
 
@@ -209,19 +212,27 @@ export default function Chart({ symbol, timeframe }) {
         let minMax = new MinMax(
             data,
             parseFloat(minMaxTolerance),
-            parseFloat(zigZagTolerance)
+            parseFloat(zigZagTolerance),
+            parseFloat(zigZagRegressionErrorLimit)
         );
 
-        let { lowNodes, highNodes, highLowerLows, highLowerHighs, zigZag } =
-            minMax;
+        let {
+            lowNodes,
+            highNodes,
+            highLowerLows,
+            highLowerHighs,
+            zigZag,
+            regressionZigZag,
+        } = minMax;
         setMinMax({
             lowNodes,
             highNodes,
             highLowerLows,
             highLowerHighs,
             zigZag,
+            regressionZigZag,
         });
-    }, [data, minMaxTolerance, zigZagTolerance]);
+    }, [data, minMaxTolerance, zigZagTolerance, zigZagRegressionErrorLimit]);
 
     useEffect(() => {
         let priceLevels = new PriceLevels(
@@ -234,7 +245,7 @@ export default function Chart({ symbol, timeframe }) {
     }, [data, priceLevelMinMax, priceLevelTolerance]);
 
     useEffect(() => {
-        // console.log("draw");
+        console.log("draw");
         // console.log(minMax);
         draw();
     }, [
@@ -249,37 +260,11 @@ export default function Chart({ symbol, timeframe }) {
         priceLevels,
         toggleZigZag,
         toggleVolProfile,
-        zigzagFibs,
+        toggleZigzagFibs,
+        toggleZigzagRegression,
         zigZagTolerance,
+        zigZagRegressionErrorLimit,
     ]);
-
-    useEffect(() => {
-        if ((zigzagFibs, toggleZigZag)) {
-            console.log(data);
-            console.log("DO SOMETHING!! zigzagFibs, toggleZigZag");
-            console.log({ data, minMax });
-
-            const lows = minMax.zigZag.swings.filter((d) => d.name === "low");
-            const highs = minMax.zigZag.swings.filter((d) => d.name === "high");
-            const lowLines = extrema.regressionAnalysis(
-                lows.map((low) => ({ y: low.val.y, x: low.index })),
-                5
-            );
-            const highLines = extrema.regressionAnalysis(
-                highs.map((high) => ({ y: high.val.y, x: high.index })),
-                5
-            );
-
-            console.log({ highLines, lowLines });
-            console.log({ highLines, lowLines });
-        }
-    }, [zigzagFibs, toggleZigZag]);
-
-    useEffect(() => {
-        if ((zigzagRegression, toggleZigZag)) {
-            console.log("DO SOMETHING!! zigzagRegression, toggleZigZag");
-        }
-    }, [zigzagRegression, toggleZigZag]);
 
     useEffect(() => {
         setChartSvg(select(svgRef.current));
@@ -642,6 +627,17 @@ export default function Chart({ symbol, timeframe }) {
             minMax,
             yScales["mainChart"],
             margin,
+            candleWidth,
+            toggleZigzagRegression
+        );
+
+        drawZigZagRegression(
+            toggleZigzagRegression,
+            chartSvg,
+            data,
+            minMax,
+            yScales["mainChart"],
+            margin,
             candleWidth
         );
 
@@ -773,6 +769,8 @@ export default function Chart({ symbol, timeframe }) {
                 )}
                 {toggleHighLow && (
                     <>
+                        <WhiteLine />
+
                         <p>High Low</p>
 
                         <input
@@ -784,6 +782,8 @@ export default function Chart({ symbol, timeframe }) {
                 )}
                 {togglePriceLevels && (
                     <>
+                        <WhiteLine />
+
                         <p>Price Levels</p>
                         <input
                             type="number"
@@ -803,6 +803,7 @@ export default function Chart({ symbol, timeframe }) {
                 )}
                 {toggleZigZag && (
                     <>
+                        <WhiteLine />
                         <p>ZigZag Tolerance</p>
                         <input
                             title={"Zig Zag Tolerance"}
@@ -814,22 +815,37 @@ export default function Chart({ symbol, timeframe }) {
                         <div>
                             <span>zigzagRegression</span>
                             <input
-                                checked={zigzagRegression}
+                                checked={toggleZigzagRegression}
                                 type="checkbox"
                                 name="regression"
                                 onChange={(e) => {
-                                    setZigzagRegression((val) => !val);
+                                    setToggleZigzagRegression((val) => !val);
                                 }}
                             />
+                            {toggleZigzagRegression && (
+                                <>
+                                    <p>zigZag Regression Error Limit</p>
+                                    <input
+                                        title={"Zig Zag Tolerance"}
+                                        type="number"
+                                        onChange={(e) =>
+                                            setZigZagRegressionErrorLimit(
+                                                e.target.value
+                                            )
+                                        }
+                                        value={zigZagRegressionErrorLimit}
+                                    />
+                                </>
+                            )}
                         </div>
                         <div>
                             <span>zigzagFibs</span>
                             <input
-                                checked={zigzagFibs}
+                                checked={toggleZigzagFibs}
                                 type="checkbox"
                                 name="fibs"
                                 onChange={(e) => {
-                                    setZigzagFibs((val) => !val);
+                                    setToggleZigzagFibs((val) => !val);
                                 }}
                             />
                         </div>
@@ -838,6 +854,7 @@ export default function Chart({ symbol, timeframe }) {
 
                 <div style={{ border: "1px solid blue", position: "relative" }}>
                     {lineSettings.lineName && <LineSettings />}
+
                     <StyledSVG
                         width={width}
                         margin={margin}

@@ -16,6 +16,7 @@ export default function drawVolProfile(
     const { yScale } = yScales;
     chartSvg.selectAll(`.${profileBarClassName}`).remove();
     chartSvg.selectAll(`.${valueAreaClassName}`).remove();
+    chartSvg.selectAll(`.${POC_ClassName}`).remove();
 
     const halfWidth = (width - (margin.left + margin.right)) / 2;
     if (!toggleVolProfile) return;
@@ -77,13 +78,9 @@ export default function drawVolProfile(
         .attr("x1", (d) => halfWidth)
         .attr("x2", 9999999)
         .attr("y1", (d) => {
-            debugger;
-            console.log(yScale(d) + margin.top);
             return yScale(d) + margin.top;
         })
         .attr("y2", (d) => {
-            debugger;
-            console.log(yScale(d) + margin.top);
             return yScale(d) + margin.top;
         })
         .style("opacity", 0.7)
@@ -126,13 +123,9 @@ export default function drawVolProfile(
         .attr("x1", (d) => halfWidth)
         .attr("x2", 9999999)
         .attr("y1", (d) => {
-            debugger;
-            console.log(yScale(d) + margin.top);
             return yScale(d) + margin.top;
         })
         .attr("y2", (d) => {
-            debugger;
-            console.log(yScale(d) + margin.top);
             return yScale(d) + margin.top;
         })
         // .style("opacity", 0.7)

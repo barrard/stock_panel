@@ -1,9 +1,17 @@
 import { makeEMA } from "../../../../../indicators/indicatorHelpers/MovingAverage";
+import extrema from "../../../../../indicators/indicatorHelpers/extrema";
+
 class MinMax {
-    constructor(data, tolerance = 1, zigZagTolerance = 0.019) {
+    constructor(
+        data,
+        tolerance = 1,
+        zigZagTolerance = 0.019,
+        zigZagRegressionErrorLimit
+    ) {
         this.data = data;
         this.tolerance = tolerance > 0 ? tolerance : 1;
         this.zigZagTolerance = zigZagTolerance > 0 ? zigZagTolerance : 0.0001;
+        this.zigZagRegressionErrorLimit = zigZagRegressionErrorLimit || 5;
         // this.highs = data.map((d) => d.high);
         // this.lows = data.map((d) => d.low);
 
@@ -12,26 +20,22 @@ class MinMax {
         this.highLowerLows = this.highLower("low");
         this.highLowerHighs = this.highLower("high");
         this.zigZag = this.getZigZag();
+        this.regressionZigZag = this.runRegressionSwings();
     }
 
     getZigZag() {
         //make a smooth MA
         const smoothValue = 1;
-
-        // let smooth = makeEMA(this.data, smoothValue);
-        // smooth = smooth.slice(0, 10);
-        // console.log(smooth);
         const smoothMinMax = [];
         const t = smoothValue;
         //Loop to find all high and low locals
         for (let i = t; i < this.data.length - t; i++) {
-            // console.log(this.data[i]);
             if (i === t) {
                 smoothMinMax.push({
                     val: { y: this.data[i].close },
                     name: "start",
                     index: i,
-                    dateTime: this.data[i].dateTime,
+                    dateTime: this.data[i]?.datetime || this.data[i]?.timestamp,
                 });
             }
             let { middle, left, right } = this.leftRightCenter(this.data, i, t);
@@ -39,28 +43,24 @@ class MinMax {
             if (isHighLow) {
                 let val;
                 if (isHighLow === "high") {
-                    val = { y: this.data[i].high };
+                    val = { y: this.data[i].close };
+                    // val = { y: this.data[i].high };
                 } else if (isHighLow === "low") {
-                    val = { y: this.data[i].low };
+                    val = { y: this.data[i].close };
+                    // val = { y: this.data[i].low };
                 } else if (isHighLow === "both") {
                     //if both, send both high and low, then later check what the last value was.....
-                    // console.log(this.data[i]);
-                    // debugger;
+
                     //why no y, WE NEED A y
                     //based on last value.name, if high then check is this high, else, take the low value
                     const last_smoothMinMax =
                         smoothMinMax[smoothMinMax.length - 1];
-                    if (last_smoothMinMax.name === "low") {
-                        // console.log("Last val was a low");
-                        // debugger;
-                    } else if (last_smoothMinMax.name === "high") {
-                        // console.log("Last val was a high");
-                        // debugger;
-                    } else {
-                        // console.error("STOP");
-                        // debugger;
-                    }
-                    val = { high: this.data[i].high, low: this.data[i].low };
+
+                    val = {
+                        high: this.data[i].high,
+                        low: this.data[i].low,
+                        close: this.data[i].close,
+                    };
                 } else {
                     // debugger;
                     console.log("WHHHAAATT??!!");
@@ -83,21 +83,8 @@ class MinMax {
         const swings = [smoothMinMax[0]];
 
         smoothMinMax.forEach((minMaxValue, i, arr) => {
-            //diff1 = high | dif2 = low
             let diff1, diff2;
             let lastVal = swings[swings.length - 1];
-            if (minMaxValue.dateTime === "11/17/2019, 8:00:00 PM") {
-                console.log(
-                    'minMaxValue.dateTime === "11/17/2019, 8:00:00 PM"'
-                );
-                console.log(
-                    'minMaxValue.dateTime === "11/17/2019, 8:00:00 PM"'
-                );
-                console.log(
-                    'minMaxValue.dateTime === "11/17/2019, 8:00:00 PM"'
-                );
-                debugger;
-            }
 
             if (minMaxValue.val.y !== undefined) {
                 diff1 = Math.abs(lastVal.val.y - minMaxValue.val.y);
@@ -189,7 +176,6 @@ class MinMax {
                 }
 
                 if (lastVal.name === "high" && lowDiff) {
-                    // && minMaxValue.name === "high"
                     //replace the last val with this high
                     const newVal = {
                         dateTime: minMaxValue.dateTime,
@@ -198,13 +184,9 @@ class MinMax {
                         index: minMaxValue.index,
                         val: { y: minMaxValue.val.low },
                     };
-                    // if (lastVal.name === minMaxValue.name) {
-                    //     swings[swings.length - 1] = newVal;
-                    // } else if (minMaxValue.name === "both") {
+
                     swings.push(newVal);
-                    // }
                 } else if (lastVal.name === "low" && highDiff) {
-                    // && minMaxValue.name === "low"
                     //replace the last val with this low
                     const newVal = {
                         name: "high",
@@ -212,15 +194,10 @@ class MinMax {
                         dateTime: minMaxValue.dateTime,
                         val: { y: minMaxValue.val.high },
                     };
-                    // if (lastVal.name === minMaxValue.name) {
-                    //     swings[swings.length - 1] = newVal;
-                    // } else {
+
                     swings.push(newVal);
-                    // }
                 } else {
                     //we got a new high or low, sooo check for which
-
-                    console.log("is this a new swing???");
                     //if last was a high, and we got a new low, add it
                     if (lastVal.name === "high") {
                         const newValue = {
@@ -280,13 +257,33 @@ class MinMax {
                     }
                 } else {
                     swings.push(minMaxValue);
-                    // lastVal = minMaxValue;
                 }
             }
         });
-        // console.log(smoothMinMax);
+
+        this.swings = swings;
 
         return { swings, smoothMinMax };
+    }
+
+    runRegressionSwings() {
+        console.log(this.swings);
+        if (!this.swings?.length && this.swings[0] !== undefined) {
+            return;
+        }
+        const lows = this.swings.filter((d) => {
+            return d?.name === "low";
+        });
+        const highs = this.swings.filter((d) => d?.name === "high");
+        const regressionLowLines = extrema.regressionAnalysis(
+            lows.map((low) => ({ y: low.val.y, x: low.index })),
+            this.zigZagRegressionErrorLimit
+        );
+        const regressionHighLines = extrema.regressionAnalysis(
+            highs.map((high) => ({ y: high.val.y, x: high.index })),
+            this.zigZagRegressionErrorLimit
+        );
+        return { regressionLowLines, regressionHighLines };
     }
 
     //loop over the high/low node indexes and compare to the previous node
@@ -343,6 +340,8 @@ class MinMax {
         let found = true;
         //Test for highs
         if (highLow === "high") {
+            //USE THE CLOSE INSTEAD OF THE HIGH
+            highLow = "close";
             //test the left
             left.forEach((val) => {
                 if (val[highLow] > middle[highLow]) found = false;
@@ -356,6 +355,8 @@ class MinMax {
         }
         //test for lows
         else if (highLow === "low") {
+            //USE THE CLOSE INSTEAD OF THE HIGH
+            highLow = "close";
             //test the left
             left.forEach((val) => {
                 if (val[highLow] < middle[highLow]) found = false;
@@ -373,16 +374,18 @@ class MinMax {
             let lowDiff = 0;
             //determine is this is a high or low
             //check High
-            [...left, ...right].forEach(({ high }) => {
-                if (high > middle.high) {
+            [...left, ...right].forEach(({ high, close }) => {
+                if (close > middle.close) {
+                    // if (high > middle.high) {
                     // let _highDiff = high - middle.high;
                     highVal = false;
                     // highDiff = highDiff < _highDiff ? _highDiff : highDiff;
                 }
             });
             //check low
-            [...left, ...right].forEach(({ low }) => {
-                if (low < middle.low) {
+            [...left, ...right].forEach(({ low, close }) => {
+                if (close < middle.close) {
+                    // if (low < middle.low) {
                     // let _lowDiff = middle.low - low;
                     // lowDiff = _lowDiff < lowDiff ? lowDiff : _lowDiff;
                     lowVal = false;

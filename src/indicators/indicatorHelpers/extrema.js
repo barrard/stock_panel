@@ -159,9 +159,13 @@ function mergeImportantPriceLevels(priceLevels, priceLevelSensitivity) {
 
 function regressionAnalysis(points, errLimit, lines = [], count = 2) {
     //Make two line and compare
+    debugger;
     let { line1, line2, current_count, pointsArray } = RMSerror(points, count);
     //compare the error
     let error = line2.results_error;
+    //NEW use percent error limit
+    const percentageErrorValue = line1.y1 * (errLimit / 100);
+    debugger;
     /**
      * If the RMS error is too high
      * we will just take the last good line (line1)
@@ -171,7 +175,7 @@ function regressionAnalysis(points, errLimit, lines = [], count = 2) {
     let badLine1 = isNaN(line1.results_error);
     let badLine2 = isNaN(line2.results_error);
 
-    if (error > errLimit && !badLine1 && !badLine2) {
+    if (error > percentageErrorValue && !badLine1 && !badLine2) {
         //we need to save line 1, and restart the function with spliced array
         let nearbyPoints = pointsArray.slice(0, count);
         pointsArray.splice(0, count - 1);
@@ -316,6 +320,7 @@ function findLineByLeastSquares(points) {
 // y = [ 0,   1,   2,   3,  2,   3.2,   4,   5,   1,   0];
 // x = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 export default {
+    pythagorean,
     minMax,
     mergeImportantPriceLevels,
     consolidateMinMaxValues,

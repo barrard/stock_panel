@@ -21,11 +21,12 @@ module.exports = {
     emaPullBackCheck,
 };
 const EMA9 = 9;
-const EMA20 = 20;
+const EMA20 = 21;
 const EMA50 = 50;
 const EMA200 = 200;
 
-const emaValues = [EMA9, EMA20, EMA50, EMA200];
+// const emaValues = [EMA9, EMA20, EMA50, EMA200];
+const emaValues = [EMA9, EMA20];
 
 function emaPullBackCheck(allData) {
     let data = allData.slice(-1)[0];

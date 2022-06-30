@@ -10,6 +10,11 @@ export const LineSettingsModalContainer = styled.div`
     border: 1px solid #fff;
 `;
 
+export const WhiteLine = styled.hr`
+    height: 2px;
+    background-color: #eee;
+    border: none;
+`;
 export const Small = styled.span`
     font-size: 10px;
     padding: 0.2em;
