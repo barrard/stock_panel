@@ -5,13 +5,16 @@ import { withRouter } from "react-router";
 import styled from "styled-components";
 import { getOpAlerts } from "../redux/actions/opActions.js";
 import API from "./API.js";
-import Tree from "react-d3-tree";
 import OptionsChart from "./charts/OptionsChart.js";
 import Switch from "react-switch";
 // import { saveAs } from "file-saver";
-import XLSX from "xlsx";
+import * as XLSX from "xlsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileExcel, faFileExport, faFileDownload } from "@fortawesome/free-solid-svg-icons";
+import {
+    faFileExcel,
+    faFileExport,
+    faFileDownload,
+} from "@fortawesome/free-solid-svg-icons";
 
 // import {ensure_not_loggedin} from '../components/utils/auth.js'
 import { histogram } from "d3-array";
@@ -120,7 +123,9 @@ class OpAlerts extends React.Component {
                             className="filterSwitch"
                             onChange={() => {
                                 let lessThan = this.state[`lessThan_${name}`];
-                                this.setState({ [`lessThan_${name}`]: !lessThan });
+                                this.setState({
+                                    [`lessThan_${name}`]: !lessThan,
+                                });
                             }}
                             checked={this.state[`lessThan_${name}`]}
                             offColor="#333"
@@ -197,30 +202,57 @@ class OpAlerts extends React.Component {
                             {this.state[`filter_${f}`] && (
                                 <div key={f} className="col flex_center">
                                     <div className="row flex_center">
-                                        <div className="col-sm-12 flex_center sm-title">{filterTitle(f)}</div>
+                                        <div className="col-sm-12 flex_center sm-title">
+                                            {filterTitle(f)}
+                                        </div>
                                         <div className="col-sm-12 flex_center">
                                             {/* LESS THAN LABEL */}
-                                            {this.state[`filter_${f}`] !== "" && this.state[`lessThan_${f}`] && (
-                                                <div>
-                                                    <span className="red">Less</span> Than {this.state[`filter_${f}`]}
-                                                </div>
-                                            )}
+                                            {this.state[`filter_${f}`] !== "" &&
+                                                this.state[`lessThan_${f}`] && (
+                                                    <div>
+                                                        <span className="red">
+                                                            Less
+                                                        </span>{" "}
+                                                        Than{" "}
+                                                        {
+                                                            this.state[
+                                                                `filter_${f}`
+                                                            ]
+                                                        }
+                                                    </div>
+                                                )}
                                             {/* GREATER THAN LABEL */}
                                             {this.state[`filter_${f}`] !== "" &&
-                                                typeof this.state[`lessThan_${f}`] !== undefined &&
-                                                this.state[`lessThan_${f}`] === false && (
+                                                typeof this.state[
+                                                    `lessThan_${f}`
+                                                ] !== undefined &&
+                                                this.state[`lessThan_${f}`] ===
+                                                    false && (
                                                     <div>
-                                                        <span className="green">Greater</span> Than{" "}
-                                                        {this.state[`filter_${f}`]}
+                                                        <span className="green">
+                                                            Greater
+                                                        </span>{" "}
+                                                        Than{" "}
+                                                        {
+                                                            this.state[
+                                                                `filter_${f}`
+                                                            ]
+                                                        }
                                                     </div>
                                                 )}
                                             {/* EQUAL TO LABEL */}
-                                            {this.state[`filter_${f}`] !== "" && (f === "symbol" || f === "dateTime") && (
-                                                <div>
-                                                    {/* <span className="yellow">Equal</span> Than{" "} */}
-                                                    {this.state[`filter_${f}`]}
-                                                </div>
-                                            )}
+                                            {this.state[`filter_${f}`] !== "" &&
+                                                (f === "symbol" ||
+                                                    f === "dateTime") && (
+                                                    <div>
+                                                        {/* <span className="yellow">Equal</span> Than{" "} */}
+                                                        {
+                                                            this.state[
+                                                                `filter_${f}`
+                                                            ]
+                                                        }
+                                                    </div>
+                                                )}
                                         </div>
                                     </div>
                                 </div>
@@ -254,17 +286,23 @@ class OpAlerts extends React.Component {
                         if (filteredArray) return true;
                     });
                 } else if (f === "dateTime") {
-                    filterValue = new Date(filterValue).toLocaleString().split(",")[0];
+                    filterValue = new Date(filterValue)
+                        .toLocaleString()
+                        .split(",")[0];
                     alerts = alerts.filter((a) => {
                         let filteredArray = false;
                         // a.alerts.forEach((a) => {
-                        let dateTime = new Date(a.dateTime).toLocaleString().split(",")[0];
+                        let dateTime = new Date(a.dateTime)
+                            .toLocaleString()
+                            .split(",")[0];
                         if (dateTime == filterValue) filteredArray = true;
                         // });
                         if (filteredArray) return true;
                     });
                 } else if (f === "daysToExpiration") {
-                    alerts = alerts.filter((a) => a.daysToExpiration === parseInt(filterValue));
+                    alerts = alerts.filter(
+                        (a) => a.daysToExpiration === parseInt(filterValue)
+                    );
                 } else {
                     alerts = filterByFilter(f, alerts);
                 }
@@ -295,7 +333,13 @@ class OpAlerts extends React.Component {
     }
     async getAlert(symbol, exp, strike, putCall, timestamp) {
         let alertDay = new Date(timestamp).toLocaleString().split(",")[0];
-        let { selectedSymbol, selectedExp, selectedStrike, selectedPutCall, selectedAlertDay } = this.state;
+        let {
+            selectedSymbol,
+            selectedExp,
+            selectedStrike,
+            selectedPutCall,
+            selectedAlertDay,
+        } = this.state;
         if (
             selectedSymbol === symbol &&
             selectedExp === exp &&
@@ -355,12 +399,19 @@ class OpAlerts extends React.Component {
                 }
             );
         }
-        let opString = `${symbol} ${exp} ${putCall === "CALL" ? "c" : "p"} @$${strike}`;
+        let opString = `${symbol} ${exp} ${
+            putCall === "CALL" ? "c" : "p"
+        } @$${strike}`;
 
         copyTextToClipboard(opString);
 
         let alerts = this.props.options.alerts;
-        let snapData = await API.fetchOpAlertData({ symbol, strike, exp, putCall });
+        let snapData = await API.fetchOpAlertData({
+            symbol,
+            strike,
+            exp,
+            putCall,
+        });
         let allSnaps = [];
 
         //the database has a conflict, this code may be able to be changed TODO
@@ -374,7 +425,12 @@ class OpAlerts extends React.Component {
         });
         allSnaps = allSnaps.sort((a, b) => a.timestamp - b.timestamp);
         alerts = alerts.filter((a) => {
-            if (a.symbol === symbol && a.exp === exp && a.strike === strike && a.putCall === putCall) {
+            if (
+                a.symbol === symbol &&
+                a.exp === exp &&
+                a.strike === strike &&
+                a.putCall === putCall
+            ) {
                 return a;
             }
         });
@@ -398,7 +454,9 @@ class OpAlerts extends React.Component {
                     <div className="col-sm-12 flex_center">
                         <h4>{label} </h4>
                     </div>
-                    <div className="col-sm-12 flex_center">{this.dropDownSelect(name, array, label)}</div>
+                    <div className="col-sm-12 flex_center">
+                        {this.dropDownSelect(name, array, label)}
+                    </div>
                 </div>
             </div>
         );
@@ -412,7 +470,10 @@ class OpAlerts extends React.Component {
         setTimeout(() => {
             const yOffset = -40;
             const element = document.getElementById(id);
-            const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+            const y =
+                element.getBoundingClientRect().top +
+                window.pageYOffset +
+                yOffset;
 
             window.scrollTo({ top: y, behavior: "smooth" });
         }, 0);
@@ -424,23 +485,41 @@ class OpAlerts extends React.Component {
                 <div className="full-width">
                     <div className="row flex_center">
                         <div className="col flex_center sm-title p-0">#</div>
-                        <div onClick={() => this.sortBy("putCall")} className="col flex_center sm-title p-0">
+                        <div
+                            onClick={() => this.sortBy("putCall")}
+                            className="col flex_center sm-title p-0"
+                        >
                             Put/Call
                         </div>
 
-                        <div onClick={() => this.sortBy("daysToExpiration")} className="col flex_center sm-title p-0">
+                        <div
+                            onClick={() => this.sortBy("daysToExpiration")}
+                            className="col flex_center sm-title p-0"
+                        >
                             Days to Expire
                         </div>
-                        <div onClick={() => this.sortBy("percOTM")} className="col flex_center sm-title p-0">
+                        <div
+                            onClick={() => this.sortBy("percOTM")}
+                            className="col flex_center sm-title p-0"
+                        >
                             % OTM
                         </div>
-                        <div onClick={() => this.sortBy("volumeIncrease")} className="col flex_center sm-title p-0">
+                        <div
+                            onClick={() => this.sortBy("volumeIncrease")}
+                            className="col flex_center sm-title p-0"
+                        >
                             Vol Increase
                         </div>
-                        <div onClick={() => this.sortBy("last")} className="col flex_center sm-title p-0">
+                        <div
+                            onClick={() => this.sortBy("last")}
+                            className="col flex_center sm-title p-0"
+                        >
                             Alert Price
                         </div>
-                        <div onClick={() => this.sortBy("maxPercentPL")} className="col flex_center sm-title p-0">
+                        <div
+                            onClick={() => this.sortBy("maxPercentPL")}
+                            className="col flex_center sm-title p-0"
+                        >
                             Max %PL
                         </div>
                     </div>
@@ -460,7 +539,9 @@ class OpAlerts extends React.Component {
                 selectedAlerts,
                 selectedAlertDay,
             } = this.state;
-            let alertDate = new Date(a.timestamp).toLocaleString().split(",")[0];
+            let alertDate = new Date(a.timestamp)
+                .toLocaleString()
+                .split(",")[0];
             let selectedContract =
                 selectedExp === a.exp &&
                 selectedStrike === a.strike &&
@@ -471,20 +552,45 @@ class OpAlerts extends React.Component {
                 <div key={iA} className="col-sm-12 flex_center">
                     <div className="full-width">
                         <div
-                            onClick={() => this.getAlert(a.symbol, a.exp, a.strike, a.putCall, a.timestamp)}
+                            onClick={() =>
+                                this.getAlert(
+                                    a.symbol,
+                                    a.exp,
+                                    a.strike,
+                                    a.putCall,
+                                    a.timestamp
+                                )
+                            }
                             className={`hoverable clickable row flex_center ${
                                 selectedContract ? "selectedContract" : " "
                             } `}
                         >
-                            <div className={`col flex_center p-0`}>{iA + 1}</div>
-                            <div className={`col flex_center p-0`}>{a.putCall}</div>
-                            <div className={`col flex_center`}>{a.daysToExpiration}</div>
-                            <div className={`col flex_center p-0`}>{a.percOTM}</div>
-                            <div className={`col flex_center p-0`}>{a.volumeIncrease}</div>
-                            <div className={`col flex_center p-0`}>{a.last}</div>
-                            <div className={`col flex_center p-0`}>{maxPercentPL}</div>
+                            <div className={`col flex_center p-0`}>
+                                {iA + 1}
+                            </div>
+                            <div className={`col flex_center p-0`}>
+                                {a.putCall}
+                            </div>
+                            <div className={`col flex_center`}>
+                                {a.daysToExpiration}
+                            </div>
+                            <div className={`col flex_center p-0`}>
+                                {a.percOTM}
+                            </div>
+                            <div className={`col flex_center p-0`}>
+                                {a.volumeIncrease}
+                            </div>
+                            <div className={`col flex_center p-0`}>
+                                {a.last}
+                            </div>
+                            <div className={`col flex_center p-0`}>
+                                {maxPercentPL}
+                            </div>
                             {selectedContract && (
-                                <div id="selectedContractChart" className="floating ">
+                                <div
+                                    id="selectedContractChart"
+                                    className="floating "
+                                >
                                     {
                                         <OptionsChart
                                             width={chartWidth}
@@ -497,7 +603,8 @@ class OpAlerts extends React.Component {
                                             data={this.state.snapData}
                                         />
                                     }
-                                    {selectedAlerts && selectedAlerts.map(this.ShowAllAlerts)}
+                                    {selectedAlerts &&
+                                        selectedAlerts.map(this.ShowAllAlerts)}
                                 </div>
                             )}
                         </div>
@@ -513,16 +620,27 @@ class OpAlerts extends React.Component {
         return (
             <>
                 {/* <div className="full-width"> */}
-                <div key={iA} className="row flex_center opAlertData dynamicText">
+                <div
+                    key={iA}
+                    className="row flex_center opAlertData dynamicText"
+                >
                     {/* <div className="col flex_center">
               putCall: {a.putCall}
             </div> */}
-                    <AlertDetails title="Alert Date" col={12} value={new Date(a.timestamp).toLocaleString()} />
+                    <AlertDetails
+                        title="Alert Date"
+                        col={12}
+                        value={new Date(a.timestamp).toLocaleString()}
+                    />
                     <AlertDetails title="Strike" col={12} value={a.strike} />
                     <AlertDetails title="Exp" col={12} value={a.exp} />
                     <AlertDetails title="Alert Price" col={12} value={a.last} />
                     <AlertDetails title="Max Profit" col={12} value={a.maxPL} />
-                    <AlertDetails title="Max Profit %" col={12} value={a.maxPercentPL} />
+                    <AlertDetails
+                        title="Max Profit %"
+                        col={12}
+                        value={a.maxPercentPL}
+                    />
                 </div>
                 {/* </div> */}
             </>
@@ -552,8 +670,12 @@ class OpAlerts extends React.Component {
         let allMaxPercentPL = [];
         let putsOrCalls = { puts: [], calls: [] };
         if (!includeExpiredContracts && allAlerts.length) {
-            let day = new Date(new Date().toLocaleString().split(",")[0]).getTime();
-            allAlerts = allAlerts.filter((a) => new Date(a.exp).getTime() > day);
+            let day = new Date(
+                new Date().toLocaleString().split(",")[0]
+            ).getTime();
+            allAlerts = allAlerts.filter(
+                (a) => new Date(a.exp).getTime() > day
+            );
         }
 
         allAlerts.forEach((alert) => {
@@ -589,9 +711,15 @@ class OpAlerts extends React.Component {
         });
         let filteredAlerts = this.filterAlerts(allAlerts);
         filteredAlerts = filteredAlerts.sort((a, b) => {
-            if (sortBy === "underlyingPrice" || sortBy === "maxPL" || sortBy === "maxPercentPL") {
-                if (parseFloat(a[sortBy]) < parseFloat(b[sortBy])) return sortOrder ? 1 : -1;
-                if (parseFloat(a[sortBy]) > parseFloat(b[sortBy])) return sortOrder ? -1 : 1;
+            if (
+                sortBy === "underlyingPrice" ||
+                sortBy === "maxPL" ||
+                sortBy === "maxPercentPL"
+            ) {
+                if (parseFloat(a[sortBy]) < parseFloat(b[sortBy]))
+                    return sortOrder ? 1 : -1;
+                if (parseFloat(a[sortBy]) > parseFloat(b[sortBy]))
+                    return sortOrder ? -1 : 1;
                 return 0;
             } else {
                 if (a[sortBy] < b[sortBy]) return sortOrder ? -1 : 1;
@@ -643,22 +771,42 @@ class OpAlerts extends React.Component {
                 <div className="container">
                     <div className="row flex_center">
                         {/* EXP Date Select */}
-                        {this.FilterSelect("Filter Expirations", "exp", expDates)}
+                        {this.FilterSelect(
+                            "Filter Expirations",
+                            "exp",
+                            expDates
+                        )}
 
                         {/* Date Select */}
-                        {this.FilterSelect("Alert Date", "dateTime", allDateTimes)}
+                        {this.FilterSelect(
+                            "Alert Date",
+                            "dateTime",
+                            allDateTimes
+                        )}
 
                         {/* Days To Expire */}
-                        {this.FilterSelect("Days To Expire", "daysToExpiration", allDaysToExpiration)}
+                        {this.FilterSelect(
+                            "Days To Expire",
+                            "daysToExpiration",
+                            allDaysToExpiration
+                        )}
 
                         {/* total Vol Select */}
-                        {this.FilterSelect("Total Volume", "totalVolume", allTotalVols)}
+                        {this.FilterSelect(
+                            "Total Volume",
+                            "totalVolume",
+                            allTotalVols
+                        )}
 
                         {/* total Vol Select */}
                         {this.FilterSelect("% OTM", "percOTM", allPercOTM)}
 
                         {/* total Vol Select */}
-                        {this.FilterSelect("Volume Increase", "volumeIncrease", allVolumeIncrease)}
+                        {this.FilterSelect(
+                            "Volume Increase",
+                            "volumeIncrease",
+                            allVolumeIncrease
+                        )}
 
                         {/* Last Select */}
                         {this.FilterSelect("Alert Price", "last", lastPrices)}
@@ -676,11 +824,17 @@ class OpAlerts extends React.Component {
                         {this.FilterSelect("Filter Max P&L", "maxPL", allMaxPL)}
 
                         {/* Max Profit Select */}
-                        {this.FilterSelect("Filter Max %P&L", "maxPercentPL", allMaxPercentPL)}
+                        {this.FilterSelect(
+                            "Filter Max %P&L",
+                            "maxPercentPL",
+                            allMaxPercentPL
+                        )}
                     </div>
                 </div>
                 <LineBreak />
-                <div className="col-sm-12 flex_center">{this.showFilters()}</div>
+                <div className="col-sm-12 flex_center">
+                    {this.showFilters()}
+                </div>
                 <LineBreak />
                 <div className="col-sm-4 flex_center">
                     <div className="row flex_center">
@@ -699,13 +853,21 @@ class OpAlerts extends React.Component {
                                         delete a.__v;
                                         return a;
                                     });
-                                    var worksheet = XLSX.utils.json_to_sheet(filteredAlerts);
+                                    var worksheet =
+                                        XLSX.utils.json_to_sheet(
+                                            filteredAlerts
+                                        );
                                     workbook.SheetNames.push("Alerts");
                                     workbook.Sheets["Alerts"] = worksheet;
-                                    XLSX.writeFile(workbook, `optionAlerts-${new Date().toLocaleTimeString()}.xlsx`);
+                                    XLSX.writeFile(
+                                        workbook,
+                                        `optionAlerts-${new Date().toLocaleTimeString()}.xlsx`
+                                    );
                                 }}
                             >
-                                <span style={{ paddingRight: "5px" }}>Download Excel</span>
+                                <span style={{ paddingRight: "5px" }}>
+                                    Download Excel
+                                </span>
                                 <FontAwesomeIcon icon={faFileDownload} />
                             </ExcelBtn>
                         </div>
@@ -718,7 +880,9 @@ class OpAlerts extends React.Component {
                 </div>
 
                 <LineBreak />
-                <div className="container dynamicText">{this.makeTable(filteredAlerts)}</div>
+                <div className="container dynamicText">
+                    {this.makeTable(filteredAlerts)}
+                </div>
             </div>
         );
     }
@@ -750,7 +914,9 @@ const AlertDetails = ({ col, title, value }) => {
 
 function makeSetSortAndFilter(data, time, noModulo) {
     if (time) {
-        data = Array.from(new Set(data)).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+        data = Array.from(new Set(data)).sort(
+            (a, b) => new Date(a).getTime() - new Date(b).getTime()
+        );
     } else {
         data = Array.from(new Set(data)).sort((a, b) => a - b);
     }

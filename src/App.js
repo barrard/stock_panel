@@ -15,6 +15,7 @@ import LoginPage from "./components/LoginPage.js";
 import StockChart from "./components/StockChartPage.js";
 import MiniCharts from "./components/MiniCharts";
 import StratBuilder from "./components/StratBuilder";
+import Fundamentals from "./components/Fundamentals";
 import AccountProfile from "./components/AccountProfilePage.js";
 import OpAlerts from "./components/OpUnusualVolPage.js";
 import OptionContracts from "./components/OptionContracts.js";
@@ -87,7 +88,7 @@ class App extends React.Component {
                         render={(props) => (
                             <QuoteContainer {...props} Socket={Socket} />
                         )}
-                    />{" "}
+                    />
                     <Route
                         exact
                         path="/mini-charts"
@@ -95,7 +96,7 @@ class App extends React.Component {
                         render={(props) => (
                             <MiniCharts {...props} Socket={Socket} />
                         )}
-                    />{" "}
+                    />
                     <Route
                         exact
                         path="/stockbot"
@@ -137,6 +138,10 @@ class App extends React.Component {
                     <Route
                         path="/strat-builder"
                         render={(props) => <StratBuilder {...props} />}
+                    />
+                    <Route
+                        path="/fundamentals"
+                        render={(props) => <Fundamentals {...props} />}
                     />
                     {/* Keep at bottom */}
                     <Route exact path="/sign-up" component={SignupPage} />

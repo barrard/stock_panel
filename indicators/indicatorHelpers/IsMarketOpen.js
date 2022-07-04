@@ -80,19 +80,20 @@ function stocksAreTrading(date) {
     }
 }
 
-function eastCoastTime(date) {
+function eastCoastTime(_date) {
     let utc;
-    date = date || new Date().getTime();
-    utc = new Date(date).getTime() + new Date().getTimezoneOffset() * 60000;
+    _date = _date || new Date().getTime();
+    utc = new Date(_date).getTime() + new Date().getTimezoneOffset() * 60000;
 
     let eastCoastTime = new Date(utc + 3600000 * -4); //SPRING TIME DST, SWITCH TO 5 when Fall Back
+    let date = new Date(eastCoastTime).getDate();
     let day = new Date(eastCoastTime).getDay();
     let hour = new Date(eastCoastTime).getHours();
     let minute = new Date(eastCoastTime).getMinutes();
     let second = new Date(eastCoastTime).getSeconds();
     eastCoastTime = new Date(eastCoastTime);
 
-    return { day, hour, minute, second, eastCoastTime };
+    return { date, day, hour, minute, second, eastCoastTime };
 }
 
 function isRTH(date) {
@@ -312,6 +313,26 @@ function getTimeTillRTH() {
     }
 }
 
+function getTimeTillPreMarket() {
+    let now = new Date();
+    // console.log(new Date(date).toLocaleString());
+
+    let { date, day, hour, minute } = eastCoastTime(now);
+
+    let _400_AM = new Date().setDate(date);
+    _400_AM = new Date().setHours(4);
+    _400_AM = new Date(_400_AM).setMinutes(0);
+    _400_AM = new Date(_400_AM).setSeconds(0);
+
+    now = new Date().getTime();
+    _400_AM = new Date(_400_AM).getTime();
+    if (now < _400_AM) {
+        return _400_AM - now;
+    } else {
+        return _400_AM + 1000 * 60 * 60 * 24 - now;
+    }
+}
+
 function isAfterHours(date) {
     // if (!futuresAreTrading()) return false;
     date || new Date();
@@ -347,7 +368,7 @@ function isPreMarket(date) {
     now = new Date(now).getTime();
 
     let { day, hour, minute } = eastCoastTime(date);
-    if (hour < 9) {
+    if (hour >= 6 && hour < 9) {
         return true;
     } else if (hour == 9 && minute < 30) {
         return true;
@@ -415,13 +436,14 @@ module.exports = {
     isAboutToClose,
     isAboutToOpen,
     isAfterHours,
+    isClosingBell,
+    isOpeningBell,
     isOpeningSession,
     isOptionsTime,
+    getTimeTillPreMarket,
     isPreMarket,
     isRTH,
     maintenanceTime,
     stocksAreTrading,
     timeAsEST,
-    isOpeningBell,
-    isClosingBell,
 };

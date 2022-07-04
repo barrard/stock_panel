@@ -320,6 +320,15 @@ class Main_Nav extends React.Component {
                     Op Alerts
                 </Link>
 
+                <Link
+                    title="Fundamentals"
+                    activeclassname="active"
+                    className="navbar-brand "
+                    to="/fundamentals"
+                >
+                    Fundamentals
+                </Link>
+
                 {/* <div className="collapse navbar-collapse" id="navbarSupportedContent"> */}
                 <ul className="nav-bar-links">
                     {!isLoggedIn && (

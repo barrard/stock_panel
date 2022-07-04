@@ -64,7 +64,10 @@ export default function AddIndicatorModal({
 
     useEffect(() => {
         let colors = {};
-        if (!indicator.outputs?.length) return;
+        if (!indicator.outputs || !indicator.outputs.length) {
+            return;
+        }
+
         indicator.outputs.forEach((line) => (colors[line["name"]] = "red"));
         setColor(colors);
     }, [indicator.outputs]);
