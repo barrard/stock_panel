@@ -121,6 +121,7 @@ export default function Fundamentals() {
                         <h3>TICKERS</h3>
 
                         {Object.keys(fundamentals)
+                            .filter((symbol) => !filteredStocks[symbol])
                             .slice(0, 100)
                             .map((symbol, index) => {
                                 const data = fundamentals[symbol];
