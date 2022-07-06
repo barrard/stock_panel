@@ -135,7 +135,7 @@ export function applyFilters({ fundamentals, appliedFilters, deviations }) {
             //is this value within the std?
 
             const [min, max] = appliedFilters[filter];
-            if (!min || !max) return;
+            if (min === undefined || max === undefined) return;
 
             const skew = value - mean;
             let minDeviation = min * std;
@@ -184,22 +184,17 @@ export function findDistribution({
     mean,
     masterDistros,
 }) {
-    console.time("findDistribution");
     const symbols = Object.keys(fundamentals);
-    // .filter(
-    //     (symbol) => !filteredStocks[symbol]
-    // );
+
     const values = symbols.map((d) => fundamentals[d][name]);
 
     if (values.length === 0) return {};
 
-    const dist = {};
     const masterDist = { [name]: {} };
     const magicNum = 10;
     const granularity = 1 * (1 / magicNum);
     const usedDeviation = deviations; //deviations.std; //std
     values.forEach((v, vIndex) => {
-        // console.time("findDistribution-values");
         const skew = v - mean;
         const symbol = symbols[vIndex];
         if (filteredStocks[symbol]) return;
@@ -227,12 +222,8 @@ export function findDistribution({
             }
         }
 
-        debugger;
-        // masterDist[name] = { ...masterDist[name], [symbol]: count };
         masterDist[name][symbol] = count;
     });
-
-    console.timeEnd("findDistribution");
 
     return masterDist;
 }

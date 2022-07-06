@@ -68,18 +68,6 @@ export default function DistroChart(props) {
         // console.log({ zero, start, end });
     }, [chartRef.current]);
 
-    // useEffect(() => {
-    //     setData(
-    //         findDistribution({
-    //             fundamentals,
-    //             name,
-    //             appliedFilters,
-    //             deviations,
-    //             filteredStocks,
-    //         })
-    //     );
-    // }, [fundamentals, appliedFilters]);
-
     useEffect(() => {
         const labels = Object.keys(data).sort((a, b) => {
             // console.log("sorting");
@@ -89,8 +77,7 @@ export default function DistroChart(props) {
         const values = labels.map((l) => data[l]);
         if (labels.length < 1) return;
         const range = [Math.min(...labels), Math.max(...labels)];
-        // debugger;
-        // console.log(range);
+
         setRange(range);
         setStartingRange(range);
         setMin(range[0]);
@@ -101,14 +88,9 @@ export default function DistroChart(props) {
 
     useEffect(() => {
         if (min === startingRange[0] && max === startingRange[1]) return;
-        console.log({ min, max });
     }, [min, max]);
 
-    // console.log({ labels, values, range, min, max });
-
     function onZoom(chart) {
-        console.log("SHE ZOOM");
-        console.log(chart);
         const { minIndex, maxIndex } = chart.scales.x;
         console.log({ minIndex, maxIndex });
     }
@@ -213,7 +195,6 @@ export default function DistroChart(props) {
     };
 
     function onChange(value) {
-        console.log(value);
         setMin(value[0]);
 
         setMax(value[1]);
@@ -225,7 +206,6 @@ export default function DistroChart(props) {
                 ...appliedFilters,
                 [name]: values,
             };
-            debugger;
             return newFilter;
         });
     }
@@ -256,10 +236,8 @@ export default function DistroChart(props) {
                             };
 
                             delete newFilter[name];
-                            // setMin(startingRange[0]);
-                            // setMax(startingRange[1]);
+
                             setRange(startingRange);
-                            debugger;
                             setFilteredStocks({});
                             return newFilter;
                         });

@@ -17,6 +17,7 @@ const LOCAL_SERVER = process.env.REACT_APP_LOCAL_DATA;
 const REACT_APP_API_SERVER = process.env.REACT_APP_API_SERVER;
 export default {
     getFundamentals,
+    getTickers,
     // getIndicatorValues,
     // getVolProfile,
     addPriceData,
@@ -57,7 +58,23 @@ export default {
     submitIndicator,
     updateIndicatorOpts,
     updateLineColor,
+    getStockDataForFundamentalsCharts,
 };
+
+async function GET(url) {
+    let data = await fetch(`${REACT_APP_API_SERVER}${url}`, {
+        method: "GET",
+    });
+    return await data.json();
+}
+
+async function getStockDataForFundamentalsCharts(symbol) {
+    return await GET(`/API/getStockDataForFundamentalsCharts/${symbol}`);
+}
+
+async function getTickers() {
+    return await GET("/API/getTickers");
+}
 
 async function getFundamentals() {
     let fundamentals = await fetch(

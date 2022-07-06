@@ -12,6 +12,7 @@ import {
     findDistribution,
     applyFilters,
     buildDist,
+    filtersNameMap,
 } from "./fundamentalsUtils";
 
 export default function Fundamentals() {
@@ -20,15 +21,28 @@ export default function Fundamentals() {
     const [deviations, setDeviations] = useState({ mean: {}, std: {} });
     const [appliedFilters, setAppliedFilters] = useState({});
     const [filteredStocks, setFilteredStocks] = useState({});
+    const [tickers, setTickers] = useState([]);
     const [distros, setDistros] = useState({});
+    const [stocksFiltered, setStocksFiltered] = useState([]);
     const [masterDistros, setMasterDistros] = useState({});
 
     useEffect(() => {
         setLoading(true);
-        API.getFundamentals().then((res) => {
+        API.getFundamentals().then(async (res) => {
+            let tickers = await API.getTickers();
+            tickers = tickers.reduce((acc, ticker) => {
+                acc[ticker.symbol] = ticker;
+
+                return acc;
+            }, {});
+            console.log(tickers);
             // setDataValues(processDataValues(res));
+            setTickers(tickers);
             setFundamentals(res);
             setLoading(false);
+            setStocksFiltered(
+                Object.keys(res).filter((symbol) => !filteredStocks[symbol])
+            );
 
             const deviations = { mean: {}, std: {} };
             const symbols = Object.keys(res);
@@ -91,14 +105,17 @@ export default function Fundamentals() {
 
             const builtDist = buildDist(distro);
             distros[filter] = builtDist[filter];
-            // distros[filter] = distro;
         });
-
-        console.log({ filteredStocks });
 
         setDistros(distros);
 
         setFilteredStocks(filteredStocks);
+
+        setStocksFiltered(
+            Object.keys(fundamentals).filter(
+                (symbol) => !filteredStocks[symbol]
+            )
+        );
     }, [appliedFilters]);
 
     return (
@@ -118,21 +135,31 @@ export default function Fundamentals() {
 
                     {/* STOCKS LIST */}
                     <div className="col-sm-6 border">
-                        <h3>TICKERS</h3>
+                        <h3>TICKERS ({stocksFiltered.length})</h3>
+                        <div>
+                            FILTERS - {Object.keys(appliedFilters).length}
+                            <div>
+                                {Object.keys(appliedFilters).map((filter) => {
+                                    const [min, max] = appliedFilters[filter];
+                                    const name = filtersNameMap[filter].name;
+                                    return (
+                                        <p>{`${name}:   min:  ${min}    max:  ${max}`}</p>
+                                    );
+                                })}
+                            </div>
+                        </div>
 
-                        {Object.keys(fundamentals)
-                            .filter((symbol) => !filteredStocks[symbol])
-                            .slice(0, 100)
-                            .map((symbol, index) => {
-                                const data = fundamentals[symbol];
-                                return (
-                                    <StockRow
-                                        key={symbol}
-                                        stock={data}
-                                        index={index}
-                                    />
-                                );
-                            })}
+                        {stocksFiltered.slice(0, 100).map((symbol, index) => {
+                            const data = fundamentals[symbol];
+                            return (
+                                <StockRow
+                                    key={symbol}
+                                    stock={data}
+                                    index={index}
+                                    ticker={tickers[data.symbol]}
+                                />
+                            );
+                        })}
                     </div>
                     {/* FILTERS */}
                     <div className="col-sm-6 border">
@@ -152,7 +179,7 @@ export default function Fundamentals() {
                                     />
 
                                     <div key={filter} className="row">
-                                        {filter}
+                                        {filtersNameMap[filter].name}
                                     </div>
                                 </React.Fragment>
                             );
