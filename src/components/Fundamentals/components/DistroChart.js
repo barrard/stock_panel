@@ -50,30 +50,7 @@ export default function DistroChart(props) {
     const hasAppliedFilter = appliedFilters[name];
 
     useEffect(() => {
-        if (!chartRef.current) return;
-        // console.log(chartRef);
-        // const { ctx, chartArea, scales } = chartRef.current;
-        // const chartWidth = chartArea.right - chartArea.left;
-        // const chartHeight = chartArea.bottom - chartArea.top;
-        // const gradient = ctx.createLinearGradient(
-        //     chartArea.left,
-        //     0,
-        //     chartArea.right,
-        //     0
-        // );
-
-        // const zero = scales.x.getPixelForValue(0);
-        // const start = scales.x.getPixelForValue(-3);
-        // const end = scales.x.getPixelForValue(6);
-        // console.log({ zero, start, end });
-    }, [chartRef.current]);
-
-    useEffect(() => {
-        const labels = Object.keys(data).sort((a, b) => {
-            // console.log("sorting");
-            return a - b;
-        });
-
+        const labels = Object.keys(data).sort((a, b) => a - b);
         const values = labels.map((l) => data[l]);
         if (labels.length < 1) return;
         const range = [Math.min(...labels), Math.max(...labels)];
@@ -183,7 +160,7 @@ export default function DistroChart(props) {
         },
     };
 
-    const d = {
+    const distroData = {
         labels,
         datasets: [
             {
@@ -217,7 +194,7 @@ export default function DistroChart(props) {
     return (
         <>
             {/* {values.length > 0 && ( */}
-            <Bar ref={chartRef} options={options} data={d} />
+            <Bar ref={chartRef} options={options} data={distroData} />
             {/* // )} */}
 
             <MyRange

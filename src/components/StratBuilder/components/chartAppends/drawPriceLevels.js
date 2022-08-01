@@ -36,6 +36,8 @@ export default function drawPriceLevels(
     chartSvg.selectAll(`.${highClassName}`).remove();
     chartSvg.selectAll(`.${lowClassName}`).remove();
     chartSvg.selectAll(`.${priceLevelClassName}`).remove();
+    chartSvg.selectAll(`.${nodesClassName}`).remove();
+
     if (!drawPriceLevels) return;
 
     //APPEND High Node

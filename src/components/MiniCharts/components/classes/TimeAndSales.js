@@ -1,9 +1,12 @@
 class TimeAndSales {
     constructor() {
-        this.symbols = ["/ES", "/CL", "/YM", "/NQ", "/GC", "/RT"];
+        this.symbols = [
+            "/ES",
+            // "/CL", "/YM", "/NQ", "/GC", "/RTY"
+        ];
 
-        this.lastTradePrice = this.init(null);
-        this.lastTradeTime = this.init(null);
+        this.lastTradePrice = this.init(0);
+        this.lastTradeTime = this.init(0);
         //init raw time and sales
         this.resetRaw();
 
@@ -14,6 +17,7 @@ class TimeAndSales {
         this.volPerTradePerSecHistory = this.init([]);
         this.tradePriceChangeHistory = this.init([]);
         this.tradeTimeChangeHistory = this.init([]);
+        this.lastVolWeightedPrice = this.init(0);
     }
 
     init(value) {
@@ -25,9 +29,9 @@ class TimeAndSales {
 
     getTimeAndSalesStats(symbol, timeSalesData) {
         let arrayData = timeSalesData[symbol];
-        let tradeNim = 0;
+        let tradeNum = 0;
         arrayData.forEach((timeSandSale) => {
-            tradeNim++;
+            tradeNum++;
             this._raw_tradeCount[symbol]++;
             this._raw_totalVol[symbol] += timeSandSale.lastSize;
 
@@ -68,20 +72,29 @@ class TimeAndSales {
             //trade volume per second
             this.tradeVolPerSecHistory[symbol].push(this._raw_totalVol[symbol]);
 
+            let result;
             //volume weight per second
-            this.volWeightedPerSecHistory[symbol].push(
-                this._raw_totalVol[symbol]
-                    ? this._raw_volWeightedTradePrices[symbol].reduce(
-                          (acc, b) => acc + b,
-                          0
-                      ) / this._raw_totalVol[symbol]
-                    : 0
-            );
+            if (this._raw_totalVol[symbol]) {
+                result = (
+                    this._raw_volWeightedTradePrices[symbol].reduce(
+                        (acc, b) => acc + b,
+                        0
+                    ) / this._raw_totalVol[symbol]
+                ).toFixed(2);
+            } else {
+                result = this.lastVolWeightedPrice;
+            }
+
+            this.lastVolWeightedPrice = result;
+            this.volWeightedPerSecHistory[symbol].push(result);
 
             //Average vol per trade this second
             this.volPerTradePerSecHistory[symbol].push(
                 this._raw_tradeCount[symbol]
-                    ? this._raw_totalVol[symbol] / this._raw_tradeCount[symbol]
+                    ? (
+                          this._raw_totalVol[symbol] /
+                          this._raw_tradeCount[symbol]
+                      ).toFixed(2)
                     : 0
                 // this._raw_tradeVols[symbol].reduce((acc, b) => acc + b, 0) /
                 //     this._raw_tradeCount[symbol]
@@ -150,7 +163,8 @@ class TimeAndSales {
     }
 
     parseTimeSales(data, timeSalesData) {
-        let symbol = data["key"].substring(0, 3);
+        let symbol = data["key"].slice(0, -3);
+        if (this.lastTradePrice[symbol] === undefined) return;
         if (!timeSalesData[symbol]) timeSalesData[symbol] = [];
         let tradeTime = data[1];
         let lastPrice = data[2];

@@ -6,7 +6,7 @@ export function drawHighLows(
     { xScale, yScale },
     margin
 ) {
-    console.log(data);
+    // console.log(data);
     const highClassName = "highNodes";
     const lowClassName = "lowNodes";
     // const wickClass = "candle-wick";

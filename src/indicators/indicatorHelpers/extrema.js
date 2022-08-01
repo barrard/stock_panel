@@ -159,13 +159,13 @@ function mergeImportantPriceLevels(priceLevels, priceLevelSensitivity) {
 
 function regressionAnalysis(points, errLimit, lines = [], count = 2) {
     //Make two line and compare
-    debugger;
+
     let { line1, line2, current_count, pointsArray } = RMSerror(points, count);
     //compare the error
     let error = line2.results_error;
     //NEW use percent error limit
     const percentageErrorValue = line1.y1 * (errLimit / 100);
-    debugger;
+
     /**
      * If the RMS error is too high
      * we will just take the last good line (line1)

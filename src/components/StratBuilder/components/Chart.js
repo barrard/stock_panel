@@ -28,6 +28,8 @@ import {
     drawZigZag,
     drawVolProfile,
     drawZigZagRegression,
+    drawZigZagFibs,
+    drawZigZagProfile,
 } from "./chartAppends";
 import { IndicatorItem, LineSettings } from "./chartComponents";
 import {
@@ -80,11 +82,12 @@ export default function Chart({ symbol, timeframe }) {
     const [priceLevelMinMax, setPriceLevelMinMax] = useState(10);
     const [priceLevelTolerance, setPriceLevelTolerance] = useState(10);
     const [zigZagRegressionErrorLimit, setZigZagRegressionErrorLimit] =
-        useState(5);
+        useState(25);
 
     const [toggleZigzagRegression, setToggleZigzagRegression] = useState(false);
     const [toggleZigzagFibs, setToggleZigzagFibs] = useState(false);
-
+    const [toggleZigzagProfile, setToggleZigzagProfile] = useState(false);
+    const [toggleZigzagDynamic, setToggleZigzagDynamic] = useState(false);
     const [priceLevels, setPriceLevels] = useState({});
 
     const { data, id: priceDataId } = charts[symbol][timeframe];
@@ -93,7 +96,7 @@ export default function Chart({ symbol, timeframe }) {
         (ind) => ind.priceData === priceDataId
     );
 
-    let xScale = scaleLinear().range([0, width - (margin.right + margin.left)]);
+    let xScale = scaleLinear().range([margin.left, width - margin.right]);
 
     const title = `${symbol} ${timeframe}`;
     const svgRef = useRef();
@@ -213,7 +216,8 @@ export default function Chart({ symbol, timeframe }) {
             data,
             parseFloat(minMaxTolerance),
             parseFloat(zigZagTolerance),
-            parseFloat(zigZagRegressionErrorLimit)
+            parseFloat(zigZagRegressionErrorLimit),
+            toggleZigzagDynamic
         );
 
         let {
@@ -223,7 +227,9 @@ export default function Chart({ symbol, timeframe }) {
             highLowerHighs,
             zigZag,
             regressionZigZag,
+            zigZagFibs,
         } = minMax;
+
         setMinMax({
             lowNodes,
             highNodes,
@@ -231,8 +237,15 @@ export default function Chart({ symbol, timeframe }) {
             highLowerHighs,
             zigZag,
             regressionZigZag,
+            zigZagFibs,
         });
-    }, [data, minMaxTolerance, zigZagTolerance, zigZagRegressionErrorLimit]);
+    }, [
+        data,
+        minMaxTolerance,
+        zigZagTolerance,
+        zigZagRegressionErrorLimit,
+        toggleZigzagDynamic,
+    ]);
 
     useEffect(() => {
         let priceLevels = new PriceLevels(
@@ -240,7 +253,7 @@ export default function Chart({ symbol, timeframe }) {
             parseFloat(priceLevelMinMax),
             parseFloat(priceLevelTolerance)
         );
-        console.log(priceLevels);
+        // console.log(priceLevels);
         setPriceLevels(priceLevels);
     }, [data, priceLevelMinMax, priceLevelTolerance]);
 
@@ -261,6 +274,7 @@ export default function Chart({ symbol, timeframe }) {
         toggleZigZag,
         toggleVolProfile,
         toggleZigzagFibs,
+        toggleZigzagProfile,
         toggleZigzagRegression,
         zigZagTolerance,
         zigZagRegressionErrorLimit,
@@ -619,7 +633,6 @@ export default function Chart({ symbol, timeframe }) {
         );
 
         // console.log(data);
-
         drawZigZag(
             toggleZigZag,
             chartSvg,
@@ -628,7 +641,8 @@ export default function Chart({ symbol, timeframe }) {
             yScales["mainChart"],
             margin,
             candleWidth,
-            toggleZigzagRegression
+            toggleZigzagRegression,
+            toggleZigzagFibs
         );
 
         drawZigZagRegression(
@@ -638,7 +652,8 @@ export default function Chart({ symbol, timeframe }) {
             minMax,
             yScales["mainChart"],
             margin,
-            candleWidth
+            candleWidth,
+            toggleZigZag
         );
 
         drawVolProfile(
@@ -648,6 +663,28 @@ export default function Chart({ symbol, timeframe }) {
             yScales["mainChart"],
             margin,
             width
+        );
+
+        drawZigZagFibs(
+            toggleZigzagFibs,
+            chartSvg,
+            data,
+            minMax,
+            yScales["mainChart"],
+            margin,
+            candleWidth,
+            toggleZigZag
+        );
+
+        drawZigZagProfile(
+            toggleZigzagProfile,
+            chartSvg,
+            data,
+            minMax,
+            yScales["mainChart"],
+            margin,
+            candleWidth,
+            toggleZigZag
         );
 
         //ADD FULL_NAME TO CHART
@@ -667,7 +704,7 @@ export default function Chart({ symbol, timeframe }) {
         }
 
         const zoomBehavior = zoom()
-            .scaleExtent([0.1, 100]) //zoom in and out limit
+            .scaleExtent([0.1, 120]) //zoom in and out limit
             .translateExtent([
                 [0, 0],
                 [width, height],
@@ -849,6 +886,29 @@ export default function Chart({ symbol, timeframe }) {
                                 }}
                             />
                         </div>
+                        <div>
+                            <span>zigzagProfile</span>
+                            <input
+                                checked={toggleZigzagProfile}
+                                type="checkbox"
+                                name="fibs"
+                                onChange={(e) => {
+                                    setToggleZigzagProfile((val) => !val);
+                                }}
+                            />
+                        </div>
+
+                        <div>
+                            <span>zigzagDynamic</span>
+                            <input
+                                checked={toggleZigzagDynamic}
+                                type="checkbox"
+                                name="fibs"
+                                onChange={(e) => {
+                                    setToggleZigzagDynamic((val) => !val);
+                                }}
+                            />
+                        </div>
                     </>
                 )}
 
@@ -925,13 +985,13 @@ function initialZigZag(timeframe) {
         case "15Min":
         case "30Min":
         case "60Min":
-            return 0.001;
+            return 0.1;
         case "hourly":
-            return 0.005;
+            return 0.1;
 
         case "daily":
         case "weekly":
-            return 0.01;
+            return 0.1;
 
         default:
             break;

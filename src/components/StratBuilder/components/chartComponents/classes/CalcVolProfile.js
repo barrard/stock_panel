@@ -11,59 +11,34 @@ class CalcVolProfile {
     }
     runProfile() {
         let dailyProfile = {};
-        let tickSize = 0.1; //  getTickSize()  //0.1;
-        return;
+        let tickSize = 0.01; //  getTickSize()  //0.1;
+
         this.data.forEach((d) => {
             const { open, high, low, close, volume } = d;
 
-            const even = high === low;
-            // const _low = low + tickSize;
-            const range = Math.floor(
-                ((even ? tickSize : high - low) * (1 / tickSize) * 100) / 100
-            );
-            debugger;
-            if (range.toString().length > 7) {
+            const range =
+                high - low != 0
+                    ? parseFloat((high - low).toFixed(2))
+                    : tickSize;
+
+            const volPortion = range
+                ? volume
+                    ? Math.ceil(volume / ((range + tickSize) / tickSize))
+                    : 0
+                : volume;
+
+            if (volPortion === Infinity) {
+                console.log("stop");
                 debugger;
             }
-            const volPortion = Math.ceil(volume / range);
+            for (let x = low; x <= high; x = x + tickSize) {
+                x = parseFloat(x.toFixed(2));
 
-            if (range < 0) {
-                debugger;
-            }
-
-            const sillyArray = new Array(range).fill(0);
-
-            sillyArray.forEach((_, i) => {
-                console.log(i);
-                const start = i * tickSize;
-                debugger;
-                if (!dailyProfile[start]) {
-                    dailyProfile[start] = 0;
+                if (!dailyProfile[x]) {
+                    dailyProfile[x] = 0;
                 }
-                dailyProfile[start] += volPortion;
-            });
-
-            // {
-            // if (!dailyProfile[start]) {
-            //     dailyProfile[start] = 0;
-            // }
-            // dailyProfile[start] += volPortion;
-            // }
-
-            // //get the range, and divide by 10, lets put the volume in 10 equal bins, but I do want to somehow favor the close
-            // const range = Math.ceil(((high - low) % 10) * 10);
-            // let end = gtrdn(high);
-            // // let start = parseFloat(low.toFixed(1));
-            // let start = gtrdn(low);
-            // // console.log({ open, high, low, close, volume, start, end });
-            // for (let i = 0; i < range; i++) {
-            //     const plusplus = i * tickSize;
-            //     const current = parseFloat((start + plusplus).toFixed(1));
-            //     if (!dailyProfile[current]) {
-            //         dailyProfile[current] = 0;
-            //     }
-            //     dailyProfile[current] += Math.ceil(volume / range);
-            // }
+                dailyProfile[x] += volPortion;
+            }
         });
         this.volProfile = dailyProfile;
     }

@@ -32,12 +32,31 @@ export default function MiniChart({
     let innerWidth = width - (margin.left + margin.right);
     let yScale = scaleLinear().range([innerHeight, 0]);
     let xScale = scaleLinear().range([margin.left, innerWidth]);
-    let rScale = scaleLinear().range([1, 5]);
+    let rScale = scaleLinear().range([1, 10]);
 
     const svgRef = useRef();
     const [chartSvg, setChartSvg] = useState(undefined);
 
     useEffect(() => {
+        while (data.length > levelOneData.length) {
+            let someData = levelOneData[levelOneData.length - 1];
+            if (someData) {
+                levelOneData.push(someData);
+            } else {
+                levelOneData.push(0);
+            }
+        }
+        while (levelOneData.length > data.length) {
+            let someData = data[data.length - 1];
+            if (someData) {
+                data.push(someData);
+            } else {
+                data.push(0);
+            }
+            if (data.length !== levelOneData.length) {
+                console.log("diffffff");
+            }
+        }
         draw();
     }, [data, currentZoom]);
 
@@ -48,7 +67,7 @@ export default function MiniChart({
 
     const draw = () => {
         if (!data || !data.length) return;
-        let [yMin, yMax] = extent(data);
+        let [yMin, yMax] = extent(data.slice(-20));
 
         xScale.domain([0, data.length - 1]);
         yScale.domain([yMin - yMin * 0.0005, yMax + yMax * 0.0005]);
@@ -71,10 +90,7 @@ export default function MiniChart({
                     .flat(),
             ]);
 
-            yScale.domain([
-                yMin ? yMin - yMin * 0.0005 : 0,
-                yMax ? yMax + yMax * 0.0005 : 1,
-            ]);
+            yScale.domain([yMin ? yMin - 0 : 0, yMax ? yMax + 0 : 1]);
         }
 
         let xAxis = axisBottom(xScale).tickValues(
@@ -101,17 +117,18 @@ export default function MiniChart({
             .y((d) => {
                 let y = yScale(d);
                 return y;
-            })
-            .curve(curveCardinal);
+            });
+        // .curve(curveCardinal);
 
         chartSvg
             .selectAll("circle")
             .data(data)
             .join("circle")
-            // .attr("r", rScale)
+            .attr("r", rScale)
             .attr("cx", (_, i) => xScale(i))
             .attr("cy", yScale)
-            .attr("stroke", "red")
+            .attr("stroke-width", 2)
+            .attr("stroke", (d, i) => (data[i - 1] < d ? "green" : "red"))
             .exit();
 
         levelOneKeys.forEach((levelOneProp) => {
@@ -119,7 +136,9 @@ export default function MiniChart({
                 .selectAll(`.${levelOneProp}_circle`)
                 .data(levelOneData[levelOneProp])
                 .join("circle")
-                // .attr("r", rScale)
+                .attr("class", `.${levelOneProp}_circle`)
+
+                .attr("r", rScale)
                 .attr("cx", (_, i) => xScale(i))
                 .attr("cy", yScale)
                 .attr("stroke", levelOneProp.includes("bid") ? "green" : "red")

@@ -1,7 +1,11 @@
 let diff = require("./indicatorHelpers/extrema.js");
 let { max, min } = require("d3-array");
 
-let { slopeAndIntercept, xOfY, dropDuplicateMinMax } = require("./indicatorHelpers/utils.js");
+let {
+    slopeAndIntercept,
+    xOfY,
+    dropDuplicateMinMax,
+} = require("./indicatorHelpers/utils.js");
 
 module.exports = {
     makeFibonacciData,
@@ -24,20 +28,32 @@ function makeFibonacciData(data) {
          */
         let tolerance = fibonacciMinMax;
         var minMaxMostRecentData = false; //keep as false for this
-        var { maxValues } = diff.minMax(timestamps, highs, tolerance, minMaxMostRecentData);
+        var { maxValues } = diff.minMax(
+            timestamps,
+            highs,
+            tolerance,
+            minMaxMostRecentData
+        );
         maxValues = dropDuplicateMinMax(maxValues);
 
-        var { minValues } = diff.minMax(timestamps, lows, tolerance, minMaxMostRecentData);
+        var { minValues } = diff.minMax(
+            timestamps,
+            lows,
+            tolerance,
+            minMaxMostRecentData
+        );
 
         minValues = dropDuplicateMinMax(minValues);
 
         // console.log({ maxValues, minValues });
-        if (!maxValues.length || !minValues.length) return console.log("No points to work with ");
+        if (!maxValues.length || !minValues.length)
+            return console.log("No points to work with ");
         /**
          * Walk the MinMax values to find the swings
          */
 
-        let { supports, resistances, lowToHigh, highToLow } = determineSupportsAndResistances(maxValues, minValues);
+        let { supports, resistances, lowToHigh, highToLow } =
+            determineSupportsAndResistances(maxValues, minValues);
 
         let { supportFibs, resistanceFibs } = addFibsToSwings({
             supports,
@@ -82,8 +98,10 @@ function determineSupportsAndResistances(highPoints, lowPoints) {
     if (olderData === "low") {
         let x1 = maxDataPoint.x;
         let y1 = maxDataPoint.y;
-
-        let swingLows = lowPoints.filter((low) => low.x >= minDataPoint.x && low.x <= maxDataPoint.x);
+        if (!y1 || !x1) console.log("Missing some vital data to run fibs");
+        let swingLows = lowPoints.filter(
+            (low) => low.x >= minDataPoint.x && low.x <= maxDataPoint.x
+        );
 
         swingLows.forEach(({ x, y }) => {
             let { m, b, l } = slopeAndIntercept({ x1, y1, x2: x, y2: y });
@@ -97,7 +115,9 @@ function determineSupportsAndResistances(highPoints, lowPoints) {
         //we can now find the resistance levels from the max high forward
         // console.log({lowToHigh})
 
-        let maxHighIndex = highPoints.findIndex((high) => high.x === maxDataPoint.x);
+        let maxHighIndex = highPoints.findIndex(
+            (high) => high.x === maxDataPoint.x
+        );
         let recentHighs = highPoints.slice(maxHighIndex);
 
         let recentLows = lowPoints.filter((low) => low.x > maxDataPoint.x);
@@ -105,11 +125,15 @@ function determineSupportsAndResistances(highPoints, lowPoints) {
             // console.log(recentLows);
             let recentMin = min(recentLows, (low) => low.y);
             // console.log({ recentMin });
-            let recentMinData = recentLows.filter((low) => low.y === recentMin)[0];
+            let recentMinData = recentLows.filter(
+                (low) => low.y === recentMin
+            )[0];
             // console.log(recentMinData);
 
             if (recentMinData) {
-                recentHighs = recentHighs.filter((high) => high.x < recentMinData.x);
+                recentHighs = recentHighs.filter(
+                    (high) => high.x < recentMinData.x
+                );
             } else {
                 recentHighs = [];
             }
@@ -132,7 +156,9 @@ function determineSupportsAndResistances(highPoints, lowPoints) {
         let y1 = minDataPoint.y;
         if (!y1 || !x1) console.log("Missing some vital data to run fibs");
         //find index of the low point?
-        let swingHighs = highPoints.filter((high) => high.x >= maxDataPoint.x && high.x <= minDataPoint.x);
+        let swingHighs = highPoints.filter(
+            (high) => high.x >= maxDataPoint.x && high.x <= minDataPoint.x
+        );
         // console.log({swingHighs})
         swingHighs.forEach(({ x, y }) => {
             let { m, b, l } = slopeAndIntercept({ x1, y1, x2: x, y2: y });
@@ -141,11 +167,15 @@ function determineSupportsAndResistances(highPoints, lowPoints) {
         });
         // console.log({ maxDataPoint, swingHighs, highToLow });
         //filter the lows to only be after this high
-        let minLowIndex = lowPoints.findIndex((low) => low.x === minDataPoint.x);
+        let minLowIndex = lowPoints.findIndex(
+            (low) => low.x === minDataPoint.x
+        );
         let recentLows = lowPoints.slice(minLowIndex);
         let recentHighs = highPoints.filter((high) => high.x > minDataPoint.x);
         let recentMax = max(recentHighs, (high) => high.y);
-        let recentMaxData = recentHighs.filter((high) => high.y === recentMax)[0];
+        let recentMaxData = recentHighs.filter(
+            (high) => high.y === recentMax
+        )[0];
         // console.log({minLowIndex,
         //   recentLows,
         //   recentHighs,

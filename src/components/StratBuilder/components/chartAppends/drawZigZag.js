@@ -7,7 +7,8 @@ export default function drawZigZag(
     { xScale, yScale },
     margin,
     candleWidth,
-    toggleZigzagRegression
+    toggleZigzagRegression,
+    toggleZigzagFibs
 ) {
     // console.log(data);
 
@@ -64,7 +65,7 @@ export default function drawZigZag(
         .enter()
         .append("circle")
         .attr("class", `${zigZagSwingHighClassName}`)
-        .attr("r", toggleZigzagRegression ? 2 : 6)
+        .attr("r", toggleZigzagRegression || toggleZigzagFibs ? 2 : 6)
         .attr("cx", (d) => xScale(d.index) + candleWidth / 2)
         .attr("cy", (d) => yScale(d.val.y) + margin.top)
         .attr("fill", "yellow")
@@ -82,7 +83,7 @@ export default function drawZigZag(
         .enter()
         .append("circle")
         .attr("class", `${zigZagSwingLowClassName}`)
-        .attr("r", toggleZigzagRegression ? 2 : 6)
+        .attr("r", toggleZigzagRegression || toggleZigzagFibs ? 2 : 6)
         .attr("cx", (d) => xScale(d.index) + candleWidth / 2)
         .attr("cy", (d) => yScale(d.val.y) + margin.top)
         .attr("fill", "purple")

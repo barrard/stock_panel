@@ -20,7 +20,11 @@ import drawPriceLevels from "./drawPriceLevels";
 import drawZigZag from "./drawZigZag";
 import drawVolProfile from "./drawVolProfile";
 import drawZigZagRegression from "./drawZigZagRegression";
+import drawZigZagFibs from "./drawZigZagFibs";
+import drawZigZagProfile from "./drawZigZagProfile";
 export {
+    drawZigZagProfile,
+    drawZigZagFibs,
     drawZigZagRegression,
     drawZigZag,
     drawVolProfile,

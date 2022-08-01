@@ -18,14 +18,15 @@ export default function MiniCharts({ Socket }) {
     // on load hook
     useEffect(() => {
         console.log("Add socket listeners");
-        Socket.on("levelOne", (levelOne) => {
-            levelOneCount++;
-            L1.handleLevelOne(levelOne);
-        });
 
         Socket.on("timeAndSales", (timeAndSales) => {
             timeAndSalesCount++;
             TS.handelTimeAndSales(timeAndSales);
+        });
+
+        Socket.on("levelOne", (levelOne) => {
+            levelOneCount++;
+            L1.handleLevelOne(levelOne);
         });
 
         let timer = setInterval(() => {
@@ -36,7 +37,7 @@ export default function MiniCharts({ Socket }) {
 
             levelOneCount = 0;
             timeAndSalesCount = 0;
-        }, 1000);
+        }, 2000);
 
         return () => {
             clearInterval(timer);
@@ -50,14 +51,14 @@ export default function MiniCharts({ Socket }) {
         // "/NQ",
         // "/YM",
         // "/GC",
-        //"/CL", "/RT"
+        //"/CL", "/RTY"
     ];
 
     let titles = [
         [`Trades Per Sec, `, ["bidSize", "askSize"]],
         [`Trade Vol Per Sec, `, ["bidSize", "askSize"]],
         [`Vol Weighted Per Sec, `, ["bidPrice", "askPrice"]],
-        [`Vol Per Trades Per Sec, `, ["bidSize", "askSize"]],
+        [`Vol Per Trades Per Sec, `, []],
         // [`Time between Trades Per Sec, `, ["bidSize", "askSize"]],
         // ["Price Change", ["bidSize", "askSize"]],
     ];
@@ -94,6 +95,7 @@ export default function MiniCharts({ Socket }) {
         .map((symbol) => {
             return datas.map((data, i) => (
                 <div key={`${symbol}-${i}`} className="white">
+                    <p>{`${symbol} ${i}`}</p>
                     <MiniChart
                         currentZoom={currentZoom}
                         setCurrentZoom={setCurrentZoom}

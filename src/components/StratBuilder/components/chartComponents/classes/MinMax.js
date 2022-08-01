@@ -6,12 +6,14 @@ class MinMax {
         data,
         tolerance = 1,
         zigZagTolerance = 0.019,
-        zigZagRegressionErrorLimit
+        zigZagRegressionErrorLimit,
+        toggleZigzagDynamic
     ) {
         this.data = data;
         this.tolerance = tolerance > 0 ? tolerance : 1;
         this.zigZagTolerance = zigZagTolerance > 0 ? zigZagTolerance : 0.0001;
         this.zigZagRegressionErrorLimit = zigZagRegressionErrorLimit || 5;
+        this.toggleZigzagDynamic = toggleZigzagDynamic;
         // this.highs = data.map((d) => d.high);
         // this.lows = data.map((d) => d.low);
 
@@ -21,6 +23,56 @@ class MinMax {
         this.highLowerHighs = this.highLower("high");
         this.zigZag = this.getZigZag();
         this.regressionZigZag = this.runRegressionSwings();
+        this.zigZagFibs = this.runZigZagFibs();
+    }
+
+    runZigZagFibs() {
+        const fibsList = [];
+        const arbitraryLimit = 0.01; //1%
+        console.log(this.swings);
+        this.swings.forEach((swing, swingIndex) => {
+            if (swingIndex === this.swings.length - 1) return;
+            const firstPoint = swing;
+            const secondPoint = this.swings[swingIndex + 1];
+            // console.log({ firstPoint, secondPoint });
+            let lowToHigh;
+            if (firstPoint.name === "high" && secondPoint.name === "low") {
+                lowToHigh = false;
+            } else if (
+                firstPoint.name === "low" &&
+                secondPoint.name === "high"
+            ) {
+                lowToHigh = true;
+            } else {
+                throw Error("fibs are broken");
+            }
+
+            if (lowToHigh) {
+                const diff = secondPoint.val.y - firstPoint.val.y;
+                if (firstPoint.val.y * arbitraryLimit > diff) {
+                    // console.log("lets say this is too small to matter");
+                    return;
+                }
+                const _50 = secondPoint.val.y - diff / 2;
+                const _62 = secondPoint.val.y - diff * 0.62;
+                const _38 = secondPoint.val.y - diff * 0.38;
+                fibsList.push({ firstPoint, secondPoint, _38, _50, _62 });
+            } else if (!lowToHigh) {
+                const diff = firstPoint.val.y - secondPoint.val.y;
+                if (firstPoint.val.y * arbitraryLimit > diff) {
+                    // console.log("lets say this is too small to matter");
+                    return;
+                }
+                const _50 = secondPoint.val.y + diff / 2;
+                const _62 = secondPoint.val.y + diff * 0.62;
+                const _38 = secondPoint.val.y + diff * 0.38;
+
+                fibsList.push({ firstPoint, secondPoint, _38, _50, _62 });
+            }
+        });
+
+        this.fibsList = fibsList;
+        return fibsList;
     }
 
     getZigZag() {
@@ -29,25 +81,26 @@ class MinMax {
         const smoothMinMax = [];
         const t = smoothValue;
         //Loop to find all high and low locals
-        for (let i = t; i < this.data.length - t; i++) {
-            if (i === t) {
+        for (let i = 1; i < this.data.length - 1; i++) {
+            if (i === 1) {
                 smoothMinMax.push({
                     val: { y: this.data[i].close },
                     name: "start",
                     index: i,
-                    dateTime: this.data[i]?.datetime || this.data[i]?.timestamp,
+                    datetime: this.data[i]?.datetime || this.data[i]?.timestamp,
                 });
             }
-            let { middle, left, right } = this.leftRightCenter(this.data, i, t);
+
+            let { middle, left, right } = this.leftRightCenter(this.data, i, 1);
             const isHighLow = this.compare(left, right, middle);
             if (isHighLow) {
                 let val;
                 if (isHighLow === "high") {
-                    val = { y: this.data[i].close };
-                    // val = { y: this.data[i].high };
+                    // val = { y: this.data[i].close };
+                    val = { y: this.data[i].high };
                 } else if (isHighLow === "low") {
-                    val = { y: this.data[i].close };
-                    // val = { y: this.data[i].low };
+                    // val = { y: this.data[i].close };
+                    val = { y: this.data[i].low };
                 } else if (isHighLow === "both") {
                     //if both, send both high and low, then later check what the last value was.....
 
@@ -70,7 +123,7 @@ class MinMax {
                     val: val,
                     name: isHighLow,
                     index: i,
-                    dateTime: this.data[i].dateTime,
+                    datetime: this.data[i].datetime,
                 });
             }
         }
@@ -79,7 +132,7 @@ class MinMax {
 
         /**   Second Step, filtering out the smaller moves */
         /**  * Use zigzag tolerance to alter the output */
-        const moveLimit = this.zigZagTolerance; //5%
+        let moveLimit = this.zigZagTolerance; //5%
         const swings = [smoothMinMax[0]];
 
         smoothMinMax.forEach((minMaxValue, i, arr) => {
@@ -105,13 +158,13 @@ class MinMax {
                         }
                     } else if (minMaxValue.name === "both") {
                         if (minMaxValue.val.high >= lastVal.val.y) {
-                            const newValue = {
+                            const newVal = {
                                 index: minMaxValue.index,
-                                dateTime: minMaxValue.dateTime,
+                                datetime: minMaxValue.datetime,
                                 val: { y: minMaxValue.val.high },
                                 name: "high",
                             };
-                            swings[swings.length - 1] = newValue;
+                            swings[swings.length - 1] = newVal;
                             return;
                         }
                     }
@@ -124,13 +177,13 @@ class MinMax {
                         }
                     } else if (minMaxValue.name === "both") {
                         if (minMaxValue.val.low <= lastVal.val.y) {
-                            const newValue = {
+                            const newVal = {
                                 index: minMaxValue.index,
-                                dateTime: minMaxValue.dateTime,
+                                datetime: minMaxValue.datetime,
                                 val: { y: minMaxValue.val.low },
                                 name: "low",
                             };
-                            swings[swings.length - 1] = newValue;
+                            swings[swings.length - 1] = newVal;
                             return;
                         }
                     }
@@ -167,8 +220,8 @@ class MinMax {
 
             if (minMaxValue.name == "both") {
                 // if it was a high, then, replace the high
-                const highDiff = lastVal.val.y * moveLimit < diff1;
-                const lowDiff = lastVal.val.y * moveLimit < diff2;
+                const highDiff = lastVal.val.y * this.zigZagTolerance < diff1;
+                const lowDiff = lastVal.val.y * this.zigZagTolerance < diff2;
                 if (!highDiff && !lowDiff) {
                     //this is insignificunt
                     // console.log("this is insignificunt", { highDiff, lowDiff });
@@ -178,47 +231,65 @@ class MinMax {
                 if (lastVal.name === "high" && lowDiff) {
                     //replace the last val with this high
                     const newVal = {
-                        dateTime: minMaxValue.dateTime,
+                        datetime: minMaxValue.datetime,
 
                         name: "low",
                         index: minMaxValue.index,
                         val: { y: minMaxValue.val.low },
                     };
 
-                    swings.push(newVal);
+                    if (this.compareLastIndex(newVal, lastVal)) {
+                        swings.push(newVal);
+                        moveLimit = this.zigZagTolerance;
+                    } else {
+                        moveLimit += 0.001;
+                    }
                 } else if (lastVal.name === "low" && highDiff) {
                     //replace the last val with this low
                     const newVal = {
                         name: "high",
                         index: minMaxValue.index,
-                        dateTime: minMaxValue.dateTime,
+                        datetime: minMaxValue.datetime,
                         val: { y: minMaxValue.val.high },
                     };
 
-                    swings.push(newVal);
+                    if (this.compareLastIndex(newVal, lastVal)) {
+                        swings.push(newVal);
+                        moveLimit = this.zigZagTolerance;
+                    } else {
+                        moveLimit += 0.001;
+                    }
                 } else {
                     //we got a new high or low, sooo check for which
                     //if last was a high, and we got a new low, add it
                     if (lastVal.name === "high") {
-                        const newValue = {
-                            dateTime: minMaxValue.dateTime,
+                        const newVal = {
+                            datetime: minMaxValue.datetime,
 
                             name: "low",
                             index: minMaxValue.index,
                             val: { y: minMaxValue.val.low },
                         };
-                        swings.push(newValue);
-                        lastVal = newValue;
+                        if (this.compareLastIndex(newVal, lastVal)) {
+                            swings.push(newVal);
+                            moveLimit = this.zigZagTolerance;
+                        } else {
+                            moveLimit += 0.001;
+                        }
                     } else if (lastVal.name === "low") {
-                        const newValue = {
+                        const newVal = {
                             name: "high",
-                            dateTime: minMaxValue.dateTime,
+                            datetime: minMaxValue.datetime,
 
                             index: minMaxValue.index,
                             val: { y: minMaxValue.val.high },
                         };
-                        swings.push(newValue);
-                        lastVal = newValue;
+                        if (this.compareLastIndex(newVal, lastVal)) {
+                            swings.push(newVal);
+                            moveLimit = this.zigZagTolerance;
+                        } else {
+                            moveLimit += 0.001;
+                        }
                     } else {
                         console.log("STOP!!!!!");
                         throw new Error("STOP!!!");
@@ -226,25 +297,35 @@ class MinMax {
                 }
             } else if (minMaxValue.name === "both") {
                 if (lastVal.name === "high") {
-                    const newValue = {
-                        dateTime: minMaxValue.dateTime,
+                    const newVal = {
+                        datetime: minMaxValue.datetime,
 
                         name: "low",
                         y: { y: minMaxValue.val.low },
                         index: minMaxValue.index,
                     };
-                    swings.push(newValue);
+                    if (this.compareLastIndex(newVal, lastVal)) {
+                        swings.push(newVal);
+                        moveLimit = this.zigZagTolerance;
+                    } else {
+                        moveLimit += 0.001;
+                    }
                 } else if (lastVal.name === "low") {
-                    const newValue = {
-                        dateTime: minMaxValue.dateTime,
+                    const newVal = {
+                        datetime: minMaxValue.datetime,
 
                         name: "high",
                         y: { y: minMaxValue.val.high },
                         index: minMaxValue.index,
                     };
-                    swings.push(newValue);
+                    if (this.compareLastIndex(newVal, lastVal)) {
+                        swings.push(newVal);
+                        moveLimit = this.zigZagTolerance;
+                    } else {
+                        moveLimit += 0.001;
+                    }
                 }
-            } else if (diff1 > lastVal.val.y * moveLimit) {
+            } else if (diff1 > lastVal.val.y * this.zigZagTolerance) {
                 //only go swing high, low, high, low, etc...
                 if (lastVal.name === minMaxValue.name) {
                     if (
@@ -256,7 +337,12 @@ class MinMax {
                         swings[swings.length - 1] = minMaxValue;
                     }
                 } else {
-                    swings.push(minMaxValue);
+                    if (this.compareLastIndex(minMaxValue, lastVal)) {
+                        swings.push(minMaxValue);
+                        moveLimit = this.zigZagTolerance;
+                    } else {
+                        moveLimit += 0.001;
+                    }
                 }
             }
         });
@@ -266,8 +352,20 @@ class MinMax {
         return { swings, smoothMinMax };
     }
 
+    compareLastIndex(current, last) {
+        const indexDiff = current.index - last.index;
+        const yDiff = current.val.y - last.val.y;
+        const percDiff = Math.abs(yDiff) / last.val.y;
+        if (percDiff < 0.01 && indexDiff <= 5 && this.toggleZigzagDynamic) {
+            console.log("can we skip?");
+            return false;
+        } else {
+            return true;
+        }
+    }
+
     runRegressionSwings() {
-        console.log(this.swings);
+        // console.log(this.swings);
         if (!this.swings?.length && this.swings[0] !== undefined) {
             return;
         }

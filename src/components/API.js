@@ -298,11 +298,11 @@ async function getBackTestData({ symbol, timeframe }) {
     }
 }
 
-async function getTheStockData({ symbol }) {
+async function getTheStockData({ symbol, frame, from = 0, to = 0 }) {
     console.log("getTheStockData");
     try {
         let res = await fetch(
-            `${REACT_APP_API_SERVER}/API/get-stock-data/${symbol}`,
+            `${REACT_APP_API_SERVER}/API/get-stock-data/${symbol}/${frame}/${from}/${to}`,
             {
                 credentials: "include",
                 method: "GET",
@@ -335,6 +335,7 @@ async function linkPriceData(stratId, priceDataId) {
 }
 
 async function addPriceData(symbol, timeframe) {
+    debugger;
     try {
         let newPriceData = await fetch(
             `${REACT_APP_API_SERVER}/API/addPriceData`,

@@ -390,11 +390,12 @@ function isPreMarket(date) {
     // }
 }
 
-function makeTime(hr, min, amPM) {
+function makeTime(hr, min, date, amPM) {
     hr = amPM === "AM" ? hr : hr + 12;
     let time = new Date();
     time = new Date(time).setHours(hr);
     time = new Date(time).setMinutes(min);
+    time = new Date(time).setDate(date);
     time = new Date(time).setSeconds(0);
     return new Date(time).getTime();
 }
@@ -415,6 +416,23 @@ function getTimeTill(time) {
     } else {
         return time + 1000 * 60 * 60 * 24 - now;
     }
+}
+
+function isWeekend(date) {
+    // if (!futuresAreTrading()) return false;
+    let now = date || new Date();
+    now = new Date(now);
+    now = new Date(now).getTime();
+
+    let { day, hour, minute } = eastCoastTime(date);
+    if (day === 6) {
+        return true;
+    } else if (day === 5 && hour >= 17) {
+        return true;
+    } else if (day === 0 && hour < 7) {
+        return true;
+    }
+    return false;
 }
 
 module.exports = {
@@ -439,6 +457,7 @@ module.exports = {
     isClosingBell,
     isOpeningBell,
     isOpeningSession,
+    isWeekend,
     isOptionsTime,
     getTimeTillPreMarket,
     isPreMarket,
@@ -446,4 +465,5 @@ module.exports = {
     maintenanceTime,
     stocksAreTrading,
     timeAsEST,
+    makeTime,
 };

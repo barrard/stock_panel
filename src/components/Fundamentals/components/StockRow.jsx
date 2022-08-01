@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import useIsInViewport from "use-is-in-viewport";
 import API from "../../API";
-
+import WeeklyMiniChart from "../../MiniCharts/components/MiniChart/WeeklyMiniChart";
 //as $$$ dollars
 function as$(val) {
     return new Intl.NumberFormat("en-US", {
@@ -16,17 +16,19 @@ export default function StockRow(props) {
     const { stock, index, ticker } = props;
     const [weeklyData, setWeeklyData] = useState([]);
     const [weeklyPriceLevels, setWeeklyPriceLevels] = useState({});
-    const [hasNoWeeklyData, setHasNoWeeklyData] = useState(false);
+    const [hasWeeklyData, setHasWeeklyData] = useState(false);
 
     useEffect(() => {
-        if (isInViewport && weeklyData.length === 0) {
+        console.log(weeklyData.length);
+        if (isInViewport && weeklyData.length === 0 && !hasWeeklyData) {
             API.getStockDataForFundamentalsCharts(stock.symbol).then((res) => {
                 console.log(res);
-                const { weekly, weeklyPriceLevels } = res[0];
-                if (!weeklyData) {
-                    setHasNoWeeklyData(true);
+                res = res || {};
+                const { weeklyData, weeklyPriceLevels } = res;
+                if (weeklyData) {
+                    setHasWeeklyData(true);
                 }
-                setWeeklyData(weekly || [1]);
+                setWeeklyData(weeklyData || [1]);
                 setWeeklyPriceLevels(weeklyPriceLevels);
             });
         }
@@ -61,7 +63,15 @@ export default function StockRow(props) {
                 </StyledRow>
             </div>
             <div className="col-6">
-                {hasNoWeeklyData ? "Has No Weekly Data" : weeklyData.length}
+                {!hasWeeklyData && "Has No Weekly Data"}
+                {hasWeeklyData && (
+                    <WeeklyMiniChart
+                        width={275}
+                        // title="TITLE"
+                        ohlc={weeklyData}
+                        weeklyPriceLevels={weeklyPriceLevels}
+                    />
+                )}
             </div>
         </div>
     );

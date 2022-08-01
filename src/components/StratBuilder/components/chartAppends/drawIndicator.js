@@ -26,9 +26,15 @@ export default function drawIndicator({
     let { name, axis, yScale, xScale, color, yOffset, data, group, fullName } =
         yScales[key];
 
-    // console.log(yScale.range());
-    // console.log(yOffset);
-    // console.log(xScale.range());
+    const myLine = line()
+        .x((d, i) => {
+            let x = xScale(i) + candleWidth / 2;
+            return x;
+        })
+        .y((d) => {
+            let y = yScale(d.close || d) + yOffset + margin.top;
+            return y;
+        });
 
     function openLineSettings(indicatorData, lineName, key) {
         //toggle, and set
@@ -76,15 +82,6 @@ export default function drawIndicator({
         // let className = `${lineName}-myLine ${group}-lineGroup ${name}-indicatorName`;
         chartSvg.selectAll(`.${className}`).remove();
         className = `${className} indicator-${key}`;
-        const myLine = line()
-            .x((d, i) => {
-                let x = xScale(i);
-                return x;
-            })
-            .y((d) => {
-                let y = yScale(d.close || d) + yOffset + margin.top;
-                return y;
-            });
 
         chartSvg
             .selectAll(`.${className}`)

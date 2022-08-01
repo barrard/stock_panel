@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import styled from "styled-components";
+import { toastr } from "react-redux-toastr";
 
 import StratContext from "./StratContext";
 import API from "../API";
@@ -90,25 +91,21 @@ export default function StratBuilder() {
         }
         //if this is a stock lets stop right here
         if (checkSymbol(symbol).isStock) {
-            let data = await API.getTheStockData({ symbol });
+            let data = await API.getTheStockData({ symbol, frame: timeframe });
 
-            const timeframes = ["hourly", "daily", "weekly"];
+            if (!data.length)
+                return toastr.error(`No data found for ${timeframe} ${symbol}`);
+            const tf = timeframe;
 
-            timeframes.forEach((tf) => {
-                if (!data[tf]) return;
-                indicatorResults[symbol][tf] = {};
-                charts[symbol][tf] = {};
-                charts[symbol][tf].data =
-                    data[tf].map((d) => ({ ...d, timestamp: d.datetime })) ||
-                    [];
-                charts[symbol][tf].id = data._id;
-                charts[symbol][tf].conditionals = {};
-                charts[symbol][tf].stats = data[`${tf}Stats`];
-                charts[symbol][tf].priceLevels = data[`${tf}PriceLevels`];
-                charts[symbol][tf].volAvg = data[`${tf}VolAvg`];
-            });
-
-            console.log(data);
+            indicatorResults[symbol][tf] = {};
+            charts[symbol][tf] = {};
+            charts[symbol][tf].data =
+                data.map((d) => ({ ...d, timestamp: d.datetime })) || [];
+            charts[symbol][tf].id = data._id;
+            charts[symbol][tf].conditionals = {};
+            charts[symbol][tf].stats = data[`${tf}Stats`];
+            charts[symbol][tf].priceLevels = data[`${tf}PriceLevels`];
+            charts[symbol][tf].volAvg = data[`${tf}VolAvg`];
 
             setCharts({ ...charts });
             return;

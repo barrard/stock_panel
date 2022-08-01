@@ -1,6 +1,9 @@
 class LevelOne {
     constructor() {
-        this.symbols = ["/ES", "/CL", "/YM", "/NQ", "/GC", "/RT"];
+        this.symbols = [
+            "/ES",
+            //  "/CL", "/YM", "/NQ", "/GC", "/RTY"
+        ];
         this.props = [
             "bidPrice",
             "askPrice",
@@ -69,12 +72,14 @@ class LevelOne {
     }
 
     parseLevelOne(data, obj) {
-        let symbol = data["key"].substring(0, 3);
-        let bidPrice = data["1"];
-        let askPrice = data["2"];
-        let lastPrice = data["3"];
-        let bidSize = data["4"];
-        let askSize = data["5"];
+        let symbol = data["key"].slice(0, -3);
+        if (!this.lastLevelOneData[symbol]) return obj;
+        console.log(data);
+        let bidPrice = data["1"] || this.lastLevelOneData[symbol]["bidPrice"];
+        let askPrice = data["2"] || this.lastLevelOneData[symbol]["askPrice"];
+        let lastPrice = data["3"] || this.lastLevelOneData[symbol]["lastPrice"];
+        let bidSize = data["4"] || this.lastLevelOneData[symbol]["bidSize"];
+        let askSize = data["5"] || this.lastLevelOneData[symbol]["askSize"];
 
         obj[symbol] = { bidPrice, askPrice, askSize, bidSize, lastPrice };
     }
@@ -83,20 +88,22 @@ class LevelOne {
         // let levelOneDataChange = {};
         // setLevelOneData({ ...levelOne });
         let levelOneData = this.parse(levelOne);
-        console.log({ levelOneData });
+        // console.log({ levelOneData });
 
-        Object.entries(levelOneData).forEach(([symbol, data]) => {
-            Object.keys(data).forEach((prop) => {
+        this.symbols.forEach((symbol) => {
+            const data = levelOneData[symbol];
+            if (!data) return;
+            this.props.forEach((prop) => {
                 let val = data[prop];
                 // if (val === undefined) return;
-                if (val === undefined) {
-                    if (this.lastLevelOneData[symbol][prop] === undefined) {
-                        debugger;
-                        val = 0;
-                    } else {
-                        val = this.lastLevelOneData[symbol][prop];
-                    }
-                }
+                // if (val === undefined) {
+                //     if (this.lastLevelOneData[symbol][prop] === undefined) {
+                //         debugger;
+                //         val = 0;
+                //     } else {
+                //         val = this.lastLevelOneData[symbol][prop];
+                //     }
+                // }
                 this.levelOneDataArrays[symbol][prop].push(val);
                 let lastVal = this.lastLevelOneData[symbol][prop];
                 let delta = val - lastVal;

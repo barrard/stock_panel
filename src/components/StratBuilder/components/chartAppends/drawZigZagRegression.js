@@ -7,7 +7,8 @@ export default function drawZigZagRegression(
     data,
     { xScale, yScale },
     margin,
-    candleWidth
+    candleWidth,
+    toggleZigZag
 ) {
     const zigZagRegressionHighClassName = "regressionHighs-zigzag";
     const zigZagRegressionLowClassName = "regressionLows-zigzag";
@@ -26,7 +27,8 @@ export default function drawZigZagRegression(
     chartSvg.selectAll(`.${zigZagRegressionLowPointsClassName}`).remove();
     chartSvg.selectAll(`.${priceLevelErrorClassName}`).remove();
 
-    if (!toggleZigzagRegression) return;
+    console.log({ toggleZigzagRegression, toggleZigZag });
+    if (!toggleZigzagRegression || !toggleZigZag) return;
 
     const highs = data.regressionZigZag.regressionHighLines;
     const lows = data.regressionZigZag.regressionLowLines;
@@ -103,6 +105,7 @@ export default function drawZigZagRegression(
                             .attr("y2", (d) => yScale(d.y) + margin.top)
                             .attr("stroke-width", opts.strokeWidth || 3)
                             .attr("stroke", (d) => "goldenrod")
+                            .attr("stroke-dasharray", "4")
                             .attr("clip-path", "url(#mainChart-clipBox)"); //CORRECTION
 
                         return dotX;

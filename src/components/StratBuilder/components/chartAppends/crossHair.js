@@ -117,15 +117,11 @@ export function appendYLabel({
         yScale = yScales["mainChart"].yScale;
         yLabel = yScale.invert(mouseY).toFixed(2);
     } else {
-        // console.log({ mouseY, mainChartHeight, indicatorHeight })
-        //look for some scale with offset mouseY - mainChartHeight = ?
-        // console.log(mouseY - mainChartHeight)
-        // console.log((mouseY - mainChartHeight) / indicatorHeight)
         let t = Math.floor(
             (mouseY - mainChartHeight) / indicatorHeight
         ).toFixed(0);
         let crypticScaleOffset = mainChartHeight + t * indicatorHeight;
-        // console.log(t, crypticScaleOffset)
+
         yScale = Object.values(yScales).filter(
             ({ yOffset }) => yOffset === crypticScaleOffset
         )[0];
@@ -261,7 +257,7 @@ export function appendOHLCVLabel({
     margin,
     data,
 }) {
-    let width = 475;
+    let width = 550;
     let height = 15;
     let strokeWidth = 2;
     let x;
@@ -320,10 +316,10 @@ export function appendOHLCVLabel({
         move,
     });
 
-    appendOHLCText({ OHLCBoxG, data: data[dateIndex], rect, move });
+    appendOHLCText({ OHLCBoxG, data: data[dateIndex], rect, move, dateIndex });
 }
 
-function appendOHLCText({ OHLCBoxG, data, rect, move }) {
+function appendOHLCText({ OHLCBoxG, data, rect, move, dateIndex }) {
     if (!data) return;
     const fontSize = 12;
     let time = new Date(data.timestamp || data.datetime).toLocaleString();
@@ -335,10 +331,12 @@ function appendOHLCText({ OHLCBoxG, data, rect, move }) {
 
     //   let OHLCString = `${time} | O:${open}| H:${high}| L:${low}| C:${close}| V:${volume}`
     let X = 0;
-    let timeWidth = 65;
-    let labelWidth = 11;
-    let dataWidth = 25;
-    appendText(time, X);
+    const indexWidth = 20;
+    const timeWidth = 70;
+    const labelWidth = 11;
+    const dataWidth = 25;
+    appendText(`#${dateIndex}`, X);
+    appendText(`| ${time}`, (X += indexWidth));
     appendText(`| O:`, (X += timeWidth));
     appendText(`${toFixedIfNeed(open)}`, (X += labelWidth));
     appendText(`| H:`, (X += dataWidth));
