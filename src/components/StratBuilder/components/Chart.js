@@ -109,7 +109,12 @@ export default function Chart({ symbol, timeframe }) {
     const [selectedPatternResults, setSelectedPatternResults] = useState({});
     const [yScales, setYScales] = useState({
         mainChart: {
-            yScale: scaleLinear().range([mainChartHeight, 0]),
+            // yScale: scaleLinear().range([mainChartHeight, 0]),
+
+            yScale: scaleLinear().range([
+                mainChartHeight + margin.top,
+                margin.top,
+            ]),
             xScale,
             data: data,
             sliceData: {},
@@ -507,12 +512,12 @@ export default function Chart({ symbol, timeframe }) {
 
                         let [yMin, yMax] = getYMinMax({ result: tempLineData });
 
-                        yScale.domain([yMin, yMax]);
+                        yScale.domain([yMin, yMax + yMax * 0.05]);
                     }
                 }
             }
             let [yMin, yMax] = getYMinMax({ result: mainChartData });
-            yScales["mainChart"].yScale.domain([yMin, yMax]);
+            yScales["mainChart"].yScale.domain([yMin, yMax + yMax * 0.05]);
         } else {
             //   NO ZOOM YET
             let mainChartData = {};

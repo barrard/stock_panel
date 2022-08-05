@@ -50,7 +50,7 @@ class CalcVolProfile {
         const prices = Object.keys(volProfile).sort((a, b) => a - b);
         if (!prices.length) return;
         const vols = Object.values(volProfile);
-        console.log(prices);
+        // console.log(prices);
         let priceHVN = prices.find((p) => volProfile[p] === max);
         const indexPOC = prices.indexOf(priceHVN);
         let totalVol = vols.reduce((acc, val) => (acc += val), 0);

@@ -15,9 +15,9 @@ export default function drawZigZagProfile(
     candleWidth,
     toggleZigZag
 ) {
-    const profileBarClassName = "volProfileBar";
-    const valueAreaClassName = "valueArea";
-    const POC_ClassName = "POC_VolProfile";
+    const profileBarClassName = "zigZagVolProfileBar";
+    const valueAreaClassName = "zigZagValueArea";
+    const POC_ClassName = "zigZagPOC_VolProfile";
 
     chartSvg.selectAll(`.${profileBarClassName}`).remove();
     chartSvg.selectAll(`.${valueAreaClassName}`).remove();
@@ -50,8 +50,6 @@ export default function drawZigZagProfile(
             .sort((a, b) => a - b);
         let barsPerBin = Math.round(sortedPrices.length / bins);
 
-        debugger;
-
         if (barsPerBin * bins < sortedPrices.length) {
             let extra = sortedPrices.length - barsPerBin * bins;
             let addedBins = Math.ceil(extra / barsPerBin);
@@ -79,17 +77,6 @@ export default function drawZigZagProfile(
                 yScale(pricesInBin[pricesInBin.length - 1]);
 
             binnedProfile[pricesInBin[0]] = { totalVol, height };
-
-            // const x = _xScale(totalVol);
-            // const width = _xScale(x1) - _xScale(totalVol);
-            // const y = yScale(parseFloat(pricesInBin[0])) + margin.top;
-
-            // profilesData.push({
-            //     x,
-            //     y,
-            //     width,
-            //     height,
-            // });
         }
 
         debugger;
