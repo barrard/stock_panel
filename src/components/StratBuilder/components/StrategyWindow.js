@@ -173,7 +173,6 @@ const DataFeedItem = ({ data, index }) => {
                 title="Show Chart"
                 index={index}
                 onClick={() => {
-                    debugger;
                     addChart({ symbol, timeframe, _id });
                 }}
                 icon={faChartLine}

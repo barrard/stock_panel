@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import styled from "styled-components";
 import { toastr } from "react-redux-toastr";
-
+import Socket from "../Socket";
 import StratContext from "./StratContext";
 import API from "../API";
 
@@ -35,6 +35,8 @@ export default function StratBuilder() {
     // const [applyToChart, setApplyToChart] = useState(false)
     const [chartConditionals, setChartConditionals] = useState({});
 
+    const [TS, setTS] = useState(null);
+
     useEffect(() => {
         //fetch strats
         API.getStrategies()
@@ -54,6 +56,22 @@ export default function StratBuilder() {
         API.getConditionals()
             .then((list) => setConditionals([...list]))
             .catch((e) => console.log(e));
+
+        //conect to sockets
+
+        Socket.on("CHART_FUTURES", (data) => {
+            console.log(data);
+        });
+
+        Socket.on("timeAndSales", (timeAndSales) => {
+            // console.log(timeAndSales);
+        });
+
+        return () => {
+            Socket.off("CHART_FUTURES");
+
+            Socket.off("timeAndSales");
+        };
     }, []);
 
     const submitNewStrat = async () => {
@@ -101,11 +119,11 @@ export default function StratBuilder() {
             charts[symbol][tf] = {};
             charts[symbol][tf].data =
                 data.map((d) => ({ ...d, timestamp: d.datetime })) || [];
-            charts[symbol][tf].id = data._id;
+            charts[symbol][tf].id = _id;
             charts[symbol][tf].conditionals = {};
-            charts[symbol][tf].stats = data[`${tf}Stats`];
-            charts[symbol][tf].priceLevels = data[`${tf}PriceLevels`];
-            charts[symbol][tf].volAvg = data[`${tf}VolAvg`];
+            // charts[symbol][tf].stats = data[`${tf}Stats`];
+            // charts[symbol][tf].priceLevels = data[`${tf}PriceLevels`];
+            // charts[symbol][tf].volAvg = data[`${tf}VolAvg`];
 
             setCharts({ ...charts });
             return;

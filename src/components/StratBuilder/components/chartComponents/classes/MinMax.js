@@ -28,7 +28,7 @@ class MinMax {
 
     runZigZagFibs() {
         const fibsList = [];
-        const arbitraryLimit = 0.01; //1%
+        const arbitraryLimit = 0.001; //1%
         console.log(this.swings);
         this.swings.forEach((swing, swingIndex) => {
             if (swingIndex === this.swings.length - 1) return;

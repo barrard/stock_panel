@@ -65,38 +65,46 @@ class CalcVolProfile {
         this.POC = prices[indexPOC];
 
         function sumValArea(topIndex, bottomIndex) {
-            let _2Below = prices.slice(bottomIndex - 2, bottomIndex);
-            let _2Above = prices.slice(topIndex + 1, topIndex + 3);
+            try {
+                if (!bottomIndex) {
+                    debugger;
+                }
+                let _2Below = prices.slice(bottomIndex - 2, bottomIndex);
+                let _2Above = prices.slice(topIndex + 1, topIndex + 3);
 
-            let aboveSum = _2Above.reduce(
-                (acc, price) => acc + volProfile[price],
-                0
-            );
-            let belowSum = _2Below.reduce(
-                (acc, price) => acc + volProfile[price],
-                0
-            );
-            // console.log({ _2Above, _2Below });
-            if (aboveSum === belowSum) {
-                // console.log("hmm, take both?");
-                valAreaVolSum += belowSum;
-                valAreaVolSum += aboveSum;
-                bottomIndex = bottomIndex - 2;
-                topIndex = topIndex + 2;
-            } else if (belowSum > aboveSum) {
-                valAreaVolSum += belowSum;
-                bottomIndex = bottomIndex - 2;
-            } else if (aboveSum > belowSum) {
-                valAreaVolSum += aboveSum;
-                // return sumValArea(topIndex + 2, bottomIndex);
-                topIndex = topIndex + 2;
-            }
+                let aboveSum = _2Above.reduce(
+                    (acc, price) => acc + volProfile[price],
+                    0
+                );
 
-            if (valAreaVolSum >= valAreaVol) {
-                return { valueHigh: topIndex, valueLow: bottomIndex };
-            } else {
-                // console.log({ valAreaVolSum, valAreaVol });
-                return sumValArea(topIndex, bottomIndex);
+                let belowSum = _2Below.reduce(
+                    (acc, price) => acc + volProfile[price],
+                    0
+                );
+                // console.log({ _2Above, _2Below });
+                if (aboveSum === belowSum) {
+                    // console.log("hmm, take both?");
+                    valAreaVolSum += belowSum;
+                    valAreaVolSum += aboveSum;
+                    bottomIndex = bottomIndex - 2;
+                    topIndex = topIndex + 2;
+                } else if (belowSum > aboveSum) {
+                    valAreaVolSum += belowSum;
+                    bottomIndex = bottomIndex - 2;
+                } else if (aboveSum > belowSum) {
+                    valAreaVolSum += aboveSum;
+                    // return sumValArea(topIndex + 2, bottomIndex);
+                    topIndex = topIndex + 2;
+                }
+
+                if (valAreaVolSum >= valAreaVol) {
+                    return { valueHigh: topIndex, valueLow: bottomIndex };
+                } else {
+                    // console.log({ valAreaVolSum, valAreaVol });
+                    return sumValArea(topIndex, bottomIndex);
+                }
+            } catch (err) {
+                console.log(err);
             }
         }
 

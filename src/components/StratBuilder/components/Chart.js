@@ -48,7 +48,7 @@ import {
 export default function Chart({ symbol, timeframe }) {
     let width = 950;
     let margin = {
-        left: 20,
+        left: 0,
         right: 50,
         bottom: 20,
         top: 20,
@@ -512,12 +512,18 @@ export default function Chart({ symbol, timeframe }) {
 
                         let [yMin, yMax] = getYMinMax({ result: tempLineData });
 
-                        yScale.domain([yMin, yMax + yMax * 0.05]);
+                        yScale.domain([
+                            yMin - yMin * 0.001,
+                            yMax + yMax * 0.001,
+                        ]);
                     }
                 }
             }
             let [yMin, yMax] = getYMinMax({ result: mainChartData });
-            yScales["mainChart"].yScale.domain([yMin, yMax + yMax * 0.05]);
+            yScales["mainChart"].yScale.domain([
+                yMin - yMin * 0.001,
+                yMax + yMax * 0.001,
+            ]);
         } else {
             //   NO ZOOM YET
             let mainChartData = {};

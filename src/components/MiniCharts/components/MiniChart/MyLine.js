@@ -33,7 +33,7 @@ export default class MyLine {
             });
     };
 
-    draw(chartSvg, data, weeklyPriceLevels, xScale, yScale) {
+    draw(chartSvg, data = [], weeklyPriceLevels, xScale, yScale) {
         if (!this.svgChart || !this.svgChart.selectAll) return;
         this.data = data;
         this.weeklyPriceLevels = weeklyPriceLevels;
@@ -82,6 +82,9 @@ export default class MyLine {
     }
     drawIndicator(name, color) {
         const data = this.weeklyPriceLevels[name];
+        if (!data) {
+            return console.log(`There is no weekly data for ${name}`);
+        }
         const len = this.data.length - data.length;
         for (let x = 0; x < len; x++) {
             data.unshift(data[data.length - 1]);

@@ -20,6 +20,7 @@ import AccountProfile from "./components/AccountProfilePage.js";
 import OpAlerts from "./components/OpUnusualVolPage.js";
 import OptionContracts from "./components/OptionContracts.js";
 import OptionByDate from "./components/OptionByDate.js";
+import PixiChart from "./components/charts/pixiChart";
 
 import CommodityChartPage from "./components/CommodityChartPage.js";
 import defaultFilterList from "./components/QuoteComponents/DefaultFilterList.js";
@@ -143,6 +144,10 @@ class App extends React.Component {
                         path="/fundamentals"
                         render={(props) => <Fundamentals {...props} />}
                     />
+                    <Route
+                        path="/pixi-chart"
+                        render={(props) => <PixiChart {...props} />}
+                    />
                     {/* Keep at bottom */}
                     <Route exact path="/sign-up" component={SignupPage} />
                     <Route path="/login" component={LoginPage} />
@@ -163,4 +168,5 @@ export default connect(mapStateToProps)(App);
 const AppContainer = styled.div`
     position: relative;
     background: #333;
+    color: white;
 `;
