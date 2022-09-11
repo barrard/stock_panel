@@ -125,9 +125,7 @@ export default function PixiChart() {
             volHeight,
         });
         pixiData.init();
-        pixiData.drawVolProfile();
-        pixiData.drawVolumeLine();
-        pixiData.drawPriceLine();
+        pixiData.draw();
         setPixiData(pixiData);
     }, [ohlcDatas]);
 
@@ -145,10 +143,10 @@ export default function PixiChart() {
                 onPointerLeave={() => setMouseEnter(false)}
                 onWheel={(e) => {
                     if (e.deltaY > 0) {
-                        console.log("The user scrolled up");
+                        // console.log("The user scrolled up");
                         pixiData.zoomOut(e.deltaY);
                     } else {
-                        console.log("The user scrolled down");
+                        // console.log("The user scrolled down");
                         pixiData.zoomIn(e.deltaY);
                     }
                 }}

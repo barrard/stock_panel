@@ -248,8 +248,6 @@ function binProfile({ volProfile = {}, bins = 20, yScale }) {
         bins += addedBins;
     }
 
-    debugger;
-
     const binnedProfile = {};
 
     for (let iBin = 0; iBin < bins; iBin++) {

@@ -9,9 +9,27 @@ class CalcVolProfile {
         this.fundHVN();
         this.findValueArea();
     }
+
+    getTickSize(symbol) {
+        switch (symbol) {
+            case "/ES":
+            case "/NQ":
+                return 0.25;
+            case "/GC":
+            case "/CL":
+                return 0.01;
+            case "/RTY":
+                return 0.1;
+            case "/YM":
+                return 1;
+
+            default:
+                return 0.01;
+        }
+    }
     runProfile() {
         let dailyProfile = {};
-        let tickSize = 0.01; //  getTickSize()  //0.1;
+        let tickSize = this.getTickSize(this.data[0].symbol); //0.1;
 
         this.data.forEach((d) => {
             const { open, high, low, close, volume } = d;

@@ -323,7 +323,7 @@ export default function Chart({ symbol, timeframe }) {
             return;
         }
         // console.log(results);
-        debugger;
+
         updateIndicatorResults({
             indicator: ind,
             result: results.result,
