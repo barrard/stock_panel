@@ -5,21 +5,32 @@ import { Graphics, Container, Rectangle } from "pixi.js";
 import { TimeScale } from "chart.js";
 
 export default class PixiData {
-    constructor({ ohlcDatas, viewPort, pixiApp, width, height, volHeight }) {
+    constructor({
+        ohlcDatas = [],
+        viewPort,
+        pixiApp,
+        width,
+        height,
+        volHeight,
+        loadData,
+    }) {
         this.viewPort = viewPort;
         this.pixiApp = pixiApp;
         this.height = height;
         this.width = width;
-        this.ohlcDatas = ohlcDatas;
+        this.ohlcDatas = [...ohlcDatas];
         this.allTicks = [];
-
+        this.slicedData = [];
+        this.loadData = loadData;
+        this.initRun = false;
         this.sliceStart = 0;
         this.sliceEnd = ohlcDatas.length;
         this.xScale = scaleLinear().range([0, width]);
         this.priceScale = scaleLinear().range([height, 0]);
         this.volScale = scaleLinear().range([height, volHeight]);
         this.volProfileScale = scaleLinear().range([width / 2, width]);
-
+        this.gesture = false;
+        this.touches = 0;
         //Containers
         this.mainChartContainer = new Container();
 
@@ -34,77 +45,100 @@ export default class PixiData {
         this.volProfileGfx = new Graphics();
         this.crossHairYGfx = new Graphics();
         this.crossHairXGfx = new Graphics();
+        this.init(ohlcDatas);
     }
 
-    init() {
-        const { allTicks, ohlcDatas, volProfileData, pixiApp } = this;
+    init(ohlcDatas) {
+        const { volProfileData, pixiApp } = this;
 
-        this.drawCrossHair();
+        if (!this.initRun || !this.ohlcDatas.length) {
+            this.initRun = true;
+            this.ohlcDatas = ohlcDatas;
+            //initial load
+            this.sliceStart = 0;
+            this.sliceEnd = ohlcDatas.length;
 
-        ohlcDatas.forEach((ohlc) => {
-            ohlc.dateTime = new Date(ohlc.dateTime).getTime();
-            if (!ohlc.ticks) {
-                ohlc.ticks = [];
-            }
-            ohlc.volData = {};
+            this.drawCrossHair();
 
-            ohlc.ticks.forEach((tick) => {
-                const { datetime, volume, close } = tick;
-                if (!ohlc.volData[datetime]) {
-                    ohlc.volData[datetime] = 0;
+            ohlcDatas.forEach((ohlc) => {
+                // ohlc.timestamp = new Date(ohlc.timestamp).getTime();
+                if (!ohlc.ticks) {
+                    ohlc.ticks = [];
                 }
-                if (!volProfileData[close]) {
-                    volProfileData[close] = 0;
-                }
-                volProfileData[close] += volume;
-                ohlc.volData[datetime] += volume;
-                // return acc;
+                ohlc.volData = {};
+
+                ohlc.ticks.forEach((tick) => {
+                    const { datetime, volume, close } = tick;
+                    if (!ohlc.volData[datetime]) {
+                        ohlc.volData[datetime] = 0;
+                    }
+                    if (!volProfileData[close]) {
+                        volProfileData[close] = 0;
+                    }
+                    volProfileData[close] += volume;
+                    ohlc.volData[datetime] += volume;
+                    // return acc;
+                });
             });
-        });
 
-        this.volProfileScale.domain([
-            extent(Object.values(volProfileData))[1],
-            0,
-        ]);
+            this.volProfileScale.domain([
+                extent(Object.values(volProfileData))[1],
+                0,
+            ]);
 
-        this.sliceEnd = ohlcDatas.length;
+            this.sliceEnd = ohlcDatas.length;
 
-        this.setupPriceScales();
+            this.setupPriceScales();
 
-        this.setupVolumeScales();
-        // mainChartContainer
+            // this.setupVolumeScales();
+            // mainChartContainer
 
-        this.mainChartContainer.addChild(this.candleStickWickGfx);
-        this.mainChartContainer.addChild(this.candleStickGfx);
-        this.mainChartContainer.addChild(this.priceGfx);
+            this.mainChartContainer.addChild(this.candleStickWickGfx);
+            this.mainChartContainer.addChild(this.candleStickGfx);
+            this.mainChartContainer.addChild(this.priceGfx);
 
-        this.mainChartContainer.addChild(this.volGfx);
+            this.mainChartContainer.addChild(this.volGfx);
 
-        this.mainChartContainer.addChild(this.volProfileGfx);
-        this.pixiApp.stage.addChild(this.mainChartContainer);
+            this.mainChartContainer.addChild(this.volProfileGfx);
+            this.pixiApp.stage.addChild(this.mainChartContainer);
+            this.slicedData = this.draw();
+        } else {
+            this.sliceStart += ohlcDatas.length;
+            this.sliceEnd += ohlcDatas.length;
+            this.ohlcDatas = ohlcDatas.concat(this.ohlcDatas);
+            console.log("HERE???");
+            this.draw();
+        }
+        this.loadingMoreData = false;
     }
 
     setupPriceScales() {
         const { allTicks, ohlcDatas } = this;
+        if (!ohlcDatas.length) {
+            return;
+        }
 
         this.slicedData = ohlcDatas.slice(this.sliceStart, this.sliceEnd);
 
-        this.highs = this.slicedData.map(({ high }) => high);
-        this.lows = this.slicedData.map(({ low }) => low);
-        this.vols = this.slicedData.map(({ volume }) => volume);
+        const sd = this.slicedData;
 
-        if (!this.slicedData[0]) {
-            console.log("this.slicedData[0]");
+        this.highs = sd.map(({ high }) => high);
+        this.lows = sd.map(({ low }) => low);
+        this.vols = sd.map(({ volume }) => volume);
+
+        if (!sd[0]) {
+            console.log("sd[0]");
             debugger;
         }
-        const first = this.slicedData[0].ticks
-            ? this.slicedData[0].ticks[0].datetime
-            : this.slicedData[0].dateTime;
+        const first =
+            sd[0].ticks && sd[0].ticks[0]
+                ? sd[0].ticks[0].datetime
+                : sd[0].timestamp;
 
-        const last = this.slicedData[this.slicedData.length - 1].ticks
-            ? this.slicedData[this.slicedData.length - 1].ticks.slice(-1)[0]
-                  .datetime
-            : this.slicedData[this.slicedData.length - 1].dateTime;
+        const last =
+            sd[sd.length - 1].ticks && sd[sd.length - 1].ticks.slice(-1)[0]
+                ? sd[sd.length - 1].ticks.slice(-1)[0].datetime
+                : sd[sd.length - 1].timestamp;
         //DOMAIN
         this.xScale.domain([first, last]);
 
@@ -128,28 +162,41 @@ export default class PixiData {
     }
 
     onDragStart() {
-        console.log("onDragStart");
+        // console.log("onDragStart");
+        // console.log(this.mouseX);
+        this.hideCrosshair();
+
         this.drag = this.mouseX;
-        console.log(this.mouseX);
     }
 
     onDragEnd() {
-        console.log("onDragEnd");
-        console.log(this.mouseX);
+        // console.log("onDragEnd");
+        // console.log(this.mouseX);
+        this.showCrosshair();
         this.drag = false;
         this.prevMouseX = false;
     }
 
-    onMouseMove(e) {
-        this.mouseX = e.data.global.x;
-        this.mouseY = e.data.global.y;
+    setMouse(e) {
+        if (e?.data?.global?.x) {
+            this.mouseX = e.data.global.x;
+            this.mouseY = e.data.global.y;
+        } else if (e?.touches?.[0]?.screenX) {
+            this.mouseX = e.touches[0].screenX;
+            this.mouseY = e.touches[0].screenY;
+        }
         this.crossHairYGfx.position.x = this.mouseX;
         this.crossHairXGfx.position.y = this.mouseY;
+    }
+
+    onMouseMove(e) {
+        this.setMouse(e);
 
         const price = this.priceScale.invert(this.mouseY);
         const time = Math.floor(this.xScale.invert(this.mouseX));
 
-        if (this.drag) {
+        if (this.drag && !this.gesture) {
+            // this.hideCrosshair();
             if (!this.prevMouseX) {
                 this.prevMouseX = this.mouseX;
                 return;
@@ -171,9 +218,10 @@ export default class PixiData {
     }
 
     dragLeft() {
+        if (this.longPress) return;
         //try to sub from left, and add to right
         const candleCount = Math.ceil((this.deltaDrag * -1) / this.candleWidth);
-        console.log(`Move ${candleCount} candles`);
+        // console.log(`Move ${candleCount} candles`);
         this.sliceStart = this.sliceStart + candleCount;
         if (this.sliceEnd == this.ohlcDatas.length) {
         } else {
@@ -184,13 +232,19 @@ export default class PixiData {
     }
 
     dragRight() {
+        if (this.longPress) return;
+
         //try to sub from left, and add to left
         const candleCount = Math.ceil(this.deltaDrag / this.candleWidth);
 
-        console.log(`Move ${candleCount} candles`);
+        // console.log(`Move ${candleCount} candles`);
 
         this.sliceEnd = this.sliceEnd - candleCount;
         if (this.sliceStart == 0) {
+            if (this.sliceStart === 0) {
+                //load more data starting from 0 index of ohlc
+                this.loadMoreData();
+            }
         } else {
             this.sliceStart = this.sliceStart - candleCount;
         }
@@ -199,7 +253,8 @@ export default class PixiData {
     }
 
     zoomIn(delta) {
-        const { takeFromLeft, takeFromRight, amountToZoom } = this.calcZoom();
+        const { takeFromLeft, takeFromRight, amountToZoom } =
+            this.calcZoom(delta);
 
         this.sliceStart =
             this.sliceStart + Math.ceil(takeFromLeft * amountToZoom);
@@ -208,7 +263,8 @@ export default class PixiData {
         this.draw();
     }
     zoomOut(delta) {
-        const { takeFromLeft, takeFromRight, amountToZoom } = this.calcZoom();
+        const { takeFromLeft, takeFromRight, amountToZoom } =
+            this.calcZoom(delta);
 
         this.sliceStart =
             this.sliceStart - Math.ceil(takeFromLeft * amountToZoom);
@@ -225,27 +281,49 @@ export default class PixiData {
 
         this.setupPriceScales();
 
-        this.setupVolumeScales();
-        this.drawPriceLine();
-        this.drawVolumeLine();
+        // this.setupVolumeScales();
+        // this.drawPriceLine();
+        // this.drawVolumeLine();
         this.drawAllCandles();
+        console.log("");
     }
 
-    calcZoom() {
-        const zoomPerc = 0.1;
+    loadMoreData() {
+        if (!this.loadingMoreData) {
+            this.loadingMoreData = true;
+            console.log("load more data");
+            const startDate = this.ohlcDatas.length
+                ? this.ohlcDatas[0].timestamp
+                : new Date().getTime();
+            console.log(startDate);
+            this.loadData({ startDate, withTicks: false });
+        }
+    }
 
+    calcZoom(zoomType) {
+        // zoomType = "scroll";
         this.fixSliceValues();
 
         const zoomedLeft = this.sliceStart;
         const zoomedRight = this.ohlcDatas.length - this.sliceEnd;
         const totalZoomedAmount = zoomedLeft + zoomedRight;
-        const amountToZoom =
-            (this.ohlcDatas.length - totalZoomedAmount) * zoomPerc;
+        let amountToZoom, centered;
 
-        //determine how "centered" we are
-        let centered = this.mouseX / this.width;
+        if (zoomType === "scroll") {
+            const zoomPerc = 0.1;
+            amountToZoom =
+                (this.ohlcDatas.length - totalZoomedAmount) * zoomPerc;
+            //determine how "centered" we are
+            centered = this.mouseX / this.width;
 
-        if (isNaN(centered)) {
+            if (isNaN(centered)) {
+                centered = 0.5;
+            }
+        } else {
+            amountToZoom = Math.ceil(zoomType / this.candleWidth);
+            //how pany bars are in this many pixels?
+
+            //determine how "centered" we are
             centered = 0.5;
         }
 
@@ -294,8 +372,13 @@ export default class PixiData {
         this.mainChartContainer.hitArea = this.hitArea;
 
         this.mainChartContainer
-            .on("pointerdown", () => this.onDragStart())
-            .on("pointerup", () => this.onDragEnd())
+            .on("pointerdown", (e) => {
+                this.onMouseMove(e);
+                this.onDragStart();
+            })
+            .on("pointerup", () => {
+                this.onDragEnd();
+            })
             .on("pointerupoutside", () => this.onDragEnd())
 
             .on("pointermove", (e) => {
@@ -304,15 +387,31 @@ export default class PixiData {
     }
 
     drawAllCandles() {
-        this.candleStickGfx.clear();
-        this.candleStickWickGfx.clear();
+        if (!this.slicedData.length) {
+            return;
+        }
+        if (!this.candleStickGfx || !this.candleStickWickGfx) {
+            return;
+        }
+        try {
+            this.candleStickGfx.clear();
+            this.candleStickWickGfx.clear();
+        } catch (err) {
+            console.log("CLEAR() Error?");
+            console.log(err);
+            return err;
+        }
 
         this.candleWidth = this.width / this.slicedData.length;
         const halfWidth = this.candleWidth / 2;
-        this.candleStickWickGfx.lineStyle(1, 0xffffff, 1);
+        this.candleStickWickGfx.lineStyle(
+            this.candleWidth * 0.1,
+            0xffffff,
+            0.9
+        );
 
         this.slicedData.forEach((candle, i) => {
-            const x = this.xScale(candle.dateTime);
+            const x = this.xScale(candle.timestamp);
 
             let open = this.priceScale(candle.open);
             let close = this.priceScale(candle.close);
@@ -403,11 +502,17 @@ export default class PixiData {
     }
 
     hideCrosshair() {
-        console.log("hideCrosshairs");
+        // console.log("hideCrosshairs");
         if (!this.pixiApp?.stage) return console.log("no stage");
 
         // this.pixiApp.stage.off("pointermove", this.onMouseMove);
         this.pixiApp.stage.removeChild(this.crossHairXGfx);
         this.pixiApp.stage.removeChild(this.crossHairYGfx);
+    }
+
+    destroy() {
+        console.log("destroy");
+        this.ohlcDatas.length = 0;
+        this.initRun = false;
     }
 }

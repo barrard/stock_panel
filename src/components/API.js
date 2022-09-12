@@ -278,11 +278,16 @@ async function getIndicatorList() {
     }
 }
 
-async function getBackTestData({ symbol, timeframe }) {
+async function getBackTestData({
+    symbol,
+    timeframe,
+    startDate = new Date().getTime(),
+    withTicks = false,
+}) {
     try {
         symbol = symbol.slice(1);
         let resp = await fetch(
-            `${REACT_APP_API_SERVER}/API/getBackTestData/${symbol}/${timeframe}`,
+            `${REACT_APP_API_SERVER}/API/getBackTestData/${symbol}/${timeframe}/${startDate}?withTicks=${withTicks}`,
             {
                 credentials: "include",
                 method: "GET",

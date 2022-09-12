@@ -90,7 +90,7 @@ export default function Chart({ symbol, timeframe }) {
     const [toggleZigzagDynamic, setToggleZigzagDynamic] = useState(false);
     const [priceLevels, setPriceLevels] = useState({});
 
-    const { data, id: priceDataId } = charts[symbol][timeframe];
+    const { data = [], id: priceDataId } = charts[symbol][timeframe];
 
     let chartIndicators = selectedStrat.indicators.filter(
         (ind) => ind.priceData === priceDataId
