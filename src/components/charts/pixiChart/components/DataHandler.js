@@ -1,7 +1,14 @@
 import { axisBottom, axisRight, axisLeft, axisTop } from "d3-axis";
 // import { scaleLinear, scaleTime, scaleBand } from "d3-scale";
 import { extent, scaleLinear, select, zoom, zoomTransform, mouse } from "d3";
-import { Graphics, Container, Rectangle } from "pixi.js";
+import {
+    Graphics,
+    Container,
+    Rectangle,
+    Text,
+    TextMetrics,
+    TextStyle,
+} from "pixi.js";
 import { TimeScale } from "chart.js";
 
 export default class PixiData {
@@ -31,6 +38,8 @@ export default class PixiData {
         this.volProfileScale = scaleLinear().range([width / 2, width]);
         this.gesture = false;
         this.touches = 0;
+        this.dateLabel = false;
+        this.mouseX = 0;
         //Containers
         this.mainChartContainer = new Container();
 
@@ -45,6 +54,21 @@ export default class PixiData {
         this.volProfileGfx = new Graphics();
         this.crossHairYGfx = new Graphics();
         this.crossHairXGfx = new Graphics();
+        //LABELS
+        this.dateLabelAppendGfx = new Graphics();
+
+        this.textStyle = new TextStyle({
+            fontFamily: "Arial",
+            fontSize: 24,
+            fill: 0xff1010,
+            align: "center",
+        });
+
+        this.dateTxtLabel = new Text(
+            new Date().toLocaleString(),
+            this.textStyle
+        );
+        this.dateTxtLabel.anchor.x = 0.5;
         this.init(ohlcDatas);
     }
 
@@ -126,21 +150,21 @@ export default class PixiData {
         this.lows = sd.map(({ low }) => low);
         this.vols = sd.map(({ volume }) => volume);
 
-        if (!sd[0]) {
-            console.log("sd[0]");
-            debugger;
-        }
-        const first =
-            sd[0].ticks && sd[0].ticks[0]
-                ? sd[0].ticks[0].datetime
-                : sd[0].timestamp;
+        // if (!sd[0]) {
+        //     console.log("sd[0]");
+        //     debugger;
+        // }
+        // const first =
+        //     sd[0].ticks && sd[0].ticks[0]
+        //         ? sd[0].ticks[0].datetime
+        //         : sd[0].timestamp;
 
-        const last =
-            sd[sd.length - 1].ticks && sd[sd.length - 1].ticks.slice(-1)[0]
-                ? sd[sd.length - 1].ticks.slice(-1)[0].datetime
-                : sd[sd.length - 1].timestamp;
+        // const last =
+        //     sd[sd.length - 1].ticks && sd[sd.length - 1].ticks.slice(-1)[0]
+        //         ? sd[sd.length - 1].ticks.slice(-1)[0].datetime
+        //         : sd[sd.length - 1].timestamp;
         //DOMAIN
-        this.xScale.domain([first, last]);
+        this.xScale.domain([0, sd.length - 1]);
 
         const [lowest] = extent(this.lows);
         const [_, hightest] = extent(this.highs);
@@ -187,13 +211,24 @@ export default class PixiData {
         }
         this.crossHairYGfx.position.x = this.mouseX;
         this.crossHairXGfx.position.y = this.mouseY;
+        this.dateLabelAppendGfx.position.x = this.mouseX;
+        this.dateTxtLabel.x = this.mouseX;
     }
 
     onMouseMove(e) {
         this.setMouse(e);
 
         const price = this.priceScale.invert(this.mouseY);
-        const time = Math.floor(this.xScale.invert(this.mouseX));
+        const dateIndex = Math.floor(this.xScale.invert(this.mouseX));
+        let date = this.slicedData[dateIndex]
+            ? new Date(
+                  this.slicedData[dateIndex].timestamp ||
+                      this.slicedData[dateIndex].datetime
+              ).toLocaleString()
+            : null;
+        //update date label
+        console.log(date);
+        this.updateDateLabel(date);
 
         if (this.drag && !this.gesture) {
             // this.hideCrosshair();
@@ -288,6 +323,40 @@ export default class PixiData {
         console.log("");
     }
 
+    updateDateLabel(date) {
+        if (!date) return;
+        if (date === this.dateLabel) {
+            return;
+        } else {
+            this.dateLabel = date;
+            console.log("update Label");
+            this.dateLabel = date;
+            this.dateTxtLabel.text = this.dateLabel;
+            let { width, height } = new TextMetrics.measureText(
+                this.dateLabel,
+                this.textStyle
+            );
+            console.log(`tSize w ${width} h ${height}`);
+            //X Date Label
+            this.dateLabelAppendGfx.clear();
+            this.dateLabelAppendGfx.beginFill(0x00ff00); // green
+
+            this.dateLabelAppendGfx.lineStyle(1, 0xffff00, 1);
+            debugger;
+            const coords = bottomAxisMarkerTagLine({
+                x: 500,
+                y: this.height - height,
+                w: width,
+                h: height,
+                padding: 20,
+            });
+            console.log(coords);
+            debugger;
+            this.dateLabelAppendGfx.drawPolygon(coords);
+            this.dateLabelAppendGfx.endFill();
+        }
+    }
+
     loadMoreData() {
         if (!this.loadingMoreData) {
             this.loadingMoreData = true;
@@ -355,11 +424,13 @@ export default class PixiData {
     }
 
     drawCrossHair() {
+        //Y Crosshair
         this.crossHairYGfx.clear();
         this.crossHairYGfx.lineStyle(1, 0xffffff, 1);
         this.crossHairYGfx.moveTo(0, 0);
         this.crossHairYGfx.lineTo(0, this.height);
 
+        //X Crosshair
         this.crossHairXGfx.clear();
         this.crossHairXGfx.lineStyle(1, 0xffff00, 1);
         this.crossHairXGfx.moveTo(0, 0);
@@ -411,7 +482,8 @@ export default class PixiData {
         );
 
         this.slicedData.forEach((candle, i) => {
-            const x = this.xScale(candle.timestamp);
+            // const x = this.xScale(candle.timestamp);
+            const x = this.xScale(i);
 
             let open = this.priceScale(candle.open);
             let close = this.priceScale(candle.close);
@@ -494,20 +566,23 @@ export default class PixiData {
     }
 
     showCrosshair() {
-        // console.log("showCrosshairs");
         if (!this.pixiApp?.stage) return console.log("no stage");
 
         this.pixiApp.stage.addChild(this.crossHairXGfx);
         this.pixiApp.stage.addChild(this.crossHairYGfx);
+        //LABELS
+        this.pixiApp.stage.addChild(this.dateLabelAppendGfx);
+        this.pixiApp.stage.addChild(this.dateTxtLabel);
     }
 
     hideCrosshair() {
-        // console.log("hideCrosshairs");
         if (!this.pixiApp?.stage) return console.log("no stage");
 
-        // this.pixiApp.stage.off("pointermove", this.onMouseMove);
         this.pixiApp.stage.removeChild(this.crossHairXGfx);
         this.pixiApp.stage.removeChild(this.crossHairYGfx);
+        //LABELS
+        this.pixiApp.stage.removeChild(this.dateLabelAppendGfx);
+        this.pixiApp.stage.removeChild(this.dateTxtLabel);
     }
 
     destroy() {
@@ -516,3 +591,13 @@ export default class PixiData {
         this.initRun = false;
     }
 }
+
+const bottomAxisMarkerTagLine = ({ x, y, w, h, padding }) => [
+    { x: x + 0, y: 0 + y },
+    { x: x - (w / 2 + padding), y: padding + y },
+    { x: x - (w / 2 + padding), y: padding + h + y + padding },
+
+    { x: x + (w / 2 + padding), y: padding + h + y + padding },
+    { x: x + (w / 2 + padding), y: padding + y },
+    { x: x + 0, y: 0 + y },
+];
