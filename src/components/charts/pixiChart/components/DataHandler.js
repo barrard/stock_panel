@@ -10,6 +10,7 @@ import {
     TextStyle,
 } from "pixi.js";
 import { TimeScale } from "chart.js";
+import PixiAxis from "./PixiAxis";
 
 export default class PixiData {
     constructor({
@@ -20,7 +21,9 @@ export default class PixiData {
         height,
         volHeight,
         loadData,
+        margin,
     }) {
+        this.margin = margin;
         this.viewPort = viewPort;
         this.pixiApp = pixiApp;
         this.height = height;
@@ -32,13 +35,20 @@ export default class PixiData {
         this.initRun = false;
         this.sliceStart = 0;
         this.sliceEnd = ohlcDatas.length;
-        this.xScale = scaleLinear().range([0, width]);
-        this.priceScale = scaleLinear().range([height, 0]);
+        this.xScale = scaleLinear().range([
+            0,
+            width - (margin.left + margin.right),
+        ]);
+        this.priceScale = scaleLinear().range([
+            height - (margin.top + margin.bottom),
+            0,
+        ]);
         this.volScale = scaleLinear().range([height, volHeight]);
         this.volProfileScale = scaleLinear().range([width / 2, width]);
         this.gesture = false;
         this.touches = 0;
         this.dateLabel = false;
+        this.priceLabel = false;
         this.mouseX = 0;
         //Containers
         this.mainChartContainer = new Container();
@@ -54,26 +64,51 @@ export default class PixiData {
         this.volProfileGfx = new Graphics();
         this.crossHairYGfx = new Graphics();
         this.crossHairXGfx = new Graphics();
+        this.borderGfx = new Graphics();
         //LABELS
         this.dateLabelAppendGfx = new Graphics();
+        this.priceLabelAppendGfx = new Graphics();
+
+        this.testGfx = new Graphics();
 
         this.textStyle = new TextStyle({
             fontFamily: "Arial",
-            fontSize: 24,
-            fill: 0xff1010,
+            fontSize: 16,
+            fontWeight: "bold",
+            fill: 0x333333,
             align: "center",
         });
 
-        this.dateTxtLabel = new Text(
-            new Date().toLocaleString(),
-            this.textStyle
-        );
+        this.dateTxtLabel = new Text("", this.textStyle);
+
+        this.priceTxtLabel = new Text("", this.textStyle);
+
+        this.yAxis = new PixiAxis({
+            chart: this,
+            type: "y",
+            scale: this.priceScale,
+        });
+
+        this.xAxis = new PixiAxis({
+            chart: this,
+            type: "x",
+            scale: this.xScale,
+            valueAccessor: this.getTime.bind(this),
+        });
+
         this.dateTxtLabel.anchor.x = 0.5;
+        this.priceTxtLabel.anchor.y = 0.5;
         this.init(ohlcDatas);
     }
 
     init(ohlcDatas) {
         const { volProfileData, pixiApp } = this;
+
+        if (!this.initRun) {
+            //add the tick lines kinda first //TODO more background graphics
+            this.mainChartContainer.addChild(this.xAxis.tickLinesGfx);
+            this.mainChartContainer.addChild(this.yAxis.tickLinesGfx);
+        }
 
         if (!this.initRun || !this.ohlcDatas.length) {
             this.initRun = true;
@@ -85,7 +120,6 @@ export default class PixiData {
             this.drawCrossHair();
 
             ohlcDatas.forEach((ohlc) => {
-                // ohlc.timestamp = new Date(ohlc.timestamp).getTime();
                 if (!ohlc.ticks) {
                     ohlc.ticks = [];
                 }
@@ -116,16 +150,22 @@ export default class PixiData {
 
             // this.setupVolumeScales();
             // mainChartContainer
+            this.testGfx.beginFill(0x00ff00);
+
+            this.testGfx.drawRect(0, 0, 100, 100);
 
             this.mainChartContainer.addChild(this.candleStickWickGfx);
             this.mainChartContainer.addChild(this.candleStickGfx);
             this.mainChartContainer.addChild(this.priceGfx);
+            this.mainChartContainer.addChild(this.borderGfx);
+            this.pixiApp.stage.addChild(this.testGfx);
 
             this.mainChartContainer.addChild(this.volGfx);
 
             this.mainChartContainer.addChild(this.volProfileGfx);
             this.pixiApp.stage.addChild(this.mainChartContainer);
-            this.slicedData = this.draw();
+
+            // this.slicedData = this.draw();
         } else {
             this.sliceStart += ohlcDatas.length;
             this.sliceEnd += ohlcDatas.length;
@@ -150,25 +190,21 @@ export default class PixiData {
         this.lows = sd.map(({ low }) => low);
         this.vols = sd.map(({ volume }) => volume);
 
-        // if (!sd[0]) {
-        //     console.log("sd[0]");
-        //     debugger;
-        // }
-        // const first =
-        //     sd[0].ticks && sd[0].ticks[0]
-        //         ? sd[0].ticks[0].datetime
-        //         : sd[0].timestamp;
-
-        // const last =
-        //     sd[sd.length - 1].ticks && sd[sd.length - 1].ticks.slice(-1)[0]
-        //         ? sd[sd.length - 1].ticks.slice(-1)[0].datetime
-        //         : sd[sd.length - 1].timestamp;
         //DOMAIN
-        this.xScale.domain([0, sd.length - 1]);
+        this.xScale.domain([0, sd.length]);
 
         const [lowest] = extent(this.lows);
-        const [_, hightest] = extent(this.highs);
-        this.priceScale.domain([lowest, hightest]);
+        const [_, highest] = extent(this.highs);
+        this.priceScale.domain([lowest, highest]);
+
+        //find the price ticks
+
+        this.yAxis.render({ highest, lowest });
+
+        this.xAxis.render({
+            highest: this.xScale.range()[1] - 1,
+            lowest: this.xScale.range()[0],
+        });
     }
 
     setupVolumeScales() {
@@ -202,6 +238,8 @@ export default class PixiData {
     }
 
     setMouse(e) {
+        const { left, right, top, bottom } = this.margin;
+        console.log(this.crosshair);
         if (e?.data?.global?.x) {
             this.mouseX = e.data.global.x;
             this.mouseY = e.data.global.y;
@@ -209,26 +247,39 @@ export default class PixiData {
             this.mouseX = e.touches[0].screenX;
             this.mouseY = e.touches[0].screenY;
         }
+        this.mouseX = this.mouseX - left;
+        this.mouseY = this.mouseY - top;
+        if (
+            (this.crosshair &&
+                (this.mouseX < 0 ||
+                    this.mouseX > this.width - (right + left))) ||
+            this.mouseY < 0 ||
+            this.mouseY > this.height - (top + bottom)
+        ) {
+            this.hideCrosshair();
+        } else if (
+            !this.crosshair &&
+            this.mouseX > 0 &&
+            this.mouseX < this.width - (right + left)
+        ) {
+            this.showCrosshair();
+        }
         this.crossHairYGfx.position.x = this.mouseX;
         this.crossHairXGfx.position.y = this.mouseY;
+        this.priceLabelAppendGfx.position.y = this.mouseY;
         this.dateLabelAppendGfx.position.x = this.mouseX;
         this.dateTxtLabel.x = this.mouseX;
+        this.priceTxtLabel.y = this.mouseY;
     }
 
     onMouseMove(e) {
         this.setMouse(e);
+        if (!this.crosshair && !this.drag) return;
 
-        const price = this.priceScale.invert(this.mouseY);
-        const dateIndex = Math.floor(this.xScale.invert(this.mouseX));
-        let date = this.slicedData[dateIndex]
-            ? new Date(
-                  this.slicedData[dateIndex].timestamp ||
-                      this.slicedData[dateIndex].datetime
-              ).toLocaleString()
-            : null;
-        //update date label
-        console.log(date);
-        this.updateDateLabel(date);
+        // const price = this.priceScale.invert(this.mouseY);
+
+        this.updateDateLabel();
+        this.updatePriceLabel();
 
         if (this.drag && !this.gesture) {
             // this.hideCrosshair();
@@ -273,7 +324,6 @@ export default class PixiData {
         const candleCount = Math.ceil(this.deltaDrag / this.candleWidth);
 
         // console.log(`Move ${candleCount} candles`);
-
         this.sliceEnd = this.sliceEnd - candleCount;
         if (this.sliceStart == 0) {
             if (this.sliceStart === 0) {
@@ -323,36 +373,112 @@ export default class PixiData {
         console.log("");
     }
 
-    updateDateLabel(date) {
+    updatePriceLabel() {
+        if (!this.crosshair) return;
+        const price = formatter.format(
+            roundTick(this.priceScale.invert(this.mouseY), 0.25)
+        );
+
+        if (!price) return;
+        if (price === this.priceLabel) {
+            return;
+        } else {
+            this.priceLabel = price;
+
+            this.priceTxtLabel.text = this.priceLabel;
+            let { width, height } = new TextMetrics.measureText(
+                this.priceLabel,
+                this.textStyle
+            );
+            //X Date Label
+            this.priceLabelAppendGfx.clear();
+            this.priceLabelAppendGfx.beginFill(0x00ff00); // green
+
+            this.priceLabelAppendGfx.lineStyle(1, 0x333333, 1);
+
+            const padding = 10;
+            const x =
+                this.width + padding - (this.margin.left + this.margin.right);
+            this.priceTxtLabel.x = x;
+            this.priceLabelAppendGfx.position.x = x;
+            //Price label
+            const coords = rightAxisMarkerTagLine({
+                x,
+                y: 0,
+                w: width,
+                h: height,
+                padding,
+            });
+
+            this.priceLabelAppendGfx.drawPolygon(coords);
+
+            this.priceLabelAppendGfx.endFill();
+        }
+    }
+
+    getDate(x) {
+        const dateIndex = Math.floor(this.xScale.invert(x));
+        let date = this.slicedData[dateIndex]
+            ? new Date(
+                  this.slicedData[dateIndex].timestamp ||
+                      this.slicedData[dateIndex].datetime
+              ).toLocaleString("en-US", {
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+              })
+            : null;
+        return date;
+    }
+    getTime(x) {
+        const dateIndex = Math.floor(this.xScale.invert(x));
+        let date = this.slicedData[dateIndex]
+            ? new Date(
+                  this.slicedData[dateIndex].timestamp ||
+                      this.slicedData[dateIndex].datetime
+              ).toLocaleString("en-US", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+              })
+            : null;
+        return date;
+    }
+
+    updateDateLabel() {
+        if (!this.crosshair) return;
+        let date = this.getDate(this.mouseX);
+
         if (!date) return;
         if (date === this.dateLabel) {
             return;
         } else {
-            this.dateLabel = date;
-            console.log("update Label");
             this.dateLabel = date;
             this.dateTxtLabel.text = this.dateLabel;
             let { width, height } = new TextMetrics.measureText(
                 this.dateLabel,
                 this.textStyle
             );
-            console.log(`tSize w ${width} h ${height}`);
             //X Date Label
             this.dateLabelAppendGfx.clear();
             this.dateLabelAppendGfx.beginFill(0x00ff00); // green
 
-            this.dateLabelAppendGfx.lineStyle(1, 0xffff00, 1);
-            debugger;
+            this.dateLabelAppendGfx.lineStyle(1, 0x333333, 1);
+
+            const padding = 5;
+            const y =
+                this.height - (this.margin.bottom + this.margin.top - padding);
+            this.dateTxtLabel.position.y = y;
             const coords = bottomAxisMarkerTagLine({
-                x: 500,
-                y: this.height - height,
+                x: 0,
+                y: y,
                 w: width,
                 h: height,
-                padding: 20,
+                padding,
             });
-            console.log(coords);
-            debugger;
+
             this.dateLabelAppendGfx.drawPolygon(coords);
+
             this.dateLabelAppendGfx.endFill();
         }
     }
@@ -412,6 +538,9 @@ export default class PixiData {
         if (this.sliceStart < 0) {
             this.sliceStart = 0;
         }
+        if (this.sliceEnd > this.ohlcDatas.length) {
+            this.sliceEnd = this.ohlcDatas.length;
+        }
         if (this.sliceStart === 0) {
             while (this.sliceEnd <= this.sliceStart) {
                 this.sliceEnd++;
@@ -424,25 +553,49 @@ export default class PixiData {
     }
 
     drawCrossHair() {
+        const { left, right, top, bottom } = this.margin;
         //Y Crosshair
         this.crossHairYGfx.clear();
         this.crossHairYGfx.lineStyle(1, 0xffffff, 1);
         this.crossHairYGfx.moveTo(0, 0);
-        this.crossHairYGfx.lineTo(0, this.height);
+        this.crossHairYGfx.lineTo(0, this.height - (bottom + top));
 
         //X Crosshair
         this.crossHairXGfx.clear();
         this.crossHairXGfx.lineStyle(1, 0xffff00, 1);
         this.crossHairXGfx.moveTo(0, 0);
-        this.crossHairXGfx.lineTo(this.width, 0);
+        this.crossHairXGfx.lineTo(this.width - (right + left), 0);
 
         //add hit area for pointer events
 
         this.mainChartContainer.interactive = true;
-        this.hitArea = new Rectangle(0, 0, this.width, this.height);
+        // this.mainChartContainer.interactiveMousewheel = true
+        this.hitArea = new Rectangle(
+            0,
+            0,
+            this.width - (left + right),
+            this.height - (top + bottom)
+        );
         this.mainChartContainer.hitArea = this.hitArea;
+        this.mainChartContainer.position.x = this.margin.left;
+        this.mainChartContainer.position.y = this.margin.top;
+
+        //Add chart borders
+        this.borderGfx.clear();
+        this.borderGfx.lineStyle(3, 0xaaaaaa, 1);
+
+        const rightSide = this.width - (right + left);
+        const bottomSide = this.height - (top + bottom);
+        this.borderGfx.moveTo(0, 0);
+        this.borderGfx.lineTo(rightSide, 0);
+        this.borderGfx.lineTo(rightSide, bottomSide);
+        this.borderGfx.lineTo(0, bottomSide);
+        this.borderGfx.lineTo(0, 0);
 
         this.mainChartContainer
+            .on("mousewheel", (e) => {
+                console.log(e);
+            })
             .on("pointerdown", (e) => {
                 this.onMouseMove(e);
                 this.onDragStart();
@@ -455,6 +608,15 @@ export default class PixiData {
             .on("pointermove", (e) => {
                 this.onMouseMove(e);
             });
+
+        //yAxis
+        this.yAxis.container.position.x = this.width - this.margin.right;
+        this.yAxis.container.position.y = this.margin.top;
+        this.pixiApp.stage.addChild(this.yAxis.container);
+        //yAxis
+        this.xAxis.container.position.x = this.margin.left;
+        this.xAxis.container.position.y = this.height - this.margin.bottom;
+        this.pixiApp.stage.addChild(this.xAxis.container);
     }
 
     drawAllCandles() {
@@ -473,13 +635,18 @@ export default class PixiData {
             return err;
         }
 
-        this.candleWidth = this.width / this.slicedData.length;
+        this.candleWidth =
+            (this.width - (this.margin.left + this.margin.right)) /
+            this.slicedData.length;
         const halfWidth = this.candleWidth / 2;
         this.candleStickWickGfx.lineStyle(
             this.candleWidth * 0.1,
             0xffffff,
             0.9
         );
+        const candleMargin = this.candleWidth * 0.1;
+        const doubleMargin = candleMargin * 2;
+        this.candleStickGfx.lineStyle(this.candleWidth * 0.1, 0x111111, 0.9);
 
         this.slicedData.forEach((candle, i) => {
             // const x = this.xScale(candle.timestamp);
@@ -497,7 +664,12 @@ export default class PixiData {
             const height = Math.abs(open - close);
             const start = isUp ? close : open;
             // const end = isUp ? open : close;
-            this.candleStickGfx.drawRect(x, start, this.candleWidth, height);
+            this.candleStickGfx.drawRect(
+                x + candleMargin,
+                start,
+                this.candleWidth - doubleMargin,
+                height
+            );
 
             this.candleStickWickGfx.moveTo(x + halfWidth, high);
             this.candleStickWickGfx.lineTo(x + halfWidth, low);
@@ -567,22 +739,29 @@ export default class PixiData {
 
     showCrosshair() {
         if (!this.pixiApp?.stage) return console.log("no stage");
+        this.crosshair = true;
 
-        this.pixiApp.stage.addChild(this.crossHairXGfx);
-        this.pixiApp.stage.addChild(this.crossHairYGfx);
+        this.mainChartContainer.addChild(this.crossHairXGfx);
+        this.mainChartContainer.addChild(this.crossHairYGfx);
         //LABELS
-        this.pixiApp.stage.addChild(this.dateLabelAppendGfx);
-        this.pixiApp.stage.addChild(this.dateTxtLabel);
+        this.mainChartContainer.addChild(this.dateLabelAppendGfx);
+        this.mainChartContainer.addChild(this.priceLabelAppendGfx);
+        //TEXT
+        this.mainChartContainer.addChild(this.dateTxtLabel);
+        this.mainChartContainer.addChild(this.priceTxtLabel);
     }
 
     hideCrosshair() {
         if (!this.pixiApp?.stage) return console.log("no stage");
-
-        this.pixiApp.stage.removeChild(this.crossHairXGfx);
-        this.pixiApp.stage.removeChild(this.crossHairYGfx);
+        this.crosshair = false;
+        this.mainChartContainer.removeChild(this.crossHairXGfx);
+        this.mainChartContainer.removeChild(this.crossHairYGfx);
         //LABELS
-        this.pixiApp.stage.removeChild(this.dateLabelAppendGfx);
-        this.pixiApp.stage.removeChild(this.dateTxtLabel);
+        this.mainChartContainer.removeChild(this.dateLabelAppendGfx);
+        this.mainChartContainer.removeChild(this.priceLabelAppendGfx);
+        //TEXT
+        this.mainChartContainer.removeChild(this.dateTxtLabel);
+        this.mainChartContainer.removeChild(this.priceTxtLabel);
     }
 
     destroy() {
@@ -590,14 +769,45 @@ export default class PixiData {
         this.ohlcDatas.length = 0;
         this.initRun = false;
     }
+
+    innerWidth() {
+        return this.width - (this.margin.right + this.margin.left);
+    }
+
+    innerHeight() {
+        return this.height - (this.margin.top + this.margin.bottom);
+    }
 }
 
 const bottomAxisMarkerTagLine = ({ x, y, w, h, padding }) => [
-    { x: x + 0, y: 0 + y },
-    { x: x - (w / 2 + padding), y: padding + y },
+    { x: x + 0, y: 0 + y - padding },
+    { x: x - (w / 2 + padding), y: y },
     { x: x - (w / 2 + padding), y: padding + h + y + padding },
 
     { x: x + (w / 2 + padding), y: padding + h + y + padding },
-    { x: x + (w / 2 + padding), y: padding + y },
-    { x: x + 0, y: 0 + y },
+    { x: x + (w / 2 + padding), y: y },
+    { x: x + 0, y: 0 + y - padding },
 ];
+
+const rightAxisMarkerTagLine = ({ x, y, w, h, padding }) => [
+    { x: 0 - padding, y: 0 + y },
+    { x: 0, y: -h / 2 + y },
+    { x: w, y: -h / 2 + y },
+    { x: w, y: h / 2 + y },
+    { x: 0, y: h / 2 + y },
+    { x: 0 - padding, y: 0 + y },
+];
+
+var formatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+
+    // These options are needed to round to whole numbers if that's what you want.
+    //minimumFractionDigits: 0, // (this suffices for whole numbers, but will print 2500.10 as $2,500.1)
+    //maximumFractionDigits: 0, // (causes 2500.99 to be printed as $2,501)
+});
+
+function roundTick(number, tick) {
+    const ticks = 1 / tick;
+    return (Math.round(number * ticks) / ticks).toFixed(2);
+}

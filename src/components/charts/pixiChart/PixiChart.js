@@ -11,7 +11,7 @@ import PixiData from "./components/DataHandler";
 
 export default function PixiChart() {
     //TODO really set this
-    const [width, setWidth] = useState(window.innerWidth * 0.9);
+    const [width, setWidth] = useState(Math.floor(window.innerWidth * 0.9));
     //TODO cjould be input
     const [height, setHeight] = useState(600);
     //should be another window
@@ -98,6 +98,12 @@ export default function PixiChart() {
             width,
             height,
             volHeight,
+            margin: {
+                top: 100,
+                right: 200,
+                left: 300,
+                bottom: 70,
+            },
         });
 
         setPixiData(pixiData);
@@ -243,6 +249,7 @@ export default function PixiChart() {
 
     return (
         <>
+            {/* <p>Pixi Touches {pixiData.touches}</p>
             {loading && <> LOADING......</>}
             {pixiData?.mouseX && (
                 <> pixiData?.mouseX - {pixiData?.mouseX}......</>
@@ -269,9 +276,14 @@ export default function PixiChart() {
 
             <br />
             {events && (
-                <p style={{ whiteSpace: "pre-line" }}> {printEvents(events)}</p>
+                <>
+                    <p style={{ whiteSpace: "pre-line" }}>
+                        {" "}
+                        {printEvents(events)}
+                    </p>
+                </>
             )}
-            {zoomGesture && <>zoomGesture - {zoomGesture}</>}
+            {zoomGesture && <>zoomGesture - {zoomGesture}</>} */}
             {/* 
             {move && <> move......</>}
             {longPressTimer && <> longPressTimer......</>}
