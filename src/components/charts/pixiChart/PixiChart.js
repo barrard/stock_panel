@@ -13,9 +13,9 @@ export default function PixiChart() {
     //TODO really set this
     const [width, setWidth] = useState(Math.floor(window.innerWidth * 0.9));
     //TODO cjould be input
-    const [height, setHeight] = useState(600);
+    // const [height, setHeight] = useState(1000);
     //should be another window
-    const [volHeight, setVolHeight] = useState(300);
+    // const [volHeight, setVolHeight] = useState(300);
     const [mouseEnter, setMouseEnter] = useState(false);
     const [pixiData, setPixiData] = useState();
 
@@ -81,7 +81,7 @@ export default function PixiChart() {
         }
         PixiAppRef.current = new PIXI.Application({
             width,
-            height,
+            // height,
             backgroundColor: 0x333333,
             antialias: true,
         });
@@ -96,13 +96,14 @@ export default function PixiChart() {
             pixiApp: PixiAppRef.current,
             loadData,
             width,
-            height,
-            volHeight,
+            // height,
+            // volHeight,
+            tickSize: 0.25,
             margin: {
-                top: 100,
-                right: 200,
-                left: 300,
-                bottom: 70,
+                top: 50,
+                right: 100,
+                left: 50,
+                bottom: 40,
             },
         });
 
@@ -357,8 +358,8 @@ export default function PixiChart() {
                 ref={PixiChartRef}
                 style={{
                     // padding: "0 9em",
-                    width,
-                    height,
+                    // width,
+                    // height,
                     border: "2px solid red",
                 }}
             />
