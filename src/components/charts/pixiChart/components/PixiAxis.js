@@ -88,7 +88,7 @@ export default class PixiAxis {
         if (this.valueFinder) {
             customValues = this.valueFinder({ highest, lowest, values });
             // ticks = customValues.length;
-            console.log("customValues.length", customValues.length);
+            // console.log("customValues.length", customValues.length);
             // if (customValues.length > 6) {
             //     debugger;
             //     textValues = reduceValues(customValues);

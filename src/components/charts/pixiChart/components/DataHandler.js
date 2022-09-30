@@ -11,81 +11,9 @@ import {
 } from "pixi.js";
 import { TimeScale } from "chart.js";
 import PixiAxis from "./PixiAxis";
-import {
-    timeScaleValues,
-    priceScaleValues,
-    volumeScaleValues,
-} from "./utils.js";
+import { timeScaleValues, priceScaleValues } from "./utils.js";
 import { drawVolume } from "./drawFns.js";
-
-class Indicator {
-    constructor({ name, height, data, drawFn, chart, accessors }) {
-        this.name = name;
-        this.initialized = false;
-        this.height = height;
-        this.data = [];
-        this.drawFn = drawVolume;
-        this.chart = chart;
-        this.accessors = accessors;
-
-        console.log(this.name);
-    }
-
-    init() {
-        this.initialized = true;
-        this.container = new Container();
-
-        this.container.interactive = true;
-        const { width, margin } = this.chart;
-        const { left, right } = margin;
-        // this.hitArea = new Rectangle(0, 0, width - (left + right), this.height);
-        // this.container.hitArea = this.hitArea;
-
-        this.container.on("pointerover", (e) => {
-            console.log(this.name);
-        });
-        this.container.on("pointerout", (e) => {
-            console.log(this.name);
-        });
-        this.scale = scaleLinear().range([this.height, 0]); //.range([height, indicatorHeight]);
-        this.gfx = new Graphics();
-        this.borderGfx = new Graphics();
-
-        this.yAxis = new PixiAxis({
-            chart: this.chart,
-            type: "y",
-            scale: this.scale,
-            valueFinder: priceScaleValues,
-            maxTicks: 5,
-            tickSize: 1,
-        });
-        this.container.addChild(this.gfx);
-        this.container.addChild(this.borderGfx);
-        this.container.addChild(this.yAxis.tickLinesGfx);
-
-        this.container.addChild(this.yAxis.container);
-        this.yAxis.container.position.x = width - (right + left);
-        this.yAxis.container.position.y = 0;
-
-        this.borderGfx.lineStyle(3, 0xaaaaaa, 1);
-
-        this.borderGfx.moveTo(0, 0);
-        this.borderGfx.lineTo(width - (left + right), 0);
-    }
-
-    setupScales() {
-        //data accessor
-        this.data = this.chart.slicedData.map((ohlc) => ohlc[this.accessors]);
-
-        let [low, highest] = extent(this.data);
-
-        this.scale.domain([0, highest]);
-
-        this.yAxis.render({ highest, lowest: 0 });
-        //draw shit
-        this.drawFn(this);
-    }
-}
+import Indicator from "./Indicator";
 
 export default class PixiData {
     constructor({
@@ -99,35 +27,37 @@ export default class PixiData {
         margin,
         tickSize,
     }) {
-        this.mainChartContainerHeight = 600;
-        this.indicatorHeight = indicatorHeight;
         this.allTicks = [];
+        this.crossHairYScale = false;
+        this.currentMinute = false;
+        this.dateLabel = false;
+        this.gesture = false;
         this.height = 600;
+        this.indicatorHeight = indicatorHeight;
         this.initRun = false;
         this.loadData = loadData;
+        this.mainChartContainerHeight = 600;
         this.margin = margin;
+        this.mouseX = 0;
         this.ohlcDatas = [...ohlcDatas];
         this.pixiApp = pixiApp;
+        this.priceScale = scaleLinear().range([
+            this.mainChartContainerHeight - (margin.top + margin.bottom),
+            0,
+        ]);
         this.slicedData = [];
         this.sliceEnd = ohlcDatas.length;
         this.sliceStart = 0;
         this.tickSize = tickSize;
+        this.touches = 0;
         this.viewPort = viewPort;
+        this.volProfileScale = scaleLinear().range([width / 2, width]);
         this.width = width;
         this.xScale = scaleLinear().range([
             0,
             width - (margin.left + margin.right),
         ]);
-        this.priceScale = scaleLinear().range([
-            this.mainChartContainerHeight - (margin.top + margin.bottom),
-            0,
-        ]);
-        this.volProfileScale = scaleLinear().range([width / 2, width]);
-        this.gesture = false;
-        this.touches = 0;
-        this.dateLabel = false;
-        this.priceLabel = false;
-        this.mouseX = 0;
+        this.yLabel = false;
         //Containers
         this.mainChartContainer = new Container();
         this.lowerIndicatorsData = {
@@ -222,8 +152,6 @@ export default class PixiData {
             this.sliceStart = 0;
             this.sliceEnd = ohlcDatas.length;
 
-            this.drawCrossHair();
-
             ohlcDatas.forEach((ohlc) => {
                 if (!ohlc.ticks) {
                     ohlc.ticks = [];
@@ -251,10 +179,11 @@ export default class PixiData {
 
             this.sliceEnd = ohlcDatas.length;
 
-            this.setupPriceScales();
-
             // this.setupTickVolumeScales(volumeContainer);
             // mainChartContainer
+            this.setHitArea();
+            this.drawCrossHair();
+            this.setupPriceScales();
 
             this.mainChartContainer.addChild(this.candleStickWickGfx);
             this.mainChartContainer.addChild(this.candleStickGfx);
@@ -273,6 +202,37 @@ export default class PixiData {
             this.draw();
         }
         this.loadingMoreData = false;
+    }
+
+    prependData(data) {
+        this.ohlcDatas = this.ohlcDatas.concat([data]);
+        this.sliceEnd++;
+        this.draw();
+    }
+
+    replaceLast(data) {
+        this.ohlcDatas[this.ohlcDatas.length - 1] = data;
+        debugger;
+        this.draw();
+    }
+    setHitArea() {
+        const { left, right, top, bottom } = this.margin;
+
+        //add hit area for pointer events
+
+        this.mainChartContainer.interactive = true;
+        // this.mainChartContainer.interactiveMousewheel = true
+        this.hitArea = new Rectangle(
+            0,
+            0,
+            this.width - (left + right),
+            this.height - (top + bottom)
+        );
+        this.mainChartContainer.hitArea = this.hitArea;
+    }
+
+    setYScale(yScale) {
+        this.crossHairYScale = yScale;
     }
 
     getIndicatorTopPos(index) {
@@ -329,7 +289,7 @@ export default class PixiData {
     }
 
     setupPriceScales() {
-        const { allTicks, ohlcDatas } = this;
+        const { allTicks, ohlcDatas, currentMinute } = this;
         if (!ohlcDatas.length) {
             return;
         }
@@ -440,7 +400,7 @@ export default class PixiData {
         // const price = this.priceScale.invert(this.mouseY);
 
         this.updateDateLabel();
-        this.updatePriceLabel();
+        this.updateYLabel();
 
         if (this.drag && !this.gesture) {
             // this.hideCrosshair();
@@ -534,21 +494,30 @@ export default class PixiData {
         this.drawAllCandles();
     }
 
-    updatePriceLabel() {
+    updateYLabel() {
         if (!this.crosshair) return;
-        const price = formatter.format(
-            roundTick(this.priceScale.invert(this.mouseY), this.tickSize)
-        );
+        let yLabel, yScale;
+        if (this.crossHairYScale) {
+            yScale = this.crossHairYScale;
+            yLabel = Math.floor(
+                yScale.invert(this.mouseY - this.yMouseOffset + this.margin.top)
+            ).toString();
+        } else {
+            yScale = this.priceScale;
+            yLabel = formatter.format(
+                roundTick(yScale.invert(this.mouseY), this.tickSize)
+            );
+        }
 
-        if (!price) return;
-        if (price === this.priceLabel) {
+        if (!yLabel) return;
+        if (yLabel === this.yLabel) {
             return;
         } else {
-            this.priceLabel = price;
+            this.yLabel = yLabel;
 
-            this.priceTxtLabel.text = this.priceLabel;
+            this.priceTxtLabel.text = this.yLabel;
             let { width, height } = new TextMetrics.measureText(
-                this.priceLabel,
+                this.yLabel,
                 this.textStyle
             );
             //X Date Label
@@ -561,13 +530,13 @@ export default class PixiData {
             const x =
                 this.width + padding - (this.margin.left + this.margin.right);
             this.priceTxtLabel.x = x;
-            this.priceLabelAppendGfx.position.x = x;
+            this.priceLabelAppendGfx.position.x = x - padding / 2;
             //Price label
             const coords = rightAxisMarkerTagLine({
                 x,
                 y: 0,
-                w: width,
-                h: height,
+                w: width + padding,
+                h: height + padding,
                 padding,
             });
 
@@ -629,7 +598,7 @@ export default class PixiData {
             const padding = 5;
             const y =
                 this.height - (this.margin.bottom + this.margin.top - padding);
-            this.dateTxtLabel.position.y = y;
+            this.dateTxtLabel.position.y = y + padding;
             const coords = bottomAxisMarkerTagLine({
                 x: 0,
                 y: y,
@@ -727,17 +696,6 @@ export default class PixiData {
         this.crossHairXGfx.moveTo(0, 0);
         this.crossHairXGfx.lineTo(this.width - (right + left), 0);
 
-        //add hit area for pointer events
-
-        this.mainChartContainer.interactive = true;
-        // this.mainChartContainer.interactiveMousewheel = true
-        this.hitArea = new Rectangle(
-            0,
-            0,
-            this.width - (left + right),
-            this.height - (top + bottom)
-        );
-        this.mainChartContainer.hitArea = this.hitArea;
         this.mainChartContainer.position.x = this.margin.left;
         this.mainChartContainer.position.y = this.margin.top;
 
@@ -791,8 +749,8 @@ export default class PixiData {
             this.candleStickGfx.clear();
             this.candleStickWickGfx.clear();
         } catch (err) {
-            console.log("CLEAR() Error?");
-            console.log(err);
+            // console.log("CLEAR() Error?");
+            // console.log(err);
             return err;
         }
 
@@ -807,7 +765,8 @@ export default class PixiData {
         );
         const candleMargin = this.candleWidth * 0.1;
         const doubleMargin = candleMargin * 2;
-        const strokeWidth = this.candleWidth * 0.1;
+        const strokeWidth =
+            this.candleWidth * 0.1 > 2 ? 2 : this.candleWidth * 0.1;
         const halfStrokeWidth = strokeWidth / 2;
         this.candleStickGfx.lineStyle(strokeWidth, 0x111111, 0.9);
 

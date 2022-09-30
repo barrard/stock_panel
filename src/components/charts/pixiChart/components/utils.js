@@ -1,6 +1,3 @@
-export function volumeScaleValues() {
-    return [100, 1000, 10000, 10000];
-}
 export function priceScaleValues({ highest, lowest, tickSize }) {
     const _highest = highest;
     const diff = highest - lowest;
@@ -15,7 +12,7 @@ export function priceScaleValues({ highest, lowest, tickSize }) {
     //find startingValue
     let tickSpread = diff / this.maxTicks;
 
-    console.log({ diff, tickSpread });
+    // console.log({ diff, tickSpread });
 
     if (tickSpread > 10000) {
         tickSpread = 25000;

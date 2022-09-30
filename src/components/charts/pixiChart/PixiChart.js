@@ -9,7 +9,11 @@ import { extent, scaleLinear, select, zoom, zoomTransform, mouse } from "d3";
 
 import PixiData from "./components/DataHandler";
 
-export default function PixiChart() {
+export default function PixiChart({
+    Socket,
+    symbol = "/ES",
+    timeframe = "1Min",
+}) {
     //TODO really set this
     const [width, setWidth] = useState(Math.floor(window.innerWidth * 0.9));
     //TODO cjould be input
@@ -42,7 +46,9 @@ export default function PixiChart() {
     const [touch1, setTouch1] = useState(false);
     const [touch2, setTouch2] = useState(false);
     const [touchMoveEvent, setTouchMoveEvent] = useState(false);
+    const [currentMinute, setCurrentMinute] = useState(false);
 
+    const [timeAndSales, setTimeAndSales] = useState([]);
     const [zoomGesture, setZoomGesture] = useState(false);
 
     //Fn to load ohlc data
@@ -50,25 +56,30 @@ export default function PixiChart() {
         if (loading) {
             return console.log("No can, I stay loading");
         }
-        console.log("Loading data");
+        // console.log("Loading data");
         setLoading(true);
         startDate = startDate || new Date().getTime();
         API.getBackTestData({
-            symbol: "/ES",
-            timeframe: "1Min",
+            symbol,
+            timeframe,
             startDate,
             withTicks,
         }).then((_ohlcDatas) => {
-            console.log(_ohlcDatas);
-            setPixiData((pixiData) => {
-                console.log(pixiData);
-                pixiData.init(_ohlcDatas);
-                return pixiData;
-            });
-            setOhlcDatas((ohlcDatas) => {
-                return _ohlcDatas.concat(ohlcDatas);
-            });
+            // console.log(_ohlcDatas);
 
+            // _ohlcDatas = _ohlcDatas.slice(-10);
+
+            console.log(_ohlcDatas.length);
+
+            setOhlcDatas((ohlcDatas) => {
+                const allOhlcData = _ohlcDatas.concat(ohlcDatas);
+                setPixiData((pixiData) => {
+                    pixiData.init(allOhlcData);
+                    return pixiData;
+                });
+
+                return allOhlcData;
+            });
             setLoading(false);
         });
     };
@@ -109,6 +120,21 @@ export default function PixiChart() {
 
         setPixiData(pixiData);
 
+        Socket.on("timeAndSales", (timeAndSales) => {
+            const data = timeAndSales.filter((ts) => ts.key.includes(symbol));
+            setTimeAndSales(data);
+        });
+        Socket.on("CHART_FUTURES", (data) => {
+            console.log("CHART_FUTURES");
+            const contractSymbol = Object.keys(data).find((key) =>
+                key.includes(symbol)
+            );
+            data = data[contractSymbol];
+            // console.log(data);
+        });
+        Socket.on("current_minute_data", (data) => {
+            setCurrentMinute(data);
+        });
         // // create viewport
         // viewportRef.current = new Viewport({
         //     screenWidth: width,
@@ -152,6 +178,9 @@ export default function PixiChart() {
             PixiAppRef.current = null;
             pixiData.destroy();
             setPixiData(false);
+            Socket.off("timeAndSales");
+            Socket.off("CHART_FUTURES");
+            Socket.off("current_minute_data");
         };
     }, []);
 
@@ -175,6 +204,40 @@ export default function PixiChart() {
 
         pixiData.draw();
     }, [ohlcDatas, PixiAppRef.current]);
+
+    useEffect(() => {
+        if (!ohlcDatas.length) return;
+        if (!currentMinute) return;
+        const data = currentMinute[symbol.slice(1)];
+        const lastOhlc = ohlcDatas.slice(-1)[0];
+
+        const dataTime = new Date(data.timestamp).getMinutes();
+        const lastDataTime = new Date(lastOhlc.timestamp).getMinutes();
+        const sameTime = dataTime === lastDataTime;
+        if (!sameTime) {
+            setOhlcDatas((ohlcDatas) => ohlcDatas.concat([data]));
+            pixiData.prependData(data);
+        }
+    }, [currentMinute]);
+
+    useEffect(() => {
+        if (!ohlcDatas.length) return;
+        if (!timeAndSales.length) return;
+        const lastOhlc = ohlcDatas.slice(-1)[0];
+        debugger;
+        const updatedLastOhlc = timeAndSales.reduce((acc, timeAndSales) => {
+            const close = timeAndSales["2"];
+            lastOhlc.volume += timeAndSales["3"];
+            lastOhlc.close = close;
+            if (lastOhlc.low > close) lastOhlc.low = close;
+            if (lastOhlc.high < close) lastOhlc.high = close;
+            debugger;
+            return lastOhlc;
+        }, lastOhlc);
+
+        debugger;
+        pixiData.replaceLast(updatedLastOhlc);
+    }, [timeAndSales]);
 
     useEffect(() => {
         let touch1MoveDiff;

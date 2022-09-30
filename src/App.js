@@ -146,7 +146,9 @@ class App extends React.Component {
                     />
                     <Route
                         path="/pixi-chart"
-                        render={(props) => <PixiChart {...props} />}
+                        render={(props) => (
+                            <PixiChart {...props} Socket={Socket} />
+                        )}
                     />
                     {/* Keep at bottom */}
                     <Route exact path="/sign-up" component={SignupPage} />

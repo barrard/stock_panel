@@ -8,7 +8,6 @@ import {
 } from "pixi.js";
 
 export function drawVolume(indicator) {
-    debugger;
     const { chart } = indicator;
 
     if (!chart.slicedData.length) {
