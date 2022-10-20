@@ -97,6 +97,7 @@ export default class PixiData {
         //LABELS
         this.dateLabelAppendGfx = new Graphics();
         this.priceLabelAppendGfx = new Graphics();
+        this.currentPriceLabelAppendGfx = new Graphics();
 
         this.textStyle = new TextStyle({
             fontFamily: "Arial",
@@ -109,6 +110,7 @@ export default class PixiData {
         this.dateTxtLabel = new Text("", this.textStyle);
 
         this.priceTxtLabel = new Text("", this.textStyle);
+        this.currentPriceTxtLabel = new Text("", this.textStyle);
 
         this.yAxis = new PixiAxis({
             chart: this,
@@ -129,6 +131,7 @@ export default class PixiData {
 
         this.dateTxtLabel.anchor.x = 0.5;
         this.priceTxtLabel.anchor.y = 0.5;
+        this.currentPriceTxtLabel.anchor.y = 0.5;
         this.init(ohlcDatas);
     }
 
@@ -139,10 +142,13 @@ export default class PixiData {
             //add the tick lines kinda first //TODO more background graphics
             this.mainChartContainer.addChild(this.xAxis.tickLinesGfx);
             this.mainChartContainer.addChild(this.yAxis.tickLinesGfx);
+
             this.yAxis.container.position.x =
                 this.width - this.margin.right - this.margin.left;
             this.yAxis.container.position.y = 0;
             this.mainChartContainer.addChild(this.yAxis.container);
+            this.mainChartContainer.addChild(this.currentPriceLabelAppendGfx);
+            this.mainChartContainer.addChild(this.currentPriceTxtLabel);
         }
 
         if (!this.initRun || !this.ohlcDatas.length) {
@@ -212,7 +218,6 @@ export default class PixiData {
 
     replaceLast(data) {
         this.ohlcDatas[this.ohlcDatas.length - 1] = data;
-        debugger;
         this.draw();
     }
     setHitArea() {
@@ -399,8 +404,8 @@ export default class PixiData {
 
         // const price = this.priceScale.invert(this.mouseY);
 
-        this.updateDateLabel();
-        this.updateYLabel();
+        this.updateDateCrossHairLabel();
+        this.updatePriceCrossHairLabel();
 
         if (this.drag && !this.gesture) {
             // this.hideCrosshair();
@@ -494,7 +499,37 @@ export default class PixiData {
         this.drawAllCandles();
     }
 
-    updateYLabel() {
+    updateCurrentPriceLabel(price) {
+        if (!price) return;
+        if (!this.currentPriceLabelAppendGfx || !this.currentPriceTxtLabel)
+            return;
+        if (!this.lastPrice) {
+            this.lastPrice = price;
+        }
+        const yScale = this.priceScale;
+        const y = yScale(price);
+        const currentPriceTxt = formatter.format(price, this.tickSize);
+
+        const color =
+            price > this.lastPrice
+                ? 0x00ff00
+                : price < this.lastPrice
+                ? 0xff0000
+                : 0xaaaaaa;
+
+        this.currentPriceTxtLabel.y = y;
+        this.currentPriceLabelAppendGfx.position.y = y;
+
+        this.updateY____Label({
+            yLabel: currentPriceTxt,
+            gfx: this.currentPriceLabelAppendGfx,
+            txt: this.currentPriceTxtLabel,
+            color,
+        });
+        this.lastPrice = price;
+    }
+
+    updatePriceCrossHairLabel() {
         if (!this.crosshair) return;
         let yLabel, yScale;
         if (this.crossHairYScale) {
@@ -515,35 +550,44 @@ export default class PixiData {
         } else {
             this.yLabel = yLabel;
 
-            this.priceTxtLabel.text = this.yLabel;
-            let { width, height } = new TextMetrics.measureText(
-                this.yLabel,
-                this.textStyle
-            );
-            //X Date Label
-            this.priceLabelAppendGfx.clear();
-            this.priceLabelAppendGfx.beginFill(0x00ff00); // green
-
-            this.priceLabelAppendGfx.lineStyle(1, 0x333333, 1);
-
-            const padding = 10;
-            const x =
-                this.width + padding - (this.margin.left + this.margin.right);
-            this.priceTxtLabel.x = x;
-            this.priceLabelAppendGfx.position.x = x - padding / 2;
-            //Price label
-            const coords = rightAxisMarkerTagLine({
-                x,
-                y: 0,
-                w: width + padding,
-                h: height + padding,
-                padding,
+            this.updateY____Label({
+                yLabel: this.yLabel,
+                gfx: this.priceLabelAppendGfx,
+                txt: this.priceTxtLabel,
             });
-
-            this.priceLabelAppendGfx.drawPolygon(coords);
-
-            this.priceLabelAppendGfx.endFill();
         }
+    }
+
+    updateY____Label({ yLabel, gfx, txt, color }) {
+        txt.text = yLabel;
+        let { width, height } = new TextMetrics.measureText(
+            yLabel,
+            this.textStyle
+        );
+        try {
+            gfx.clear();
+        } catch (e) {
+            console.log(e);
+        }
+        gfx.beginFill(color || 0x00ff00); // green
+
+        gfx.lineStyle(1, 0x333333, 1);
+        const padding = 10;
+        const x = this.width + padding - (this.margin.left + this.margin.right);
+        txt.x = x;
+        gfx.position.x = x;
+
+        const coords = rightAxisMarkerTagLine({
+            x,
+            y: 0,
+            w: width + padding,
+            h: height + padding,
+            padding,
+        });
+
+        gfx.drawPolygon(coords);
+
+        gfx.endFill();
     }
 
     getDate(x) {
@@ -575,7 +619,7 @@ export default class PixiData {
         return date;
     }
 
-    updateDateLabel() {
+    updateDateCrossHairLabel() {
         if (!this.crosshair) return;
         let date = this.getDate(this.mouseX);
 

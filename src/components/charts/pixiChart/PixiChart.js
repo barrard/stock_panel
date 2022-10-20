@@ -38,11 +38,7 @@ export default function PixiChart({
     const [longPress, setLongPress] = useState(false);
     const [touch, setTouch] = useState(false);
     const [move, setMove] = useState(false);
-    const [startingTimer, setStartingTimer] = useState(false);
     const [gesture, setIsGesture] = useState(false);
-    const [hasTimer, setHasTimer] = useState(false);
-    const [events, setEvents] = useState(false);
-    const [touchMove, setTouchMove] = useState(false);
     const [touch1, setTouch1] = useState(false);
     const [touch2, setTouch2] = useState(false);
     const [touchMoveEvent, setTouchMoveEvent] = useState(false);
@@ -113,7 +109,7 @@ export default function PixiChart({
             margin: {
                 top: 50,
                 right: 100,
-                left: 50,
+                left: 0,
                 bottom: 40,
             },
         });
@@ -224,19 +220,17 @@ export default function PixiChart({
         if (!ohlcDatas.length) return;
         if (!timeAndSales.length) return;
         const lastOhlc = ohlcDatas.slice(-1)[0];
-        debugger;
         const updatedLastOhlc = timeAndSales.reduce((acc, timeAndSales) => {
             const close = timeAndSales["2"];
             lastOhlc.volume += timeAndSales["3"];
             lastOhlc.close = close;
             if (lastOhlc.low > close) lastOhlc.low = close;
             if (lastOhlc.high < close) lastOhlc.high = close;
-            debugger;
             return lastOhlc;
         }, lastOhlc);
 
-        debugger;
         pixiData.replaceLast(updatedLastOhlc);
+        pixiData.updateCurrentPriceLabel(updatedLastOhlc.close);
     }, [timeAndSales]);
 
     useEffect(() => {
@@ -247,11 +241,9 @@ export default function PixiChart({
                 TouchGesture1.current?.clientX - TouchGesture2.current?.clientX
             );
             if (before > after) {
-                setZoomGesture(`zoom out ${before - after}`);
                 pixiData.zoomOut(before - after);
             } else if (before < after) {
                 pixiData.zoomIn(after - before);
-                setZoomGesture(`zoom in ${after - before}`);
             }
         }
         setTouch1(TouchGesture1.current?.clientX);
@@ -263,7 +255,6 @@ export default function PixiChart({
         clearInterval(longPressTimer);
         setLongPressTimer(false);
         setLongPress(false);
-        setStartingTimer(false);
         setMouseEnter(false);
     };
 
@@ -284,89 +275,13 @@ export default function PixiChart({
         }
     };
 
-    const printEvents = (e) => {
-        let str = "";
-        for (let k in e) {
-            if (k === "touches") {
-                addTouches(e[k]);
-            } else {
-                // str += `${k}: ${e[k]} - \n`;
-            }
-        }
-
-        function addTouches(touches) {
-            if (!touches) return;
-            debugger;
-            Array.from(touches).forEach((touch) => {
-                // for (let k in touch) {
-                // if (typeof e[k] === "object") {
-                //     addTouch(e[k]);
-                // } else {
-                str += `${"clientX"}: ${touch["clientX"]} - \n`;
-                // }
-                // }
-            });
-        }
-
-        return str;
-    };
-
     return (
         <>
-            {/* <p>Pixi Touches {pixiData.touches}</p>
-            {loading && <> LOADING......</>}
-            {pixiData?.mouseX && (
-                <> pixiData?.mouseX - {pixiData?.mouseX}......</>
-            )}
-            <br />
-            {touch && <> touch......</>}
-
-            <br />
-            {gesture && <> gesture......</>}
-
-            <br />
-            {touchMove && <> touchMove......</>}
-
-            <br />
-            {touch1 && <> touch1 - {touch1}......</>}
-
-            <br />
-            {touch2 && <> touch2 - {touch2}......</>}
-
-            <br />
-            {touchMoveEvent && (
-                <> touchMoveEvent - {touchMoveEvent.clientX}......</>
-            )}
-
-            <br />
-            {events && (
-                <>
-                    <p style={{ whiteSpace: "pre-line" }}>
-                        {" "}
-                        {printEvents(events)}
-                    </p>
-                </>
-            )}
-            {zoomGesture && <>zoomGesture - {zoomGesture}</>} */}
-            {/* 
-            {move && <> move......</>}
-            {longPressTimer && <> longPressTimer......</>}
-            {startingTimer && <> startingTimer......</>}
-            {mouseEnter && <> mouseEnter......</>}
-            {hasTimer && <> hasTimer......</>}
-            {!hasTimer && <> NOhasTimer......</>} */}
             <div
                 onMouseEnter={(e) => {
-                    // console.log(e);
                     setMouseEnter(true);
-                    // setTouch(true);
                 }}
-                // onTouchMove={(e) => {
-                //     setTouchMove(true);
-                //     checkGesture(e);
-                // }}
                 onTouchMove={(e) => {
-                    setTouchMove(true);
                     setTouchMoveEvent(e);
                     checkGesture(e);
                 }}
@@ -374,12 +289,9 @@ export default function PixiChart({
                     checkGesture(e);
                     setTouch(true);
                     setMouseEnter(false);
-                    setEvents(e);
                     pixiData.touches++;
-                    // pixiData.setMouse(e);
 
                     if (!longPressTimer) {
-                        setStartingTimer(true);
                         const _longPressTimer = setTimeout(() => {
                             console.log("long press");
                             setLongPress(true);
@@ -392,14 +304,13 @@ export default function PixiChart({
                 onTouchEnd={() => {
                     setTouch(false);
                     clearGesture();
-                    setTouchMove(false);
                     setTouchMoveEvent(false);
 
                     setTouch1(false);
                     setTouch2(false);
                     setZoomGesture(false);
                     clearLongPress();
-                    pixiData.touches = 0;
+                    pixiData.touches--;
                 }}
                 onMouseLeave={() => {
                     clearLongPress();
@@ -409,7 +320,6 @@ export default function PixiChart({
                 onPointerEnter={() => setMouseEnter(true)}
                 onPointerLeave={() => setMouseEnter(false)}
                 onWheel={(e) => {
-                    // setEvents(e);
                     if (e.deltaY > 0) {
                         // console.log("The user scrolled up");
                         pixiData.zoomOut("scroll");
