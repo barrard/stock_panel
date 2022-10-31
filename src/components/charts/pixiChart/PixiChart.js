@@ -70,7 +70,7 @@ export default function PixiChart({
             setOhlcDatas((ohlcDatas) => {
                 const allOhlcData = _ohlcDatas.concat(ohlcDatas);
                 setPixiData((pixiData) => {
-                    pixiData.init(allOhlcData);
+                    pixiData.init(_ohlcDatas);
                     return pixiData;
                 });
 
@@ -206,6 +206,7 @@ export default function PixiChart({
         if (!currentMinute) return;
         const data = currentMinute[symbol.slice(1)];
         const lastOhlc = ohlcDatas.slice(-1)[0];
+        if (!data) return;
 
         const dataTime = new Date(data.timestamp).getMinutes();
         const lastDataTime = new Date(lastOhlc.timestamp).getMinutes();
