@@ -85,7 +85,7 @@ function eastCoastTime(_date) {
     _date = _date || new Date().getTime();
     utc = new Date(_date).getTime() + new Date().getTimezoneOffset() * 60000;
 
-    let eastCoastTime = new Date(utc + 3600000 * -4); //SPRING TIME DST, SWITCH TO 5 when Fall Back
+    let eastCoastTime = new Date(utc + 3600000 * -5); //SPRING TIME DST, SWITCH TO 5 when Fall Back
     let date = new Date(eastCoastTime).getDate();
     let day = new Date(eastCoastTime).getDay();
     let hour = new Date(eastCoastTime).getHours();
