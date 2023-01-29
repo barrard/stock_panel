@@ -46,9 +46,9 @@ function futuresAreTrading(date) {
     }
 
     //any day from 4:15-4:29
-    if (hour === 16) {
-        if (minute >= 15 && minute <= 29) return false;
-    }
+    // if (hour === 16) {
+    //     if (minute >= 15 && minute <= 29) return false;
+    // }
     //markets closed from 5:00pm-5:59pm where hour = 17
     if (hour === 17) {
         return false;

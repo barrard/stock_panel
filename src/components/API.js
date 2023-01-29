@@ -43,6 +43,7 @@ export default {
     getConditionals,
     getIndicatorList,
     getIndicatorResults,
+    getTicksFrom,
     getMovers,
     getPriceDatas,
     getStrategies,
@@ -76,6 +77,9 @@ async function getTickers() {
     return await GET("/API/getTickers");
 }
 
+async function getTicksFrom({ symbol, from, to }) {
+    return await GET(`/TD_data/getTicksFrom/${symbol}/${from}/${to}`);
+}
 async function getFundamentals() {
     let fundamentals = await fetch(
         `${REACT_APP_API_SERVER}/API/getRecentFundamentals`,

@@ -21,6 +21,7 @@ import OpAlerts from "./components/OpUnusualVolPage.js";
 import OptionContracts from "./components/OptionContracts.js";
 import OptionByDate from "./components/OptionByDate.js";
 import PixiChart from "./components/charts/pixiChart";
+import GptChart from "./components/charts/GptChart";
 
 import CommodityChartPage from "./components/CommodityChartPage.js";
 import defaultFilterList from "./components/QuoteComponents/DefaultFilterList.js";
@@ -148,6 +149,12 @@ class App extends React.Component {
                         path="/pixi-chart"
                         render={(props) => (
                             <PixiChart {...props} Socket={Socket} />
+                        )}
+                    />
+                    <Route
+                        path="/gpt-chart"
+                        render={(props) => (
+                            <GptChart {...props} Socket={Socket} />
                         )}
                     />
                     {/* Keep at bottom */}

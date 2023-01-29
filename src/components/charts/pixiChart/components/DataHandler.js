@@ -9,12 +9,16 @@ import {
     TextMetrics,
     TextStyle,
 } from "pixi.js";
+import MarketProfile from "./MarketProfile";
 import { TimeScale } from "chart.js";
 import PixiAxis from "./PixiAxis";
 import { timeScaleValues, priceScaleValues } from "./utils.js";
 import { drawVolume } from "./drawFns.js";
 import Indicator from "./Indicator";
-
+import {
+    eastCoastTime,
+    isRTH,
+} from "../../../../indicators/indicatorHelpers/IsMarketOpen";
 export default class PixiData {
     constructor({
         ohlcDatas = [],
@@ -143,10 +147,9 @@ export default class PixiData {
             this.mainChartContainer.addChild(this.xAxis.tickLinesGfx);
             this.mainChartContainer.addChild(this.yAxis.tickLinesGfx);
 
-            this.yAxis.container.position.x =
-                this.width - this.margin.right - this.margin.left;
-            this.yAxis.container.position.y = 0;
-            this.mainChartContainer.addChild(this.yAxis.container);
+            // this.yAxis.container.position.x = this.width - this.margin.right;
+            // this.yAxis.container.position.y = 0;
+            // this.mainChartContainer.addChild(this.yAxis.container);
             this.mainChartContainer.addChild(this.currentPriceLabelAppendGfx);
             this.mainChartContainer.addChild(this.currentPriceTxtLabel);
         }
@@ -158,12 +161,17 @@ export default class PixiData {
             this.sliceStart = 0;
             this.sliceEnd = ohlcDatas.length;
 
-            ohlcDatas.forEach((ohlc) => {
+            let firstTime = false;
+            let lastTime;
+
+            // let marketProfileFlag = true; //start off as true to always make the first bucket
+            ohlcDatas.forEach((ohlc, index) => {
                 if (!ohlc.ticks) {
                     ohlc.ticks = [];
                 }
                 ohlc.volData = {};
 
+                //Volume Profile
                 ohlc.ticks.forEach((tick) => {
                     const { datetime, volume, close } = tick;
                     if (!ohlc.volData[datetime]) {
@@ -190,11 +198,14 @@ export default class PixiData {
             this.setHitArea();
             this.drawCrossHair();
             this.setupPriceScales();
+            //init market profile
+            this.marketProfile = new MarketProfile(this);
 
             this.mainChartContainer.addChild(this.candleStickWickGfx);
             this.mainChartContainer.addChild(this.candleStickGfx);
             this.mainChartContainer.addChild(this.priceGfx);
             this.mainChartContainer.addChild(this.borderGfx);
+            this.mainChartContainer.addChild(this.marketProfile.container);
 
             this.mainChartContainer.addChild(this.volGfx);
 
@@ -205,6 +216,8 @@ export default class PixiData {
             this.sliceEnd += ohlcDatas.length;
             this.ohlcDatas = ohlcDatas.concat(this.ohlcDatas);
             console.log("HERE???");
+
+            this.marketProfile.init();
             this.draw();
         }
         this.loadingMoreData = false;
@@ -497,11 +510,17 @@ export default class PixiData {
         // this.drawTickVolumeLine();
 
         this.drawAllCandles();
+        this.marketProfile.draw();
     }
 
     updateCurrentPriceLabel(price) {
         if (!price) return;
-        if (!this.currentPriceLabelAppendGfx || !this.currentPriceTxtLabel)
+
+        if (
+            !this.currentPriceLabelAppendGfx ||
+            !this.currentPriceLabelAppendGfx?.position ||
+            !this.currentPriceTxtLabel
+        )
             return;
         if (!this.lastPrice) {
             this.lastPrice = price;
@@ -773,9 +792,9 @@ export default class PixiData {
             });
 
         //yAxis
-        // this.yAxis.container.position.x = this.width - this.margin.right;
-        // this.yAxis.container.position.y = this.margin.top;
-        // this.pixiApp.stage.addChild(this.yAxis.container);
+        this.yAxis.container.position.x = this.width - this.margin.right;
+        this.yAxis.container.position.y = this.margin.top;
+        this.pixiApp.stage.addChild(this.yAxis.container);
         //yAxis
         this.xAxis.container.position.x = this.margin.left;
         this.xAxis.container.position.y = this.height - this.margin.bottom;

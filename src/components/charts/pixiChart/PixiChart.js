@@ -1,9 +1,9 @@
 import React, { useRef, useEffect, useState } from "react";
 import API from "../../../components/API";
 import * as PIXI from "pixi.js";
-import { Viewport } from "pixi-viewport";
+// import { Viewport } from "pixi-viewport";
 
-import { axisBottom, axisRight, axisLeft, axisTop } from "d3-axis";
+// import { axisBottom, axisRight, axisLeft, axisTop } from "d3-axis";
 // import { scaleLinear, scaleTime, scaleBand } from "d3-scale";
 import { extent, scaleLinear, select, zoom, zoomTransform, mouse } from "d3";
 
