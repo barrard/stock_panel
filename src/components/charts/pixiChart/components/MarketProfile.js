@@ -6,7 +6,10 @@ import {
     TextMetrics,
     TextStyle,
     utils,
+    CLEAR_MODES,
 } from "pixi.js";
+import { extent, max, min } from "d3-array";
+
 import { scaleLinear } from "d3";
 
 import {
@@ -18,7 +21,9 @@ export default class MarketProfile {
     constructor(dataHandler) {
         this.data = dataHandler;
         this.marketProfile = {};
+        this.marketProfileComposite = {};
         this.textBars = {};
+        this.textures = {};
         // this.textBarStyle = new TextStyle({
         //     fontFamily: "Arial",
         //     fontSize: 16,
@@ -34,6 +39,13 @@ export default class MarketProfile {
         //     align: "center",
         // });
         this.container = new Container();
+        this.profileBarsContainer = new Container();
+        this.profileCompositeContainer = new Container();
+
+        this.profileCompositeGfx = new Graphics();
+
+        this.profileCompositeContainer.addChild(this.profileCompositeGfx);
+        this.container.addChild(this.profileCompositeContainer);
 
         this.init();
     }
@@ -42,7 +54,11 @@ export default class MarketProfile {
         // this.container.position.x = this.data.margin.left;
         // this.container.position.y = this.data.margin.top;
         this.marketProfile = {};
+        this.marketProfileComposite = {};
+
         this.container.removeChildren();
+        this.container.addChild(this.profileBarsContainer);
+        this.container.addChild(this.profileCompositeContainer);
 
         console.log(this.data.slicedData.length);
 
@@ -111,9 +127,6 @@ export default class MarketProfile {
             if (!this.marketProfile[day]) {
                 this.marketProfile[day] = {};
                 this.textBars[day] = {};
-                this.textBars[day].composite = {};
-                this.textBars[day].overnight = {};
-                this.textBars[day].regularSession = {};
             }
 
             const code = bar.charCodeAt(0);
@@ -124,21 +137,21 @@ export default class MarketProfile {
                     if (code >= 97) {
                         color = code - 97;
                     } else if (code < 65) {
-                        color = code - 49 + (122 - 97);
+                        color = code - 49 + (122 - 96);
                     }
                 } else {
-                    console.log({ code, bar });
-                    debugger;
-                    color = 34 + code - 65;
+                    // console.log({ code, bar });
+                    color = 34 + code - 64;
                 }
-                console.log(
-                    "=========================================================================="
-                );
-                console.log({ offset, bar, color, code });
 
-                console.log(
-                    "=========================================================================="
-                );
+                // console.log(
+                //     "=========================================================================="
+                // );
+                // console.log({ offset, bar, color, code });
+
+                // console.log(
+                //     "=========================================================================="
+                // );
                 this.marketProfile[day][bar] = {
                     low: Infinity,
                     high: -Infinity,
@@ -157,9 +170,9 @@ export default class MarketProfile {
         });
 
         const morningRange = 31;
-        redToBlue.domain([0, 33]);
-        greenToYellow.domain([34, 47]);
-        debugger;
+        redToBlue.domain([0, 34]);
+        greenToYellow.domain([35, 47]);
+
         Object.keys(this.marketProfile).forEach((day) => {
             Object.keys(this.marketProfile[day]).forEach((letter, i) => {
                 const bar = this.marketProfile[day][letter];
@@ -168,38 +181,32 @@ export default class MarketProfile {
 
                 const { startTime, high, low, color } = bar;
 
-                const letterCount = Math.ceil((high - low) / 0.25 / 4);
+                const letterCount =
+                    (Math.ceil(high) - Math.floor(low)) / 0.25 / 4;
 
                 const mid = Math.floor(letterCount / 2);
 
                 console.log(
-                    `-----------------------${color}--${letter}------------------------`
+                    `-------------------- day ${day}--- color ${color}-- letter ${letter}-- code ${code}----------------------`
                 );
                 let paint = "white";
-                console.log({ color });
 
-                if (color !== undefined && color <= 33) {
-                    console.log(utils);
+                if (color !== undefined && color <= 34) {
                     const rgb = Math.floor(redToBlue(color));
                     if (rgb <= 255) {
-                        console.log(rgb / 255);
                         paint = utils.rgb2hex([255 / 255, 0, rgb / 255]);
                     } else {
-                        console.log((255 - (rgb - 255)) / 255);
                         paint = utils.rgb2hex([
                             (255 - (rgb - 255)) / 255,
                             0,
                             255 / 255,
                         ]);
                     }
-                } else if (color !== undefined && color > 33) {
-                    debugger;
+                } else if (color !== undefined && color > 34) {
                     const rgb = Math.floor(greenToYellow(color));
                     if (rgb <= 255) {
-                        console.log(rgb / 255);
                         paint = utils.rgb2hex([rgb / 255, 255 / 255, 0]);
                     } else {
-                        console.log((255 - (rgb - 255)) / 255);
                         paint = utils.rgb2hex([
                             (255 - (rgb - 255)) / 255,
                             0,
@@ -208,12 +215,12 @@ export default class MarketProfile {
                     }
                 }
 
+                const floorHigh = Math.floor(high);
+                const floorLow = Math.floor(low);
                 bar.letters = Array(letterCount)
                     .fill()
                     .map((x, i) => {
                         //determine color?
-
-                        //get the texture, or make one if not found
 
                         const profileLetter = new Text(
                             letter,
@@ -221,35 +228,175 @@ export default class MarketProfile {
                                 ? new TextStyle({
                                       fontFamily: "Arial",
                                       fontSize: 10,
-                                      fontWeight: "bold",
+                                      //   fontWeight: "bold",
                                       fill: paint,
                                       align: "center",
                                   })
                                 : new TextStyle({
                                       fontFamily: "Arial",
-                                      fontSize: 16,
-                                      fontWeight: "bold",
+                                      fontSize: 12,
+                                      //   fontWeight: "bold",
                                       fill: paint,
                                       align: "center",
                                   })
                         );
 
+                        profileLetter.anchor.set(0.5); //= 0.5;
+
+                        profileLetter.price = floorHigh - i + 0.5;
+
+                        this.addCompositeProfile(
+                            profileLetter,
+                            day,
+                            color,
+                            startTime
+                        );
+
+                        // console.log({ price: profileLetter.price, high, low });
+                        // debugger;
                         return profileLetter;
                     });
             });
         });
+
+        console.log(this.marketProfileComposite);
+    }
+
+    addCompositeProfile(profileLetter, day, color, startTime) {
+        const overNightProfileDay = color <= 25 ? parseInt(day) + 1 : day;
+        const isOverNight = color <= 34;
+        // const offSetDay = !isOverNight ? day : isOverNight && overNightProfileDay ? :
+
+        let composite = this.marketProfileComposite[overNightProfileDay];
+
+        if (!this.marketProfileComposite[overNightProfileDay]) {
+            this.marketProfileComposite[overNightProfileDay] = {};
+
+            composite = this.marketProfileComposite[overNightProfileDay];
+
+            composite.marketOpen = 0;
+            composite.marketClose = 0;
+            composite.composite = {};
+            composite.overnight = {};
+            composite.regularSession = {};
+        }
+
+        //Total Full Day Composite
+
+        if (!composite.composite[profileLetter.price]) {
+            composite.composite[profileLetter.price] = [];
+        }
+        //
+        composite.composite[profileLetter.price].push(profileLetter);
+
+        //Total overnight, a - 9
+        if (isOverNight && !composite.overnight[profileLetter.price]) {
+            composite.overnight[profileLetter.price] = [];
+        }
+        if (isOverNight) {
+            if (startTime > composite.marketOpen)
+                composite.marketOpen = startTime;
+
+            composite.overnight[profileLetter.price].push(profileLetter);
+        }
+        //
+        //Total Regular Session A - M
+        if (!isOverNight && !composite.regularSession[profileLetter.price]) {
+            composite.regularSession[profileLetter.price] = [];
+        }
+        if (!isOverNight) {
+            if (startTime > composite.marketClose)
+                composite.marketClose = startTime;
+
+            composite.regularSession[profileLetter.price].push(profileLetter);
+        }
     }
 
     draw(data) {
         console.time("writeProfile");
-        this.container.removeChildren();
+        this.profileBarsContainer.removeChildren();
 
         Object.keys(this.marketProfile).forEach((day) => {
             Object.keys(this.marketProfile[day]).forEach((letter, i) =>
                 this.drawLetter(day, letter, i)
             );
         });
+
+        if (!this.profileCompositeGfx?._geometry) {
+            return;
+        }
+
+        this.profileCompositeGfx.clear();
+
+        Object.keys(this.marketProfileComposite).forEach((day) => {
+            if (this.marketProfileComposite[day].marketOpen) {
+                //draw regular hours
+
+                this.drawProfile(
+                    this.marketProfileComposite[day].overnight,
+                    this.marketProfileComposite[day].marketOpen
+                );
+            }
+
+            if (this.marketProfileComposite[day].marketClose) {
+                //draw regular hours
+                console.log("Draw Profile");
+
+                this.drawProfile(
+                    this.marketProfileComposite[day].regularSession,
+                    this.marketProfileComposite[day].marketClose
+                );
+            }
+        });
+
         console.timeEnd("writeProfile");
+    }
+
+    drawProfile(profile, time) {
+        if (!this.profileCompositeGfx?._geometry) return;
+
+        let endIndex = this.data.slicedData.findIndex(
+            (d) => d.timestamp === time
+        );
+
+        if (endIndex < 0) {
+            return;
+            // endIndex = this.data.slicedData.length;
+        }
+
+        let prices = Object.keys(profile)
+            .map((p) => parseFloat(p))
+            .sort((a, b) => a - b);
+
+        const rightSideProfile = this.data.xScale(endIndex);
+
+        const [minPrice, maxPrice] = extent(prices);
+
+        const minY = this.data.priceScale(minPrice);
+        const maxY = this.data.priceScale(maxPrice);
+        const radius = 6; //this.data.priceScale(0) - this.data.priceScale(1);
+        console.log({ radius });
+        this.profileCompositeGfx.lineStyle(3, 0xffffff, 0.9);
+
+        this.profileCompositeGfx.moveTo(rightSideProfile, minY);
+        this.profileCompositeGfx.lineTo(rightSideProfile, maxY);
+
+        this.profileCompositeGfx.lineStyle(0, 0xffffff, 0.9);
+
+        prices.forEach((price) => {
+            //circles
+            const y = this.data.priceScale(price);
+
+            profile[price].forEach((marker, i) => {
+                console.log(radius);
+                const x = rightSideProfile - radius - i * 10;
+                this.profileCompositeGfx.beginFill(
+                    utils.string2hex(marker.style.fill),
+                    0.3
+                );
+                this.profileCompositeGfx.drawCircle(x, y, radius);
+            });
+        });
     }
 
     drawLetter(day, letter, i) {
@@ -283,39 +430,42 @@ export default class MarketProfile {
         // const { startTime, high, low, endIndex, startIndex } =
         //     this.marketProfile[day][letter];
 
-        const scaleWidth = Math.floor(this.data.xScale(endIndex - startIndex));
+        // const scaleWidth = Math.floor(this.data.xScale(endIndex - startIndex));
 
-        const scaleHeight = Math.ceil(
-            this.data.priceScale(Math.floor(low)) -
-                this.data.priceScale(Math.ceil(high))
-        );
+        // const scaleHeight = Math.ceil(
+        //     this.data.priceScale(Math.floor(low)) -
+        //         this.data.priceScale(Math.ceil(high))
+        // );
 
-        const top = Math.ceil(
-            // this.data.priceScale(Math.floor(low)) -
-            this.data.priceScale(Math.ceil(high))
-        );
-        // const heightDivide = scaleHeight /
-        // console.log({ scaleWidth, scaleHeight });
+        // const top = Math.ceil(this.data.priceScale(Math.ceil(high)));
 
-        // const mid = Math.floor(letters.length / 2);
+        const mid = Math.floor(letters.length / 2);
         letters.forEach((txtLetter, i) => {
+            if (!txtLetter) {
+                return;
+            }
             if (!txtLetter.transform) return;
 
-            // const isMid = i === mid;
-            // if (isMid) {
-            //     txtLetter.style.color = "red";
-            // }
-            const offset = i * (scaleHeight / letters.length);
+            const isMid = i === mid;
+            if (isMid) {
+                txtLetter.style.fill = "white";
+            }
+            // const offset = i * (scaleHeight / letters.length);
 
             txtLetter.x = this.data.xScale(
                 (endIndex - startIndex) / 2 + startIndex
             );
-            txtLetter.y =
-                i === 0
-                    ? top
-                    : top + Math.ceil(scaleHeight / letters.length) * i;
-            this.container.addChild(txtLetter);
+            txtLetter.y = this.data.priceScale(txtLetter.price);
+            // i === 0
+            //     ? top
+            //     : top + Math.ceil(scaleHeight / letters.length) * i;
+            this.profileBarsContainer.addChild(txtLetter);
         });
         // };
     }
 }
+
+// ABCDEFGHIJK L M N a b c d e f g h i j k l m n o p q r s t u v w x y z 1 2 3 4 5 6 7 8 9
+// 0123456789101112131415161718192021222324252627282930313233343536373839404142434445464748
+// abcdefghijk l m n o p q r s t u v w x y z 1 2 3 4 5 6 7 8 9 A B C D E F G H I J K L M N
+// 0123456789101112131415161718192021222324252627282930313233343536373839404142434445464748

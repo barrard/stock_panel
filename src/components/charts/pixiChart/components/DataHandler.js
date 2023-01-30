@@ -518,6 +518,7 @@ export default class PixiData {
 
         if (
             !this.currentPriceLabelAppendGfx ||
+            !this.currentPriceLabelAppendGfx?.transform ||
             !this.currentPriceLabelAppendGfx?.position ||
             !this.currentPriceTxtLabel
         )
