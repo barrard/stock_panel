@@ -389,7 +389,7 @@ export default class MarketProfile {
 
             profile[price].forEach((marker, i) => {
                 console.log(radius);
-                const x = rightSideProfile - radius - i * 10;
+                const x = rightSideProfile - radius * 2 * (i + 1);
                 this.profileCompositeGfx.beginFill(
                     utils.string2hex(marker.style.fill),
                     0.3
