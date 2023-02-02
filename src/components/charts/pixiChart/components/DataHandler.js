@@ -10,6 +10,7 @@ import {
     TextStyle,
 } from "pixi.js";
 import MarketProfile from "./MarketProfile";
+import ZigZag from "./ZigZag";
 import { TimeScale } from "chart.js";
 import PixiAxis from "./PixiAxis";
 import { timeScaleValues, priceScaleValues } from "./utils.js";
@@ -26,7 +27,7 @@ export default class PixiData {
         pixiApp,
         width,
         // height,
-        indicatorHeight = 250,
+        indicatorHeight = 150,
         loadData,
         margin,
         tickSize,
@@ -40,7 +41,7 @@ export default class PixiData {
         this.indicatorHeight = indicatorHeight;
         this.initRun = false;
         this.loadData = loadData;
-        this.mainChartContainerHeight = 600;
+        this.mainChartContainerHeight = 400;
         this.margin = margin;
         this.mouseX = 0;
         this.ohlcDatas = [...ohlcDatas];
@@ -140,6 +141,7 @@ export default class PixiData {
     }
 
     init(ohlcDatas) {
+        debugger;
         const { volProfileData, pixiApp } = this;
 
         if (!this.initRun) {
@@ -164,7 +166,6 @@ export default class PixiData {
             let firstTime = false;
             let lastTime;
 
-            // let marketProfileFlag = true; //start off as true to always make the first bucket
             ohlcDatas.forEach((ohlc, index) => {
                 if (!ohlc.ticks) {
                     ohlc.ticks = [];
@@ -200,12 +201,12 @@ export default class PixiData {
             this.setupPriceScales();
             //init market profile
             this.marketProfile = new MarketProfile(this);
+            this.zigZag = new ZigZag(this);
 
             this.mainChartContainer.addChild(this.candleStickWickGfx);
             this.mainChartContainer.addChild(this.candleStickGfx);
             this.mainChartContainer.addChild(this.priceGfx);
             this.mainChartContainer.addChild(this.borderGfx);
-            this.mainChartContainer.addChild(this.marketProfile.container);
 
             this.mainChartContainer.addChild(this.volGfx);
 
@@ -218,9 +219,48 @@ export default class PixiData {
             console.log("HERE???");
 
             this.marketProfile.init();
+            this.zigZag.init();
             this.draw();
         }
         this.loadingMoreData = false;
+    }
+
+    disableIndicator(indicator) {
+        switch (indicator) {
+            case "marketProfile":
+                // alert("marketProfile");
+                this.isDrawProfile = !this.isDrawProfile;
+                if (!this.isDrawProfile) {
+                    console.log("remove");
+                    this.mainChartContainer.removeChild(
+                        this.marketProfile.container
+                    );
+                } else {
+                    console.log("add");
+                    this.mainChartContainer.addChild(
+                        this.marketProfile.container
+                    );
+                    this.marketProfile.init();
+                }
+                break;
+
+            case "zigZag":
+                this.isDrawZigZag = !this.isDrawZigZag;
+                if (!this.isDrawZigZag) {
+                    console.log("remove");
+                    this.mainChartContainer.removeChild(this.zigZag.container);
+                } else {
+                    console.log("add");
+                    this.mainChartContainer.addChild(this.zigZag.container);
+                    this.zigZag.init();
+                }
+
+                break;
+
+            default:
+                alert(`implement ${indicator}`);
+                break;
+        }
     }
 
     prependData(data) {
@@ -510,7 +550,12 @@ export default class PixiData {
         // this.drawTickVolumeLine();
 
         this.drawAllCandles();
-        this.marketProfile.draw();
+        if (this.isDrawProfile) {
+            this.marketProfile.draw();
+        }
+        if (this.isDrawZigZag) {
+            this.zigZag.draw();
+        }
     }
 
     updateCurrentPriceLabel(price) {

@@ -6,7 +6,7 @@ import {
     TextMetrics,
     TextStyle,
     utils,
-    CLEAR_MODES,
+    // CLEAR_MODES,
 } from "pixi.js";
 import { extent, max, min } from "d3-array";
 
@@ -24,20 +24,7 @@ export default class MarketProfile {
         this.marketProfileComposite = {};
         this.textBars = {};
         this.textures = {};
-        // this.textBarStyle = new TextStyle({
-        //     fontFamily: "Arial",
-        //     fontSize: 16,
-        //     fontWeight: "bold",
-        //     fill: 0xffffff,
-        //     align: "center",
-        // });
-        // this.textSmallBarStyle = new TextStyle({
-        //     fontFamily: "Arial",
-        //     fontSize: 10,
-        //     fontWeight: "bold",
-        //     fill: 0xffffff,
-        //     align: "center",
-        // });
+
         this.container = new Container();
         this.profileBarsContainer = new Container();
         this.profileCompositeContainer = new Container();
@@ -45,9 +32,9 @@ export default class MarketProfile {
         this.profileCompositeGfx = new Graphics();
 
         this.profileCompositeContainer.addChild(this.profileCompositeGfx);
-        this.container.addChild(this.profileCompositeContainer);
+        // this.container.addChild(this.profileCompositeContainer);
 
-        this.init();
+        // this.init();
     }
 
     init() {
@@ -60,7 +47,7 @@ export default class MarketProfile {
         this.container.addChild(this.profileBarsContainer);
         this.container.addChild(this.profileCompositeContainer);
 
-        console.log(this.data.slicedData.length);
+        // console.log(this.data.slicedData.length);
 
         let bar = "";
         let color = "pink";
@@ -68,7 +55,7 @@ export default class MarketProfile {
         // const yellowToRed = scaleLinear().range([0, 255*2]);
         const redToBlue = scaleLinear().range([0, 255 * 2]);
 
-        this.data.slicedData.forEach((ohlc, i) => {
+        this.data.ohlcDatas.forEach((ohlc, i) => {
             const { timestamp, high, low } = ohlc;
 
             // make hour and minute into a letter
@@ -120,7 +107,7 @@ export default class MarketProfile {
 
             if (!bar || color === undefined) {
                 debugger;
-                console.log(asEastCoastTime);
+                // console.log(asEastCoastTime);
                 throw "No bar";
             }
 
@@ -186,9 +173,9 @@ export default class MarketProfile {
 
                 const mid = Math.floor(letterCount / 2);
 
-                console.log(
-                    `-------------------- day ${day}--- color ${color}-- letter ${letter}-- code ${code}----------------------`
-                );
+                // console.log(
+                //     `-------------------- day ${day}--- color ${color}-- letter ${letter}-- code ${code}----------------------`
+                // );
                 let paint = "white";
 
                 if (color !== undefined && color <= 34) {
@@ -259,7 +246,7 @@ export default class MarketProfile {
             });
         });
 
-        console.log(this.marketProfileComposite);
+        // console.log(this.marketProfileComposite);
     }
 
     addCompositeProfile(profileLetter, day, color, startTime) {
@@ -340,7 +327,7 @@ export default class MarketProfile {
 
             if (this.marketProfileComposite[day].marketClose) {
                 //draw regular hours
-                console.log("Draw Profile");
+                // console.log("Draw Profile");
 
                 this.drawProfile(
                     this.marketProfileComposite[day].regularSession,
@@ -375,7 +362,7 @@ export default class MarketProfile {
         const minY = this.data.priceScale(minPrice);
         const maxY = this.data.priceScale(maxPrice);
         const radius = 6; //this.data.priceScale(0) - this.data.priceScale(1);
-        console.log({ radius });
+        // console.log({ radius });
         this.profileCompositeGfx.lineStyle(3, 0xffffff, 0.9);
 
         this.profileCompositeGfx.moveTo(rightSideProfile, minY);
@@ -388,7 +375,7 @@ export default class MarketProfile {
             const y = this.data.priceScale(price);
 
             profile[price].forEach((marker, i) => {
-                console.log(radius);
+                // console.log(radius);
                 const x = rightSideProfile - radius * 2 * (i + 1);
                 this.profileCompositeGfx.beginFill(
                     utils.string2hex(marker.style.fill),

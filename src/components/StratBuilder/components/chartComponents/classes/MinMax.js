@@ -9,7 +9,7 @@ class MinMax {
         zigZagRegressionErrorLimit,
         toggleZigzagDynamic
     ) {
-        this.data = data;
+        this.data = data.map((d) => ({ ...d, datetime: d.timestamp }));
         this.tolerance = tolerance > 0 ? tolerance : 1;
         this.zigZagTolerance = zigZagTolerance > 0 ? zigZagTolerance : 0.0001;
         this.zigZagRegressionErrorLimit = zigZagRegressionErrorLimit || 5;

@@ -47,7 +47,7 @@ export default function drawZigZagRegression(
         ohlcData: ohlc,
     });
 
-    function drawRegressionLine(lineData, opts = {}) {
+    function drawRegressionLine(lineData = [], opts = {}) {
         const ohlcData = opts.ohlcData || [];
         const nodesClassName = opts.nodeClassName;
 

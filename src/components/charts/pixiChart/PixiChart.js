@@ -1,13 +1,15 @@
 import React, { useRef, useEffect, useState } from "react";
 import API from "../../../components/API";
 import * as PIXI from "pixi.js";
-// import { Viewport } from "pixi-viewport";
+import { GiAirZigzag, GiHistogram, GiAmplitude } from "react-icons/gi";
 
-// import { axisBottom, axisRight, axisLeft, axisTop } from "d3-axis";
-// import { scaleLinear, scaleTime, scaleBand } from "d3-scale";
 import { extent, scaleLinear, select, zoom, zoomTransform, mouse } from "d3";
 
+import { IconButton } from "../../StratBuilder/components";
+import { Flex } from "../../StratBuilder/components/chartComponents/styled";
+
 import PixiData from "./components/DataHandler";
+import { drawZigZag } from "../../StratBuilder/components/chartAppends";
 
 export default function PixiChart({
     Socket,
@@ -46,6 +48,8 @@ export default function PixiChart({
 
     const [timeAndSales, setTimeAndSales] = useState([]);
     const [zoomGesture, setZoomGesture] = useState(false);
+    const [toggleZigZag, setDrawZigZag] = useState(false);
+    const [toggleMarketProfile, setDrawMarketProfile] = useState(false);
 
     //Fn to load ohlc data
     const loadData = ({ startDate, withTicks }) => {
@@ -79,6 +83,14 @@ export default function PixiChart({
             setLoading(false);
         });
     };
+    useEffect(() => {
+        if (!pixiData) return;
+        pixiData.disableIndicator("zigZag");
+    }, [toggleZigZag]);
+    useEffect(() => {
+        if (!pixiData) return;
+        pixiData.disableIndicator("marketProfile");
+    }, [toggleMarketProfile]);
 
     //on load get data
     useEffect(() => {
@@ -131,42 +143,6 @@ export default function PixiChart({
         Socket.on("current_minute_data", (data) => {
             setCurrentMinute(data);
         });
-        // // create viewport
-        // viewportRef.current = new Viewport({
-        //     screenWidth: width,
-        //     screenHeight: height,
-        //     worldWidth: width,
-        //     worldHeight: height,
-        //     interaction: PixiAppRef.current.renderer.plugins.interaction, // the interaction module is important for wheel to work properly when renderer.view is placed or scaled
-        //     passiveWheel: false,
-        //     stopPropagation: true,
-        // }); //.clamp({ top: 0, left: 0, right: 8000, bottom: 8000 });
-
-        // viewportRef.current
-        //     .drag()
-        //     .wheel()
-        //     .pinch()
-        //     .decelerate()
-        //     .on("clicked", console.log);
-
-        // //Zoom and pan events
-        // viewportRef.current.on("zoomed", ({ type, viewport }) => {
-        //     console.log("hitArea");
-        //     console.log(viewport.hitArea);
-        //     console.log("lastViewport");
-        //     console.log(viewport.lastViewport);
-        //     viewport.scaleY = 0;
-        //     viewport.scaleX = 0;
-        // });
-
-        // // viewportRef.current.on("moved", ({ type, viewport }) => {
-        // //     console.log("hitArea");
-        // //     console.log(viewport.hitArea);
-        // //     console.log("lastViewport");
-        // //     console.log(viewport.lastViewport);
-        // // });
-
-        // PixiAppRef.current.stage.addChild(viewportRef.current);
 
         return () => {
             // On unload stop the application
@@ -278,6 +254,21 @@ export default function PixiChart({
 
     return (
         <>
+            <Flex>
+                <IconButton
+                    borderColor={toggleZigZag ? "green" : false}
+                    title="ZigZag"
+                    onClick={() => setDrawZigZag(!toggleZigZag)}
+                    rIcon={<GiAirZigzag />}
+                />
+
+                <IconButton
+                    borderColor={toggleMarketProfile ? "green" : false}
+                    title="Market Profile"
+                    onClick={() => setDrawMarketProfile(!toggleMarketProfile)}
+                    rIcon={<GiAmplitude />}
+                />
+            </Flex>
             <div
                 onMouseEnter={(e) => {
                     setMouseEnter(true);
@@ -331,9 +322,6 @@ export default function PixiChart({
                 }}
                 ref={PixiChartRef}
                 style={{
-                    // padding: "0 9em",
-                    // width,
-                    // height,
                     border: "2px solid red",
                 }}
             />
