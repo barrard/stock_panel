@@ -216,10 +216,10 @@ function regressionAnalysis(points, errLimit, lines = [], count = 2) {
             if (badLine2) return;
             line2.nearbyPoints = pointsArray;
             lines.push(line2);
+
             return lines;
         }
     }
-
     return lines;
 }
 
@@ -308,13 +308,15 @@ function findLineByLeastSquares(points) {
      */
 
     let x1 = result_values_x[0];
+    let t1 = points[0].timestamp;
+    let t2 = points.slice(-1)[0].timestamp;
     let y1 = result_values_y[0];
     let x2 = result_values_x[result_values_x.length - 1];
-    x2 = (x2 - x1) * 0.5 + x2;
-    let y2 = x2 * m + b;
+    // x2 = (x2 - x1) * 0.5 + x2;
+    let y2 = result_values_y.slice(-1)[0]; // x2 * m + b;
     let length = pythagorean(x1, x2, y1, y2);
     // console.log({ x1, y1, x2, y2, m, b, results_error, length})
-    return { x1, y1, x2, y2, m, b, results_error, length };
+    return { x1, y1, x2, y2, m, b, results_error, length, t1, t2 };
 }
 
 // y = [ 0,   1,   2,   3,  2,   3.2,   4,   5,   1,   0];

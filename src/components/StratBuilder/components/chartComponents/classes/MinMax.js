@@ -374,11 +374,19 @@ class MinMax {
         });
         const highs = this.swings.filter((d) => d?.name === "high");
         const regressionLowLines = extrema.regressionAnalysis(
-            lows.map((low) => ({ y: low.val.y, x: low.index })),
+            lows.map((low) => ({
+                y: low.val.y,
+                x: low.index,
+                timestamp: low.datetime,
+            })),
             this.zigZagRegressionErrorLimit
         );
         const regressionHighLines = extrema.regressionAnalysis(
-            highs.map((high) => ({ y: high.val.y, x: high.index })),
+            highs.map((high) => ({
+                y: high.val.y,
+                x: high.index,
+                timestamp: high.datetime,
+            })),
             this.zigZagRegressionErrorLimit
         );
         return { regressionLowLines, regressionHighLines };

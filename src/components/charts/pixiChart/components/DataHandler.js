@@ -10,6 +10,7 @@ import {
     TextStyle,
 } from "pixi.js";
 import MarketProfile from "./MarketProfile";
+import SupplyDemandZones from "./SupplyDemandZones";
 import ZigZag from "./ZigZag";
 import { TimeScale } from "chart.js";
 import PixiAxis from "./PixiAxis";
@@ -141,7 +142,6 @@ export default class PixiData {
     }
 
     init(ohlcDatas) {
-        debugger;
         const { volProfileData, pixiApp } = this;
 
         if (!this.initRun) {
@@ -202,6 +202,7 @@ export default class PixiData {
             //init market profile
             this.marketProfile = new MarketProfile(this);
             this.zigZag = new ZigZag(this);
+            this.supplyDemandZones = new SupplyDemandZones(this);
 
             this.mainChartContainer.addChild(this.candleStickWickGfx);
             this.mainChartContainer.addChild(this.candleStickGfx);
@@ -220,6 +221,7 @@ export default class PixiData {
 
             this.marketProfile.init();
             this.zigZag.init();
+            this.supplyDemandZones.init();
             this.draw();
         }
         this.loadingMoreData = false;
@@ -556,6 +558,7 @@ export default class PixiData {
         if (this.isDrawZigZag) {
             this.zigZag.draw();
         }
+        this.supplyDemandZones.draw();
     }
 
     updateCurrentPriceLabel(price) {

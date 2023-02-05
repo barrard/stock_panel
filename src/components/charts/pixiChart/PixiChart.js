@@ -9,7 +9,6 @@ import { IconButton } from "../../StratBuilder/components";
 import { Flex } from "../../StratBuilder/components/chartComponents/styled";
 
 import PixiData from "./components/DataHandler";
-import { drawZigZag } from "../../StratBuilder/components/chartAppends";
 
 export default function PixiChart({
     Socket,
