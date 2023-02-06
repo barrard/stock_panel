@@ -2,11 +2,29 @@ import { fas } from "@fortawesome/free-solid-svg-icons";
 import { Graphics, Container } from "pixi.js";
 
 function indexOfSmallest(a) {
-    var lowest = 0;
-    for (var i = 1; i < a.length; i++) {
+    let lowest = 0;
+    for (let i = 1; i < a.length; i++) {
         if (a[i] <= a[lowest]) lowest = i;
     }
     return lowest;
+}
+function indexOfLargest(a) {
+    let lowest = 0;
+    for (let i = 1; i < a.length; i++) {
+        if (a[i] >= a[lowest]) lowest = i;
+    }
+    return lowest;
+}
+
+function checkBar(bar) {
+    const { open, close } = bar;
+    if (open > close) {
+        return "red";
+    } else if (close > open) {
+        return "green";
+    } else {
+        return "";
+    }
 }
 
 export default class SupplyDemandZones {
@@ -39,12 +57,16 @@ export default class SupplyDemandZones {
         this.timesOfFastHighMomoUpGroupingTesting = [];
         this.timesOfFastHighMomoDownGroupingTesting = [];
 
-        this.evalLength = 4;
-        this.volImitUp = 10; // volatility limit
-        this.volImitDown = -7; // volatility limit
+        this.evalLength = 5;
+        this.volImitUp = 30; // volatility limit
+        this.volImitDown = -30; // volatility limit
 
-        this.data.ohlcDatas.forEach((ohlc, i) => {
-            if (i < this.evalLength) return;
+        // this.data.ohlcDatas.forEach((ohlc, i) => {
+        for (let i = 0; i < this.data.ohlcDatas.length; i++) {
+            const ohlc = this.data.ohlcDatas[i];
+            // }
+            // this.data.ohlcDatas.forEach((ohlc, i) => {
+            if (i < this.evalLength) continue;
 
             const evalData = this.data.ohlcDatas.slice(
                 i - this.evalLength,
@@ -71,62 +93,122 @@ export default class SupplyDemandZones {
             const slow = fourthClose - firstClose;
             const xSlow = fifthClose - firstClose;
 
-            const total =
-                secondClose -
-                firstClose +
-                (thirdClose - secondClose) +
-                (fourthClose - thirdClose) +
-                (fifthClose - fourthClose);
+            let total = 0;
+            let bars = 0;
+            while (
+                total < this.volImitUp &&
+                total > this.volImitDown &&
+                bars < this.evalLength
+            ) {
+                const [bar1, bar2] = evalData.slice(bars, bars + 2);
+                if (!bar1 || !bar2) {
+                    debugger;
+                    continue;
+                }
+                total += bar2.close - bar1.open;
+
+                bars++;
+            }
+
+            // secondClose -
+            //     firstClose +
+            //     (thirdClose - secondClose) +
+            //     (fourthClose - thirdClose); //+
+            // (fifthClose - fourthClose);
             // console.log(total);
             if (total > this.volImitUp) {
                 //Where did it start???
                 this.findLowVolatilityOfGroup(
                     this.timesOfHighMomoUpGroupingTesting,
                     this.timesOfHighMomoUp,
-                    ATRs,
+                    // ATRs,
+                    evalData.map((d) => d.low),
                     evalData,
-                    i
+                    i,
+                    "low"
                 );
+                i += this.evalLength - 1;
             } else if (total < this.volImitDown) {
                 //Where did it start???
                 this.findLowVolatilityOfGroup(
                     this.timesOfHighMomoDownGroupingTesting,
                     this.timesOfHighMomoDown,
-                    ATRs,
+                    // ATRs,
+                    evalData.map((d) => d.high),
                     evalData,
-                    i
+                    i,
+                    "high"
                 );
+                i += this.evalLength - 1;
             }
 
-            if (fast > 5) {
-                //Where did it start???
+            // if (fast > 5) {
+            //     //Where did it start???
 
-                this.findLowVolatilityOfGroup(
-                    this.timesOfFastHighMomoUpGroupingTesting,
-                    this.timesOfFastHighMomoUp,
-                    ATRs,
-                    evalData,
-                    i
-                );
-            } else if (fast < -5) {
-                //Where did it start???
+            //     this.findLowVolatilityOfGroup(
+            //         this.timesOfFastHighMomoUpGroupingTesting,
+            //         this.timesOfFastHighMomoUp,
+            //         ATRs,
+            //         evalData,
+            //         i
+            //     );
+            // } else if (fast < -5) {
+            //     //Where did it start???
 
-                this.findLowVolatilityOfGroup(
-                    this.timesOfFastHighMomoDownGroupingTesting,
-                    this.timesOfFastHighMomoDown,
-                    ATRs,
-                    evalData,
-                    i
-                );
-            }
-        });
+            //     this.findLowVolatilityOfGroup(
+            //         this.timesOfFastHighMomoDownGroupingTesting,
+            //         this.timesOfFastHighMomoDown,
+            //         ATRs,
+            //         evalData,
+            //         i
+            //     );
+            // }
+        }
     }
 
-    findLowVolatilityOfGroup(groupingTesting, plotArray, ATRs, evalData, i) {
-        const lowIndex = indexOfSmallest(ATRs);
-        if (lowIndex >= this.evalLength - 1) return;
-        const lowestAtrData =
-            this.data.ohlcDatas[i - (this.evalLength - lowIndex)];
+    findLowVolatilityOfGroup(
+        groupingTesting,
+        plotArray,
+        ATRs,
+        evalData,
+        i,
+        highLow
+    ) {
+        let lowIndex; // indexOfSmallest(ATRs);
+        if (highLow === "high") {
+            lowIndex = indexOfLargest(ATRs);
+        } else if (highLow === "low") {
+            lowIndex = indexOfSmallest(ATRs);
+        }
+
+        let theBarIndex = i - (this.evalLength - lowIndex);
+        let lowestAtrData = this.data.ohlcDatas[theBarIndex];
+
+        let barCheck = checkBar(lowestAtrData);
+
+        //if high, find the last green bar
+        if (highLow === "high") {
+            if (barCheck !== "green") {
+                while (barCheck !== "green") {
+                    //go back in time index to find a damn green bar!
+                    theBarIndex--;
+                    lowestAtrData = this.data.ohlcDatas[theBarIndex];
+                    evalData.unshift(lowestAtrData);
+                    barCheck = checkBar(lowestAtrData);
+                }
+            }
+        } else if (highLow === "low") {
+            //if low find  the last red bar
+            if (barCheck !== "red") {
+                while (barCheck !== "red") {
+                    //go back in time index to find a damn red bar!
+                    theBarIndex--;
+                    lowestAtrData = this.data.ohlcDatas[theBarIndex];
+                    barCheck = checkBar(lowestAtrData);
+                }
+            }
+        }
+
         plotArray.push(lowestAtrData);
         groupingTesting.push(evalData);
     }
@@ -146,108 +228,159 @@ export default class SupplyDemandZones {
         //try draw a marker here
 
         let dataCounter = 0;
-        this.SDZGfx.lineStyle(2, 0xffffff, 0.9);
+        // this.SDZGfx.lineStyle(2, 0xffffff, 0.9);
 
-        // this.SDZGfx.beginFill(0x00ff00, fill);
-        // this.timesOfHighMomoUp.forEach((momo, i) =>
+        this.SDZGfx.beginFill(0x00ff00, fill);
+        this.timesOfHighMomoUp.forEach((momo, i) =>
+            drawMomoMarker(
+                i,
+                this.timesOfHighMomoUpGroupingTesting[i],
+                momo,
+                10,
+                "demand"
+            )
+        );
+
+        dataCounter = 0;
+        this.SDZGfx.beginFill(0xff0000, fill);
+        this.timesOfHighMomoDown.forEach((momo, i) =>
+            drawMomoMarker(
+                i,
+                this.timesOfHighMomoDownGroupingTesting[i],
+                momo,
+                10,
+                "supply"
+            )
+        );
+
+        // dataCounter = 0;
+
+        // this.SDZGfx.beginFill(0x00ffaa, fill);
+        // this.timesOfFastHighMomoUp.forEach((momo, i) =>
         //     drawMomoMarker(
         //         i,
-        //         this.timesOfHighMomoUpGroupingTesting[i],
+        //         this.timesOfFastHighMomoUpGroupingTesting[i],
         //         momo,
         //         10
         //     )
         // );
 
         // dataCounter = 0;
-        // this.SDZGfx.beginFill(0xff0000, fill);
-        // this.timesOfHighMomoDown.forEach((momo, i) =>
+        // this.SDZGfx.beginFill(0xff00aa, fill);
+        // this.timesOfFastHighMomoDown.forEach((momo, i) =>
         //     drawMomoMarker(
         //         i,
-        //         this.timesOfHighMomoDownGroupingTesting[i],
+        //         this.timesOfFastHighMomoDownGroupingTesting[i],
         //         momo,
         //         10
         //     )
         // );
 
-        dataCounter = 0;
-
-        this.SDZGfx.beginFill(0x00ffaa, fill);
-        this.timesOfFastHighMomoUp.forEach((momo, i) =>
-            drawMomoMarker(
-                i,
-                this.timesOfFastHighMomoUpGroupingTesting[i],
-                momo,
-                10
-            )
-        );
-
-        dataCounter = 0;
-
-        this.SDZGfx.beginFill(0xff00aa, fill);
-        this.timesOfFastHighMomoDown.forEach((momo, i) =>
-            drawMomoMarker(
-                i,
-                this.timesOfFastHighMomoDownGroupingTesting[i],
-                momo,
-                10
-            )
-        );
-
-        function drawMomoMarker(i, groupTesting, momo, radius) {
-            if (!groupTesting?.length) {
-                debugger;
-            }
-
+        function drawMomoMarker(i, groupTesting, momo, radius, SD) {
             if (!momo) return;
-            if (momo.timestamp < sliceStart) return;
-            if (momo.timestamp > sliceEnd) return;
-            const y = that.data.priceScale(momo.close);
-            console.log(groupTesting);
-            const left = that.data.xScale(
-                that.data.slicedData.findIndex(
+            let x;
+            let timestamp = momo.timestamp;
+            const y = that.data.priceScale(momo.open);
+            if (timestamp < sliceStart) {
+                debugger;
+                x = that.data.xScale(0);
+                timestamp = sliceStart;
+                // return;
+            }
+            if (
+                timestamp <= sliceEnd &&
+                groupTesting[0].timestamp > sliceStart &&
+                groupTesting.slice(-1)[0].timestamp < sliceEnd
+            ) {
+                debugger;
+                // return;
+                // console.log(groupTesting);
+                let start = that.data.slicedData.findIndex(
                     (d) => d.timestamp === groupTesting[0].timestamp
-                )
-            );
-            const top = that.data.priceScale(
-                groupTesting.reduce(
-                    (acc, d) => (d.high > acc ? d.high : acc),
-                    -Infinity
-                )
-            );
-            const height =
-                that.data.priceScale(
+                );
+                if (start < 0) start = 1;
+                const left = that.data.xScale(start);
+                const top = that.data.priceScale(
                     groupTesting.reduce(
-                        (acc, d) => (d.low < acc ? d.low : acc),
-                        Infinity
-                    )
-                ) - top;
-
-            const width =
-                that.data.xScale(
-                    that.data.slicedData.findIndex(
-                        (d) =>
-                            d.timestamp === groupTesting.slice(-1)[0].timestamp
-                    )
-                ) -
-                that.data.xScale(
-                    that.data.slicedData.findIndex(
-                        (d) => d.timestamp === groupTesting[0].timestamp
+                        (acc, d) => (d.high > acc ? d.high : acc),
+                        -Infinity
                     )
                 );
+                const height =
+                    that.data.priceScale(
+                        groupTesting.reduce(
+                            (acc, d) => (d.low < acc ? d.low : acc),
+                            Infinity
+                        )
+                    ) - top;
 
-            that.SDZGfx.drawRect(left, top, width, height);
+                let end = that.data.slicedData.findIndex(
+                    (d) => d.timestamp === groupTesting.slice(-1)[0].timestamp
+                );
+                if (end < 0) end = that.data.slicedData.length - 1;
+                const width = that.data.xScale(end) - that.data.xScale(start);
 
-            let x;
-            for (let _x = dataCounter; _x < that.data.slicedData.length; _x++) {
-                const ohlcData = that.data.slicedData[_x];
+                that.SDZGfx.drawRect(left, top, width, height);
+            }
 
-                if (ohlcData.timestamp === momo.timestamp) {
-                    dataCounter = _x;
-                    x = that.data.xScale(_x);
-                    break;
+            if (x === undefined) {
+                debugger;
+                for (
+                    let _x = dataCounter;
+                    _x < that.data.slicedData.length;
+                    _x++
+                ) {
+                    const ohlcData = that.data.slicedData[_x];
+
+                    if (ohlcData.timestamp === timestamp) {
+                        // dataCounter = _x;
+                        x = that.data.xScale(_x);
+                        break;
+                    }
                 }
             }
+            if (!x) x = 1;
             that.SDZGfx.drawCircle(x, y, radius);
+
+            const SD_ZONE_END = that.data.xScale(
+                that.data.slicedData.length - 1
+            );
+            //supportZone
+            if (SD === "supply") {
+                let top = that.data.priceScale(momo.open);
+                let bottom = that.data.priceScale(momo.low);
+
+                let start = that.data.slicedData.findIndex(
+                    (d) => d.timestamp === timestamp
+                );
+                if (start < 0) {
+                    debugger;
+                    start = 50;
+                }
+                const left = that.data.xScale(start);
+
+                const height = bottom - top;
+                // const width = 500;
+                const width = SD_ZONE_END - that.data.xScale(start);
+
+                that.SDZGfx.drawRect(left, top, width, height);
+            } else if (SD === "demand") {
+                debugger;
+                let top = that.data.priceScale(momo.open);
+                let bottom = that.data.priceScale(momo.low);
+
+                let start = that.data.slicedData.findIndex(
+                    (d) => d.timestamp === timestamp
+                );
+                if (start < 0) start = 0;
+                const left = that.data.xScale(start);
+
+                const height = bottom - top;
+                // const width = 500;
+                const width = SD_ZONE_END - that.data.xScale(start);
+
+                that.SDZGfx.drawRect(left, top, width, height);
+            }
         }
     }
 }
