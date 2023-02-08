@@ -57,9 +57,9 @@ export default class SupplyDemandZones {
         this.timesOfFastHighMomoUpGroupingTesting = [];
         this.timesOfFastHighMomoDownGroupingTesting = [];
 
-        this.evalLength = 5;
-        this.volImitUp = 30; // volatility limit
-        this.volImitDown = -30; // volatility limit
+        this.evalLength = 8;
+        this.volImitUp = 25; // volatility limit
+        this.volImitDown = -25; // volatility limit
 
         // this.data.ohlcDatas.forEach((ohlc, i) => {
         for (let i = 0; i < this.data.ohlcDatas.length; i++) {
@@ -95,20 +95,21 @@ export default class SupplyDemandZones {
 
             let total = 0;
             let bars = 0;
-            while (
-                total < this.volImitUp &&
-                total > this.volImitDown &&
-                bars < this.evalLength
-            ) {
-                const [bar1, bar2] = evalData.slice(bars, bars + 2);
-                if (!bar1 || !bar2) {
-                    debugger;
-                    continue;
-                }
-                total += bar2.close - bar1.open;
+            total = evalData.slice(-1)[0].close - evalData[0].open;
+            // while (
+            //     total < this.volImitUp &&
+            //     total > this.volImitDown &&
+            //     bars < this.evalLength
+            // ) {
+            //     const [bar1, bar2] = evalData.slice(bars, bars + 2);
+            //     if (!bar1 || !bar2) {
+            //         debugger;
+            //         continue;
+            //     }
+            //     total += bar2.close - bar1.open;
 
-                bars++;
-            }
+            //     bars++;
+            // }
 
             // secondClose -
             //     firstClose +
@@ -223,7 +224,7 @@ export default class SupplyDemandZones {
 
         const that = this;
 
-        const fill = 0.4;
+        const fill = 0.2;
 
         //try draw a marker here
 
@@ -348,7 +349,7 @@ export default class SupplyDemandZones {
             //supportZone
             if (SD === "supply") {
                 let top = that.data.priceScale(momo.open);
-                let bottom = that.data.priceScale(momo.low);
+                let bottom = that.data.priceScale(momo.high);
 
                 let start = that.data.slicedData.findIndex(
                     (d) => d.timestamp === timestamp

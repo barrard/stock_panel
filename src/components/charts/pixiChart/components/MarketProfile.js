@@ -379,7 +379,7 @@ export default class MarketProfile {
                 const x = rightSideProfile - radius * 2 * (i + 1);
                 this.profileCompositeGfx.beginFill(
                     utils.string2hex(marker.style.fill),
-                    0.3
+                    0.1
                 );
                 this.profileCompositeGfx.drawCircle(x, y, radius);
             });

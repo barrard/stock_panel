@@ -43,7 +43,7 @@ export default class ZigZag {
             if (swing.datetime < sliceStart) return;
             if (swing.datetime > sliceEnd) return;
             const y = this.data.priceScale(swing.val.y);
-            const color = swing.name === "high" ? 0x00ff00 : 0xff0000;
+            const color = swing.name === "low" ? 0x00ff00 : 0xff0000;
             const radius = 6;
             this.zigZagGfx.beginFill(color, 0.9);
 
@@ -69,59 +69,71 @@ export default class ZigZag {
 
         //draw regressions
 
-        dataCounter = 0;
+        this.dataCounter = 0;
 
-        const firstTime = this.data.slicedData[0].timestamp;
-        const lastTime = this.data.slicedData.slice(-1)[0].timestamp;
-        this.minMax.regressionZigZag?.regressionHighLines?.forEach((line) => {
-            let x1; //= (line.x1);
-            let x2; //= (line.x2);
-            let y1 = line.y1;
-            let y2 = line.y2;
+        this.firstTime = this.data.slicedData[0].timestamp;
+        this.lastTime = this.data.slicedData.slice(-1)[0].timestamp;
 
-            if (line.t2 < firstTime) return;
+        const THICK = 3;
+        this.zigZagGfx.lineStyle(THICK, 0xff0000, 1);
+        this.dataCounter = 0;
 
-            for (let _x = dataCounter; _x < this.data.slicedData.length; _x++) {
-                const ohlcData = this.data.slicedData[_x];
+        this.minMax.regressionZigZag?.regressionHighLines?.forEach((line) =>
+            this.drawRegressionLine(line)
+        );
 
-                if (ohlcData < 0) {
-                }
-                if (ohlcData.timestamp === line.t1) {
-                    // dataCounter = _x;
-                    x1 = _x;
-                }
-                if (ohlcData.timestamp === line.t2) {
-                    dataCounter = _x;
-                    x2 = _x;
-                    break;
-                }
+        this.zigZagGfx.lineStyle(THICK, 0x00ff00, 1);
+
+        this.dataCounter = 0;
+        this.minMax.regressionZigZag?.regressionLowLines?.forEach((line) =>
+            this.drawRegressionLine(line)
+        );
+    }
+
+    drawRegressionLine(line) {
+        if (!this) return;
+        let x1; //= (line.x1);
+        let x2; //= (line.x2);
+        let y1 = line.y1;
+        let y2 = line.y2;
+
+        if (line.t2 < this.firstTime) return;
+
+        for (
+            let _x = this.dataCounter;
+            _x < this.data.slicedData.length;
+            _x++
+        ) {
+            const ohlcData = this.data.slicedData[_x];
+
+            if (ohlcData.timestamp === line.t1) {
+                // dataCounter = _x;
+                x1 = _x;
             }
-            if (x1 === undefined && !x2) return;
-            if (x1 === undefined && x2) {
-                //what index is x2?
-                //and how far left can we go? 0? what is y1 here?
-                x1 = line.x2 - x2;
-
-                y1 = x1 * line.m + line.b;
-                x1 = 0;
+            if (ohlcData.timestamp === line.t2) {
+                this.dataCounter = _x;
+                x2 = _x;
+                break;
             }
-            if (!x2) {
-                debugger;
+        }
+        if (x1 === undefined && !x2) return;
+        if (x1 === undefined && x2) {
+            //what index is x2?
+            //and how far left can we go? 0? what is y1 here?
+            x1 = line.x2 - x2;
 
-                x2 = line.x1 + (this.data.slicedData.length - 1 - x1);
-                y2 = x2 * line.m + line.b;
+            y1 = x1 * line.m + line.b;
+            x1 = 0;
+        }
+        if (!x2) {
+            debugger;
 
-                x2 = this.data.slicedData.length - 1;
-            }
-            this.zigZagGfx.lineStyle(10, 0xffffff, 1);
-            this.zigZagGfx.moveTo(
-                this.data.xScale(x1),
-                this.data.priceScale(y1)
-            );
-            this.zigZagGfx.lineTo(
-                this.data.xScale(x2),
-                this.data.priceScale(y2)
-            );
-        });
+            x2 = line.x1 + (this.data.slicedData.length - 1 - x1);
+            y2 = x2 * line.m + line.b;
+
+            x2 = this.data.slicedData.length - 1;
+        }
+        this.zigZagGfx.moveTo(this.data.xScale(x1), this.data.priceScale(y1));
+        this.zigZagGfx.lineTo(this.data.xScale(x2), this.data.priceScale(y2));
     }
 }
