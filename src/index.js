@@ -13,7 +13,7 @@ import ReduxToastr from "react-redux-toastr";
 ReactDOM.render(
     <Provider store={store}>
         <ReduxToastr
-            timeOut={4000}
+            timeOut={6000}
             newestOnTop={false}
             preventDuplicates
             position="bottom-right"

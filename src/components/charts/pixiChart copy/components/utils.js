@@ -138,21 +138,3 @@ export function timeScaleValues({ highest, lowest, values }) {
 
     return timeValues;
 }
-
-export function parseBarTypeTimeFrame({ barType, barTypePeriod }) {
-    let timeBerBar;
-    if (barType === 1) {
-        //SECONDS
-        timeBerBar = 1000;
-    } else if (barType === 2) {
-        //MINUTE
-        timeBerBar = 1000 * 60;
-    } else if (barType === 3) {
-        //DAILY
-        timeBerBar = 1000 * 60 * 60 * 24;
-    } else if (barType === 4) {
-        //WEEKLY
-        timeBerBar = 1000 * 60 * 60 * 24 * 7;
-    }
-    return timeBerBar * barTypePeriod * 500;
-}

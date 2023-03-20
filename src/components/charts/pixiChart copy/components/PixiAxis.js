@@ -82,11 +82,7 @@ export default class PixiAxis {
         //     ticks = 4;
         // }
 
-        try {
-            this.tickLinesGfx?.clear();
-        } catch (error) {
-            return console.log("catching a buzz");
-        }
+        this.tickLinesGfx.clear();
 
         let customValues, textValues;
         if (this.valueFinder) {
@@ -126,7 +122,7 @@ export default class PixiAxis {
             if (!value) {
                 continue;
             }
-            if (!priceTxtLabel || !priceTxtLabel.transform) {
+            if (!priceTxtLabel) {
                 continue;
             }
 
@@ -162,13 +158,6 @@ export default class PixiAxis {
 
     addTickLine(value) {
         // console.log(`draw line at ${value}`);
-        if (!this.chart.margin) {
-            alert("No margin??");
-            return;
-        }
-        if (!this.tickLinesGfx?.lineStyle) {
-            return;
-        }
         const { left, right, top, bottom } = this.chart.margin;
         this.tickLinesGfx.lineStyle(1, 0xffffff, 0.3);
 

@@ -60,6 +60,10 @@ export default {
     updateIndicatorOpts,
     updateLineColor,
     getStockDataForFundamentalsCharts,
+    //RAPI STUFF
+    rapi_requestBars,
+    rapi_submitOrder,
+    rapi_cancelOrder,
 };
 
 async function GET(url) {
@@ -68,6 +72,42 @@ async function GET(url) {
     });
     return await data.json();
 }
+
+//  ````````   $$$$$$    ````````    RAPI    ``````````    $$$$$$$$$$$$$$
+
+async function rapi_cancelOrder({ basketId }) {
+    return await GET(`/API/rapi/cancelOrder/${basketId}`);
+}
+
+async function rapi_requestBars({
+    symbol,
+    exchange,
+    barType,
+    barTypePeriod,
+    startIndex,
+    finishIndex,
+}) {
+    return await GET(
+        `/API/rapi/requestBars/${symbol}/${exchange}/${barType}/${barTypePeriod}/${startIndex}/${finishIndex}`
+    );
+}
+
+async function rapi_submitOrder(order = {}) {
+    try {
+        let resp = await fetch(`${REACT_APP_API_SERVER}/API/rapi/submitOrder`, {
+            credentials: "include",
+            ...POST(order),
+        });
+
+        resp = await handleResponse(resp);
+        console.log(resp);
+        return resp;
+    } catch (err) {
+        handleError(err);
+    }
+}
+
+//  ````````   $$$$$$    ````````    RAPI    ``````````    $$$$$$$$$$$$$$
 
 async function getStockDataForFundamentalsCharts(symbol) {
     return await GET(`/API/getStockDataForFundamentalsCharts/${symbol}`);
@@ -289,7 +329,11 @@ async function getBackTestData({
     withTicks = false,
 }) {
     try {
-        symbol = symbol.slice(1);
+        if (symbol?.startsWith("/")) {
+            symbol = symbol.slice(1);
+        }
+        if (!symbol || !timeframe || !startDate) return;
+
         let resp = await fetch(
             `${REACT_APP_API_SERVER}/API/getBackTestData/${symbol}/${timeframe}/${startDate}?withTicks=${withTicks}`,
             {

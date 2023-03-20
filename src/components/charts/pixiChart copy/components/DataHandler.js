@@ -1,15 +1,6 @@
 import { axisBottom, axisRight, axisLeft, axisTop } from "d3-axis";
 // import { scaleLinear, scaleTime, scaleBand } from "d3-scale";
-import {
-    extent,
-    scaleLinear,
-    select,
-    zoom,
-    zoomTransform,
-    mouse,
-    interpolateNumber,
-    interpolateLab,
-} from "d3";
+import { extent, scaleLinear, select, zoom, zoomTransform, mouse } from "d3";
 import {
     Graphics,
     Container,
@@ -17,7 +8,6 @@ import {
     Text,
     TextMetrics,
     TextStyle,
-    utils,
 } from "pixi.js";
 import MarketProfile from "./MarketProfile";
 import SupplyDemandZones from "./SupplyDemandZones";
@@ -112,10 +102,6 @@ export default class PixiData {
         this.crossHairYGfx = new Graphics();
         this.crossHairXGfx = new Graphics();
         this.borderGfx = new Graphics();
-
-        //Liquidity
-        this.liquidityContainer = new Container();
-
         //LABELS
         this.dateLabelAppendGfx = new Graphics();
         this.priceLabelAppendGfx = new Graphics();
@@ -162,7 +148,6 @@ export default class PixiData {
 
         if (!this.initRun) {
             //add the tick lines kinda first //TODO more background graphics
-            this.mainChartContainer.addChild(this.liquidityContainer);
             this.mainChartContainer.addChild(this.xAxis.tickLinesGfx);
             this.mainChartContainer.addChild(this.yAxis.tickLinesGfx);
 
@@ -249,84 +234,52 @@ export default class PixiData {
         this.ohlcDatas.length = [];
     }
 
-    disableIndicator(indicator, flag) {
-        try {
-            switch (indicator) {
-                case "orderBook":
-                    this.isDrawOrderbook = flag;
-                    if (!this.isDrawOrderbook) {
-                        console.log("remove");
-                        this.mainChartContainer.removeChild(
-                            this.liquidityContainer
-                        );
-                    } else {
-                        console.log("add");
-                        this.mainChartContainer.addChild(
-                            this.liquidityContainer
-                        );
-                        // this.marketProfile.init();
-                    }
-                    break;
+    disableIndicator(indicator) {
+        switch (indicator) {
+            case "marketProfile":
+                // alert("marketProfile");
+                this.isDrawProfile = !this.isDrawProfile;
+                if (!this.isDrawProfile) {
+                    console.log("remove");
+                    this.mainChartContainer.removeChild(
+                        this.marketProfile.container
+                    );
+                } else {
+                    console.log("add");
+                    this.mainChartContainer.addChild(
+                        this.marketProfile.container
+                    );
+                    this.marketProfile.init();
+                }
+                break;
 
-                case "marketProfile":
-                    // alert("marketProfile");
-                    this.isDrawProfile = flag;
-                    if (!this.isDrawProfile) {
-                        console.log("remove");
-                        this.mainChartContainer.removeChild(
-                            this.marketProfile.container
-                        );
-                    } else {
-                        console.log("add");
-                        this.mainChartContainer.addChild(
-                            this.marketProfile.container
-                        );
-                        this.marketProfile.init();
-                    }
-                    break;
+            case "zigZag":
+                this.isDrawZigZag = !this.isDrawZigZag;
+                if (!this.isDrawZigZag) {
+                    console.log("remove");
+                    this.mainChartContainer.removeChild(this.zigZag.container);
+                } else {
+                    console.log("add");
+                    this.mainChartContainer.addChild(this.zigZag.container);
+                    this.zigZag.init();
+                }
 
-                case "zigZag":
-                    this.isDrawZigZag = flag;
-                    if (!this.isDrawZigZag) {
-                        console.log("remove");
-                        this.mainChartContainer.removeChild(
-                            this.zigZag.container
-                        );
-                    } else {
-                        console.log("add");
-                        this.mainChartContainer.addChild(this.zigZag.container);
-                        this.zigZag.init();
-                    }
+                break;
 
-                    break;
-
-                default:
-                    alert(`implement ${indicator}`);
-                    break;
-            }
-        } catch (error) {
-            console.error(error);
+            default:
+                alert(`implement ${indicator}`);
+                break;
         }
     }
 
-    setLiquidityData(liquidityData) {
-        // console.log("set liquid data");
-        this.liquidityData = liquidityData;
-
-        this.drawLiquidity();
-    }
     prependData(data) {
         this.ohlcDatas = this.ohlcDatas.concat([data]);
         this.sliceEnd++;
         this.draw();
     }
 
-    replaceLast(data, index) {
-        if (index) {
-            this.ohlcDatas[index] = data;
-        } else {
-            this.ohlcDatas[this.ohlcDatas.length - 1] = data;
-        }
+    replaceLast(data) {
+        this.ohlcDatas[this.ohlcDatas.length - 1] = data;
         this.draw();
     }
     setHitArea() {
@@ -682,7 +635,10 @@ export default class PixiData {
 
     updateY____Label({ yLabel, gfx, txt, color }) {
         txt.text = yLabel;
-        let { width, height } = TextMetrics.measureText(yLabel, this.textStyle);
+        let { width, height } = new TextMetrics.measureText(
+            yLabel,
+            this.textStyle
+        );
         try {
             gfx.clear();
         } catch (e) {
@@ -748,7 +704,7 @@ export default class PixiData {
         } else {
             this.dateLabel = date;
             this.dateTxtLabel.text = this.dateLabel;
-            let { width, height } = TextMetrics.measureText(
+            let { width, height } = new TextMetrics.measureText(
                 this.dateLabel,
                 this.textStyle
             );
@@ -780,18 +736,14 @@ export default class PixiData {
         if (!this.loadingMoreData) {
             this.loadingMoreData = true;
             console.log("load more data");
-            const finish = this.ohlcDatas.length
+            const startDate = this.ohlcDatas.length
                 ? this.ohlcDatas[0].timestamp
                 : new Date().getTime();
-            console.log(finish);
-            debugger;
+            console.log(startDate);
             this.loadData({
-                // barType: 2,
-                // barTypePeriod: 1,
-                startIndex: new Date(finish - 1000 * 60 * 60 * 24).getTime(),
-                finishIndex: new Date(finish).getTime(),
-                // symbol,
-                // exchange :,
+                startDate,
+                withTicks: false,
+                timeframe: this.timeframe,
             });
         }
     }
@@ -907,76 +859,6 @@ export default class PixiData {
         this.xAxis.container.position.x = this.margin.left;
         this.xAxis.container.position.y = this.height - this.margin.bottom;
         this.pixiApp.stage.addChild(this.xAxis.container);
-    }
-
-    drawLiquidity() {
-        try {
-            // console.log("draw liquid");
-            // console.log(this.liquidityData);
-            if (!this.isDrawOrderbook) return;
-            const liquidityHeight = 1;
-            const width = this.width;
-            this.liquidityContainer.children.forEach((gfx) => {
-                gfx.clear();
-            });
-            const [min, max] = extent(this.liquidityData.map((l) => l.size));
-            const redToBlue = scaleLinear().range([0, 1]);
-            redToBlue.domain([min, max]);
-
-            const height =
-                this.priceScale(0) - this.priceScale(liquidityHeight);
-            this.liquidityData.forEach((liquidity, i) => {
-                const x = 0;
-                const y = this.priceScale(liquidity.p + liquidityHeight);
-                if (y < 0) return;
-                if (y > this.mainChartContainerHeight) return;
-
-                let liquidityGfx = this.liquidityContainer.children[i];
-                if (!liquidityGfx) {
-                    liquidityGfx = new Graphics();
-                    liquidityGfx.interactive = true;
-                    liquidityGfx.on("mouseenter", function (e) {
-                        // console.log(this);
-                        console.log(
-                            ` price ${this.liquidityPrice} size ${this.liquiditySize}`
-                        );
-                    });
-                } else {
-                    liquidityGfx.clear();
-                }
-                let color = interpolateLab(
-                    "blue",
-                    "red"
-                )(redToBlue(liquidity.size)); // "rgb(142, 92, 109)"
-                color = color.replace("rgb(", "");
-                color = color.replace(")", "");
-                const [r, g, b] = color.split(",");
-
-                color = utils.rgb2hex([r / 255, g / 255, b / 255, 0]);
-
-                liquidityGfx.beginFill(color);
-                liquidityGfx.lineStyle(2, 0xdddddd, 0.1);
-
-                const rect = liquidityGfx.drawRect(
-                    x,
-                    y,
-                    width - (this.margin.left + this.margin.right),
-                    height
-                    // x + candleMargin - halfWidth,
-                    // start + halfStrokeWidth,
-                    // this.candleWidth - doubleMargin,
-                    // height - strokeWidth
-                );
-                rect.liquidityPrice = liquidity.p;
-                rect.liquiditySize = liquidity.size;
-
-                this.liquidityContainer.addChild(liquidityGfx);
-            });
-        } catch (err) {
-            // console.log("CLEAR() Error?");
-            console.log(err);
-            return err;
-        }
     }
 
     drawAllCandles() {
