@@ -42,10 +42,21 @@ function OrderItem(props) {
                     <TransactionType order={order}>
                         {order.transactionType}
                     </TransactionType>
-                    - {order.price ? order.price : order.avgFillPrice}
+                    -{" "}
+                    {order.price
+                        ? order.price
+                        : order.avgFillPrice
+                        ? order.avgFillPrice
+                        : order.triggerPrice
+                        ? order.triggerPrice
+                        : "No price"}
                 </TradeType>
                 <div className="col">
-                    <ReportType order={order}>{order.reportType}</ReportType>
+                    <ReportType order={order}>
+                        {order.reportType
+                            ? order.reportType
+                            : `${order.reportText} ${order.text}`}
+                    </ReportType>
                 </div>
                 <div className="col">
                     {order.fillTime
@@ -89,18 +100,28 @@ function transactionTypeColor(props) {
 
 function reportTypeColor(props) {
     const { order } = props;
-    if (!order?.reportType) return "red";
-    switch (order.reportType) {
-        case "fill":
-            return "green";
-        case "cancel":
-            return "grey";
+    if (!order?.reportType) {
+        switch (order.reportText) {
+            case "Rejected at RMS - Available margin exhausted":
+                return "red";
+                break;
 
-        case "status":
-            return "blue";
+            default:
+                break;
+        }
+    } else {
+        switch (order.reportType) {
+            case "fill":
+                return "green";
+            case "cancel":
+                return "grey";
 
-        default:
-            return "pink";
+            case "status":
+                return "blue";
+
+            default:
+                return "pink";
+        }
     }
 }
 function tradeTypeColor(props) {
