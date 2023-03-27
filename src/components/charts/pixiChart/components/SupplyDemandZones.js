@@ -189,7 +189,7 @@ export default class SupplyDemandZones {
         //if high, find the last green bar
         if (highLow === "high") {
             if (barCheck !== "green") {
-                while (barCheck !== "green") {
+                while (barCheck !== "green" && theBarIndex > 0) {
                     //go back in time index to find a damn green bar!
                     theBarIndex--;
                     lowestAtrData = this.data.ohlcDatas[theBarIndex];
@@ -200,7 +200,7 @@ export default class SupplyDemandZones {
         } else if (highLow === "low") {
             //if low find  the last red bar
             if (barCheck !== "red") {
-                while (barCheck !== "red") {
+                while (barCheck !== "red" && theBarIndex > 0) {
                     //go back in time index to find a damn red bar!
                     theBarIndex--;
                     lowestAtrData = this.data.ohlcDatas[theBarIndex];

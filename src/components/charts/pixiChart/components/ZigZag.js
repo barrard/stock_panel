@@ -107,6 +107,8 @@ export default class ZigZag {
         ) {
             const ohlcData = this.data.slicedData[_x];
 
+            if (!ohlcData) return;
+
             if (ohlcData.timestamp === line.t1) {
                 // dataCounter = _x;
                 x1 = _x;
@@ -127,8 +129,6 @@ export default class ZigZag {
             x1 = 0;
         }
         if (!x2) {
-            debugger;
-
             x2 = line.x1 + (this.data.slicedData.length - 1 - x1);
             y2 = x2 * line.m + line.b;
 

@@ -5,8 +5,6 @@ import API from "../../../../components/API";
 export default function OrdersList(props) {
     const { orders = {} } = props;
 
-    console.log("ORDER LIST");
-    console.log(orders);
     return (
         <div>
             {Object.keys(orders)
@@ -15,7 +13,7 @@ export default function OrdersList(props) {
                     return a.status == "complete" ? -1 : 1;
                 })
                 .map((basketId) => {
-                    console.log(orders[basketId]);
+                    // console.log(orders[basketId]);
                     return (
                         <OrderItem key={basketId} order={orders[basketId]} />
                     );

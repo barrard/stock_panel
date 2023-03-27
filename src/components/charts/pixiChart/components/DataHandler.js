@@ -21,7 +21,9 @@ import {
 } from "pixi.js";
 import MarketProfile from "./MarketProfile";
 import SupplyDemandZones from "./SupplyDemandZones";
+import DrawOrders from "./DrawOrders";
 import ZigZag from "./ZigZag";
+import PivotPoints from "./PivotPoints";
 import { TimeScale } from "chart.js";
 import PixiAxis from "./PixiAxis";
 import { timeScaleValues, priceScaleValues } from "./utils.js";
@@ -220,11 +222,14 @@ export default class PixiData {
             this.marketProfile = new MarketProfile(this);
             this.zigZag = new ZigZag(this);
             this.supplyDemandZones = new SupplyDemandZones(this);
+            this.drawOrders = new DrawOrders(this);
+            this.drawPivotPoints = new PivotPoints(this);
 
             this.mainChartContainer.addChild(this.candleStickWickGfx);
             this.mainChartContainer.addChild(this.candleStickGfx);
             this.mainChartContainer.addChild(this.priceGfx);
             this.mainChartContainer.addChild(this.borderGfx);
+            this.mainChartContainer.addChild(this.drawOrders.container);
 
             this.mainChartContainer.addChild(this.volGfx);
 
@@ -239,6 +244,7 @@ export default class PixiData {
             this.marketProfile.init();
             this.zigZag.init();
             this.supplyDemandZones.init();
+
             this.draw();
         }
         this.loadingMoreData = false;
@@ -253,6 +259,9 @@ export default class PixiData {
         try {
             switch (indicator) {
                 case "orderBook":
+                    // if (!this.liquidityContainer._geometry) {
+                    //     return alert("!this.liquidityContainer");
+                    // }
                     this.isDrawOrderbook = flag;
                     if (!this.isDrawOrderbook) {
                         console.log("remove");
@@ -325,9 +334,15 @@ export default class PixiData {
         }
     }
 
-    setLiquidityData(liquidityData) {
+    setLiquidityData({
+        highLiquidity,
+        bidSizeOrderRatio,
+        askSizeOrderRatio,
+        bidSizeToAskSizeRatio,
+        bidOrderToAskOrderRatio,
+    }) {
         // console.log("set liquid data");
-        this.liquidityData = liquidityData;
+        this.liquidityData = highLiquidity;
 
         this.drawLiquidity();
     }
@@ -622,6 +637,7 @@ export default class PixiData {
         // this.drawTickVolumeLine();
 
         this.drawAllCandles();
+        this.drawOrders.draw(this.orders);
         if (this.isDrawProfile) {
             this.marketProfile.draw();
         }
@@ -631,6 +647,13 @@ export default class PixiData {
         if (this.isDrawSupplyDemandZones) {
             this.supplyDemandZones.draw();
         }
+        if (this.isDrawPivotPoints || true) {
+            this.drawPivotPoints?.draw();
+        }
+    }
+
+    setOrders(orders) {
+        this.orders = orders;
     }
 
     updateCurrentPriceLabel(price) {
@@ -794,6 +817,13 @@ export default class PixiData {
         }
     }
 
+    setLastTwoDaysCompiled({ lastTwoDaysCompiled, lastWeeklyData }) {
+        console.log("setLastTwoDaysCompiled");
+        this.lastTwoDaysCompiled = lastTwoDaysCompiled;
+        this.lastWeeklyData = lastWeeklyData;
+        this.drawPivotPoints = new PivotPoints(this);
+    }
+
     loadMoreData() {
         if (!this.loadingMoreData) {
             this.loadingMoreData = true;
@@ -801,7 +831,7 @@ export default class PixiData {
             const finish = this.ohlcDatas.length
                 ? this.ohlcDatas[0].timestamp
                 : new Date().getTime();
-            console.log(finish);
+            console.log({ finish: new Date(finish).toLocaleString() });
             this.loadData({
                 // barType: 2,
                 // barTypePeriod: 1,
@@ -938,23 +968,21 @@ export default class PixiData {
             });
             const colors = [
                 "black",
-                "teal",
-                "blue",
-                "white",
+                "darkblue",
+                "lightgreen",
                 "yellow",
                 "orange",
                 "red",
             ];
             const [min, max] = extent(this.liquidityData.map((l) => l.size));
             const [pmin, pmax] = extent(this.liquidityData.map((l) => l.p));
-            debugger;
-
             const total = max - min;
-            const totalDiff = total / (colors.length - 1);
+            const totalDiff = total / colors.length;
 
             const colorFns = [];
             colors.forEach((color, i) => {
                 if (i === 0) return;
+                if (i === colors.length - 1) return;
                 const colorScale = scaleLinear().range([0, 1]);
                 colorScale.domain([totalDiff * (i - 1), totalDiff * i]);
                 colorFns.push((size) => {
@@ -968,20 +996,20 @@ export default class PixiData {
                 this.priceScale(0) - this.priceScale(liquidityHeight);
             this.liquidityData.forEach((liquidity, i) => {
                 const x = 0;
-                const y = this.priceScale(liquidity.p) + liquidityHeight;
+                const y = this.priceScale(liquidity.p) + liquidityHeight / 2;
                 // if (y < 0) return;
                 // if (y > this.mainChartContainerHeight) return;
 
                 let liquidityGfx = this.liquidityContainer.children[i];
                 if (!liquidityGfx) {
                     liquidityGfx = new Graphics();
-                    liquidityGfx.interactive = true;
-                    liquidityGfx.on("mouseenter", function (e) {
-                        // console.log(this);
-                        console.log(
-                            ` price ${this.liquidityPrice} orders ${this.liquidityOrders} size ${this.liquiditySize} `
-                        );
-                    });
+                    // liquidityGfx.interactive = true;
+                    // liquidityGfx.on("mouseenter", function (e) {
+                    //     // console.log(this);
+                    //     console.log(
+                    //         ` price ${this.liquidityPrice} orders ${this.liquidityOrders} size ${this.liquiditySize} `
+                    //     );
+                    // });
                 } else {
                     liquidityGfx.clear();
                 }
@@ -997,9 +1025,10 @@ export default class PixiData {
                 color = color.replace(")", "");
                 const [r, g, b] = color.split(",");
 
-                color = utils.rgb2hex([r / 255, g / 255, b / 255, 0.9]);
+                color = utils.rgb2hex([r / 255, g / 255, b / 255]);
 
                 liquidityGfx.beginFill(color);
+                liquidityGfx.alpha = 0.5;
                 // liquidityGfx.lineStyle(2, 0xdddddd, 0.1);
 
                 const rect = liquidityGfx.drawRect(

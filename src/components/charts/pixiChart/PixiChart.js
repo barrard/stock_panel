@@ -16,8 +16,12 @@ import TradeControls from "./components/TradeControls";
 import OrdersList from "./components/OrdersList";
 import Select from "./components/Select";
 import Input from "./components/Input";
+
+import IndicatorsBtns from "./components/IndicatorsBtns";
+import StartEndTimes from "./components/StartEndTimes";
 import PnL_AndOrderFlowStats from "./components/PnL_AndOrderFlowStats";
 import { parseBarTypeTimeFrame } from "./components/utils";
+import onLastTrade from "./handlers/onLastTrade";
 export default function PixiChart({ Socket }) {
     //TODO really set this
     const [width, setWidth] = useState(Math.floor(window.innerWidth * 0.9));
@@ -73,11 +77,11 @@ export default function PixiChart({ Socket }) {
         name: "Second",
     });
     const [barTypePeriodInput, setBarTypePeriodInput] = useState(60);
-    const [symbol, setSymbol] = useState({ name: "ESM3", value: "ESM3" });
+    const [symbol, setSymbol] = useState({ name: "ES", value: "ES" });
     const [exchange, setExchange] = useState({ value: "CME", name: "CME" });
     const [symbolInput, setSymbolInput] = useState({
-        value: "ESM3",
-        name: "ESM3",
+        value: "ES",
+        name: "ES",
     });
     const [exchangeInput, setExchangeInput] = useState({
         value: "CME",
@@ -92,8 +96,13 @@ export default function PixiChart({ Socket }) {
         useState({});
     const [orderTrackerCount, setOrderTrackerCount] = useState({});
     const [currentTimeBar, setCurrentTimeBar] = useState();
-    const [orders, setOrders] = useState(undefined);
+    const [orders, setOrders] = useState({});
     const [lastTrade, setLastTrade] = useState({});
+    const [backgroundDataFetch, setBackgroundDataFetch] = useState(false);
+    const [startTime, setStartTime] = useState();
+    const [endTime, setEndTime] = useState();
+    const [lastTwoDaysCompiled, setLastTwoDaysCompiled] = useState({});
+    const [bidAskRatios, setBidAskRatios] = useState({});
 
     //Fn to load ohlc data
     const loadData = ({
@@ -103,6 +112,7 @@ export default function PixiChart({ Socket }) {
         finishIndex = new Date().getTime(),
         // symbol = symbol,
         // exchange = exchange,
+        isNew = false,
     }) => {
         if (loading) {
             return console.log("No can, I stay loading");
@@ -115,6 +125,12 @@ export default function PixiChart({ Socket }) {
                     barTypePeriod,
                 });
 
+        if (backgroundDataFetch) {
+            startIndex = new Date(startTime).getTime();
+            finishIndex = new Date(endTime).getTime();
+            debugger;
+        }
+
         // console.log("Loading data");
         setLoading(symbol);
 
@@ -126,43 +142,70 @@ export default function PixiChart({ Socket }) {
             barTypePeriod,
             startIndex,
             finishIndex,
-        }).then(async (_ohlcDatas) => {
-            if (!_ohlcDatas?.length) {
-                // setOhlcDatas([]);
-                // setPixiData([]);
-                // setSymbolInputDisabled(false);
+        })
+            .then(async (_ohlcDatas) => {
+                setLoading(false);
 
-                return await loadData({ finishIndex: startIndex });
-            }
+                if (!_ohlcDatas?.length) {
+                    // setOhlcDatas([]);
+                    // setPixiData([]);
+                    // setSymbolInputDisabled(false);
 
-            _ohlcDatas.forEach((d) => {
-                if (d.askVolume.high || d.bidVolume.high) {
-                    alert("high");
-                } else {
-                    d.volume = d.askVolume.low + d.bidVolume.low;
+                    return await loadData({ finishIndex: startIndex, isNew });
                 }
-                d.timestamp = d.datetime = d.datetime * 1000;
-                d.dateTime = new Date(d.timestamp).toLocaleString();
-            });
 
-            // _ohlcDatas = _ohlcDatas.slice(-10);
-
-            console.log(_ohlcDatas.length);
-
-            setOhlcDatas((ohlcDatas) => {
-                const allOhlcData = _ohlcDatas.concat(ohlcDatas);
-                setPixiData((pixiData) => {
-                    setSymbolInputDisabled(false);
-                    if (!pixiData?.init) return alert("WHY??"); //WHY???
-                    pixiData.init(_ohlcDatas);
-                    return pixiData;
+                //pre  process the data
+                _ohlcDatas.forEach((d) => {
+                    if (d.askVolume.high || d.bidVolume.high) {
+                        alert("high");
+                    } else {
+                        d.volume = d.askVolume.low + d.bidVolume.low;
+                    }
+                    d.timestamp = d.datetime = d.datetime * 1000;
+                    d.dateTime = new Date(d.timestamp).toLocaleString();
                 });
 
-                return allOhlcData;
+                console.log(_ohlcDatas[0].dateTime);
+                console.log(_ohlcDatas.slice(-1)[0].dateTime);
+                if (backgroundDataFetch) {
+                    console.log(_ohlcDatas);
+                    // return;
+                }
+
+                // _ohlcDatas = _ohlcDatas.slice(-10);
+
+                console.log(_ohlcDatas.length);
+
+                setOhlcDatas((ohlcDatas) => {
+                    let allOhlcData;
+                    if (isNew) {
+                        allOhlcData = ohlcDatas;
+                    } else {
+                        allOhlcData = _ohlcDatas.concat(ohlcDatas);
+                    }
+                    setPixiData((pixiData) => {
+                        setSymbolInputDisabled(false);
+                        if (!pixiData?.init) return alert("WHY??"); //WHY???
+                        if (isNew) {
+                            pixiData.ohlcDatas = [];
+                        }
+                        pixiData.init(_ohlcDatas);
+                        return pixiData;
+                    });
+
+                    return allOhlcData;
+                });
+            })
+            .catch((e) => {
+                alert(e);
             });
-            setLoading(false);
-        });
     };
+
+    useEffect(() => {
+        if (!pixiData) return;
+        pixiData.setLastTwoDaysCompiled(lastTwoDaysCompiled);
+    }, [lastTwoDaysCompiled, pixiData]);
+
     useEffect(() => {
         const data = currentTimeBar;
         if (!data || !ohlcDatas.length || !pixiData) return;
@@ -197,6 +240,7 @@ export default function PixiChart({ Socket }) {
 
     useEffect(() => {
         console.log({ orders });
+        pixiData?.setOrders(orders);
     }, [orders]);
 
     useEffect(() => {
@@ -220,25 +264,27 @@ export default function PixiChart({ Socket }) {
         if (pixiData) {
             pixiData.ohlcDatas = [];
         }
-        // if (newSymbolTimerRef?.current) {
-        //     clearInterval(newSymbolTimerRef.current);
-        // }
-        // newSymbolTimerRef.current = setTimeout(() => {
-        //     setSymbolInputDisabled(true);
+        if (newSymbolTimerRef?.current) {
+            clearInterval(newSymbolTimerRef.current);
+        }
+        newSymbolTimerRef.current = setTimeout(() => {
+            setSymbolInputDisabled(true);
 
-        //     if (loading !== symbol) {
-        //         loadData({
-        //             finishIndex: new Date().getTime(),
-        //         });
-        //     } else {
-        //         alert(`Not loading ${symbol}`);
-        //         setSymbolInputDisabled(false);
-        //     }
-        // }, 1000);
+            if (loading !== symbol) {
+                loadData({
+                    finishIndex: new Date().getTime(),
+                    isNew: true,
+                });
+            } else {
+                alert(`Not loading ${symbol}`);
+                setSymbolInputDisabled(false);
+            }
+        }, 1000);
     }, [symbol, barType, barTypePeriod]);
 
     //on load get data
     useEffect(() => {
+        console.log("START PIXI CHART");
         //request data
         if (ohlcDatas.length === 0) {
             loadData({
@@ -301,14 +347,28 @@ export default function PixiChart({ Socket }) {
             setOrderTrackerCount(orderTrackerCount)
         );
 
+        Socket.on(
+            "compileHistoryTracker",
+            ({ lastTwoDaysCompiled, lastWeeklyData }) => {
+                console.log(lastTwoDaysCompiled);
+                setLastTwoDaysCompiled({ lastTwoDaysCompiled, lastWeeklyData });
+                pixiData.setLastTwoDaysCompiled({
+                    lastTwoDaysCompiled,
+                    lastWeeklyData,
+                });
+            }
+        );
+
+        console.log("Emitting getCompileHistoryTracker");
+        Socket.emit("getCompileHistoryTracker");
+
         Socket.emit("requestTimeBarUpdate", {
             symbol: symbol.value,
             exchange: exchange.value,
             barType: barType.value,
             barTypePeriod,
         });
-
-        if (!orders) {
+        if (!Object.keys(orders).length) {
             Socket.emit("getOrders", { ok: "?" });
         }
 
@@ -322,16 +382,25 @@ export default function PixiChart({ Socket }) {
             console.log(data);
         });
         Socket.on("ordersShown", (data) => {
-            setOrders((orders) => ({ ...(orders && { ...orders }), ...data }));
+            Object.keys(data).forEach((basketId) => {
+                const currentOrder = orders[basketId] || {};
+
+                orders[basketId] = { ...currentOrder, ...data[basketId] };
+            });
+            // console.log(orders);
+
+            setOrders({ ...orders });
         });
 
-        Socket.on("orderTracker", (data) => {
-            console.log("orderTracker");
+        // Socket.on("orderTracker", (data) => {
+        //     console.log("orderTracker");
 
-            console.log(data);
-        });
+        //     console.log(data);
+        // });
 
         return () => {
+            console.log("DESTROY PIXI CHART");
+
             // On unload stop the application
             PixiAppRef.current.destroy(true, true);
             PixiAppRef.current = null;
@@ -343,6 +412,7 @@ export default function PixiChart({ Socket }) {
             Socket.off("orderTracker");
             Socket.off("timeBarUpdate");
             Socket.off("ordersShown");
+            Socket.off("lastTwoDaysCompiled");
         };
     }, [symbol, barType, barTypePeriod]);
 
@@ -368,53 +438,15 @@ export default function PixiChart({ Socket }) {
         pixiData.draw();
 
         /////////////////////////////////////
-        Socket.on("lastTrade", (message) => {
-            // if (!ohlcDatas.length) return;
-
-            const {
-                aggressor,
-                tradePrice,
-                tradeSize,
-                vwap,
-                timestamp: seconds,
-            } = message;
-
-            const timestamp = seconds * 1000 + 1000 * 60; //Need to add code to check the barType and period
-            const lastOhlc = pixiData.ohlcDatas.slice(-1)[0];
-
-            if (!lastOhlc) {
-                return;
-            }
-
-            const min = new Date(timestamp).getMinutes();
-            const ohlcDataLastMin = new Date(lastOhlc.timestamp).getMinutes();
-            if (min !== ohlcDataLastMin) {
-                const data = {
-                    open: tradePrice,
-                    high: tradePrice,
-                    low: tradePrice,
-                    close: tradePrice,
-                    volume: tradeSize,
-                    timestamp,
-                };
-                setLastTrade(message);
-                setOhlcDatas((ohlcDatas) => ohlcDatas.concat([data]));
-                pixiData.prependData(data);
-            } else {
-                const close = tradePrice;
-                lastOhlc.volume += tradeSize;
-                lastOhlc.close = close;
-                if (lastOhlc.low > close) lastOhlc.low = close;
-                if (lastOhlc.high < close) lastOhlc.high = close;
-
-                pixiData.replaceLast(lastOhlc);
-                pixiData.updateCurrentPriceLabel(tradePrice);
-            }
-        });
+        Socket.on(
+            "lastTrade",
+            onLastTrade({ setLastTrade, setOhlcDatas, pixiData })
+        );
 
         Socket.on("liquidity", (data) => {
             // if (data.length) {
             // console.log(data);
+            setBidAskRatios(data);
             pixiData.setLiquidityData(data);
             // }
         });
@@ -517,61 +549,18 @@ export default function PixiChart({ Socket }) {
         <>
             <div className="row">
                 <div className="col-6">
-                    <div className="row g-0">
-                        <div className="col-auto">
-                            <IconButton
-                                borderColor={toggleZigZag ? "green" : false}
-                                title="ZigZag"
-                                onClick={() => setDrawZigZag(!toggleZigZag)}
-                                rIcon={<GiAirZigzag />}
-                            />
-                        </div>
-                        <div className="col-auto">
-                            <IconButton
-                                borderColor={
-                                    toggleMarketProfile ? "green" : false
-                                }
-                                title="Market Profile"
-                                onClick={() =>
-                                    setDrawMarketProfile(!toggleMarketProfile)
-                                }
-                                rIcon={<GiAmplitude />}
-                            />
-                        </div>
-                        <div className="col-auto">
-                            <IconButton
-                                borderColor={toggleOrderbook ? "green" : false}
-                                title="Order Book"
-                                onClick={() =>
-                                    setDrawOrderBook(!toggleOrderbook)
-                                }
-                                rIcon={<IoIosReorder />}
-                            />
-                        </div>
-
-                        <div className="col-auto">
-                            <Select
-                                label="Bar Type"
-                                value={barTypeInput}
-                                setValue={setBarTypeInput}
-                                options={[
-                                    { value: 1, name: "Seconds" },
-                                    { value: 2, name: "Minute" },
-                                    { value: 3, name: "Daily" },
-                                    { value: 4, name: "Weekly" },
-                                ]}
-                            />
-                        </div>
-                        <div className="col-2">
-                            <Input
-                                // disabled={symbolInputDisabled}
-                                type="number"
-                                setValue={setBarTypePeriodInput}
-                                value={barTypePeriodInput}
-                                label="BarTypePeriod"
-                            />
-                        </div>
-                    </div>
+                    <IndicatorsBtns
+                        setDrawZigZag={setDrawZigZag}
+                        setDrawMarketProfile={setDrawMarketProfile}
+                        setDrawOrderBook={setDrawOrderBook}
+                        setBarTypeInput={setBarTypeInput}
+                        setBarTypePeriodInput={setBarTypePeriodInput}
+                        toggleZigZag={toggleZigZag}
+                        toggleMarketProfile={toggleMarketProfile}
+                        toggleOrderbook={toggleOrderbook}
+                        barTypeInput={barTypeInput}
+                        barTypePeriodInput={barTypePeriodInput}
+                    />
                     <div className="row g-0">
                         <div className="col-3 border">
                             <Select
@@ -598,7 +587,7 @@ export default function PixiChart({ Socket }) {
                                     { value: "SMFE", name: "SMFE" },
                                     { value: "COMEX", name: "COMEX" },
                                     { value: "CBOT", name: "CBOT" },
-                                    { value: "NYMES", name: "NYMES" },
+                                    { value: "NYMEX", name: "NYMEX" },
                                     { value: "CME", name: "CME" },
                                 ]}
                             />
@@ -607,23 +596,33 @@ export default function PixiChart({ Socket }) {
                         <div className="col-2 border d-flex">
                             <button
                                 onClick={() => {
-                                    setBarType(barTypeInput);
+                                    setBarType({ ...barTypeInput });
                                     setBarTypePeriod(barTypePeriodInput);
-                                    setSymbol(symbolInput);
-                                    setExchange(exchangeInput);
+                                    setSymbol({ ...symbolInput });
+                                    setExchange({ ...exchangeInput });
                                 }}
                                 className="btn btn-secondary flex-fill d-flex flex-1 justify-content-center h-100 align-items-center"
                             >
                                 GET
                             </button>
                         </div>
+                        <div className="col ">
+                            <StartEndTimes
+                                backgroundDataFetch={backgroundDataFetch}
+                                setBackgroundDataFetch={setBackgroundDataFetch}
+                                setStartTime={setStartTime}
+                                setEndTime={setEndTime}
+                                startTime={startTime}
+                                endTime={endTime}
+                            />
+                        </div>
                     </div>
-                    {/* </Flex> */}
 
                     <TradeControls lastTrade={lastTrade} />
                 </div>
                 <div className="col-6">
                     <PnL_AndOrderFlowStats
+                        bidAskRatios={bidAskRatios}
                         instrumentPnLPositionUpdate={
                             instrumentPnLPositionUpdate
                         }
@@ -632,6 +631,12 @@ export default function PixiChart({ Socket }) {
                 </div>
                 <div className="col-12">
                     <div className="row">
+                        <div className="col">
+                            Start {new Date(startTime).toLocaleString()}
+                        </div>
+                        <div className="col">
+                            end {new Date(endTime).toLocaleString()}
+                        </div>
                         <div className="col">Symbol {symbol.name}</div>
                         <div className="col">Exchange {exchange.name}</div>
                         <div className="col">BarType val {barType.name}</div>

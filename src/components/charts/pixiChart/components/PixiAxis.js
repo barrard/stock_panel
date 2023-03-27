@@ -83,7 +83,7 @@ export default class PixiAxis {
         // }
 
         try {
-            this.tickLinesGfx?.clear();
+            if (this.tickLinesGfx?._geometry) this.tickLinesGfx?.clear();
         } catch (error) {
             return console.log("catching a buzz");
         }
@@ -166,7 +166,7 @@ export default class PixiAxis {
             alert("No margin??");
             return;
         }
-        if (!this.tickLinesGfx?.lineStyle) {
+        if (!this.tickLinesGfx?.lineStyle || !this.tickLinesGfx?._lineStyle) {
             return;
         }
         const { left, right, top, bottom } = this.chart.margin;

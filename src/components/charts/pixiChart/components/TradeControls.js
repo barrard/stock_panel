@@ -62,32 +62,16 @@ export default function TradeControls(props) {
             </div>
             <div className="col-4">
                 <div className="row g-0">
-                    <div className="col-6">
+                    <div className="col-10">
                         <Input
                             step={0.25}
                             type="number"
                             setValue={setLimitPrice}
                             value={limitPrice}
                             label="Limit Price"
-                            // onKeyDown={(e) => {
-                            //     console.log(e);
-                            //     if (e.code === "ArrowUp") {
-                            //         setLimitPrice((limit) => {
-                            //             const newVal = parseFloat(limit); //+ 0.25;
-                            //             console.log(newVal);
-                            //             return newVal;
-                            //         });
-                            //     } else if (e.code === "ArrowDown") {
-                            //         setLimitPrice((limit) => {
-                            //             const newVal = parseFloat(limit); //- 0.25;
-                            //             console.log(newVal);
-                            //             return newVal;
-                            //         });
-                            //     }
-                            // }}
                         />
                     </div>
-                    <div className="col-6 d-flex flex-column justify-content-end">
+                    <div className="col-2 d-flex flex-column justify-content-end">
                         <div className="col-12 d-flex">
                             <IconButton
                                 borderColor={"green"}

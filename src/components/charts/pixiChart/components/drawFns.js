@@ -17,6 +17,9 @@ export function drawVolume(indicator) {
         return;
     }
     try {
+        if (!indicator.gfx?._geometry) {
+            return;
+        }
         indicator.gfx.clear();
     } catch (err) {
         console.log("CLEAR() Error?");
