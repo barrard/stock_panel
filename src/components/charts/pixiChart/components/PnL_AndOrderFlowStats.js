@@ -1,11 +1,61 @@
-import React from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import MiniPixiChart from "../../mini-pixi-chart";
 
 export default function PnL_AndOrderFlowStats(props) {
+    // console.log("PnL_AndOrderFlowStats");
     const {
         instrumentPnLPositionUpdate = {},
         orderTrackerCount = {},
         bidAskRatios = {},
+        Socket,
     } = props;
+
+    const [bidSizeToAskSizeRatio, setBidSizeToAskSizeRatio] = useState([0]);
+    const [bidSizeToAskSizeRatioMA, setBidSizeToAskSizeRatioMA] = useState([0]);
+
+    // useEffect(() => {
+    //     Socket.on("liquidity", (data) => {
+    //         console.log({ data });
+    //         const {
+    //             bidSizeToAskSizeRatio,
+
+    //             bidSizeToAskSizeRatioMA,
+    //         } = data;
+    //         setBidSizeToAskSizeRatio((arr) => [...arr, bidSizeToAskSizeRatio]);
+    //         setBidSizeToAskSizeRatioMA((arr) => [
+    //             ...arr,
+    //             bidSizeToAskSizeRatioMA,
+    //         ]);
+
+    //         // setBidAskRatios(data);
+    //         // pixiData.setLiquidityData(data);
+    //     });
+    //     return () => {
+    //         console.log("socket OFFFFF");
+    //         Socket.off("liquidity");
+    //     };
+    // }, [Socket]);
+
+    const MiniChartMemo = useMemo(() => {
+        return (
+            <MiniPixiChart
+                Socket={Socket}
+                dimension={{
+                    height: 100,
+                    width: 200,
+                }}
+                margin={{
+                    top: 5,
+                    left: 5,
+                    right: 5,
+                    bottom: 5,
+                }}
+                // chartData={bidSizeToAskSizeRatio}
+            />
+        );
+    }, [Socket]);
+    //[Socket, bidSizeToAskSizeRatio, bidSizeToAskSizeRatioMA]
+
     return (
         <>
             <div className="row">
@@ -51,6 +101,22 @@ export default function PnL_AndOrderFlowStats(props) {
                     nullOrderDelta: {orderTrackerCount.nullOrderDelta}
                 </div>
             </div>
+
+            {MiniChartMemo}
+            <MiniPixiChart
+                Socket={Socket}
+                dimension={{
+                    height: 100,
+                    width: 200,
+                }}
+                margin={{
+                    top: 5,
+                    left: 5,
+                    right: 5,
+                    bottom: 5,
+                }}
+                // chartData={bidSizeToAskSizeRatio}
+            />
 
             <div className="row">
                 <div className="col-6">

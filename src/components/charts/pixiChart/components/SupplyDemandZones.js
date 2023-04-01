@@ -42,7 +42,7 @@ export default class SupplyDemandZones {
     }
 
     init() {
-        console.log("dataHandler");
+        // console.log("dataHandler");
         this.data.mainChartContainer.addChild(this.container);
         this.container.addChild(this.SDZContainer);
 

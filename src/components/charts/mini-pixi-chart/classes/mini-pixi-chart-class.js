@@ -67,52 +67,6 @@ export default class Chart {
             height - (top + bottom)
         );
 
-        this.logE = (e, name) => {
-            console.log(name);
-            console.log(e);
-            const data = {};
-            if (e instanceof Viewport) {
-                console.log("instanceof Viewport");
-                // console.log("e.x");
-                // console.log(e.x);
-                // console.log("e.y");
-                // console.log(e.y);
-                // console.log("e.scale");
-                // console.log(e.scale);
-                data.x = e.x;
-                data.y = e.y;
-                data.scale = e.scale;
-            }
-
-            if (e.world) {
-                data.world = {};
-                data.world.x = e.world.x;
-                data.world.y = e.world.y;
-                data.world.scale = e.world.scale;
-
-                console.log("WORLD");
-                // console.log("e.world.x");
-                // console.log(e.world.x);
-                // console.log("e.world.y");
-                // console.log(e.world.y);
-            }
-            if (e.viewport) {
-                console.log("VIEWPORT");
-                data.viewport = {};
-                data.viewport.x = e.viewport.x;
-                data.viewport.y = e.viewport.y;
-                data.viewport.scale = e.viewport.scale;
-            }
-            if (e.screen) {
-                console.log("screen");
-                data.screen = {};
-                data.screen.x = e.screen.x;
-                data.screen.y = e.screen.y;
-            }
-            this.options.setEventsData((eventsData) => {
-                return { ...eventsData, [name]: data };
-            });
-        };
         // activate plugins
         viewport
             .drag({ direction: "x" })
@@ -120,11 +74,6 @@ export default class Chart {
             .wheel({ axis: "x" })
             .decelerate({ friction: 0.9 });
 
-        this.options.events.forEach((eventName) => {
-            viewport.on(eventName, (e) => {
-                this.logE(e, eventName);
-            });
-        });
         // viewport.on("zoomed", (e) => {
         //     logE(e, "Zoomed");
         // });
@@ -156,11 +105,11 @@ export default class Chart {
 
         viewport.addChild(this.priceGfx);
         viewport.addChild(this.volumeGfx);
-        this.app.stage.addChild(this.testGfx);
+        // this.app.stage.addChild(this.testGfx);
 
-        this.testGfx.lineStyle(2, 0xffffff, 0.9);
+        // this.testGfx.lineStyle(2, 0xffffff, 0.9);
 
-        this.testGfx.drawRect(0, 0, 30, 30);
+        // this.testGfx.drawRect(0, 0, 30, 30);
     }
 
     setData(data) {
@@ -176,7 +125,6 @@ export default class Chart {
         this.options.PixiChartRef.current.appendChild(this.app.view);
 
         //make some scales
-
         this.makePriceScale();
         this.makeTimeScale();
         this.makeVolumeScale();
@@ -188,7 +136,7 @@ export default class Chart {
     makePriceScale() {
         this.getMinMaxPrice();
 
-        this.priceScale.domain([this.lowPrice, this.highPrice]);
+        this.priceScale.domain([this.lowValue - 0.2, this.highValue + 0.2]);
     }
 
     makeTimeScale() {
@@ -208,15 +156,15 @@ export default class Chart {
     }
 
     getMinMaxPrice() {
-        const [low, high] = extent(this.data, (tick) => tick.close);
-        this.lowPrice = low;
-        this.highPrice = high;
+        const [low, high] = extent(this.data, (value) => value);
+        this.lowValue = low;
+        this.highValue = high;
     }
 
     getMinMaxTime() {
-        const [minTime, maxTime] = extent(this.data, (tick) => tick.datetime);
-        this.minTime = minTime;
-        this.maxTime = maxTime;
+        // const [minTime, maxTime] = extent(this.data, (tick) => tick.datetime);
+        this.minTime = 0;
+        this.maxTime = this.data.length;
     }
 
     drawVolume() {
@@ -224,13 +172,13 @@ export default class Chart {
 
         console.log(`drawVolume with ${this.data.length} points`);
 
-        this.volumeGfx.lineStyle(1, 0x333333, 1);
+        this.volumeGfx.lineStyle(1, 0x00ff00, 1);
 
         const startingY = this.volumeScale(0);
 
         this.data.forEach((d, i) => {
-            const x = this.xScale(d.datetime);
-            const y = this.volumeScale(d.volume);
+            const x = this.xScale(i);
+            const y = this.volumeScale(d);
             // if (i === 0) {
             this.volumeGfx.moveTo(x, startingY);
             // } else {
@@ -244,15 +192,15 @@ export default class Chart {
 
         console.log(`Draw line with ${this.data.length} points`);
         //Tick line
-        this.priceGfx.lineStyle(1, 0xffffff, 1);
+        this.priceGfx.lineStyle(1, 0x0000ff, 1);
         this.data.forEach((d, i) => {
-            const x = this.xScale(d.datetime);
-            const y = this.priceScale(d.close);
+            const x = this.xScale(i);
+            const y = this.priceScale(d);
 
-            if (y < prevY) {
+            if (y > prevY) {
                 this.priceGfx.lineStyle(1, 0xff0000, 1);
-            } else if (y > prevY) {
-                this.priceGfx.lineStyle(1, 0x00ff00, 1);
+            } else if (y < prevY) {
+                this.priceGfx.lineStyle(1, 0x00ff10, 1);
             } else {
                 this.priceGfx.lineStyle(1, 0xffffff, 1);
             }
@@ -267,17 +215,17 @@ export default class Chart {
 
     processData(data) {
         console.log("Processing data");
-        console.log(data.length);
-        data = data.reduce((acc, d) => {
-            const { close, datetime, volume } = d;
+        // console.log(data.length);
+        // data = data.reduce((acc, d) => {
+        //     const { close, datetime, volume } = d;
 
-            if (!acc[datetime]) {
-                acc[datetime] = { close, datetime, volume: 0 };
-            }
-            acc[datetime].volume += volume;
-            return acc;
-        }, {});
-        data = Object.values(data).sort((a, b) => b.datetime - a.datetime);
+        //     if (!acc[datetime]) {
+        //         acc[datetime] = { close, datetime, volume: 0 };
+        //     }
+        //     acc[datetime].volume += volume;
+        //     return acc;
+        // }, {});
+        // data = Object.values(data).sort((a, b) => b.datetime - a.datetime);
         console.log(data.length);
 
         return data;

@@ -84,7 +84,6 @@ export default class PivotPoints {
     drawOHLC(day) {
         const { RTHProfile, RTH_OHLC, overnightOHLC, overnightProfile } = day;
 
-        debugger;
         const THICK = 3;
         //draw Open - green
         let x1; //= (line.x1);

@@ -8,7 +8,7 @@ import Select from "./Select";
 import Input from "./Input";
 export default function TradeControls(props) {
     const [priceType, setPriceType] = useState({ value: 2 });
-    const [limitPrice, setLimitPrice] = useState(null);
+    const [limitPrice, setLimitPrice] = useState(0);
 
     useEffect(() => {
         if (!limitPrice) {

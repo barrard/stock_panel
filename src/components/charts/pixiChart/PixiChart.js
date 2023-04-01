@@ -165,8 +165,8 @@ export default function PixiChart({ Socket }) {
                     d.dateTime = new Date(d.timestamp).toLocaleString();
                 });
 
-                console.log(_ohlcDatas[0].dateTime);
-                console.log(_ohlcDatas.slice(-1)[0].dateTime);
+                // console.log(_ohlcDatas[0].dateTime);
+                // console.log(_ohlcDatas.slice(-1)[0].dateTime);
                 if (backgroundDataFetch) {
                     console.log(_ohlcDatas);
                     // return;
@@ -174,7 +174,7 @@ export default function PixiChart({ Socket }) {
 
                 // _ohlcDatas = _ohlcDatas.slice(-10);
 
-                console.log(_ohlcDatas.length);
+                // console.log(_ohlcDatas.length);
 
                 setOhlcDatas((ohlcDatas) => {
                     let allOhlcData;
@@ -239,7 +239,7 @@ export default function PixiChart({ Socket }) {
     }, [currentTimeBar]);
 
     useEffect(() => {
-        console.log({ orders });
+        // console.log({ orders });
         pixiData?.setOrders(orders);
     }, [orders]);
 
@@ -343,14 +343,14 @@ export default function PixiChart({ Socket }) {
             // console.log(message);
             setInstrumentPnLPositionUpdate(message);
         });
-        Socket.on("orderTracker", (orderTrackerCount) =>
-            setOrderTrackerCount(orderTrackerCount)
-        );
+        Socket.on("orderTracker", (orderTrackerCount) => {
+            setOrderTrackerCount(orderTrackerCount);
+        });
 
         Socket.on(
             "compileHistoryTracker",
             ({ lastTwoDaysCompiled, lastWeeklyData }) => {
-                console.log(lastTwoDaysCompiled);
+                // console.log(lastTwoDaysCompiled);
                 setLastTwoDaysCompiled({ lastTwoDaysCompiled, lastWeeklyData });
                 pixiData.setLastTwoDaysCompiled({
                     lastTwoDaysCompiled,
@@ -444,11 +444,8 @@ export default function PixiChart({ Socket }) {
         );
 
         Socket.on("liquidity", (data) => {
-            // if (data.length) {
-            // console.log(data);
             setBidAskRatios(data);
             pixiData.setLiquidityData(data);
-            // }
         });
         ////////////////////////////////////////////////////
         return () => {
@@ -622,6 +619,7 @@ export default function PixiChart({ Socket }) {
                 </div>
                 <div className="col-6">
                     <PnL_AndOrderFlowStats
+                        Socket={Socket}
                         bidAskRatios={bidAskRatios}
                         instrumentPnLPositionUpdate={
                             instrumentPnLPositionUpdate
