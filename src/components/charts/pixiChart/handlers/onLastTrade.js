@@ -19,27 +19,27 @@ export default function onLastTrade({ setLastTrade, setOhlcDatas, pixiData }) {
 
         const min = new Date(timestamp).getMinutes();
         const ohlcDataLastMin = new Date(lastOhlc.timestamp).getMinutes();
-        if (min !== ohlcDataLastMin) {
-            const data = {
-                open: tradePrice,
-                high: tradePrice,
-                low: tradePrice,
-                close: tradePrice,
-                volume: tradeSize,
-                timestamp,
-            };
-            setLastTrade(message);
-            setOhlcDatas((ohlcDatas) => ohlcDatas.concat([data]));
-            pixiData.prependData(data);
-        } else {
-            const close = tradePrice;
-            lastOhlc.volume += tradeSize;
-            lastOhlc.close = close;
-            if (lastOhlc.low > close) lastOhlc.low = close;
-            if (lastOhlc.high < close) lastOhlc.high = close;
+        // if (min !== ohlcDataLastMin) {
+        //     const data = {
+        //         open: tradePrice,
+        //         high: tradePrice,
+        //         low: tradePrice,
+        //         close: tradePrice,
+        //         volume: tradeSize,
+        //         timestamp,
+        //     };
+        //     setLastTrade(message);
+        //     setOhlcDatas((ohlcDatas) => ohlcDatas.concat([data]));
+        //     pixiData.prependData(data);
+        // } else {
+        const close = tradePrice;
+        lastOhlc.volume += tradeSize;
+        lastOhlc.close = close;
+        if (lastOhlc.low > close) lastOhlc.low = close;
+        if (lastOhlc.high < close) lastOhlc.high = close;
 
-            pixiData.replaceLast(lastOhlc);
-            pixiData.updateCurrentPriceLabel(tradePrice);
-        }
+        pixiData.replaceLast(lastOhlc);
+        pixiData.updateCurrentPriceLabel(tradePrice);
+        // }
     };
 }

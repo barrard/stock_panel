@@ -2,6 +2,9 @@ import React from "react";
 import { IconButton } from "../../../StratBuilder/components";
 import { GiAirZigzag, GiHistogram, GiAmplitude } from "react-icons/gi";
 import { IoIosReorder } from "react-icons/io";
+import { CgReadme } from "react-icons/cg";
+import { AiOutlineTransaction } from "react-icons/ai";
+
 import Input from "./Input";
 import Select from "./Select";
 
@@ -10,16 +13,25 @@ export default function IndicatorsBtns(props) {
         setDrawZigZag,
         setDrawMarketProfile,
         setDrawOrderBook,
-        setBarTypeInput,
-        setBarTypePeriodInput,
         toggleZigZag,
         toggleMarketProfile,
         toggleOrderbook,
-        barTypeInput,
-        barTypePeriodInput,
+        togglePivotLines,
+        setDrawPivotLines,
+        setDrawOrders,
+        toggleOrders,
     } = props;
     return (
         <div className="row g-0">
+            <div className="col-auto">
+                <IconButton
+                    borderColor={toggleOrders ? "green" : false}
+                    title="Orders"
+                    onClick={() => setDrawOrders(!toggleOrders)}
+                    rIcon={<AiOutlineTransaction />}
+                />
+            </div>
+
             <div className="col-auto">
                 <IconButton
                     borderColor={toggleZigZag ? "green" : false}
@@ -28,6 +40,7 @@ export default function IndicatorsBtns(props) {
                     rIcon={<GiAirZigzag />}
                 />
             </div>
+
             <div className="col-auto">
                 <IconButton
                     borderColor={toggleMarketProfile ? "green" : false}
@@ -41,30 +54,15 @@ export default function IndicatorsBtns(props) {
                     borderColor={toggleOrderbook ? "green" : false}
                     title="Order Book"
                     onClick={() => setDrawOrderBook(!toggleOrderbook)}
-                    rIcon={<IoIosReorder />}
+                    rIcon={<CgReadme />}
                 />
             </div>
-
             <div className="col-auto">
-                <Select
-                    label="Bar Type"
-                    value={barTypeInput}
-                    setValue={setBarTypeInput}
-                    options={[
-                        { value: 1, name: "Seconds" },
-                        { value: 2, name: "Minute" },
-                        { value: 3, name: "Daily" },
-                        { value: 4, name: "Weekly" },
-                    ]}
-                />
-            </div>
-            <div className="col-2">
-                <Input
-                    // disabled={symbolInputDisabled}
-                    type="number"
-                    setValue={setBarTypePeriodInput}
-                    value={barTypePeriodInput}
-                    label="BarTypePeriod"
+                <IconButton
+                    borderColor={togglePivotLines ? "green" : false}
+                    title="Order Book"
+                    onClick={() => setDrawPivotLines(!togglePivotLines)}
+                    rIcon={<IoIosReorder />}
                 />
             </div>
         </div>

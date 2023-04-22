@@ -300,7 +300,7 @@ export default class MarketProfile {
     }
 
     draw(data) {
-        console.time("writeProfile");
+        // console.time("writeProfile");
         this.profileBarsContainer.removeChildren();
 
         Object.keys(this.marketProfile).forEach((day) => {
@@ -336,7 +336,7 @@ export default class MarketProfile {
             }
         });
 
-        console.timeEnd("writeProfile");
+        // console.timeEnd("writeProfile");
     }
 
     drawProfile(profile, time) {

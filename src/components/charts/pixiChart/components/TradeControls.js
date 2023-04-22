@@ -8,14 +8,14 @@ import Select from "./Select";
 import Input from "./Input";
 export default function TradeControls(props) {
     const [priceType, setPriceType] = useState({ value: 2 });
-    const [limitPrice, setLimitPrice] = useState(0);
+    const [limitPrice, setLimitPrice] = useState(props.lastTrade.tradePrice);
 
     useEffect(() => {
         if (!limitPrice) {
             setLimitPrice(props.lastTrade.tradePrice);
             // console.log(props);
         }
-    }, [props.lastTrade]);
+    }, [props.lastTrade.tradePrice]);
 
     const sendOrder = async (transactionType) => {
         // alert(`${priceType} Sell ${limitPrice}`);

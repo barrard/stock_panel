@@ -3,7 +3,7 @@ import Chart from "./classes/mini-pixi-chart-class";
 // import API from "../../API";
 
 export default function MiniPixiChart(props = {}) {
-    console.log(props);
+    // console.log(props);
     const {
         // chartData = [],
         margin = {
@@ -45,14 +45,16 @@ export default function MiniPixiChart(props = {}) {
         );
 
         return () => {
+            debugger;
             PixiRef.current.destroy();
             PixiRef.current = null;
         };
-    }, [PixiChartRef]);
+    }, [PixiChartRef.current, PixiRef]);
 
     useEffect(() => {
+        console.log("RERENDER");
         Socket.on("liquidity", (data) => {
-            console.log({ data });
+            // console.log({ data });
             const {
                 bidSizeToAskSizeRatio,
 
@@ -74,12 +76,11 @@ export default function MiniPixiChart(props = {}) {
             console.log("socket OFFFFF");
             Socket.off("liquidity");
         };
-    }, [Socket]);
+    }, [Socket, data, PixiRef.current]);
 
     useEffect(() => {
         console.log("data updated.");
         if (data.length && PixiRef.current) {
-            debugger;
             PixiRef.current.setData(data);
             PixiRef.current.setupChart();
         } else {

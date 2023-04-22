@@ -113,14 +113,14 @@ export default class Chart {
     }
 
     setData(data) {
-        console.log("setting data");
+        // console.log("setting data");
 
-        data = this.processData(data);
+        // data = this.processData(data);
         this.data = data;
     }
 
     setupChart() {
-        console.log("setupChart");
+        // console.log("setupChart");
 
         this.options.PixiChartRef.current.appendChild(this.app.view);
 
@@ -130,7 +130,7 @@ export default class Chart {
         this.makeVolumeScale();
 
         this.drawPriceLine();
-        this.drawVolume();
+        // this.drawVolume();
     }
 
     makePriceScale() {
@@ -214,7 +214,7 @@ export default class Chart {
     }
 
     processData(data) {
-        console.log("Processing data");
+        // console.log("Processing data");
         // console.log(data.length);
         // data = data.reduce((acc, d) => {
         //     const { close, datetime, volume } = d;
@@ -226,7 +226,7 @@ export default class Chart {
         //     return acc;
         // }, {});
         // data = Object.values(data).sort((a, b) => b.datetime - a.datetime);
-        console.log(data.length);
+        // console.log(data.length);
 
         return data;
     }

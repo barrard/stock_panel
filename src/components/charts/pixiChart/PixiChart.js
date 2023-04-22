@@ -3,8 +3,9 @@ import { toastr } from "react-redux-toastr";
 
 import API from "../../../components/API";
 import * as PIXI from "pixi.js";
-import { GiAirZigzag, GiHistogram, GiAmplitude } from "react-icons/gi";
-import { IoIosReorder } from "react-icons/io";
+// import { GiAirZigzag, GiHistogram, GiAmplitude } from "react-icons/gi";
+// import { CgReadme } from "react-icons/cg";
+// import { IoIosReorder } from "react-icons/io";
 
 import { extent, scaleLinear, select, zoom, zoomTransform, mouse } from "d3";
 
@@ -22,6 +23,7 @@ import StartEndTimes from "./components/StartEndTimes";
 import PnL_AndOrderFlowStats from "./components/PnL_AndOrderFlowStats";
 import { parseBarTypeTimeFrame } from "./components/utils";
 import onLastTrade from "./handlers/onLastTrade";
+import PlantStatuses from "./components/PlantStatuses";
 export default function PixiChart({ Socket }) {
     //TODO really set this
     const [width, setWidth] = useState(Math.floor(window.innerWidth * 0.9));
@@ -62,11 +64,14 @@ export default function PixiChart({ Socket }) {
     const [toggleZigZag, setDrawZigZag] = useState(false);
     const [toggleMarketProfile, setDrawMarketProfile] = useState(false);
     const [toggleOrderbook, setDrawOrderBook] = useState(false);
-    const [timeframe, setTimeframe] = useState({
-        barType: 2,
-        barTypePeriod: 1,
-        name: "1Min",
-    });
+    const [toggleOrders, setDrawOrders] = useState(false);
+
+    const [togglePivotLines, setDrawPivotLines] = useState(false);
+    // const [timeframe, setTimeframe] = useState({
+    //     barType: 2,
+    //     barTypePeriod: 1,
+    //     name: "1Min",
+    // });
     const [barType, setBarType] = useState({
         value: 1,
         name: "Seconds",
@@ -103,6 +108,7 @@ export default function PixiChart({ Socket }) {
     const [endTime, setEndTime] = useState();
     const [lastTwoDaysCompiled, setLastTwoDaysCompiled] = useState({});
     const [bidAskRatios, setBidAskRatios] = useState({});
+    const [plantStatus, setPlantStatus] = useState({});
 
     //Fn to load ohlc data
     const loadData = ({
@@ -128,11 +134,10 @@ export default function PixiChart({ Socket }) {
         if (backgroundDataFetch) {
             startIndex = new Date(startTime).getTime();
             finishIndex = new Date(endTime).getTime();
-            debugger;
         }
 
         // console.log("Loading data");
-        setLoading(symbol);
+        setLoading(symbol.value);
 
         // startDate = startDate || new Date().getTime();
         API.rapi_requestBars({
@@ -145,7 +150,7 @@ export default function PixiChart({ Socket }) {
         })
             .then(async (_ohlcDatas) => {
                 setLoading(false);
-
+                debugger;
                 if (!_ohlcDatas?.length) {
                     // setOhlcDatas([]);
                     // setPixiData([]);
@@ -179,7 +184,7 @@ export default function PixiChart({ Socket }) {
                 setOhlcDatas((ohlcDatas) => {
                     let allOhlcData;
                     if (isNew) {
-                        allOhlcData = ohlcDatas;
+                        allOhlcData = _ohlcDatas;
                     } else {
                         allOhlcData = _ohlcDatas.concat(ohlcDatas);
                     }
@@ -208,31 +213,52 @@ export default function PixiChart({ Socket }) {
 
     useEffect(() => {
         const data = currentTimeBar;
-        if (!data || !ohlcDatas.length || !pixiData) return;
+        // if (!data || !ohlcDatas.length || !pixiData) return;
+        if (!data || !pixiData) return;
         data.timestamp = data.datetime = data.datetime * 1000;
+        console.log(new Date(data.timestamp).toLocaleString());
         if (data.askVolume.high || data.bidVolume.high) {
             alert("high");
         } else {
             data.volume = data.askVolume.low + data.bidVolume.low;
         }
+        if (
+            parseInt(data.barType) !== parseInt(barType.value) ||
+            parseInt(data.barTypePeriod) !== parseInt(barTypePeriod)
+        ) {
+            return;
+        }
         console.log(new Date(data.timestamp).toLocaleString());
         console.log(data);
-        const min = new Date(data.timestamp).getMinutes();
-        for (let x = ohlcDatas.length - 1; x > -1; x--) {
-            const element = ohlcDatas[x];
-            const ohlcDataLastMin = new Date(element.timestamp).getMinutes();
+        const newBar = {
+            open: data.close,
+            high: data.close,
+            low: data.close,
+            close: data.close,
+            volume: 0,
+            timestamp: data.timestamp,
+        };
+        // setLastTrade(message);
+        setOhlcDatas((ohlcDatas) => ohlcDatas.concat([data, newBar]));
+        pixiData.replaceLast(data);
+        pixiData.prependData(newBar);
 
-            if (ohlcDataLastMin === min) {
-                console.log("Found Minute at " + x);
-                pixiData.replaceLast(data, x);
-                setOhlcDatas((ohlcDatas) => {
-                    ohlcDatas[x] = data;
-                    return [...ohlcDatas];
-                });
+        // const min = new Date(data.timestamp).getMinutes();
+        // for (let x = ohlcDatas.length - 1; x > -1; x--) {
+        //     const element = ohlcDatas[x];
+        //     const ohlcDataLastMin = new Date(element.timestamp).getMinutes();
 
-                return;
-            }
-        }
+        //     if (ohlcDataLastMin === min) {
+        //         console.log("Found Minute at " + x);
+        //         pixiData.replaceLast(data, x);
+        //         setOhlcDatas((ohlcDatas) => {
+        //             ohlcDatas[x] = data;
+        //             return [...ohlcDatas];
+        //         });
+
+        //         return;
+        //     }
+        // }
         console.error("WHUT");
 
         // alert("whut");
@@ -245,8 +271,18 @@ export default function PixiChart({ Socket }) {
 
     useEffect(() => {
         if (!pixiData?.disableIndicator) return;
+        pixiData?.disableIndicator("orders", toggleOrders);
+    }, [toggleOrders, pixiData]);
+
+    useEffect(() => {
+        if (!pixiData?.disableIndicator) return;
         pixiData?.disableIndicator("zigZag", toggleZigZag);
     }, [toggleZigZag, pixiData]);
+
+    useEffect(() => {
+        if (!pixiData?.disableIndicator) return;
+        pixiData?.disableIndicator("pivotLines", togglePivotLines);
+    }, [togglePivotLines, pixiData]);
 
     useEffect(() => {
         if (!pixiData?.disableIndicator) return;
@@ -269,14 +305,14 @@ export default function PixiChart({ Socket }) {
         }
         newSymbolTimerRef.current = setTimeout(() => {
             setSymbolInputDisabled(true);
-
-            if (loading !== symbol) {
+            if (loading !== symbol.value) {
                 loadData({
                     finishIndex: new Date().getTime(),
                     isNew: true,
                 });
             } else {
-                alert(`Not loading ${symbol}`);
+                alert(`Not loading ${symbol.name}`);
+
                 setSymbolInputDisabled(false);
             }
         }, 1000);
@@ -287,9 +323,9 @@ export default function PixiChart({ Socket }) {
         console.log("START PIXI CHART");
         //request data
         if (ohlcDatas.length === 0) {
-            loadData({
-                finishIndex: new Date().getTime(), // - 1000 * 60 * 60 * 24,
-            });
+            // loadData({
+            //     finishIndex: new Date().getTime(), // - 1000 * 60 * 60 * 24,
+            // });
         }
 
         PixiAppRef.current = new PIXI.Application({
@@ -319,7 +355,7 @@ export default function PixiChart({ Socket }) {
             // height,
             // volHeight,
             tickSize: 0.25,
-            timeframe,
+            // timeframe,
             margin: {
                 top: 50,
                 right: 100,
@@ -362,19 +398,9 @@ export default function PixiChart({ Socket }) {
         console.log("Emitting getCompileHistoryTracker");
         Socket.emit("getCompileHistoryTracker");
 
-        Socket.emit("requestTimeBarUpdate", {
-            symbol: symbol.value,
-            exchange: exchange.value,
-            barType: barType.value,
-            barTypePeriod,
-        });
         if (!Object.keys(orders).length) {
             Socket.emit("getOrders", { ok: "?" });
         }
-
-        Socket.on("timeBarUpdate", (data) => {
-            setCurrentTimeBar(data);
-        });
 
         Socket.on("orderCancelled", (data) => {
             console.log("orderCancelled");
@@ -392,6 +418,13 @@ export default function PixiChart({ Socket }) {
             setOrders({ ...orders });
         });
 
+        Socket.on("PlantStatus", (d) => {
+            setPlantStatus((plantStatus) => ({
+                ...plantStatus,
+                [d.name]: true,
+            }));
+        });
+
         // Socket.on("orderTracker", (data) => {
         //     console.log("orderTracker");
 
@@ -407,14 +440,15 @@ export default function PixiChart({ Socket }) {
             pixiData.destroy();
             setPixiData(false);
             Socket.off("rapi-message");
+            Socket.off("PlantStatus");
             Socket.off("AccountPnLPositionUpdate");
             Socket.off("InstrumentPnLPositionUpdate");
             Socket.off("orderTracker");
-            Socket.off("timeBarUpdate");
             Socket.off("ordersShown");
             Socket.off("lastTwoDaysCompiled");
         };
-    }, [symbol, barType, barTypePeriod]);
+    }, []);
+    // }, [symbol, barType, barTypePeriod]);
 
     useEffect(() => {
         if (!pixiData || !pixiData.showCrosshair || !pixiData.hideCrosshair)
@@ -433,9 +467,20 @@ export default function PixiChart({ Socket }) {
 
     //Fn to handle new data
     useEffect(() => {
-        if (!ohlcDatas.length || !PixiAppRef.current || !pixiData) return;
+        // if (!ohlcDatas.length || !PixiAppRef.current || !pixiData) return;
+        if (!pixiData) return;
 
         pixiData.draw();
+
+        Socket.emit("requestTimeBarUpdate", {
+            symbol: symbol.value,
+            exchange: exchange.value,
+            barType: barType.value,
+            barTypePeriod,
+        });
+        Socket.on("timeBarUpdate", (data) => {
+            setCurrentTimeBar(data);
+        });
 
         /////////////////////////////////////
         Socket.on(
@@ -451,24 +496,26 @@ export default function PixiChart({ Socket }) {
         return () => {
             Socket.off("lastTrade");
             Socket.off("liquidity");
+            Socket.off("timeBarUpdate");
         };
     }, [ohlcDatas, PixiAppRef.current]);
 
-    useEffect(() => {
-        if (!ohlcDatas.length) return;
-        if (!currentMinute) return;
-        const data = currentMinute[symbol.slice(1)];
-        const lastOhlc = ohlcDatas.slice(-1)[0];
-        if (!data) return;
+    // useEffect(() => {
+    //     if (!ohlcDatas.length) return;
+    //     if (!currentMinute) return;
+    //     const data = currentMinute[symbol.slice(1)];
+    //     const lastOhlc = ohlcDatas.slice(-1)[0];
+    //     if (!data) return;
 
-        const dataTime = new Date(data.timestamp).getMinutes();
-        const lastDataTime = new Date(lastOhlc.timestamp).getMinutes();
-        const sameTime = dataTime === lastDataTime;
-        if (!sameTime) {
-            setOhlcDatas((ohlcDatas) => ohlcDatas.concat([data]));
-            pixiData.prependData(data);
-        }
-    }, [currentMinute]);
+    //     console.log(new Date(data.timestamp).toLocaleString());
+    //     const dataTime = new Date(data.timestamp).getMinutes();
+    //     const lastDataTime = new Date(lastOhlc.timestamp).getMinutes();
+    //     const sameTime = dataTime === lastDataTime;
+    //     if (!sameTime) {
+    //         setOhlcDatas((ohlcDatas) => ohlcDatas.concat([data]));
+    //         pixiData.prependData(data);
+    //     }
+    // }, [currentMinute]);
 
     // useEffect(() => {
     //     if (!ohlcDatas.length) return;
@@ -542,24 +589,62 @@ export default function PixiChart({ Socket }) {
         [orders]
     );
 
+    const PlantStatusesMemo = useMemo(
+        () => (
+            <PlantStatuses
+                plantStatus={plantStatus}
+                setPlantStatus={setPlantStatus}
+            />
+        ),
+
+        [plantStatus]
+    );
+
     return (
         <>
             <div className="row">
                 <div className="col-6">
-                    <IndicatorsBtns
-                        setDrawZigZag={setDrawZigZag}
-                        setDrawMarketProfile={setDrawMarketProfile}
-                        setDrawOrderBook={setDrawOrderBook}
-                        setBarTypeInput={setBarTypeInput}
-                        setBarTypePeriodInput={setBarTypePeriodInput}
-                        toggleZigZag={toggleZigZag}
-                        toggleMarketProfile={toggleMarketProfile}
-                        toggleOrderbook={toggleOrderbook}
-                        barTypeInput={barTypeInput}
-                        barTypePeriodInput={barTypePeriodInput}
-                    />
-                    <div className="row g-0">
-                        <div className="col-3 border">
+                    <div className="row d-flex border">
+                        <div className="col-auto">
+                            <IndicatorsBtns
+                                setDrawZigZag={setDrawZigZag}
+                                setDrawMarketProfile={setDrawMarketProfile}
+                                setDrawOrderBook={setDrawOrderBook}
+                                togglePivotLines={togglePivotLines}
+                                setDrawPivotLines={setDrawPivotLines}
+                                toggleZigZag={toggleZigZag}
+                                toggleMarketProfile={toggleMarketProfile}
+                                toggleOrderbook={toggleOrderbook}
+                                setDrawOrders={setDrawOrders}
+                                toggleOrders={toggleOrders}
+                            />
+                        </div>
+                        <div className="col-auto">{PlantStatusesMemo}</div>
+                    </div>
+                    <div className="row g-1">
+                        <div className="col-auto">
+                            <Select
+                                label="Bar Type"
+                                value={barTypeInput}
+                                setValue={setBarTypeInput}
+                                options={[
+                                    { value: 1, name: "Seconds" },
+                                    { value: 2, name: "Minute" },
+                                    { value: 3, name: "Daily" },
+                                    { value: 4, name: "Weekly" },
+                                ]}
+                            />
+                        </div>
+                        <div className="col-2">
+                            <Input
+                                // disabled={symbolInputDisabled}
+                                type="number"
+                                setValue={setBarTypePeriodInput}
+                                value={barTypePeriodInput}
+                                label="BarTypePeriod"
+                            />
+                        </div>
+                        <div className="col-auto ">
                             <Select
                                 // disabled={symbolInputDisabled}
                                 label="Symbol"
@@ -574,7 +659,7 @@ export default function PixiChart({ Socket }) {
                             />
                         </div>
 
-                        <div className="col-3 border">
+                        <div className="col-auto">
                             <Select
                                 // disabled={symbolInputDisabled}
                                 label="Exchange"
@@ -624,6 +709,7 @@ export default function PixiChart({ Socket }) {
                         instrumentPnLPositionUpdate={
                             instrumentPnLPositionUpdate
                         }
+                        accountPnLPositionUpdate={accountPnLPositionUpdate}
                         orderTrackerCount={orderTrackerCount}
                     />
                 </div>

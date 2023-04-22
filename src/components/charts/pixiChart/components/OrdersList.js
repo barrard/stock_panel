@@ -5,6 +5,7 @@ import API from "../../../../components/API";
 export default function OrdersList(props) {
     const { orders = {} } = props;
 
+    console.log(orders);
     return (
         <div>
             {Object.keys(orders)
@@ -36,9 +37,9 @@ function OrderItem(props) {
                 </div>
 
                 <TradeType order={order} className="col">
-                    {order.priceType} -
+                    {priceType(order.priceType)} -
                     <TransactionType order={order}>
-                        {order.transactionType}
+                        {orderTransactionType(order.transactionType)}
                     </TransactionType>
                     -{" "}
                     {order.price
@@ -82,13 +83,50 @@ function OrderItem(props) {
     );
 }
 
+function orderTransactionType(type) {
+    switch (type) {
+        case 1:
+            return "BUY";
+
+        case 2:
+            return "SELL";
+
+        case 3:
+            return "SHORT_SELL";
+
+        default:
+            break;
+    }
+}
+function priceType(type) {
+    switch (type) {
+        case 1:
+            return "Limit";
+
+        case 2:
+            return "MARKET";
+
+        case 3:
+            return "STOP_LIMIT";
+
+        case 4:
+            return "STOP_MARKET";
+
+        default:
+            break;
+    }
+}
+
 function transactionTypeColor(props) {
     const { order } = props;
     if (!order?.transactionType) return "white";
     switch (order.transactionType) {
         case "SELL":
+        case 2:
+        case 3:
             return "red";
         case "BUY":
+        case 1:
             return "GREEN";
 
         default:
@@ -127,12 +165,19 @@ function tradeTypeColor(props) {
     if (!order?.priceType) return "red";
     switch (order.priceType) {
         case "LIMIT":
+        case 1:
             return "blue";
         case "STOP_MARKET":
+        case 4:
             return "orange";
 
         case "MARKET":
+        case 2:
             return "green";
+
+        case "STOP_LIMIT":
+        case 3:
+            return "pink";
 
         default:
             return "black";

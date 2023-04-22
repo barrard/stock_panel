@@ -11,7 +11,7 @@ export default function Input(props) {
         onKeyDown = () => {},
     } = props;
     return (
-        <div className="row">
+        <div className="row border">
             <div className="col-12">
                 <label htmlFor={label}>{label}</label>
             </div>

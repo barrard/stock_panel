@@ -4,6 +4,7 @@ import MiniPixiChart from "../../mini-pixi-chart";
 export default function PnL_AndOrderFlowStats(props) {
     // console.log("PnL_AndOrderFlowStats");
     const {
+        accountPnLPositionUpdate = {},
         instrumentPnLPositionUpdate = {},
         orderTrackerCount = {},
         bidAskRatios = {},
@@ -13,6 +14,7 @@ export default function PnL_AndOrderFlowStats(props) {
     const [bidSizeToAskSizeRatio, setBidSizeToAskSizeRatio] = useState([0]);
     const [bidSizeToAskSizeRatioMA, setBidSizeToAskSizeRatioMA] = useState([0]);
 
+    // console.log(bidAskRatios);
     // useEffect(() => {
     //     Socket.on("liquidity", (data) => {
     //         console.log({ data });
@@ -37,6 +39,9 @@ export default function PnL_AndOrderFlowStats(props) {
     // }, [Socket]);
 
     const MiniChartMemo = useMemo(() => {
+        console.log("useMemo");
+        console.log("useMemo");
+        console.log("useMemo");
         return (
             <MiniPixiChart
                 Socket={Socket}
@@ -59,6 +64,11 @@ export default function PnL_AndOrderFlowStats(props) {
     return (
         <>
             <div className="row">
+                <div className="col-6"></div>
+                <div className="col-6">
+                    P&accountBalance = {accountPnLPositionUpdate.accountBalance}
+                </div>
+
                 <div className="col-6">
                     P&L = {instrumentPnLPositionUpdate.openPositionPnl}
                 </div>
@@ -101,7 +111,7 @@ export default function PnL_AndOrderFlowStats(props) {
                     nullOrderDelta: {orderTrackerCount.nullOrderDelta}
                 </div>
             </div>
-
+            {/* 
             {MiniChartMemo}
             <MiniPixiChart
                 Socket={Socket}
@@ -115,8 +125,8 @@ export default function PnL_AndOrderFlowStats(props) {
                     right: 5,
                     bottom: 5,
                 }}
-                // chartData={bidSizeToAskSizeRatio}
-            />
+                chartData={bidSizeToAskSizeRatio}
+            /> */}
 
             <div className="row">
                 <div className="col-6">
@@ -133,9 +143,17 @@ export default function PnL_AndOrderFlowStats(props) {
                     {" / "}
                     {bidAskRatios?.bidSizeToAskSizeRatioMA?.toFixed(2)}
                 </div>
+
                 <div className="col-6">
                     bidOrderToAskOrderRatio:{" "}
                     {bidAskRatios?.bidOrderToAskOrderRatio?.toFixed(2)}
+                </div>
+
+                <div className="col-6">
+                    nearPriceBidSizeToAskSizeRatio:{" "}
+                    {bidAskRatios?.nearPriceBidSizeToAskSizeRatio?.toFixed(2)}
+                    {" / "}
+                    {bidAskRatios?.nearPriceBidSizeToAskSizeRatioMA?.toFixed(2)}
                 </div>
                 <div className="col-6">
                     tick: {bidAskRatios?.tick?.toFixed(2)}

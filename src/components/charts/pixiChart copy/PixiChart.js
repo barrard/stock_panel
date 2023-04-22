@@ -192,6 +192,7 @@ export default function PixiChart({ Socket }) {
 
         Socket.on("InstrumentPnLPositionUpdate", (message) => {
             // console.log(message);
+            debugger;
             setInstrumentPnLPositionUpdate(message);
         });
         Socket.on("orderTracker", (orderTrackerCount) =>

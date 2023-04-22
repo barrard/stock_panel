@@ -9,7 +9,7 @@ export default function Select(props) {
     const { value, setValue, options, label, disabled = false } = props;
 
     return (
-        <div className="row g-0">
+        <div className="row g-">
             <div className="col-12">
                 <label htmlFor="symbol">{label}</label>
             </div>

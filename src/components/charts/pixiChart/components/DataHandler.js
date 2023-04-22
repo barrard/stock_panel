@@ -44,7 +44,7 @@ export default class PixiData {
         loadData,
         margin,
         tickSize,
-        timeframe,
+        // timeframe,
     }) {
         this.allTicks = [];
         this.crossHairYScale = false;
@@ -68,7 +68,7 @@ export default class PixiData {
         this.sliceEnd = ohlcDatas.length;
         this.sliceStart = 0;
         this.tickSize = tickSize;
-        this.timeframe = timeframe;
+        // this.timeframe = timeframe;
         this.touches = 0;
         this.viewPort = viewPort;
         this.volProfileScale = scaleLinear().range([width / 2, width]);
@@ -229,7 +229,6 @@ export default class PixiData {
             this.mainChartContainer.addChild(this.candleStickGfx);
             this.mainChartContainer.addChild(this.priceGfx);
             this.mainChartContainer.addChild(this.borderGfx);
-            this.mainChartContainer.addChild(this.drawOrders.container);
 
             this.mainChartContainer.addChild(this.volGfx);
 
@@ -250,10 +249,10 @@ export default class PixiData {
         this.loadingMoreData = false;
     }
 
-    setTimeframe(timeframe) {
-        this.timeframe = timeframe;
-        this.ohlcDatas.length = [];
-    }
+    // setTimeframe(timeframe) {
+    //     this.timeframe = timeframe;
+    //     this.ohlcDatas.length = [];
+    // }
 
     disableIndicator(indicator, flag) {
         try {
@@ -263,13 +262,14 @@ export default class PixiData {
                     //     return alert("!this.liquidityContainer");
                     // }
                     this.isDrawOrderbook = flag;
+                    if (!this.liquidityContainer?.transform) return;
                     if (!this.isDrawOrderbook) {
-                        console.log("remove");
+                        // console.log("remove");
                         this.mainChartContainer.removeChild(
                             this.liquidityContainer
                         );
                     } else {
-                        console.log("add");
+                        // console.log("add");
                         this.mainChartContainer.addChild(
                             this.liquidityContainer
                         );
@@ -279,14 +279,16 @@ export default class PixiData {
 
                 case "marketProfile":
                     // alert("marketProfile");
+
                     this.isDrawProfile = flag;
+                    if (!this.marketProfile?.container?.transform) return;
                     if (!this.isDrawProfile) {
-                        console.log("remove");
+                        // console.log("remove");
                         this.mainChartContainer.removeChild(
                             this.marketProfile.container
                         );
                     } else {
-                        console.log("add");
+                        // console.log("add");
                         this.mainChartContainer.addChild(
                             this.marketProfile.container
                         );
@@ -296,13 +298,15 @@ export default class PixiData {
 
                 case "supplyDemandZones":
                     this.isDrawSupplyDemandZones = flag;
+                    if (!this.supplyDemandZones?.container?.transform) return;
+
                     if (!this.isDrawSupplyDemandZones) {
-                        console.log("remove");
+                        // console.log("remove");
                         this.mainChartContainer.removeChild(
                             this.supplyDemandZones.container
                         );
                     } else {
-                        console.log("add");
+                        // console.log("add");
                         this.mainChartContainer.addChild(
                             this.supplyDemandZones.container
                         );
@@ -310,17 +314,57 @@ export default class PixiData {
                     }
                     break;
 
+                case "pivotLines":
+                    this.isDrawPivotPoints = flag;
+                    if (!this.drawPivotPoints?.container?.transform) return;
+
+                    if (!this.isDrawPivotPoints) {
+                        // console.log("remove");
+                        this.mainChartContainer.removeChild(
+                            this.drawPivotPoints.container
+                        );
+                    } else {
+                        // console.log("add");
+                        this.mainChartContainer.addChild(
+                            this.drawPivotPoints.container
+                        );
+                        // this.zigZag.init();
+                    }
+
+                    break;
+
                 case "zigZag":
                     this.isDrawZigZag = flag;
+                    if (!this.zigZag?.container?.transform) return;
+
                     if (!this.isDrawZigZag) {
-                        console.log("remove");
+                        // console.log("remove");
                         this.mainChartContainer.removeChild(
                             this.zigZag.container
                         );
                     } else {
-                        console.log("add");
+                        // console.log("add");
                         this.mainChartContainer.addChild(this.zigZag.container);
                         this.zigZag.init();
+                    }
+
+                    break;
+
+                case "orders":
+                    this.isDrawOrders = flag;
+                    if (!this.drawOrders?.container?.transform) return;
+
+                    if (!this.isDrawOrders) {
+                        // console.log("remove");
+                        this.mainChartContainer.removeChild(
+                            this.drawOrders.container
+                        );
+                    } else {
+                        // console.log("add");
+                        this.mainChartContainer.addChild(
+                            this.drawOrders.container
+                        );
+                        // this.drawOrders.init();
                     }
 
                     break;
@@ -637,7 +681,9 @@ export default class PixiData {
         // this.drawTickVolumeLine();
 
         this.drawAllCandles();
-        this.drawOrders.draw(this.orders);
+        if (this.isDrawOrders) {
+            this.drawOrders.draw(this.orders);
+        }
         if (this.isDrawProfile) {
             this.marketProfile.draw();
         }
@@ -647,7 +693,7 @@ export default class PixiData {
         if (this.isDrawSupplyDemandZones) {
             this.supplyDemandZones.draw();
         }
-        if (this.isDrawPivotPoints || true) {
+        if (this.isDrawPivotPoints) {
             this.drawPivotPoints?.draw();
         }
     }
@@ -818,10 +864,10 @@ export default class PixiData {
     }
 
     setLastTwoDaysCompiled({ lastTwoDaysCompiled, lastWeeklyData }) {
-        console.log("setLastTwoDaysCompiled");
+        // console.log("setLastTwoDaysCompiled");
         this.lastTwoDaysCompiled = lastTwoDaysCompiled;
         this.lastWeeklyData = lastWeeklyData;
-        this.drawPivotPoints = new PivotPoints(this);
+        // this.drawPivotPoints = new PivotPoints(this);
     }
 
     loadMoreData() {
@@ -974,15 +1020,32 @@ export default class PixiData {
                 "orange",
                 "red",
             ];
+
             const [min, max] = extent(this.liquidityData.map((l) => l.size));
             const [pmin, pmax] = extent(this.liquidityData.map((l) => l.p));
-            const total = max - min;
-            const totalDiff = total / colors.length;
 
+            //TEST
+
+            // const dist = this.liquidityData.reduce((acc, l) => {
+            //     if (!acc[l.size]) {
+            //         acc[l.size] = 0;
+            //     }
+            //     acc[l.size]++;
+            //     return acc;
+            // }, {});
+
+            // console.log(dist);
+            // debugger;
+
+            //TEST
+            const total = max - min;
+            const totalDiff = Math.ceil(total / colors.length - 1);
+
+            // console.log({ total, totalDiff });
             const colorFns = [];
             colors.forEach((color, i) => {
                 if (i === 0) return;
-                if (i === colors.length - 1) return;
+                // if (i === colors.length - 1) return;
                 const colorScale = scaleLinear().range([0, 1]);
                 colorScale.domain([totalDiff * (i - 1), totalDiff * i]);
                 colorFns.push((size) => {
@@ -996,28 +1059,30 @@ export default class PixiData {
                 this.priceScale(0) - this.priceScale(liquidityHeight);
             this.liquidityData.forEach((liquidity, i) => {
                 const x = 0;
-                const y = this.priceScale(liquidity.p) + liquidityHeight / 2;
+                const y = this.priceScale(liquidity.p) - height;
                 // if (y < 0) return;
                 // if (y > this.mainChartContainerHeight) return;
 
                 let liquidityGfx = this.liquidityContainer.children[i];
                 if (!liquidityGfx) {
                     liquidityGfx = new Graphics();
-                    // liquidityGfx.interactive = true;
+                    liquidityGfx.interactive = true;
                     // liquidityGfx.on("mouseenter", function (e) {
                     //     // console.log(this);
                     //     console.log(
                     //         ` price ${this.liquidityPrice} orders ${this.liquidityOrders} size ${this.liquiditySize} `
                     //     );
                     // });
+                    this.liquidityContainer.addChild(liquidityGfx);
                 } else {
                     liquidityGfx.clear();
                 }
                 let colorFnIndex = Math.floor(
                     (liquidity.size / totalDiff).toFixed(2)
                 );
-                if (colorFnIndex >= colorFns.length)
+                if (colorFnIndex >= colorFns.length) {
                     colorFnIndex = colorFns.length - 1;
+                }
                 const colorFn = colorFns[colorFnIndex];
 
                 let color = colorFn(liquidity.size); // "rgb(142, 92, 109)"
@@ -1036,16 +1101,10 @@ export default class PixiData {
                     y,
                     width - (this.margin.left + this.margin.right),
                     height
-                    // x + candleMargin - halfWidth,
-                    // start + halfStrokeWidth,
-                    // this.candleWidth - doubleMargin,
-                    // height - strokeWidth
                 );
                 rect.liquidityPrice = liquidity.p;
                 rect.liquiditySize = liquidity.size;
                 rect.liquidityOrders = liquidity.orders;
-
-                this.liquidityContainer.addChild(liquidityGfx);
             });
         } catch (err) {
             // console.log("CLEAR() Error?");
