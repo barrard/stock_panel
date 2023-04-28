@@ -43,6 +43,7 @@ export default function PixiChart({ Socket }) {
     const TouchGesture2 = useRef();
     const newSymbolTimerRef = useRef();
     // const pixiDataRef = useRef();
+    const loadDataRef = useRef();
 
     const [rerender, setRerender] = useState({});
 
@@ -57,7 +58,7 @@ export default function PixiChart({ Socket }) {
     const [touch1, setTouch1] = useState(false);
     const [touch2, setTouch2] = useState(false);
     const [touchMoveEvent, setTouchMoveEvent] = useState(false);
-    const [currentMinute, setCurrentMinute] = useState(false);
+    // const [currentMinute, setCurrentMinute] = useState(false);
 
     const [timeAndSales, setTimeAndSales] = useState([]);
     const [zoomGesture, setZoomGesture] = useState(false);
@@ -155,10 +156,15 @@ export default function PixiChart({ Socket }) {
                     // setOhlcDatas([]);
                     // setPixiData([]);
                     // setSymbolInputDisabled(false);
-
-                    return await loadData({ finishIndex: startIndex, isNew });
+                    loadDataRef.current++; //retry 10 times
+                    if (loadDataRef.current < 10)
+                        return await loadData({
+                            finishIndex: startIndex,
+                            isNew,
+                        });
                 }
-
+                loadDataRef.current = 0;
+                console.log(_ohlcDatas);
                 //pre  process the data
                 _ohlcDatas.forEach((d) => {
                     if (d.askVolume.high || d.bidVolume.high) {
@@ -166,7 +172,11 @@ export default function PixiChart({ Socket }) {
                     } else {
                         d.volume = d.askVolume.low + d.bidVolume.low;
                     }
-                    d.timestamp = d.datetime = d.datetime * 1000;
+                    if (barType === 3 || barType === 4) {
+                        d.datetime = new Date(d.datetime).getTime();
+                    } else {
+                        d.timestamp = d.datetime = d.datetime * 1000;
+                    }
                     d.dateTime = new Date(d.timestamp).toLocaleString();
                 });
 
@@ -217,6 +227,7 @@ export default function PixiChart({ Socket }) {
         if (!data || !pixiData) return;
         data.timestamp = data.datetime = data.datetime * 1000;
         console.log(new Date(data.timestamp).toLocaleString());
+        console.log(data);
         if (data.askVolume.high || data.bidVolume.high) {
             alert("high");
         } else {
@@ -224,7 +235,8 @@ export default function PixiChart({ Socket }) {
         }
         if (
             parseInt(data.barType) !== parseInt(barType.value) ||
-            parseInt(data.barTypePeriod) !== parseInt(barTypePeriod)
+            parseInt(data.barTypePeriod) !== parseInt(barTypePeriod) ||
+            data.symbol !== symbol.value
         ) {
             return;
         }
@@ -259,7 +271,7 @@ export default function PixiChart({ Socket }) {
         //         return;
         //     }
         // }
-        console.error("WHUT");
+        // console.error("WHUT");
 
         // alert("whut");
     }, [currentTimeBar]);
@@ -316,6 +328,17 @@ export default function PixiChart({ Socket }) {
                 setSymbolInputDisabled(false);
             }
         }, 1000);
+
+        Socket.emit("requestTimeBarUpdate", {
+            symbol: symbol.value,
+            exchange: exchange.value,
+            barType: barType.value,
+            barTypePeriod,
+        });
+
+        return () => {
+            // Socket.off("timeBarUpdate");
+        };
     }, [symbol, barType, barTypePeriod]);
 
     //on load get data
@@ -334,6 +357,8 @@ export default function PixiChart({ Socket }) {
             backgroundColor: 0x333333,
             antialias: true,
         });
+        PixiAppRef.current.view.style["image-rendering"] = "pixelated";
+
         PixiAppRef.current.stage.interactive = true;
 
         // On first render add app to DOM
@@ -425,6 +450,10 @@ export default function PixiChart({ Socket }) {
             }));
         });
 
+        Socket.on("timeBarUpdate", (data) => {
+            setCurrentTimeBar(data);
+        });
+
         // Socket.on("orderTracker", (data) => {
         //     console.log("orderTracker");
 
@@ -446,6 +475,7 @@ export default function PixiChart({ Socket }) {
             Socket.off("orderTracker");
             Socket.off("ordersShown");
             Socket.off("lastTwoDaysCompiled");
+            Socket.off("timeBarUpdate");
         };
     }, []);
     // }, [symbol, barType, barTypePeriod]);
@@ -472,16 +502,6 @@ export default function PixiChart({ Socket }) {
 
         pixiData.draw();
 
-        Socket.emit("requestTimeBarUpdate", {
-            symbol: symbol.value,
-            exchange: exchange.value,
-            barType: barType.value,
-            barTypePeriod,
-        });
-        Socket.on("timeBarUpdate", (data) => {
-            setCurrentTimeBar(data);
-        });
-
         /////////////////////////////////////
         Socket.on(
             "lastTrade",
@@ -496,7 +516,6 @@ export default function PixiChart({ Socket }) {
         return () => {
             Socket.off("lastTrade");
             Socket.off("liquidity");
-            Socket.off("timeBarUpdate");
         };
     }, [ohlcDatas, PixiAppRef.current]);
 

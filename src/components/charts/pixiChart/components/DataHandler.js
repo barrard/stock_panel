@@ -1004,7 +1004,7 @@ export default class PixiData {
 
     drawLiquidity() {
         try {
-            // console.log("draw liquid");
+            console.log("draw liquid");
             // console.log(this.liquidityData);
             if (!this.isDrawOrderbook) return;
             const liquidityHeight = 1;
@@ -1020,12 +1020,9 @@ export default class PixiData {
                 "orange",
                 "red",
             ];
-
             const [min, max] = extent(this.liquidityData.map((l) => l.size));
             const [pmin, pmax] = extent(this.liquidityData.map((l) => l.p));
-
             //TEST
-
             // const dist = this.liquidityData.reduce((acc, l) => {
             //     if (!acc[l.size]) {
             //         acc[l.size] = 0;
@@ -1033,14 +1030,11 @@ export default class PixiData {
             //     acc[l.size]++;
             //     return acc;
             // }, {});
-
             // console.log(dist);
             // debugger;
-
             //TEST
             const total = max - min;
             const totalDiff = Math.ceil(total / colors.length - 1);
-
             // console.log({ total, totalDiff });
             const colorFns = [];
             colors.forEach((color, i) => {
@@ -1062,7 +1056,6 @@ export default class PixiData {
                 const y = this.priceScale(liquidity.p) - height;
                 // if (y < 0) return;
                 // if (y > this.mainChartContainerHeight) return;
-
                 let liquidityGfx = this.liquidityContainer.children[i];
                 if (!liquidityGfx) {
                     liquidityGfx = new Graphics();
@@ -1084,18 +1077,14 @@ export default class PixiData {
                     colorFnIndex = colorFns.length - 1;
                 }
                 const colorFn = colorFns[colorFnIndex];
-
                 let color = colorFn(liquidity.size); // "rgb(142, 92, 109)"
                 color = color.replace("rgb(", "");
                 color = color.replace(")", "");
                 const [r, g, b] = color.split(",");
-
                 color = utils.rgb2hex([r / 255, g / 255, b / 255]);
-
                 liquidityGfx.beginFill(color);
                 liquidityGfx.alpha = 0.5;
                 // liquidityGfx.lineStyle(2, 0xdddddd, 0.1);
-
                 const rect = liquidityGfx.drawRect(
                     x,
                     y,
@@ -1111,6 +1100,31 @@ export default class PixiData {
             console.log(err);
             return err;
         }
+        // const testLiqGfx = new Graphics();
+        // this.liquidityContainer.addChild(testLiqGfx);
+        // testLiqGfx.beginFill("black");
+        // testLiqGfx.alpha = 0.5;
+        // // testLiqGfx.lineStyle(2, 0xdddddd, 0.1);
+
+        // testLiqGfx.drawRect(20, 20, 100, 10);
+        // testLiqGfx.beginFill("blue");
+
+        // testLiqGfx.drawRect(20, 30, 100, 10);
+        // testLiqGfx.beginFill("red");
+        // testLiqGfx.drawRect(20, 40, 100, 10);
+
+        // testLiqGfx.beginFill("green");
+
+        // testLiqGfx.drawRect(20, 50, 100, 10);
+        // testLiqGfx.beginFill("yellow");
+
+        // testLiqGfx.drawRect(20, 60, 100, 10);
+        // testLiqGfx.beginFill("white");
+
+        // testLiqGfx.drawRect(20, 70, 100, 10);
+        // testLiqGfx.beginFill("orange");
+
+        // testLiqGfx.drawRect(20, 80, 100, 10);
     }
 
     drawAllCandles() {

@@ -149,7 +149,7 @@ export function parseBarTypeTimeFrame({ barType, barTypePeriod }) {
         timeBerBar = 1000 * 60;
     } else if (barType === 3) {
         //DAILY
-        timeBerBar = 1000 * 60 * 60 * 24;
+        timeBerBar = 20220901;
     } else if (barType === 4) {
         //WEEKLY
         timeBerBar = 1000 * 60 * 60 * 24 * 7;

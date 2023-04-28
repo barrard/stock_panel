@@ -5,7 +5,7 @@ import API from "../../../../components/API";
 export default function OrdersList(props) {
     const { orders = {} } = props;
 
-    console.log(orders);
+    // console.log(orders);
     return (
         <div>
             {Object.keys(orders)
