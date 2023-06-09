@@ -137,7 +137,7 @@ export default class PixiAxis {
             // } else {
             const _val = this.scale(value);
             priceTxtLabel[this.type] = _val;
-            this.addTickLine(_val);
+            // this.addTickLine(_val);
 
             // }
 

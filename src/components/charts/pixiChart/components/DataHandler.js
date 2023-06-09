@@ -1,24 +1,7 @@
 import { axisBottom, axisRight, axisLeft, axisTop } from "d3-axis";
 // import { scaleLinear, scaleTime, scaleBand } from "d3-scale";
-import {
-    extent,
-    scaleLinear,
-    select,
-    zoom,
-    zoomTransform,
-    mouse,
-    interpolateNumber,
-    interpolateLab,
-} from "d3";
-import {
-    Graphics,
-    Container,
-    Rectangle,
-    Text,
-    TextMetrics,
-    TextStyle,
-    utils,
-} from "pixi.js";
+import { extent, scaleLinear, select, zoom, zoomTransform, mouse, interpolateNumber, interpolateLab } from "d3";
+import { Graphics, Container, Rectangle, Text, TextMetrics, TextStyle, utils } from "pixi.js";
 import MarketProfile from "./MarketProfile";
 import SupplyDemandZones from "./SupplyDemandZones";
 import DrawOrders from "./DrawOrders";
@@ -29,10 +12,7 @@ import PixiAxis from "./PixiAxis";
 import { timeScaleValues, priceScaleValues } from "./utils.js";
 import { drawVolume } from "./drawFns.js";
 import Indicator from "./Indicator";
-import {
-    eastCoastTime,
-    isRTH,
-} from "../../../../indicators/indicatorHelpers/IsMarketOpen";
+import { eastCoastTime, isRTH } from "../../../../indicators/indicatorHelpers/IsMarketOpen";
 export default class PixiData {
     constructor({
         ohlcDatas = [],
@@ -60,10 +40,7 @@ export default class PixiData {
         this.mouseX = 0;
         this.ohlcDatas = [...ohlcDatas];
         this.pixiApp = pixiApp;
-        this.priceScale = scaleLinear().range([
-            this.mainChartContainerHeight - (margin.top + margin.bottom),
-            0,
-        ]);
+        this.priceScale = scaleLinear().range([this.mainChartContainerHeight - (margin.top + margin.bottom), 0]);
         this.slicedData = [];
         this.sliceEnd = ohlcDatas.length;
         this.sliceStart = 0;
@@ -73,10 +50,7 @@ export default class PixiData {
         this.viewPort = viewPort;
         this.volProfileScale = scaleLinear().range([width / 2, width]);
         this.width = width;
-        this.xScale = scaleLinear().range([
-            0,
-            width - (margin.left + margin.right),
-        ]);
+        this.xScale = scaleLinear().range([0, width - (margin.left + margin.right)]);
         this.yLabel = false;
         //Containers
         this.mainChartContainer = new Container();
@@ -206,10 +180,7 @@ export default class PixiData {
                 });
             });
 
-            this.volProfileScale.domain([
-                extent(Object.values(volProfileData))[1],
-                0,
-            ]);
+            this.volProfileScale.domain([extent(Object.values(volProfileData))[1], 0]);
 
             this.sliceEnd = ohlcDatas.length;
 
@@ -265,14 +236,10 @@ export default class PixiData {
                     if (!this.liquidityContainer?.transform) return;
                     if (!this.isDrawOrderbook) {
                         // console.log("remove");
-                        this.mainChartContainer.removeChild(
-                            this.liquidityContainer
-                        );
+                        this.mainChartContainer.removeChild(this.liquidityContainer);
                     } else {
                         // console.log("add");
-                        this.mainChartContainer.addChild(
-                            this.liquidityContainer
-                        );
+                        this.mainChartContainer.addChild(this.liquidityContainer);
                         // this.marketProfile.init();
                     }
                     break;
@@ -284,14 +251,10 @@ export default class PixiData {
                     if (!this.marketProfile?.container?.transform) return;
                     if (!this.isDrawProfile) {
                         // console.log("remove");
-                        this.mainChartContainer.removeChild(
-                            this.marketProfile.container
-                        );
+                        this.mainChartContainer.removeChild(this.marketProfile.container);
                     } else {
                         // console.log("add");
-                        this.mainChartContainer.addChild(
-                            this.marketProfile.container
-                        );
+                        this.mainChartContainer.addChild(this.marketProfile.container);
                         this.marketProfile.init();
                     }
                     break;
@@ -302,14 +265,10 @@ export default class PixiData {
 
                     if (!this.isDrawSupplyDemandZones) {
                         // console.log("remove");
-                        this.mainChartContainer.removeChild(
-                            this.supplyDemandZones.container
-                        );
+                        this.mainChartContainer.removeChild(this.supplyDemandZones.container);
                     } else {
                         // console.log("add");
-                        this.mainChartContainer.addChild(
-                            this.supplyDemandZones.container
-                        );
+                        this.mainChartContainer.addChild(this.supplyDemandZones.container);
                         this.supplyDemandZones.init();
                     }
                     break;
@@ -320,14 +279,10 @@ export default class PixiData {
 
                     if (!this.isDrawPivotPoints) {
                         // console.log("remove");
-                        this.mainChartContainer.removeChild(
-                            this.drawPivotPoints.container
-                        );
+                        this.mainChartContainer.removeChild(this.drawPivotPoints.container);
                     } else {
                         // console.log("add");
-                        this.mainChartContainer.addChild(
-                            this.drawPivotPoints.container
-                        );
+                        this.mainChartContainer.addChild(this.drawPivotPoints.container);
                         // this.zigZag.init();
                     }
 
@@ -339,9 +294,7 @@ export default class PixiData {
 
                     if (!this.isDrawZigZag) {
                         // console.log("remove");
-                        this.mainChartContainer.removeChild(
-                            this.zigZag.container
-                        );
+                        this.mainChartContainer.removeChild(this.zigZag.container);
                     } else {
                         // console.log("add");
                         this.mainChartContainer.addChild(this.zigZag.container);
@@ -356,14 +309,10 @@ export default class PixiData {
 
                     if (!this.isDrawOrders) {
                         // console.log("remove");
-                        this.mainChartContainer.removeChild(
-                            this.drawOrders.container
-                        );
+                        this.mainChartContainer.removeChild(this.drawOrders.container);
                     } else {
                         // console.log("add");
-                        this.mainChartContainer.addChild(
-                            this.drawOrders.container
-                        );
+                        this.mainChartContainer.addChild(this.drawOrders.container);
                         // this.drawOrders.init();
                     }
 
@@ -378,13 +327,7 @@ export default class PixiData {
         }
     }
 
-    setLiquidityData({
-        highLiquidity,
-        bidSizeOrderRatio,
-        askSizeOrderRatio,
-        bidSizeToAskSizeRatio,
-        bidOrderToAskOrderRatio,
-    }) {
+    setLiquidityData({ highLiquidity, bidSizeOrderRatio, askSizeOrderRatio, bidSizeToAskSizeRatio, bidOrderToAskOrderRatio }) {
         // console.log("set liquid data");
         this.liquidityData = highLiquidity;
 
@@ -411,12 +354,7 @@ export default class PixiData {
 
         this.mainChartContainer.interactive = true;
         // this.mainChartContainer.interactiveMousewheel = true
-        this.hitArea = new Rectangle(
-            0,
-            0,
-            this.width - (left + right),
-            this.height - (top + bottom)
-        );
+        this.hitArea = new Rectangle(0, 0, this.width - (left + right), this.height - (top + bottom));
         this.mainChartContainer.hitArea = this.hitArea;
     }
 
@@ -441,13 +379,9 @@ export default class PixiData {
             const indicator = this.lowerIndicatorsData[lowerIndicatorName];
             if (!indicator.initialized) {
                 indicator.init();
-                let { container, name, scale, gfx, initialized, height } =
-                    indicator;
+                let { container, name, scale, gfx, initialized, height } = indicator;
 
-                const yPos =
-                    this.mainChartContainerHeight -
-                    this.margin.bottom +
-                    this.getIndicatorTopPos(index);
+                const yPos = this.mainChartContainerHeight - this.margin.bottom + this.getIndicatorTopPos(index);
                 //place the container at some place
                 container.position.x = this.margin.left;
                 container.position.y = yPos;
@@ -466,8 +400,7 @@ export default class PixiData {
                 this.pixiApp.stage.addChild(container);
 
                 //adjust xAxis position
-                this.xAxis.container.position.y =
-                    this.height - this.margin.bottom;
+                this.xAxis.container.position.y = this.height - this.margin.bottom;
             } else {
                 //setup the scales
                 indicator.setupScales();
@@ -499,10 +432,7 @@ export default class PixiData {
         let [_, highest] = extent(this.highs);
         let priceScalePadding = 0.001;
         lowest = roundTick(lowest - priceScalePadding * lowest, this.tickSize);
-        highest = roundTick(
-            highest + priceScalePadding * highest,
-            this.tickSize
-        );
+        highest = roundTick(highest + priceScalePadding * highest, this.tickSize);
         this.priceScale.domain([lowest, highest]);
 
         //find the price ticks
@@ -559,19 +489,9 @@ export default class PixiData {
         }
         this.mouseX = this.mouseX - left;
         this.mouseY = this.mouseY - top;
-        if (
-            (this.crosshair &&
-                (this.mouseX < 0 ||
-                    this.mouseX > this.width - (right + left))) ||
-            this.mouseY < 0 ||
-            this.mouseY > this.height - (top + bottom)
-        ) {
+        if ((this.crosshair && (this.mouseX < 0 || this.mouseX > this.width - (right + left))) || this.mouseY < 0 || this.mouseY > this.height - (top + bottom)) {
             this.hideCrosshair();
-        } else if (
-            !this.crosshair &&
-            this.mouseX > 0 &&
-            this.mouseX < this.width - (right + left)
-        ) {
+        } else if (!this.crosshair && this.mouseX > 0 && this.mouseX < this.width - (right + left)) {
             this.showCrosshair();
         }
         this.crossHairYGfx.position.x = this.mouseX;
@@ -598,11 +518,7 @@ export default class PixiData {
                 return;
             } else {
                 this.deltaDrag = this.mouseX - this.prevMouseX;
-                if (
-                    Math.abs(this.deltaDrag) < 5 ||
-                    Math.abs(this.deltaDrag) < this.candleWidth
-                )
-                    return;
+                if (Math.abs(this.deltaDrag) < 5 || Math.abs(this.deltaDrag) < this.candleWidth) return;
                 if (this.deltaDrag > 0) {
                     this.dragRight();
                 } else if (this.deltaDrag < 0) {
@@ -648,26 +564,21 @@ export default class PixiData {
     }
 
     zoomIn(delta) {
-        const { takeFromLeft, takeFromRight, amountToZoom } =
-            this.calcZoom(delta);
+        const { takeFromLeft, takeFromRight, amountToZoom } = this.calcZoom(delta);
 
-        this.sliceStart =
-            this.sliceStart + Math.ceil(takeFromLeft * amountToZoom);
+        this.sliceStart = this.sliceStart + Math.ceil(takeFromLeft * amountToZoom);
         this.sliceEnd = this.sliceEnd - Math.ceil(takeFromRight * amountToZoom);
 
         this.draw();
     }
     zoomOut(delta) {
-        const { takeFromLeft, takeFromRight, amountToZoom } =
-            this.calcZoom(delta);
+        const { takeFromLeft, takeFromRight, amountToZoom } = this.calcZoom(delta);
 
-        this.sliceStart =
-            this.sliceStart - Math.ceil(takeFromLeft * amountToZoom);
+        this.sliceStart = this.sliceStart - Math.ceil(takeFromLeft * amountToZoom);
         this.sliceEnd = this.sliceEnd + Math.ceil(takeFromRight * amountToZoom);
 
         if (this.sliceStart < 0) this.sliceStart = 0;
-        if (this.sliceEnd > this.ohlcDatas.length)
-            this.sliceEnd = this.ohlcDatas.length;
+        if (this.sliceEnd > this.ohlcDatas.length) this.sliceEnd = this.ohlcDatas.length;
         this.draw();
     }
 
@@ -705,13 +616,7 @@ export default class PixiData {
     updateCurrentPriceLabel(price) {
         if (!price) return;
 
-        if (
-            !this.currentPriceLabelAppendGfx ||
-            !this.currentPriceLabelAppendGfx?.transform ||
-            !this.currentPriceLabelAppendGfx?.position ||
-            !this.currentPriceTxtLabel
-        )
-            return;
+        if (!this.currentPriceLabelAppendGfx || !this.currentPriceLabelAppendGfx?.transform || !this.currentPriceLabelAppendGfx?.position || !this.currentPriceTxtLabel) return;
         if (!this.lastPrice) {
             this.lastPrice = price;
         }
@@ -719,12 +624,7 @@ export default class PixiData {
         const y = yScale(price);
         const currentPriceTxt = formatter.format(price, this.tickSize);
 
-        const color =
-            price > this.lastPrice
-                ? 0x00ff00
-                : price < this.lastPrice
-                ? 0xff0000
-                : 0xaaaaaa;
+        const color = price > this.lastPrice ? 0x00ff00 : price < this.lastPrice ? 0xff0000 : 0xaaaaaa;
 
         this.currentPriceTxtLabel.y = y;
         this.currentPriceLabelAppendGfx.position.y = y;
@@ -743,14 +643,10 @@ export default class PixiData {
         let yLabel, yScale;
         if (this.crossHairYScale) {
             yScale = this.crossHairYScale;
-            yLabel = Math.floor(
-                yScale.invert(this.mouseY - this.yMouseOffset + this.margin.top)
-            ).toString();
+            yLabel = Math.floor(yScale.invert(this.mouseY - this.yMouseOffset + this.margin.top)).toString();
         } else {
             yScale = this.priceScale;
-            yLabel = formatter.format(
-                roundTick(yScale.invert(this.mouseY), this.tickSize)
-            );
+            yLabel = formatter.format(roundTick(yScale.invert(this.mouseY), this.tickSize));
         }
 
         if (!yLabel) return;
@@ -799,10 +695,7 @@ export default class PixiData {
     getDate(x) {
         const dateIndex = Math.floor(this.xScale.invert(x));
         let date = this.slicedData[dateIndex]
-            ? new Date(
-                  this.slicedData[dateIndex].timestamp ||
-                      this.slicedData[dateIndex].datetime
-              ).toLocaleString("en-US", {
+            ? new Date(this.slicedData[dateIndex].timestamp || this.slicedData[dateIndex].datetime).toLocaleString("en-US", {
                   month: "2-digit",
                   day: "2-digit",
                   hour: "2-digit",
@@ -814,10 +707,7 @@ export default class PixiData {
     getTime(dateIndex) {
         // const dateIndex = Math.floor(this.xScale.invert(x));
         let date = this.slicedData[dateIndex]
-            ? new Date(
-                  this.slicedData[dateIndex].timestamp ||
-                      this.slicedData[dateIndex].datetime
-              ).toLocaleString("en-US", {
+            ? new Date(this.slicedData[dateIndex].timestamp || this.slicedData[dateIndex].datetime).toLocaleString("en-US", {
                   hour: "2-digit",
                   minute: "2-digit",
               })
@@ -835,10 +725,7 @@ export default class PixiData {
         } else {
             this.dateLabel = date;
             this.dateTxtLabel.text = this.dateLabel;
-            let { width, height } = TextMetrics.measureText(
-                this.dateLabel,
-                this.textStyle
-            );
+            let { width, height } = TextMetrics.measureText(this.dateLabel, this.textStyle);
             //X Date Label
             this.dateLabelAppendGfx.clear();
             this.dateLabelAppendGfx.beginFill(0x00ff00); // green
@@ -846,8 +733,7 @@ export default class PixiData {
             this.dateLabelAppendGfx.lineStyle(1, 0x333333, 1);
 
             const padding = 5;
-            const y =
-                this.height - (this.margin.bottom + this.margin.top - padding);
+            const y = this.height - (this.margin.bottom + this.margin.top - padding);
             this.dateTxtLabel.position.y = y + padding;
             const coords = bottomAxisMarkerTagLine({
                 x: 0,
@@ -863,10 +749,11 @@ export default class PixiData {
         }
     }
 
-    setLastTwoDaysCompiled({ lastTwoDaysCompiled, lastWeeklyData }) {
+    setLastTwoDaysCompiled({ lastTwoDaysCompiled, lastWeeklyData, combinedKeyLevels }) {
         // console.log("setLastTwoDaysCompiled");
         this.lastTwoDaysCompiled = lastTwoDaysCompiled;
         this.lastWeeklyData = lastWeeklyData;
+        this.combinedKeyLevels = combinedKeyLevels;
         // this.drawPivotPoints = new PivotPoints(this);
     }
 
@@ -874,14 +761,12 @@ export default class PixiData {
         if (!this.loadingMoreData) {
             this.loadingMoreData = true;
             console.log("load more data");
-            const finish = this.ohlcDatas.length
-                ? this.ohlcDatas[0].timestamp
-                : new Date().getTime();
+            const finish = this.ohlcDatas.length ? this.ohlcDatas[0].timestamp : new Date().getTime();
             console.log({ finish: new Date(finish).toLocaleString() });
             this.loadData({
                 // barType: 2,
                 // barTypePeriod: 1,
-                startIndex: new Date(finish - 1000 * 60 * 60 * 24).getTime(),
+                // startIndex: new Date(finish - 1000 * 60 * 60 * 24).getTime(),
                 finishIndex: new Date(finish).getTime(),
                 // symbol,
                 // exchange :,
@@ -900,8 +785,7 @@ export default class PixiData {
 
         if (zoomType === "scroll") {
             const zoomPerc = 0.1;
-            amountToZoom =
-                (this.ohlcDatas.length - totalZoomedAmount) * zoomPerc;
+            amountToZoom = (this.ohlcDatas.length - totalZoomedAmount) * zoomPerc;
             //determine how "centered" we are
             centered = this.mouseX / this.width;
 
@@ -1012,14 +896,7 @@ export default class PixiData {
             this.liquidityContainer.children.forEach((gfx) => {
                 gfx.clear();
             });
-            const colors = [
-                "black",
-                "darkblue",
-                "lightgreen",
-                "yellow",
-                "orange",
-                "red",
-            ];
+            const colors = ["black", "darkblue", "lightgreen", "yellow", "orange", "red"];
             const [min, max] = extent(this.liquidityData.map((l) => l.size));
             const [pmin, pmax] = extent(this.liquidityData.map((l) => l.p));
             //TEST
@@ -1043,14 +920,10 @@ export default class PixiData {
                 const colorScale = scaleLinear().range([0, 1]);
                 colorScale.domain([totalDiff * (i - 1), totalDiff * i]);
                 colorFns.push((size) => {
-                    return interpolateLab(
-                        colors[i - 1],
-                        colors[i]
-                    )(colorScale(size));
+                    return interpolateLab(colors[i - 1], colors[i])(colorScale(size));
                 });
             });
-            const height =
-                this.priceScale(0) - this.priceScale(liquidityHeight);
+            const height = this.priceScale(0) - this.priceScale(liquidityHeight);
             this.liquidityData.forEach((liquidity, i) => {
                 const x = 0;
                 const y = this.priceScale(liquidity.p) - height;
@@ -1070,9 +943,7 @@ export default class PixiData {
                 } else {
                     liquidityGfx.clear();
                 }
-                let colorFnIndex = Math.floor(
-                    (liquidity.size / totalDiff).toFixed(2)
-                );
+                let colorFnIndex = Math.floor((liquidity.size / totalDiff).toFixed(2));
                 if (colorFnIndex >= colorFns.length) {
                     colorFnIndex = colorFns.length - 1;
                 }
@@ -1085,12 +956,7 @@ export default class PixiData {
                 liquidityGfx.beginFill(color);
                 liquidityGfx.alpha = 0.5;
                 // liquidityGfx.lineStyle(2, 0xdddddd, 0.1);
-                const rect = liquidityGfx.drawRect(
-                    x,
-                    y,
-                    width - (this.margin.left + this.margin.right),
-                    height
-                );
+                const rect = liquidityGfx.drawRect(x, y, width - (this.margin.left + this.margin.right), height);
                 rect.liquidityPrice = liquidity.p;
                 rect.liquiditySize = liquidity.size;
                 rect.liquidityOrders = liquidity.orders;
@@ -1143,19 +1009,12 @@ export default class PixiData {
             return err;
         }
 
-        this.candleWidth =
-            (this.width - (this.margin.left + this.margin.right)) /
-            this.slicedData.length;
+        this.candleWidth = (this.width - (this.margin.left + this.margin.right)) / this.slicedData.length;
         const halfWidth = this.candleWidth / 2;
-        this.candleStickWickGfx.lineStyle(
-            this.candleWidth * 0.1,
-            0xffffff,
-            0.9
-        );
+        this.candleStickWickGfx.lineStyle(this.candleWidth * 0.1, 0xffffff, 0.9);
         const candleMargin = this.candleWidth * 0.1;
         const doubleMargin = candleMargin * 2;
-        const strokeWidth =
-            this.candleWidth * 0.1 > 2 ? 2 : this.candleWidth * 0.1;
+        const strokeWidth = this.candleWidth * 0.1 > 2 ? 2 : this.candleWidth * 0.1;
         const halfStrokeWidth = strokeWidth / 2;
         this.candleStickGfx.lineStyle(strokeWidth, 0x111111, 0.9);
 
@@ -1175,12 +1034,7 @@ export default class PixiData {
             const height = Math.abs(open - close);
             const start = isUp ? close : open;
             // const end = isUp ? open : close;
-            this.candleStickGfx.drawRect(
-                x + candleMargin - halfWidth,
-                start + halfStrokeWidth,
-                this.candleWidth - doubleMargin,
-                height - strokeWidth
-            );
+            this.candleStickGfx.drawRect(x + candleMargin - halfWidth, start + halfStrokeWidth, this.candleWidth - doubleMargin, height - strokeWidth);
 
             this.candleStickWickGfx.moveTo(x, high);
             this.candleStickWickGfx.lineTo(x, low);
@@ -1239,12 +1093,7 @@ export default class PixiData {
             const x = this.volProfileScale(vol);
             const y = this.priceScale(price);
             const barWidth = this.width - x;
-            this.volProfileGfx.drawRect(
-                x,
-                y - tickHeight / 2,
-                barWidth,
-                tickHeight
-            );
+            this.volProfileGfx.drawRect(x, y - tickHeight / 2, barWidth, tickHeight);
             this.volProfileGfx.endFill();
         });
     }

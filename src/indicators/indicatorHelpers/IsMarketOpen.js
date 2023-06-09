@@ -1,3 +1,5 @@
+const moment = require("moment-timezone");
+
 function checkForMaintenance(date) {
     let { day, hour, minute } = eastCoastTime(date);
     //first just check if the market is open in general
@@ -64,6 +66,26 @@ function stocksAreTrading(date) {
         // log('Its the weekend! Markets closed')
         return false;
     }
+}
+
+function getMarketClose(_date) {
+    const estTimezone = "America/New_York";
+    const currentLocalTime = moment(_date);
+    let marketClose = moment.tz(currentLocalTime, estTimezone);
+    marketClose = moment(marketClose)
+        .hour(16)
+        .minute(0)
+        .second(0)
+        .millisecond(0);
+    return marketClose;
+}
+
+function getMarketOpen(_date) {
+    const estTimezone = "America/New_York";
+    const currentLocalTime = moment(_date);
+    let marketOpen = moment.tz(currentLocalTime, estTimezone);
+    marketOpen = moment(marketOpen).hour(9).minute(30).second(0).millisecond(0);
+    return marketOpen;
 }
 
 function eastCoastTime(date) {
@@ -286,4 +308,6 @@ export {
     isAboutToClose,
     checkOpenTime,
     checkNewDay,
+    getMarketOpen,
+    getMarketClose,
 };

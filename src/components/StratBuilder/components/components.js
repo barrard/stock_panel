@@ -58,9 +58,11 @@ export const IconButton = ({
     color,
     bgColor,
     rIcon,
+    onContextMenu = () => {},
 }) => {
     return (
         <HoverIcon
+            onContextMenu={onContextMenu}
             title={title}
             onClick={onClick}
             index={index}

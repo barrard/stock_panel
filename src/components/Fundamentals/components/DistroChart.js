@@ -1,13 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-} from "chart.js";
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from "chart.js";
 import { Bar } from "react-chartjs-2";
 import annotationPlugin from "chartjs-plugin-annotation";
 import zoomPlugin from "chartjs-plugin-zoom";
@@ -16,28 +8,10 @@ import { filtersNameMap, findDistribution } from "../fundamentalsUtils";
 
 import { Range } from "react-range";
 
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    annotationPlugin,
-    zoomPlugin
-);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, annotationPlugin, zoomPlugin);
 export default function DistroChart(props) {
     const chartRef = useRef(null);
-    const {
-        fundamentals,
-        name,
-        appliedFilters,
-        setAppliedFilters,
-        deviations,
-        filteredStocks,
-        setFilteredStocks,
-        data = {},
-    } = props;
+    const { fundamentals, name, appliedFilters, setAppliedFilters, deviations, filteredStocks, setFilteredStocks, data = {} } = props;
     const [min, setMin] = useState(0);
     const [max, setMax] = useState(50);
     // const [data, setData] = useState({});
@@ -197,13 +171,7 @@ export default function DistroChart(props) {
             <Bar ref={chartRef} options={options} data={distroData} />
             {/* // )} */}
 
-            <MyRange
-                values={[min, max]}
-                min={range[0]}
-                max={range[1]}
-                onChange={onChange}
-                onFinalChange={onFinalChangeMinMaxFilter}
-            />
+            <MyRange values={[min, max]} min={range[0]} max={range[1]} onChange={onChange} onFinalChange={onFinalChangeMinMaxFilter} />
             {appliedFilters[name] !== undefined && (
                 <button
                     onClick={() => {
@@ -272,9 +240,7 @@ function MyRange(props) {
                             height: "22px",
                             width: "22px",
                             borderRadius: "50%",
-                            border: `2px solid ${
-                                props.key == 0 ? "red" : "green"
-                            }`,
+                            border: `2px solid ${props.key == 0 ? "red" : "green"}`,
                             backgroundColor: "#666",
                         }}
                     />

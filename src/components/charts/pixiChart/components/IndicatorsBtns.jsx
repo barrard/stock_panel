@@ -1,11 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { IconButton } from "../../../StratBuilder/components";
 import { GiAirZigzag, GiHistogram, GiAmplitude } from "react-icons/gi";
 import { IoIosReorder } from "react-icons/io";
 import { CgReadme } from "react-icons/cg";
-import { AiOutlineTransaction } from "react-icons/ai";
-
+import { AiOutlineTransaction, AiFillCloseCircle } from "react-icons/ai";
+import styled from "styled-components";
 import Input from "./Input";
+
 import Select from "./Select";
 
 export default function IndicatorsBtns(props) {
@@ -21,8 +22,44 @@ export default function IndicatorsBtns(props) {
         setDrawOrders,
         toggleOrders,
     } = props;
+
+    const [optsWindow, setOptsWindow] = useState("");
+
+    function showOptions(indicator) {
+        switch (indicator) {
+            case "ZigZag":
+                return (
+                    <>
+                        <Input />
+
+                        <Input />
+                    </>
+                );
+
+            default:
+                break;
+        }
+    }
+
+    const OptionsWindow = () => {
+        return (
+            <OptsWindowContainer>
+                <Position>
+                    <IconButton
+                        borderColor={toggleOrders ? "green" : false}
+                        title="Close"
+                        onClick={() => setOptsWindow("")}
+                        rIcon={<AiFillCloseCircle />}
+                    />
+                </Position>
+                {showOptions(optsWindow)}
+                <button className="btn">OK</button>
+            </OptsWindowContainer>
+        );
+    };
     return (
-        <div className="row g-0">
+        <div className="row g-0 relative">
+            {optsWindow && <OptionsWindow />}
             <div className="col-auto">
                 <IconButton
                     borderColor={toggleOrders ? "green" : false}
@@ -36,7 +73,16 @@ export default function IndicatorsBtns(props) {
                 <IconButton
                     borderColor={toggleZigZag ? "green" : false}
                     title="ZigZag"
-                    onClick={() => setDrawZigZag(!toggleZigZag)}
+                    onContextMenu={(e) => {
+                        e.preventDefault();
+                        console.log("Right click");
+                        setOptsWindow("ZigZag");
+
+                        //
+                    }}
+                    onClick={(e) => {
+                        setDrawZigZag(!toggleZigZag);
+                    }}
                     rIcon={<GiAirZigzag />}
                 />
             </div>
@@ -60,7 +106,7 @@ export default function IndicatorsBtns(props) {
             <div className="col-auto">
                 <IconButton
                     borderColor={togglePivotLines ? "green" : false}
-                    title="Order Book"
+                    title="Pivot Lines"
                     onClick={() => setDrawPivotLines(!togglePivotLines)}
                     rIcon={<IoIosReorder />}
                 />
@@ -68,3 +114,20 @@ export default function IndicatorsBtns(props) {
         </div>
     );
 }
+
+const OptsWindowContainer = styled.div`
+    width: 200px;
+    height: 200px;
+    border: 2px solid #666;
+    background: #333;
+    position: absolute;
+    z-index: 10000;
+`;
+
+const Position = styled.div`
+    top: ${(props) => props.top};
+    border: 2px solid #666;
+    background: #333;
+    position: absolute;
+    z-index: 10000;
+`;

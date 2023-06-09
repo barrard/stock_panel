@@ -5,7 +5,7 @@ import API from "../../../../components/API";
 export default function OrdersList(props) {
     const { orders = {} } = props;
 
-    // console.log(orders);
+    console.log(orders);
     return (
         <div>
             {Object.keys(orders)
@@ -15,9 +15,7 @@ export default function OrdersList(props) {
                 })
                 .map((basketId) => {
                     // console.log(orders[basketId]);
-                    return (
-                        <OrderItem key={basketId} order={orders[basketId]} />
-                    );
+                    return <OrderItem key={basketId} order={orders[basketId]} />;
                 })}
         </div>
     );
@@ -37,31 +35,13 @@ function OrderItem(props) {
                 </div>
 
                 <TradeType order={order} className="col">
-                    {priceType(order.priceType)} -
-                    <TransactionType order={order}>
-                        {orderTransactionType(order.transactionType)}
-                    </TransactionType>
-                    -{" "}
-                    {order.price
-                        ? order.price
-                        : order.avgFillPrice
-                        ? order.avgFillPrice
-                        : order.triggerPrice
-                        ? order.triggerPrice
-                        : "No price"}
+                    {priceType(order.priceType)} -<TransactionType order={order}>{orderTransactionType(order.transactionType)}</TransactionType>-{" "}
+                    {order.price ? order.price : order.avgFillPrice ? order.avgFillPrice : order.triggerPrice ? order.triggerPrice : "No price"}
                 </TradeType>
                 <div className="col">
-                    <ReportType order={order}>
-                        {order.reportType
-                            ? order.reportType
-                            : `${order.reportText} ${order.text}`}
-                    </ReportType>
+                    <ReportType order={order}>{order.reportType ? order.reportType : `${order.reportText} ${order.text}`}</ReportType>
                 </div>
-                <div className="col">
-                    {order.fillTime
-                        ? order.fillTime
-                        : new Date(order.ssboe * 1000).toLocaleTimeString()}
-                </div>
+                <div className="col">{order.fillTime ? order.fillTime : new Date(order.ssboe * 1000).toLocaleTimeString()}</div>
                 <div className="col">{order.avgFillPrice}</div>
                 <div className="col">
                     {order.status !== "complete" && (
@@ -98,6 +78,7 @@ function orderTransactionType(type) {
             break;
     }
 }
+
 function priceType(type) {
     switch (type) {
         case 1:
@@ -160,6 +141,7 @@ function reportTypeColor(props) {
         }
     }
 }
+
 function tradeTypeColor(props) {
     const { order } = props;
     if (!order?.priceType) return "red";

@@ -24,6 +24,15 @@ import PnL_AndOrderFlowStats from "./components/PnL_AndOrderFlowStats";
 import { parseBarTypeTimeFrame } from "./components/utils";
 import onLastTrade from "./handlers/onLastTrade";
 import PlantStatuses from "./components/PlantStatuses";
+
+function getNextTimeBar(data) {
+    const { barType, barTypePeriod } = data;
+    let time = barType === 1 ? 1 : barType === 2 ? 60 : barType === 3 ? 60 * 60 * 24 : 60 * 60 * 24 * 7;
+    let nextTime = time * barTypePeriod * 1000;
+    console.log(nextTime);
+    debugger;
+    return nextTime;
+}
 export default function PixiChart({ Socket }) {
     //TODO really set this
     const [width, setWidth] = useState(Math.floor(window.innerWidth * 0.9));
@@ -95,11 +104,8 @@ export default function PixiChart({ Socket }) {
     });
     const [symbolInputDisabled, setSymbolInputDisabled] = useState(false);
 
-    const [accountPnLPositionUpdate, setAccountPnLPositionUpdate] = useState(
-        {}
-    );
-    const [instrumentPnLPositionUpdate, setInstrumentPnLPositionUpdate] =
-        useState({});
+    const [accountPnLPositionUpdate, setAccountPnLPositionUpdate] = useState({});
+    const [instrumentPnLPositionUpdate, setInstrumentPnLPositionUpdate] = useState({});
     const [orderTrackerCount, setOrderTrackerCount] = useState({});
     const [currentTimeBar, setCurrentTimeBar] = useState();
     const [orders, setOrders] = useState({});
@@ -113,17 +119,14 @@ export default function PixiChart({ Socket }) {
 
     //Fn to load ohlc data
     const loadData = ({
-        // barType = 2,
-        // barTypePeriod = 1,
         startIndex, //= new Date().getTime() - 1000 * 60 * 60 * 24,
         finishIndex = new Date().getTime(),
-        // symbol = symbol,
-        // exchange = exchange,
         isNew = false,
     }) => {
         if (loading) {
             return console.log("No can, I stay loading");
         }
+
         startIndex =
             startIndex ||
             finishIndex -
@@ -135,6 +138,8 @@ export default function PixiChart({ Socket }) {
         if (backgroundDataFetch) {
             startIndex = new Date(startTime).getTime();
             finishIndex = new Date(endTime).getTime();
+
+            console.log({ startIndex, finishIndex });
         }
 
         // console.log("Loading data");
@@ -151,7 +156,7 @@ export default function PixiChart({ Socket }) {
         })
             .then(async (_ohlcDatas) => {
                 setLoading(false);
-                debugger;
+
                 if (!_ohlcDatas?.length) {
                     // setOhlcDatas([]);
                     // setPixiData([]);
@@ -226,22 +231,17 @@ export default function PixiChart({ Socket }) {
         // if (!data || !ohlcDatas.length || !pixiData) return;
         if (!data || !pixiData) return;
         data.timestamp = data.datetime = data.datetime * 1000;
-        console.log(new Date(data.timestamp).toLocaleString());
-        console.log(data);
+
         if (data.askVolume.high || data.bidVolume.high) {
             alert("high");
         } else {
             data.volume = data.askVolume.low + data.bidVolume.low;
         }
-        if (
-            parseInt(data.barType) !== parseInt(barType.value) ||
-            parseInt(data.barTypePeriod) !== parseInt(barTypePeriod) ||
-            data.symbol !== symbol.value
-        ) {
+
+        if (parseInt(data.barType) !== parseInt(barType.value) || parseInt(data.barTypePeriod) !== parseInt(barTypePeriod) || data.symbol !== symbol.value) {
             return;
         }
-        console.log(new Date(data.timestamp).toLocaleString());
-        console.log(data);
+
         const newBar = {
             open: data.close,
             high: data.close,
@@ -251,29 +251,30 @@ export default function PixiChart({ Socket }) {
             timestamp: data.timestamp,
         };
         // setLastTrade(message);
-        setOhlcDatas((ohlcDatas) => ohlcDatas.concat([data, newBar]));
-        pixiData.replaceLast(data);
-        pixiData.prependData(newBar);
+        const lastBar = ohlcDatas.slice(-1)[0];
+        const nextTimeBar = getNextTimeBar(data);
+        if (data.timestamp < lastBar.datetime + nextTimeBar) {
+            //merge data
+            lastBar.volume += data.volume;
+            lastBar.high = lastBar.high < data.high ? data.high : lastBar.high;
+            lastBar.low = lastBar.low < data.low ? data.low : lastBar.low;
+            lastBar.close = lastBar.close;
 
-        // const min = new Date(data.timestamp).getMinutes();
-        // for (let x = ohlcDatas.length - 1; x > -1; x--) {
-        //     const element = ohlcDatas[x];
-        //     const ohlcDataLastMin = new Date(element.timestamp).getMinutes();
+            pixiData.replaceLast(lastBar);
 
-        //     if (ohlcDataLastMin === min) {
-        //         console.log("Found Minute at " + x);
-        //         pixiData.replaceLast(data, x);
-        //         setOhlcDatas((ohlcDatas) => {
-        //             ohlcDatas[x] = data;
-        //             return [...ohlcDatas];
-        //         });
+            setOhlcDatas((ohlcDatas) => {
+                ohlcDatas[0] = lastBar;
+                return [...ohlcDatas];
+            });
+        } else {
+            pixiData.replaceLast(lastBar);
+            pixiData.prependData(newBar);
 
-        //         return;
-        //     }
-        // }
-        // console.error("WHUT");
-
-        // alert("whut");
+            setOhlcDatas((ohlcDatas) => {
+                ohlcDatas[0] = lastBar;
+                return [...ohlcDatas, newBar];
+            });
+        }
     }, [currentTimeBar]);
 
     useEffect(() => {
@@ -408,17 +409,19 @@ export default function PixiChart({ Socket }) {
             setOrderTrackerCount(orderTrackerCount);
         });
 
-        Socket.on(
-            "compileHistoryTracker",
-            ({ lastTwoDaysCompiled, lastWeeklyData }) => {
-                // console.log(lastTwoDaysCompiled);
-                setLastTwoDaysCompiled({ lastTwoDaysCompiled, lastWeeklyData });
-                pixiData.setLastTwoDaysCompiled({
-                    lastTwoDaysCompiled,
-                    lastWeeklyData,
-                });
-            }
-        );
+        Socket.on("compileHistoryTracker", ({ lastTwoDaysCompiled, lastWeeklyData, combinedKeyLevels }) => {
+            // console.log(lastTwoDaysCompiled);
+            setLastTwoDaysCompiled({
+                lastTwoDaysCompiled,
+                lastWeeklyData,
+                combinedKeyLevels,
+            });
+            pixiData.setLastTwoDaysCompiled({
+                lastTwoDaysCompiled,
+                lastWeeklyData,
+                combinedKeyLevels,
+            });
+        });
 
         console.log("Emitting getCompileHistoryTracker");
         Socket.emit("getCompileHistoryTracker");
@@ -481,8 +484,7 @@ export default function PixiChart({ Socket }) {
     // }, [symbol, barType, barTypePeriod]);
 
     useEffect(() => {
-        if (!pixiData || !pixiData.showCrosshair || !pixiData.hideCrosshair)
-            return console.log("no pixidata?");
+        if (!pixiData || !pixiData.showCrosshair || !pixiData.hideCrosshair) return console.log("no pixidata?");
         if (mouseEnter) {
             pixiData.showCrosshair();
         } else {
@@ -503,10 +505,7 @@ export default function PixiChart({ Socket }) {
         pixiData.draw();
 
         /////////////////////////////////////
-        Socket.on(
-            "lastTrade",
-            onLastTrade({ setLastTrade, setOhlcDatas, pixiData })
-        );
+        Socket.on("lastTrade", onLastTrade({ setLastTrade, setOhlcDatas, pixiData }));
 
         Socket.on("liquidity", (data) => {
             setBidAskRatios(data);
@@ -557,9 +556,7 @@ export default function PixiChart({ Socket }) {
         let touch1MoveDiff;
         if (touch1 && touch2) {
             const before = Math.abs(touch1 - touch2);
-            const after = Math.abs(
-                TouchGesture1.current?.clientX - TouchGesture2.current?.clientX
-            );
+            const after = Math.abs(TouchGesture1.current?.clientX - TouchGesture2.current?.clientX);
             if (before > after) {
                 pixiData.zoomOut(before - after);
             } else if (before < after) {
@@ -603,18 +600,10 @@ export default function PixiChart({ Socket }) {
         }
     };
 
-    const OrdersListMemo = useMemo(
-        () => <OrdersList orders={orders} />,
-        [orders]
-    );
+    const OrdersListMemo = useMemo(() => <OrdersList orders={orders} />, [orders]);
 
     const PlantStatusesMemo = useMemo(
-        () => (
-            <PlantStatuses
-                plantStatus={plantStatus}
-                setPlantStatus={setPlantStatus}
-            />
-        ),
+        () => <PlantStatuses plantStatus={plantStatus} setPlantStatus={setPlantStatus} />,
 
         [plantStatus]
     );
@@ -708,38 +697,19 @@ export default function PixiChart({ Socket }) {
                             </button>
                         </div>
                         <div className="col ">
-                            <StartEndTimes
-                                backgroundDataFetch={backgroundDataFetch}
-                                setBackgroundDataFetch={setBackgroundDataFetch}
-                                setStartTime={setStartTime}
-                                setEndTime={setEndTime}
-                                startTime={startTime}
-                                endTime={endTime}
-                            />
+                            <StartEndTimes backgroundDataFetch={backgroundDataFetch} setBackgroundDataFetch={setBackgroundDataFetch} setStartTime={setStartTime} setEndTime={setEndTime} startTime={startTime} endTime={endTime} />
                         </div>
                     </div>
 
                     <TradeControls lastTrade={lastTrade} />
                 </div>
                 <div className="col-6">
-                    <PnL_AndOrderFlowStats
-                        Socket={Socket}
-                        bidAskRatios={bidAskRatios}
-                        instrumentPnLPositionUpdate={
-                            instrumentPnLPositionUpdate
-                        }
-                        accountPnLPositionUpdate={accountPnLPositionUpdate}
-                        orderTrackerCount={orderTrackerCount}
-                    />
+                    <PnL_AndOrderFlowStats Socket={Socket} bidAskRatios={bidAskRatios} instrumentPnLPositionUpdate={instrumentPnLPositionUpdate} accountPnLPositionUpdate={accountPnLPositionUpdate} orderTrackerCount={orderTrackerCount} />
                 </div>
                 <div className="col-12">
                     <div className="row">
-                        <div className="col">
-                            Start {new Date(startTime).toLocaleString()}
-                        </div>
-                        <div className="col">
-                            end {new Date(endTime).toLocaleString()}
-                        </div>
+                        <div className="col">Start {new Date(startTime).toLocaleString()}</div>
+                        <div className="col">end {new Date(endTime).toLocaleString()}</div>
                         <div className="col">Symbol {symbol.name}</div>
                         <div className="col">Exchange {exchange.name}</div>
                         <div className="col">BarType val {barType.name}</div>

@@ -48,7 +48,7 @@ export default class PivotPoints {
             this.drawLastWeek();
         } else if (!this.pricesCombinedByWeight.length) {
             //try to combine these
-            console.log(this.prices);
+            // console.log(this.prices);
             this.combinedPrices = [];
             this.sortingDistance = 0.25;
             this.pricesCombinedByWeight = this.prices
@@ -205,13 +205,13 @@ export default class PivotPoints {
         // if (x1 < 0) return;
         x2 = this.data.slicedData.length - 1;
 
-        this.pricesCombinedByWeight.forEach((price) => {
+        this.data.combinedKeyLevels.forEach((price) => {
             //OPEN
             y1 = y2 = price.price;
             let color = 0x00cc88;
             this.drawLine({
                 color,
-                THICK,
+                THICK: price.weight,
                 x1,
                 x2,
                 y1,
@@ -293,7 +293,7 @@ export default class PivotPoints {
         }
         let pivotGfx = this.container.children[this.gfxCount];
         if (!pivotGfx) {
-            console.log("creating pivot line fx " + this.gfxCount);
+            // console.log("creating pivot line fx " + this.gfxCount);
             pivotGfx = new Graphics();
             pivotGfx.interactive = true;
             // pivotGfx.on("mouseenter", function (e) {

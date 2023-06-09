@@ -64,13 +64,26 @@ export default {
     rapi_requestBars,
     rapi_submitOrder,
     rapi_cancelOrder,
+    getFromRedis,
+    getOrderFlow,
 };
 
+async function getOrderFlow({ start, end }) {
+    return GET(`/API/getOrderFlow/${start}/${end}/`);
+}
 async function GET(url) {
     let data = await fetch(`${REACT_APP_API_SERVER}${url}`, {
         method: "GET",
     });
     return await data.json();
+}
+
+async function getFromRedis({ symbol, exchange, start, finish, type, period }) {
+    const data = await GET(`/API/redis/${exchange}/${symbol}/${type}/${period}/${start}/${finish}/`);
+
+    if (!data) return [];
+    data.forEach((d) => (d.datetime = d.datetime * 1000));
+    return data;
 }
 
 //  ````````   $$$$$$    ````````    RAPI    ``````````    $$$$$$$$$$$$$$
@@ -79,17 +92,8 @@ async function rapi_cancelOrder({ basketId }) {
     return await GET(`/API/rapi/cancelOrder/${basketId}`);
 }
 
-async function rapi_requestBars({
-    symbol,
-    exchange,
-    barType,
-    barTypePeriod,
-    startIndex,
-    finishIndex,
-}) {
-    return await GET(
-        `/API/rapi/requestBars/${symbol}/${exchange}/${barType}/${barTypePeriod}/${startIndex}/${finishIndex}`
-    );
+async function rapi_requestBars({ symbol, exchange, barType, barTypePeriod, startIndex, finishIndex }) {
+    return await GET(`/API/rapi/requestBars/${symbol}/${exchange}/${barType}/${barTypePeriod}/${startIndex}/${finishIndex}`);
 }
 
 async function rapi_submitOrder(order = {}) {
@@ -121,25 +125,19 @@ async function getTicksFrom({ symbol, from, to }) {
     return await GET(`/TD_data/getTicksFrom/${symbol}/${from}/${to}`);
 }
 async function getFundamentals() {
-    let fundamentals = await fetch(
-        `${REACT_APP_API_SERVER}/API/getRecentFundamentals`,
-        {
-            method: "GET",
-        }
-    );
+    let fundamentals = await fetch(`${REACT_APP_API_SERVER}/API/getRecentFundamentals`, {
+        method: "GET",
+    });
     fundamentals = await fundamentals.json();
     return fundamentals;
 }
 
 async function deleteConditional(item) {
     try {
-        let list = await fetch(
-            `${REACT_APP_API_SERVER}/API/deleteConditional/${item._id}`,
-            {
-                credentials: "include",
-                method: "DELETE",
-            }
-        );
+        let list = await fetch(`${REACT_APP_API_SERVER}/API/deleteConditional/${item._id}`, {
+            credentials: "include",
+            method: "DELETE",
+        });
         list = await handleResponse(list);
         return list;
     } catch (err) {
@@ -160,27 +158,18 @@ async function getConditionals() {
     }
 }
 
-async function submitConditional({
-    target1,
-    target2,
-    conditionalName,
-    stratId,
-    equality,
-}) {
+async function submitConditional({ target1, target2, conditionalName, stratId, equality }) {
     try {
-        let list = await fetch(
-            `${REACT_APP_API_SERVER}/API/submitConditional`,
-            {
-                credentials: "include",
-                ...POST({
-                    equality,
-                    target1,
-                    target2,
-                    conditionalName,
-                    stratId,
-                }),
-            }
-        );
+        let list = await fetch(`${REACT_APP_API_SERVER}/API/submitConditional`, {
+            credentials: "include",
+            ...POST({
+                equality,
+                target1,
+                target2,
+                conditionalName,
+                stratId,
+            }),
+        });
         list = await handleResponse(list);
         console.log(list);
         return list;
@@ -205,13 +194,10 @@ async function updateLineColor(key, color) {
 
 async function getAllChartPatterns(inputs) {
     try {
-        let list = await fetch(
-            `${REACT_APP_API_SERVER}/API/getAllChartPatterns`,
-            {
-                credentials: "include",
-                ...POST({ inputs }),
-            }
-        );
+        let list = await fetch(`${REACT_APP_API_SERVER}/API/getAllChartPatterns`, {
+            credentials: "include",
+            ...POST({ inputs }),
+        });
         list = await handleResponse(list);
         console.log(list);
         return list;
@@ -222,13 +208,10 @@ async function getAllChartPatterns(inputs) {
 
 async function getIndicatorResults(ind, inputs) {
     try {
-        let list = await fetch(
-            `${REACT_APP_API_SERVER}/API/getIndicatorResults`,
-            {
-                credentials: "include",
-                ...POST({ indicator: ind, inputs }),
-            }
-        );
+        let list = await fetch(`${REACT_APP_API_SERVER}/API/getIndicatorResults`, {
+            credentials: "include",
+            ...POST({ indicator: ind, inputs }),
+        });
         list = await handleResponse(list);
         // console.log(list);
         return list;
@@ -239,13 +222,10 @@ async function getIndicatorResults(ind, inputs) {
 
 async function updateIndicatorOpts(ind) {
     try {
-        let list = await fetch(
-            `${REACT_APP_API_SERVER}/API/updateIndicatorOpts`,
-            {
-                credentials: "include",
-                ...POST({ indicator: ind }),
-            }
-        );
+        let list = await fetch(`${REACT_APP_API_SERVER}/API/updateIndicatorOpts`, {
+            credentials: "include",
+            ...POST({ indicator: ind }),
+        });
         list = await handleResponse(list);
         return list;
     } catch (err) {
@@ -255,13 +235,10 @@ async function updateIndicatorOpts(ind) {
 
 async function deleteIndicator(ind, strat) {
     try {
-        let list = await fetch(
-            `${REACT_APP_API_SERVER}/API/deleteIndicator/${ind._id}/${strat._id}`,
-            {
-                credentials: "include",
-                method: "GET",
-            }
-        );
+        let list = await fetch(`${REACT_APP_API_SERVER}/API/deleteIndicator/${ind._id}/${strat._id}`, {
+            credentials: "include",
+            method: "GET",
+        });
         list = await handleResponse(list);
         return list;
     } catch (err) {
@@ -269,18 +246,7 @@ async function deleteIndicator(ind, strat) {
     }
 }
 
-async function submitIndicator({
-    priceDataId,
-    selectedInputs,
-    selectedStrat,
-    indicatorOpts,
-    indicatorName,
-    options,
-    color,
-    inputs,
-    dataInputs,
-    variablePeriods,
-}) {
+async function submitIndicator({ priceDataId, selectedInputs, selectedStrat, indicatorOpts, indicatorName, options, color, inputs, dataInputs, variablePeriods }) {
     try {
         console.log({ variablePeriods });
         let list = await fetch(`${REACT_APP_API_SERVER}/API/addIndicator`, {
@@ -322,25 +288,17 @@ async function getIndicatorList() {
     }
 }
 
-async function getBackTestData({
-    symbol,
-    timeframe,
-    startDate = new Date().getTime(),
-    withTicks = false,
-}) {
+async function getBackTestData({ symbol, timeframe, startDate = new Date().getTime(), withTicks = false }) {
     try {
         if (symbol?.startsWith("/")) {
             symbol = symbol.slice(1);
         }
         if (!symbol || !timeframe || !startDate) return;
 
-        let resp = await fetch(
-            `${REACT_APP_API_SERVER}/API/getBackTestData/${symbol}/${timeframe}/${startDate}?withTicks=${withTicks}`,
-            {
-                credentials: "include",
-                method: "GET",
-            }
-        );
+        let resp = await fetch(`${REACT_APP_API_SERVER}/API/getBackTestData/${symbol}/${timeframe}/${startDate}?withTicks=${withTicks}`, {
+            credentials: "include",
+            method: "GET",
+        });
         resp = await handleResponse(resp);
         //format the symbol data
         resp.forEach((d) => (d.symbol = `/${d.symbol}`));
@@ -354,13 +312,10 @@ async function getBackTestData({
 async function getTheStockData({ symbol, frame, from = 0, to = 0 }) {
     console.log("getTheStockData");
     try {
-        let res = await fetch(
-            `${REACT_APP_API_SERVER}/API/get-stock-data/${symbol}/${frame}/${from}/${to}`,
-            {
-                credentials: "include",
-                method: "GET",
-            }
-        );
+        let res = await fetch(`${REACT_APP_API_SERVER}/API/get-stock-data/${symbol}/${frame}/${from}/${to}`, {
+            credentials: "include",
+            method: "GET",
+        });
 
         res = await handleResponse(res);
 
@@ -372,13 +327,10 @@ async function getTheStockData({ symbol, frame, from = 0, to = 0 }) {
 
 async function linkPriceData(stratId, priceDataId) {
     try {
-        let strategy = await fetch(
-            `${REACT_APP_API_SERVER}/API/linkPriceData`,
-            {
-                credentials: "include",
-                ...POST({ stratId, priceDataId }),
-            }
-        );
+        let strategy = await fetch(`${REACT_APP_API_SERVER}/API/linkPriceData`, {
+            credentials: "include",
+            ...POST({ stratId, priceDataId }),
+        });
         strategy = await handleResponse(strategy);
 
         return strategy;
@@ -390,13 +342,10 @@ async function linkPriceData(stratId, priceDataId) {
 async function addPriceData(symbol, timeframe) {
     debugger;
     try {
-        let newPriceData = await fetch(
-            `${REACT_APP_API_SERVER}/API/addPriceData`,
-            {
-                credentials: "include",
-                ...POST({ symbol, timeframe }),
-            }
-        );
+        let newPriceData = await fetch(`${REACT_APP_API_SERVER}/API/addPriceData`, {
+            credentials: "include",
+            ...POST({ symbol, timeframe }),
+        });
         newPriceData = await handleResponse(newPriceData);
 
         return newPriceData;
@@ -421,13 +370,10 @@ async function addStrategy(strat) {
 
 async function getStrategies() {
     try {
-        let strategies = await fetch(
-            `${REACT_APP_API_SERVER}/API/getStrategies`,
-            {
-                method: "GET",
-                credentials: "include",
-            }
-        );
+        let strategies = await fetch(`${REACT_APP_API_SERVER}/API/getStrategies`, {
+            method: "GET",
+            credentials: "include",
+        });
 
         strategies = await handleResponse(strategies);
         console.log({ strategies });
@@ -443,13 +389,10 @@ async function getStrategies() {
 
 async function getPriceDatas() {
     try {
-        let priceDatas = await fetch(
-            `${REACT_APP_API_SERVER}/API/getPriceDatas`,
-            {
-                method: "GET",
-                credentials: "include",
-            }
-        );
+        let priceDatas = await fetch(`${REACT_APP_API_SERVER}/API/getPriceDatas`, {
+            method: "GET",
+            credentials: "include",
+        });
 
         priceDatas = await handleResponse(priceDatas);
         if (Array.isArray(priceDatas)) {
@@ -463,12 +406,9 @@ async function getPriceDatas() {
 }
 
 async function loadStockDataIndicator() {
-    let trades = await fetch(
-        `${REACT_APP_API_SERVER}/API/loadStockDataIndicator`,
-        {
-            method: "GET",
-        }
-    );
+    let trades = await fetch(`${REACT_APP_API_SERVER}/API/loadStockDataIndicator`, {
+        method: "GET",
+    });
     trades = await trades.json();
     return trades;
 }
@@ -504,12 +444,9 @@ async function handleResponse(res) {
 
 async function fetchSEC_Filings(symbol) {
     try {
-        let fillingsData = await fetch(
-            `${REACT_APP_API_SERVER}/sec-filings/${symbol}`,
-            {
-                method: "GET",
-            }
-        );
+        let fillingsData = await fetch(`${REACT_APP_API_SERVER}/sec-filings/${symbol}`, {
+            method: "GET",
+        });
         fillingsData = await fillingsData.json();
         if (fillingsData.err) throw fillingsData.err;
         return fillingsData;
@@ -534,23 +471,11 @@ async function isLoggedIn(dispatch) {
 }
 
 function handleTradeSuccess(trade) {
-    let {
-        buyOrSell,
-        entryPrice,
-        orderStatus,
-        order_limit,
-        symbol,
-        order_type,
-    } = trade;
+    let { buyOrSell, entryPrice, orderStatus, order_limit, symbol, order_type } = trade;
     let toastrOpts = {
         timeOut: 6000,
     };
-    toastr.success(
-        `${order_type} order to ${buyOrSell} ${symbol} @${
-            entryPrice || order_limit
-        } has been ${orderStatus}`,
-        toastrOpts
-    );
+    toastr.success(`${order_type} order to ${buyOrSell} ${symbol} @${entryPrice || order_limit} has been ${orderStatus}`, toastrOpts);
 }
 function handleTradeError(direction, err) {
     if (!err) {
@@ -566,21 +491,11 @@ function handleTradeError(direction, err) {
             toastr.error(err.message);
         }
     } else {
-        toastr.error(
-            `Error Going ${direction}, sorry i can't be more helpful ${err}`
-        );
+        toastr.error(`Error Going ${direction}, sorry i can't be more helpful ${err}`);
     }
 }
 
-async function goLong({
-    instrumentType,
-    symbol,
-    position_size,
-    order_type,
-    order_target_size,
-    order_stop_size,
-    order_limit,
-}) {
+async function goLong({ instrumentType, symbol, position_size, order_type, order_target_size, order_stop_size, order_limit }) {
     try {
         let orderLong = await fetch(`${LOCAL_SERVER}/API/goLong`, {
             ...POST({
@@ -608,15 +523,7 @@ async function goLong({
     }
 }
 
-async function goShort({
-    symbol,
-    instrumentType,
-    position_size,
-    order_type,
-    order_target_size,
-    order_stop_size,
-    order_limit,
-}) {
+async function goShort({ symbol, instrumentType, position_size, order_type, order_target_size, order_stop_size, order_limit }) {
     try {
         let orderShort = await fetch(`${LOCAL_SERVER}/API/goShort`, {
             ...POST({
@@ -676,12 +583,9 @@ async function getAllCommodityTrades(symbol, props) {
     try {
         console.log({ symbol });
         if (symbol) {
-            trades = await fetch(
-                `${LOCAL_SERVER}/API/commodityTrades/${symbol}`,
-                {
-                    credentials: "include",
-                }
-            );
+            trades = await fetch(`${LOCAL_SERVER}/API/commodityTrades/${symbol}`, {
+                credentials: "include",
+            });
         } else {
             trades = await fetch(`${LOCAL_SERVER}/API/commodityTrades`, {
                 credentials: "include",
@@ -701,12 +605,9 @@ async function getAllStockTrades(symbol, props) {
     try {
         console.log({ symbol });
         if (symbol) {
-            trades = await fetch(
-                `${LOCAL_SERVER}/API/getAllStockTrades/${symbol}`,
-                {
-                    credentials: "include",
-                }
-            );
+            trades = await fetch(`${LOCAL_SERVER}/API/getAllStockTrades/${symbol}`, {
+                credentials: "include",
+            });
         } else {
             trades = await fetch(`${LOCAL_SERVER}/API/getAllStockTrades`, {
                 credentials: "include",
@@ -727,12 +628,9 @@ async function getCommodityRegressionValues(symbol, props) {
     if (props.stock_data.commodityRegressionData[symbol]) {
         return console.log("Already have the commodityRegressionData");
     }
-    let regressionData = await fetch(
-        `${LOCAL_SERVER}/API/commodityRegressionSettings/${symbol}`,
-        {
-            credentials: "include",
-        }
-    );
+    let regressionData = await fetch(`${LOCAL_SERVER}/API/commodityRegressionSettings/${symbol}`, {
+        credentials: "include",
+    });
     regressionData = await regressionData.json();
     // console.log(regressionData);
     props.dispatch(commodityRegressionData(regressionData));
@@ -746,13 +644,10 @@ async function setTimeframeActive(id, timeframe, props) {
         //   timeframe,
         // });
 
-        let regressionData = await fetch(
-            `${LOCAL_SERVER}/API/commodityRegressionSettings`,
-            {
-                credentials: "include",
-                ...PUT({ id, timeframe }),
-            }
-        );
+        let regressionData = await fetch(`${LOCAL_SERVER}/API/commodityRegressionSettings`, {
+            credentials: "include",
+            ...PUT({ id, timeframe }),
+        });
         regressionData = await regressionData.json();
         console.log(regressionData);
         if (regressionData.err) throw regressionData.err;
@@ -779,38 +674,23 @@ async function setTimeframeActive(id, timeframe, props) {
     // console.log({ slopeInts });
 }
 
-async function saveRegressionValues({
-    symbol,
-    timeframe,
-    minMaxTolerance,
-    regressionErrorLimit,
-    priceLevelMinMax,
-    priceLevelSensitivity,
-    fibonacciMinMax,
-    fibonacciSensitivity,
-    volProfileBins,
-    volProfileBarCount,
-    props,
-}) {
+async function saveRegressionValues({ symbol, timeframe, minMaxTolerance, regressionErrorLimit, priceLevelMinMax, priceLevelSensitivity, fibonacciMinMax, fibonacciSensitivity, volProfileBins, volProfileBarCount, props }) {
     try {
-        let regressionData = await fetch(
-            `${LOCAL_SERVER}/API/commodityRegressionSettings`,
-            {
-                credentials: "include",
-                ...POST({
-                    timeframe,
-                    fibonacciMinMax,
-                    fibonacciSensitivity,
-                    symbol,
-                    minMaxTolerance,
-                    regressionErrorLimit,
-                    priceLevelMinMax,
-                    priceLevelSensitivity,
-                    volProfileBins,
-                    volProfileBarCount,
-                }),
-            }
-        );
+        let regressionData = await fetch(`${LOCAL_SERVER}/API/commodityRegressionSettings`, {
+            credentials: "include",
+            ...POST({
+                timeframe,
+                fibonacciMinMax,
+                fibonacciSensitivity,
+                symbol,
+                minMaxTolerance,
+                regressionErrorLimit,
+                priceLevelMinMax,
+                priceLevelSensitivity,
+                volProfileBins,
+                volProfileBarCount,
+            }),
+        });
         regressionData = await regressionData.json();
         if (regressionData.err) throw regressionData.err;
         console.log(regressionData);
@@ -884,15 +764,10 @@ async function getAllSymbolsData(dispatch) {
 
 async function fetch_commodity_minutely_data({ from, to, symbol }) {
     // date = '6-5-2020'
-    let msg = (data, from, symbol) =>
-        `${data.length} bars loaded for ${new Date(
-            to
-        ).toLocaleString()} ${symbol}`;
+    let msg = (data, from, symbol) => `${data.length} bars loaded for ${new Date(to).toLocaleString()} ${symbol}`;
 
     try {
-        let data = await fetch(
-            `${API_SERVER}/TD_data/candles/${symbol}/${from}/${to}/1Min`
-        );
+        let data = await fetch(`${API_SERVER}/TD_data/candles/${symbol}/${from}/${to}/1Min`);
         data = await data.json();
         //the data is newest to oldest, better fix that
         data = data.sort((a, b) => a.timestamp - b.timestamp);
@@ -913,19 +788,12 @@ async function fetchCommodityData({ timeframe, symbol, from, to }) {
     console.log(LOCAL_SERVER);
     if (timeframe === "daily") timeframe = "Daily";
     if (timeframe === "weekly") timeframe = "Weekly";
-    let data = await fetch(
-        `${LOCAL_SERVER}/TD_data/candles/${symbol}/${from}/${to}/${timeframe}`
-    );
+    let data = await fetch(`${LOCAL_SERVER}/TD_data/candles/${symbol}/${from}/${to}/${timeframe}`);
     data = await data.json();
     data = data.sort((a, b) => a.timestamp - b.timestamp);
     // console.log('TOASTR')
-    if (data.err)
-        toastr.error(`Data Not loaded`, `An error occurred for ${symbol}`);
-    else
-        toastr.success(
-            `Data loaded`,
-            `${data.length} bars loaded for ${symbol}`
-        );
+    if (data.err) toastr.error(`Data Not loaded`, `An error occurred for ${symbol}`);
+    else toastr.success(`Data loaded`, `${data.length} bars loaded for ${symbol}`);
     return data;
 }
 
@@ -978,13 +846,10 @@ function sortAlerts(data) {
 
         if (!allAlerts[alertDay]) allAlerts[alertDay] = {};
         if (!allAlerts[alertDay][symbol]) allAlerts[alertDay][symbol] = {};
-        if (!allAlerts[alertDay][symbol][exp])
-            allAlerts[alertDay][symbol][exp] = {};
-        if (!allAlerts[alertDay][symbol][exp][putCall])
-            allAlerts[alertDay][symbol][exp][putCall] = {};
+        if (!allAlerts[alertDay][symbol][exp]) allAlerts[alertDay][symbol][exp] = {};
+        if (!allAlerts[alertDay][symbol][exp][putCall]) allAlerts[alertDay][symbol][exp][putCall] = {};
         if (allAlerts[alertDay][symbol][exp][putCall][strike]) {
-            let oldAlertTime =
-                allAlerts[alertDay][symbol][exp][putCall][strike].timestamp;
+            let oldAlertTime = allAlerts[alertDay][symbol][exp][putCall][strike].timestamp;
             if (oldAlertTime > d.timestamp) {
                 allAlerts[alertDay][symbol][exp][putCall][strike] = d;
             }
@@ -999,12 +864,8 @@ function sortAlerts(data) {
         for (let symbol in allAlerts[alertDate]) {
             for (let exp in allAlerts[alertDate][symbol]) {
                 for (let putCall in allAlerts[alertDate][symbol][exp]) {
-                    for (let strike in allAlerts[alertDate][symbol][exp][
-                        putCall
-                    ]) {
-                        processedAlerts.push(
-                            allAlerts[alertDate][symbol][exp][putCall][strike]
-                        );
+                    for (let strike in allAlerts[alertDate][symbol][exp][putCall]) {
+                        processedAlerts.push(allAlerts[alertDate][symbol][exp][putCall][strike]);
                     }
                 }
             }
@@ -1014,9 +875,7 @@ function sortAlerts(data) {
 }
 
 async function fetchOpAlertData({ symbol, strike, exp, putCall }) {
-    let data = await fetch(
-        `${API_SERVER}/options/alert/${symbol}/${strike}/${exp}/${putCall}`
-    );
+    let data = await fetch(`${API_SERVER}/options/alert/${symbol}/${strike}/${exp}/${putCall}`);
     data = await data.json();
     if (data.err) throw data.err;
 
@@ -1025,9 +884,7 @@ async function fetchOpAlertData({ symbol, strike, exp, putCall }) {
     return data;
 }
 async function fetchStockData({ timeframe, symbol, end }) {
-    let data = await fetch(
-        `${API_SERVER}/getStockData/${symbol}/${timeframe}/${end}`
-    );
+    let data = await fetch(`${API_SERVER}/getStockData/${symbol}/${timeframe}/${end}`);
     data = await data.json();
     if (data.err) throw data.err;
     console.log(data);
