@@ -1031,7 +1031,7 @@ export default class PixiData {
             const isUp = open >= close;
             this.candleStickGfx.beginFill(isUp ? 0x00ff00 : 0xff0000);
 
-            const height = Math.abs(open - close);
+            const height = Math.abs(open - close) || 2;
             const start = isUp ? close : open;
             // const end = isUp ? open : close;
             this.candleStickGfx.drawRect(x + candleMargin - halfWidth, start + halfStrokeWidth, this.candleWidth - doubleMargin, height - strokeWidth);

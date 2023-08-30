@@ -29,8 +29,6 @@ function getNextTimeBar(data) {
     const { barType, barTypePeriod } = data;
     let time = barType === 1 ? 1 : barType === 2 ? 60 : barType === 3 ? 60 * 60 * 24 : 60 * 60 * 24 * 7;
     let nextTime = time * barTypePeriod * 1000;
-    console.log(nextTime);
-    debugger;
     return nextTime;
 }
 export default function PixiChart({ Socket }) {
@@ -104,9 +102,9 @@ export default function PixiChart({ Socket }) {
     });
     const [symbolInputDisabled, setSymbolInputDisabled] = useState(false);
 
-    const [accountPnLPositionUpdate, setAccountPnLPositionUpdate] = useState({});
-    const [instrumentPnLPositionUpdate, setInstrumentPnLPositionUpdate] = useState({});
-    const [orderTrackerCount, setOrderTrackerCount] = useState({});
+    // const [accountPnLPositionUpdate, setAccountPnLPositionUpdate] = useState({});
+    // const [instrumentPnLPositionUpdate, setInstrumentPnLPositionUpdate] = useState({});
+    // const [orderTrackerCount, setOrderTrackerCount] = useState({});
     const [currentTimeBar, setCurrentTimeBar] = useState();
     const [orders, setOrders] = useState({});
     const [lastTrade, setLastTrade] = useState({});
@@ -114,15 +112,16 @@ export default function PixiChart({ Socket }) {
     const [startTime, setStartTime] = useState();
     const [endTime, setEndTime] = useState();
     const [lastTwoDaysCompiled, setLastTwoDaysCompiled] = useState({});
-    const [bidAskRatios, setBidAskRatios] = useState({});
+    // const [bidAskRatios, setBidAskRatios] = useState({});
     const [plantStatus, setPlantStatus] = useState({});
 
     //Fn to load ohlc data
     const loadData = ({
-        startIndex, //= new Date().getTime() - 1000 * 60 * 60 * 24,
+        startIndex = startTime ? new Date(startTime).getTime() : null, //= new Date().getTime() - 1000 * 60 * 60 * 24,
         finishIndex = new Date().getTime(),
         isNew = false,
     }) => {
+        debugger;
         if (loading) {
             return console.log("No can, I stay loading");
         }
@@ -144,7 +143,7 @@ export default function PixiChart({ Socket }) {
 
         // console.log("Loading data");
         setLoading(symbol.value);
-
+        debugger;
         // startDate = startDate || new Date().getTime();
         API.rapi_requestBars({
             symbol: symbol.value,
@@ -217,6 +216,9 @@ export default function PixiChart({ Socket }) {
                 });
             })
             .catch((e) => {
+                debugger;
+                setLoading(false);
+
                 alert(e);
             });
     };
@@ -229,7 +231,7 @@ export default function PixiChart({ Socket }) {
     useEffect(() => {
         const data = currentTimeBar;
         // if (!data || !ohlcDatas.length || !pixiData) return;
-        if (!data || !pixiData) return;
+        if (!data || !pixiData || !ohlcDatas?.length) return;
         data.timestamp = data.datetime = data.datetime * 1000;
 
         if (data.askVolume.high || data.bidVolume.high) {
@@ -242,39 +244,40 @@ export default function PixiChart({ Socket }) {
             return;
         }
 
+        const lastBar = ohlcDatas.slice(-1)[0];
+        const nextTimeBar = getNextTimeBar(data);
+
         const newBar = {
             open: data.close,
             high: data.close,
             low: data.close,
             close: data.close,
             volume: 0,
-            timestamp: data.timestamp,
+            timestamp: data.timestamp + nextTimeBar,
         };
-        // setLastTrade(message);
-        const lastBar = ohlcDatas.slice(-1)[0];
-        const nextTimeBar = getNextTimeBar(data);
-        if (data.timestamp < lastBar.datetime + nextTimeBar) {
-            //merge data
-            lastBar.volume += data.volume;
-            lastBar.high = lastBar.high < data.high ? data.high : lastBar.high;
-            lastBar.low = lastBar.low < data.low ? data.low : lastBar.low;
-            lastBar.close = lastBar.close;
 
-            pixiData.replaceLast(lastBar);
+        // if (data.timestamp < lastBar.datetime + nextTimeBar) {
+        //     //merge data
+        //     lastBar.volume += data.volume;
+        //     lastBar.high = lastBar.high < data.high ? data.high : lastBar.high;
+        //     lastBar.low = lastBar.low < data.low ? data.low : lastBar.low;
+        //     lastBar.close = lastBar.close;
 
-            setOhlcDatas((ohlcDatas) => {
-                ohlcDatas[0] = lastBar;
-                return [...ohlcDatas];
-            });
-        } else {
-            pixiData.replaceLast(lastBar);
-            pixiData.prependData(newBar);
+        //     pixiData.replaceLast(lastBar);
 
-            setOhlcDatas((ohlcDatas) => {
-                ohlcDatas[0] = lastBar;
-                return [...ohlcDatas, newBar];
-            });
-        }
+        //     setOhlcDatas((ohlcDatas) => {
+        //         ohlcDatas[0] = lastBar;
+        //         return [...ohlcDatas];
+        //     });
+        // } else {
+        pixiData.replaceLast(data);
+        pixiData.prependData(newBar);
+
+        setOhlcDatas((ohlcDatas) => {
+            ohlcDatas[0] = lastBar;
+            return [...ohlcDatas, newBar];
+        });
+        // }
     }, [currentTimeBar]);
 
     useEffect(() => {
@@ -319,8 +322,9 @@ export default function PixiChart({ Socket }) {
         newSymbolTimerRef.current = setTimeout(() => {
             setSymbolInputDisabled(true);
             if (loading !== symbol.value) {
+                debugger;
                 loadData({
-                    finishIndex: new Date().getTime(),
+                    finishIndex: endTime ? new Date(endTime).getTime() || new Date().getTime() : new Date().getTime(),
                     isNew: true,
                 });
             } else {
@@ -396,18 +400,18 @@ export default function PixiChart({ Socket }) {
             toastr.success(message);
         });
 
-        Socket.on("AccountPnLPositionUpdate", (message) => {
-            // console.log(message);
-            setAccountPnLPositionUpdate(message);
-        });
+        // Socket.on("AccountPnLPositionUpdate", (message) => {
+        //     // console.log(message);
+        //     setAccountPnLPositionUpdate(message);
+        // });
 
-        Socket.on("InstrumentPnLPositionUpdate", (message) => {
-            // console.log(message);
-            setInstrumentPnLPositionUpdate(message);
-        });
-        Socket.on("orderTracker", (orderTrackerCount) => {
-            setOrderTrackerCount(orderTrackerCount);
-        });
+        // Socket.on("InstrumentPnLPositionUpdate", (message) => {
+        //     // console.log(message);
+        //     setInstrumentPnLPositionUpdate(message);
+        // });
+        // Socket.on("orderTracker", (orderTrackerCount) => {
+        //     setOrderTrackerCount(orderTrackerCount);
+        // });
 
         Socket.on("compileHistoryTracker", ({ lastTwoDaysCompiled, lastWeeklyData, combinedKeyLevels }) => {
             // console.log(lastTwoDaysCompiled);
@@ -454,6 +458,7 @@ export default function PixiChart({ Socket }) {
         });
 
         Socket.on("timeBarUpdate", (data) => {
+            debugger;
             setCurrentTimeBar(data);
         });
 
@@ -473,8 +478,8 @@ export default function PixiChart({ Socket }) {
             setPixiData(false);
             Socket.off("rapi-message");
             Socket.off("PlantStatus");
-            Socket.off("AccountPnLPositionUpdate");
-            Socket.off("InstrumentPnLPositionUpdate");
+            // Socket.off("AccountPnLPositionUpdate");
+            // Socket.off("InstrumentPnLPositionUpdate");
             Socket.off("orderTracker");
             Socket.off("ordersShown");
             Socket.off("lastTwoDaysCompiled");
@@ -508,7 +513,6 @@ export default function PixiChart({ Socket }) {
         Socket.on("lastTrade", onLastTrade({ setLastTrade, setOhlcDatas, pixiData }));
 
         Socket.on("liquidity", (data) => {
-            setBidAskRatios(data);
             pixiData.setLiquidityData(data);
         });
         ////////////////////////////////////////////////////
@@ -704,7 +708,13 @@ export default function PixiChart({ Socket }) {
                     <TradeControls lastTrade={lastTrade} />
                 </div>
                 <div className="col-6">
-                    <PnL_AndOrderFlowStats Socket={Socket} bidAskRatios={bidAskRatios} instrumentPnLPositionUpdate={instrumentPnLPositionUpdate} accountPnLPositionUpdate={accountPnLPositionUpdate} orderTrackerCount={orderTrackerCount} />
+                    <PnL_AndOrderFlowStats
+                        Socket={Socket}
+                        // bidAskRatios={bidAskRatios}
+                        //  instrumentPnLPositionUpdate={instrumentPnLPositionUpdate}
+                        //   accountPnLPositionUpdate={accountPnLPositionUpdate}
+                        //   orderTrackerCount={orderTrackerCount}
+                    />
                 </div>
                 <div className="col-12">
                     <div className="row">

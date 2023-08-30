@@ -4,39 +4,56 @@ import MiniPixiChart from "../../mini-pixi-chart";
 export default function PnL_AndOrderFlowStats(props) {
     // console.log("PnL_AndOrderFlowStats");
     const {
-        accountPnLPositionUpdate = {},
-        instrumentPnLPositionUpdate = {},
-        orderTrackerCount = {},
-        bidAskRatios = {},
+        // accountPnLPositionUpdate = {},
+        // instrumentPnLPositionUpdate = {},
+        // orderTrackerCount = {},
+        // bidAskRatios = {},
         Socket,
     } = props;
 
     const [bidSizeToAskSizeRatio, setBidSizeToAskSizeRatio] = useState([0]);
     const [bidSizeToAskSizeRatioMA, setBidSizeToAskSizeRatioMA] = useState([0]);
+    const [orderTrackerCount, setOrderTrackerCount] = useState({});
+    const [accountPnLPositionUpdate, setAccountPnLPositionUpdate] = useState({});
+    const [instrumentPnLPositionUpdate, setInstrumentPnLPositionUpdate] = useState({});
+    const [bidAskRatios, setBidAskRatios] = useState({});
 
     // console.log(bidAskRatios);
-    // useEffect(() => {
-    //     Socket.on("liquidity", (data) => {
-    //         console.log({ data });
-    //         const {
-    //             bidSizeToAskSizeRatio,
+    useEffect(() => {
+        Socket.on("InstrumentPnLPositionUpdate", (message) => {
+            // console.log(message);
+            setInstrumentPnLPositionUpdate(message);
+        });
 
-    //             bidSizeToAskSizeRatioMA,
-    //         } = data;
-    //         setBidSizeToAskSizeRatio((arr) => [...arr, bidSizeToAskSizeRatio]);
-    //         setBidSizeToAskSizeRatioMA((arr) => [
-    //             ...arr,
-    //             bidSizeToAskSizeRatioMA,
-    //         ]);
+        Socket.on("AccountPnLPositionUpdate", (message) => {
+            // console.log(message);
+            setAccountPnLPositionUpdate(message);
+        });
 
-    //         // setBidAskRatios(data);
-    //         // pixiData.setLiquidityData(data);
-    //     });
-    //     return () => {
-    //         console.log("socket OFFFFF");
-    //         Socket.off("liquidity");
-    //     };
-    // }, [Socket]);
+        Socket.on("orderTracker", (orderTrackerCount) => {
+            debugger;
+            console.log({ orderTrackerCount });
+            const {
+                bidSizeToAskSizeRatio,
+
+                bidSizeToAskSizeRatioMA,
+            } = orderTrackerCount;
+            setBidAskRatios(orderTrackerCount);
+
+            setBidSizeToAskSizeRatio((arr) => [...arr, bidSizeToAskSizeRatio]);
+            setBidSizeToAskSizeRatioMA((arr) => [...arr, bidSizeToAskSizeRatioMA]);
+
+            setOrderTrackerCount(orderTrackerCount);
+        });
+
+        return () => {
+            debugger;
+            console.log("socket OFFFFF");
+            Socket.off("orderTracker");
+            Socket.off("AccountPnLPositionUpdate");
+            Socket.off("InstrumentPnLPositionUpdate");
+        };
+    }, [Socket]);
 
     const MiniChartMemo = useMemo(() => {
         console.log("useMemo");
@@ -65,51 +82,26 @@ export default function PnL_AndOrderFlowStats(props) {
         <>
             <div className="row">
                 <div className="col-6"></div>
-                <div className="col-6">
-                    P&accountBalance = {accountPnLPositionUpdate.accountBalance}
-                </div>
+                <div className="col-6">P&accountBalance = {accountPnLPositionUpdate.accountBalance}</div>
 
-                <div className="col-6">
-                    P&L = {instrumentPnLPositionUpdate.openPositionPnl}
-                </div>
-                <div className="col-6">
-                    dayClosedPnl = {instrumentPnLPositionUpdate.dayClosedPnl}
-                </div>
+                <div className="col-6">P&L = {instrumentPnLPositionUpdate.openPositionPnl}</div>
+                <div className="col-6">dayClosedPnl = {instrumentPnLPositionUpdate.dayClosedPnl}</div>
             </div>
             <div className="row">
-                <div className="col-6">
-                    netQuantity = {instrumentPnLPositionUpdate.netQuantity}
-                </div>
-                <div className="col-6">
-                    avgOpenFillPrice =
-                    {instrumentPnLPositionUpdate.avgOpenFillPrice}
-                </div>
+                <div className="col-6">netQuantity = {instrumentPnLPositionUpdate.netQuantity}</div>
+                <div className="col-6">avgOpenFillPrice ={instrumentPnLPositionUpdate.avgOpenFillPrice}</div>
             </div>
 
             <div className="row">
-                <div className="col-6">
-                    fillBuyQty = {instrumentPnLPositionUpdate.fillBuyQty}
-                </div>
-                <div className="col-6">
-                    fillSellQty = {instrumentPnLPositionUpdate.fillSellQty}
-                </div>
+                <div className="col-6">fillBuyQty = {instrumentPnLPositionUpdate.fillBuyQty}</div>
+                <div className="col-6">fillSellQty = {instrumentPnLPositionUpdate.fillSellQty}</div>
             </div>
             <div className="row">
-                <div className="col-6">
-                    bigPlayers: {orderTrackerCount.bigPlayer}
-                </div>
-                <div className="col-6">
-                    orderDelta: {orderTrackerCount.orderDelta}
-                </div>
-                <div className="col-6">
-                    {/* orderDelta: {orderTrackerCount.orderDelta} */}
-                </div>
-                <div className="col-6">
-                    buyingPowerCount: {orderTrackerCount.buyingPowerCount}
-                </div>
-                <div className="col-6">
-                    nullOrderDelta: {orderTrackerCount.nullOrderDelta}
-                </div>
+                <div className="col-6">bigPlayers: {orderTrackerCount.bigPlayer}</div>
+                <div className="col-6">orderDelta: {orderTrackerCount.orderDelta}</div>
+                <div className="col-6">{/* orderDelta: {orderTrackerCount.orderDelta} */}</div>
+                <div className="col-6">buyingPowerCount: {orderTrackerCount.buyingPowerCount}</div>
+                <div className="col-6">nullOrderDelta: {orderTrackerCount.nullOrderDelta}</div>
             </div>
             {/* 
             {MiniChartMemo}
@@ -129,29 +121,18 @@ export default function PnL_AndOrderFlowStats(props) {
             /> */}
 
             <div className="row">
+                <div className="col-6">bidSizeOrderRatio: {bidAskRatios?.bidSizeOrderRatio?.toFixed(2)}</div>
+                <div className="col-6">askSizeOrderRatio: {bidAskRatios?.askSizeOrderRatio?.toFixed(2)}</div>
                 <div className="col-6">
-                    bidSizeOrderRatio:{" "}
-                    {bidAskRatios?.bidSizeOrderRatio?.toFixed(2)}
-                </div>
-                <div className="col-6">
-                    askSizeOrderRatio:{" "}
-                    {bidAskRatios?.askSizeOrderRatio?.toFixed(2)}
-                </div>
-                <div className="col-6">
-                    bidSizeToAskSizeRatio:{" "}
-                    {bidAskRatios?.bidSizeToAskSizeRatio?.toFixed(2)}
+                    bidSizeToAskSizeRatio: {bidAskRatios?.bidSizeToAskSizeRatio?.toFixed(2)}
                     {" / "}
                     {bidAskRatios?.bidSizeToAskSizeRatioMA?.toFixed(2)}
                 </div>
 
-                <div className="col-6">
-                    bidOrderToAskOrderRatio:{" "}
-                    {bidAskRatios?.bidOrderToAskOrderRatio?.toFixed(2)}
-                </div>
+                <div className="col-6">bidOrderToAskOrderRatio: {bidAskRatios?.bidOrderToAskOrderRatio?.toFixed(2)}</div>
 
                 <div className="col-6">
-                    nearPriceBidSizeToAskSizeRatio:{" "}
-                    {bidAskRatios?.nearPriceBidSizeToAskSizeRatio?.toFixed(2)}
+                    nearPriceBidSizeToAskSizeRatio: {bidAskRatios?.nearPriceBidSizeToAskSizeRatio?.toFixed(2)}
                     {" / "}
                     {bidAskRatios?.nearPriceBidSizeToAskSizeRatioMA?.toFixed(2)}
                 </div>

@@ -1,24 +1,18 @@
 export default function onLastTrade({ setLastTrade, setOhlcDatas, pixiData }) {
     return (message) => {
         // if (!ohlcDatas.length) return;
+        const { aggressor, tradePrice, tradeSize, vwap, timestamp: seconds, lastTradeData } = message;
 
-        const {
-            aggressor,
-            tradePrice,
-            tradeSize,
-            vwap,
-            timestamp: seconds,
-        } = message;
-
-        const timestamp = seconds * 1000 + 1000 * 60; //Need to add code to check the barType and period
+        // const timestamp = seconds * 1000 + 1000 * 60; //Need to add code to check the barType and period
         const lastOhlc = pixiData.ohlcDatas.slice(-1)[0];
 
+        debugger;
         if (!lastOhlc) {
             return;
         }
 
-        const min = new Date(timestamp).getMinutes();
-        const ohlcDataLastMin = new Date(lastOhlc.timestamp).getMinutes();
+        // const min = new Date(timestamp).getMinutes();
+        // const ohlcDataLastMin = new Date(lastOhlc.timestamp).getMinutes();
         // if (min !== ohlcDataLastMin) {
         //     const data = {
         //         open: tradePrice,
@@ -33,10 +27,11 @@ export default function onLastTrade({ setLastTrade, setOhlcDatas, pixiData }) {
         //     pixiData.prependData(data);
         // } else {
         const close = tradePrice;
-        lastOhlc.volume += tradeSize;
+        lastOhlc.volume += lastTradeData.volume;
         lastOhlc.close = close;
-        if (lastOhlc.low > close) lastOhlc.low = close;
-        if (lastOhlc.high < close) lastOhlc.high = close;
+        if (lastOhlc.low > lastTradeData.low) lastOhlc.low = lastTradeData.low;
+        if (lastOhlc.high < lastTradeData.high) lastOhlc.high = lastTradeData.high;
+        // console.log(lastOhlc);
 
         pixiData.replaceLast(lastOhlc);
         pixiData.updateCurrentPriceLabel(tradePrice);
