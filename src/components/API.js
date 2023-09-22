@@ -66,8 +66,12 @@ export default {
     rapi_cancelOrder,
     getFromRedis,
     getOrderFlow,
+    getTicks,
 };
 
+async function getTicks() {
+    return GET(`/API/ticks`);
+}
 async function getOrderFlow({ start, end }) {
     return GET(`/API/getOrderFlow/${start}/${end}/`);
 }
@@ -77,7 +81,7 @@ async function GET(url) {
     });
     return await data.json();
 }
-
+//TODO this maybe broken
 async function getFromRedis({ symbol, exchange, start, finish, type, period }) {
     const data = await GET(`/API/redis/${exchange}/${symbol}/${type}/${period}/${start}/${finish}/`);
 
@@ -340,7 +344,6 @@ async function linkPriceData(stratId, priceDataId) {
 }
 
 async function addPriceData(symbol, timeframe) {
-    debugger;
     try {
         let newPriceData = await fetch(`${REACT_APP_API_SERVER}/API/addPriceData`, {
             credentials: "include",

@@ -704,6 +704,7 @@ export default class PixiData {
             : null;
         return date;
     }
+
     getTime(dateIndex) {
         // const dateIndex = Math.floor(this.xScale.invert(x));
         let date = this.slicedData[dateIndex]
@@ -888,7 +889,7 @@ export default class PixiData {
 
     drawLiquidity() {
         try {
-            console.log("draw liquid");
+            // console.log("draw liquid");
             // console.log(this.liquidityData);
             if (!this.isDrawOrderbook) return;
             const liquidityHeight = 1;
@@ -1016,6 +1017,7 @@ export default class PixiData {
         const doubleMargin = candleMargin * 2;
         const strokeWidth = this.candleWidth * 0.1 > 2 ? 2 : this.candleWidth * 0.1;
         const halfStrokeWidth = strokeWidth / 2;
+        const doubleStrokeWidth = strokeWidth * 2;
         this.candleStickGfx.lineStyle(strokeWidth, 0x111111, 0.9);
 
         this.slicedData.forEach((candle, i) => {
@@ -1031,7 +1033,7 @@ export default class PixiData {
             const isUp = open >= close;
             this.candleStickGfx.beginFill(isUp ? 0x00ff00 : 0xff0000);
 
-            const height = Math.abs(open - close) || 2;
+            const height = Math.abs(open - close) || doubleStrokeWidth;
             const start = isUp ? close : open;
             // const end = isUp ? open : close;
             this.candleStickGfx.drawRect(x + candleMargin - halfWidth, start + halfStrokeWidth, this.candleWidth - doubleMargin, height - strokeWidth);

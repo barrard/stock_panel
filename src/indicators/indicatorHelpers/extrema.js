@@ -257,9 +257,7 @@ function findLineByLeastSquares(points) {
     var values_length = values_x.length;
 
     if (values_length != values_y.length) {
-        throw new Error(
-            "The parameters values_x and values_y need to have same size!"
-        );
+        throw new Error("The parameters values_x and values_y need to have same size!");
     }
 
     /*
@@ -327,4 +325,5 @@ export default {
     mergeImportantPriceLevels,
     consolidateMinMaxValues,
     regressionAnalysis,
+    findLineByLeastSquares,
 };

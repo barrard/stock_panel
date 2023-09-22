@@ -114,14 +114,19 @@ export default function PixiChart({ Socket }) {
     const [lastTwoDaysCompiled, setLastTwoDaysCompiled] = useState({});
     // const [bidAskRatios, setBidAskRatios] = useState({});
     const [plantStatus, setPlantStatus] = useState({});
+    const [ticks, setTicks] = useState([]);
 
+    const loadTicks = async () => {
+        const ticks = await API.getTicks();
+        debugger;
+        setTicks(ticks);
+    };
     //Fn to load ohlc data
     const loadData = ({
         startIndex = startTime ? new Date(startTime).getTime() : null, //= new Date().getTime() - 1000 * 60 * 60 * 24,
         finishIndex = new Date().getTime(),
         isNew = false,
     }) => {
-        debugger;
         if (loading) {
             return console.log("No can, I stay loading");
         }
@@ -143,7 +148,7 @@ export default function PixiChart({ Socket }) {
 
         // console.log("Loading data");
         setLoading(symbol.value);
-        debugger;
+
         // startDate = startDate || new Date().getTime();
         API.rapi_requestBars({
             symbol: symbol.value,
@@ -322,7 +327,6 @@ export default function PixiChart({ Socket }) {
         newSymbolTimerRef.current = setTimeout(() => {
             setSymbolInputDisabled(true);
             if (loading !== symbol.value) {
-                debugger;
                 loadData({
                     finishIndex: endTime ? new Date(endTime).getTime() || new Date().getTime() : new Date().getTime(),
                     isNew: true,
@@ -467,6 +471,10 @@ export default function PixiChart({ Socket }) {
 
         //     console.log(data);
         // });
+        // BACK TESTER
+        // Socket.on("backtester-bars", (d) => {
+        //     console.log(d);
+        // });
 
         return () => {
             console.log("DESTROY PIXI CHART");
@@ -484,6 +492,8 @@ export default function PixiChart({ Socket }) {
             Socket.off("ordersShown");
             Socket.off("lastTwoDaysCompiled");
             Socket.off("timeBarUpdate");
+            //BACK TESTER
+            Socket.off("backtester-bars");
         };
     }, []);
     // }, [symbol, barType, barTypePeriod]);
@@ -612,6 +622,19 @@ export default function PixiChart({ Socket }) {
         [plantStatus]
     );
 
+    const PnL_AndOrderFlowStatsMemo = useMemo(() => {
+        return (
+            <PnL_AndOrderFlowStats
+                Socket={Socket}
+                // ticks={ticks}
+                // bidAskRatios={bidAskRatios}
+                //  instrumentPnLPositionUpdate={instrumentPnLPositionUpdate}
+                //   accountPnLPositionUpdate={accountPnLPositionUpdate}
+                //   orderTrackerCount={orderTrackerCount}
+            />
+        );
+    }, [Socket]);
+
     return (
         <>
             <div className="row">
@@ -708,13 +731,14 @@ export default function PixiChart({ Socket }) {
                     <TradeControls lastTrade={lastTrade} />
                 </div>
                 <div className="col-6">
-                    <PnL_AndOrderFlowStats
-                        Socket={Socket}
-                        // bidAskRatios={bidAskRatios}
-                        //  instrumentPnLPositionUpdate={instrumentPnLPositionUpdate}
-                        //   accountPnLPositionUpdate={accountPnLPositionUpdate}
-                        //   orderTrackerCount={orderTrackerCount}
-                    />
+                    {/* <button
+                        onClick={() => {
+                            loadTicks();
+                        }}
+                    >
+                        LOAD TICKS
+                    </button> */}
+                    {PnL_AndOrderFlowStatsMemo}
                 </div>
                 <div className="col-12">
                     <div className="row">

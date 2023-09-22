@@ -79,16 +79,12 @@ export default class ZigZag {
         this.zigZagGfx.lineStyle(THICK, 0xff0000, 1);
         this.dataCounter = 0;
 
-        this.minMax.regressionZigZag?.regressionHighLines?.forEach((line) =>
-            this.drawRegressionLine(line)
-        );
+        this.minMax.regressionZigZag?.regressionHighLines?.forEach((line) => this.drawRegressionLine(line));
 
         this.zigZagGfx.lineStyle(THICK, 0x00ff00, 1);
 
         this.dataCounter = 0;
-        this.minMax.regressionZigZag?.regressionLowLines?.forEach((line) =>
-            this.drawRegressionLine(line)
-        );
+        this.minMax.regressionZigZag?.regressionLowLines?.forEach((line) => this.drawRegressionLine(line));
     }
 
     drawRegressionLine(line) {
@@ -100,11 +96,7 @@ export default class ZigZag {
 
         if (line.t2 < this.firstTime) return;
 
-        for (
-            let _x = this.dataCounter;
-            _x < this.data.slicedData.length;
-            _x++
-        ) {
+        for (let _x = this.dataCounter; _x < this.data.slicedData.length; _x++) {
             const ohlcData = this.data.slicedData[_x];
 
             if (!ohlcData) return;

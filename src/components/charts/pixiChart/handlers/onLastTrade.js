@@ -6,7 +6,6 @@ export default function onLastTrade({ setLastTrade, setOhlcDatas, pixiData }) {
         // const timestamp = seconds * 1000 + 1000 * 60; //Need to add code to check the barType and period
         const lastOhlc = pixiData.ohlcDatas.slice(-1)[0];
 
-        debugger;
         if (!lastOhlc) {
             return;
         }

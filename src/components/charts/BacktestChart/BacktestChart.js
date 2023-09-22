@@ -1,0 +1,191 @@
+import React, { useEffect, useRef, useState, useMemo } from "react";
+import Chart from "./classes/BacktestChartClass";
+import API from "../../API";
+import BackTesterStatus from "./components/BackTesterStatus";
+// import BackTestCharJs from "../BackTestChartJS";
+const events = ["zoomed", "drag-end", "zoomed-end", "pinch-end"];
+
+export default function GptChart({ Socket }) {
+    const PixiChartRef = useRef();
+    const PixiRef = useRef();
+
+    const [data, setData] = useState([]);
+    const [eventsData, setEventsData] = useState({});
+
+    const [chart, setChart] = useState(false);
+    async function getAndSetData() {
+        const symbol = "ES";
+        const from = 1671185580000;
+        const to = 1671186720000;
+        const data = await API.getTicksFrom({ symbol, from, to });
+        const ticks = data.map((d) => d.ticks).flat();
+        console.log(ticks);
+        setData(ticks);
+    }
+
+    useEffect(() => {
+        if (PixiRef.current) return;
+        const options = {
+            events,
+            setEventsData,
+            height: 700,
+            width: 1200,
+            PixiChartRef,
+            tickSize: 0.25, //TODO make dynamic
+            margin: {
+                top: 10,
+                left: 10,
+                right: 100,
+                bottom: 40,
+            },
+        }; // Configuration options
+
+        const chart = new Chart(data, options);
+        PixiRef.current = chart;
+        PixiChartRef.current?.addEventListener(
+            "mousewheel",
+            (e) => {
+                e.preventDefault();
+            },
+            { passive: false }
+        );
+
+        // getAndSetData();
+
+        // BACK TESTER
+        Socket.on("backtester-bars", (d) => {
+            console.log(d);
+            setData(d);
+        });
+
+        Socket.emit("to-backtester", {
+            type: "weeklyData",
+        });
+
+        return () => {
+            Socket.off("backtester-bars");
+            PixiRef.current.destroy();
+            PixiRef.current = null;
+        };
+    }, []);
+
+    useEffect(() => {
+        console.log("data updated.");
+        if (data?.bars?.length && PixiRef.current) {
+            PixiRef.current.setData(data);
+            PixiRef.current.setupChart();
+        } else {
+            console.log("no can");
+            console.log("data", data);
+            console.log("PixiRef", PixiRef);
+        }
+    }, [data, PixiRef.current]);
+
+    const viewportEvents = events.map((name) => {
+        return DisplayEvent({ name, eventData: eventsData[name] });
+    });
+
+    const PlantStatusesMemo = useMemo(
+        () => <BackTesterStatus Socket={Socket} />,
+
+        [Socket]
+    );
+
+    return (
+        <div className="container">
+            {/* <BackTestCharJs /> */}
+            {PlantStatusesMemo}
+            <div ref={PixiChartRef}></div>
+            <div>
+                {/* <h3>stats</h3> */}
+                {/* <div className="row">{viewportEvents}</div> */}
+                {/* {DisplayEvent(events)} */}
+                {/* {events.name} */}
+            </div>
+        </div>
+    );
+}
+
+function DisplayEvent(data) {
+    const [name, setName] = useState(data.name);
+
+    console.log(name);
+    if (data.eventData) {
+        console.log(data.eventData);
+        console.log("viewport.scale.x", data.eventData?.viewport?.scale?.x);
+        console.log("viewport.scale.y", data.eventData?.viewport?.scale?.y);
+        console.log("viewport.x", data.eventData?.viewport?.x);
+        console.log("viewport.y", data.eventData?.viewport?.y);
+        if (data.eventData?.screen?.scale) {
+            console.log("screen.scale.x", data.eventData?.screen?.scale?.x);
+            console.log("screen.scale.y", data.eventData?.screen?.scale?.y);
+        }
+        console.log("screen.x", data.eventData?.screen?.x);
+        console.log("screen.y", data.eventData?.screen?.y);
+        if (data.eventData?.world?.scale) {
+            console.log("world.scale.x", data.eventData?.world?.scale?.x);
+            console.log("world.scale.y", data.eventData?.world?.scale?.y);
+        }
+        console.log("world.x", data.eventData?.world?.x);
+        console.log("world.y", data.eventData?.world?.y);
+    }
+    return (
+        <div key={name} className="col">
+            {name}
+            <div
+                style={{
+                    opacity: data.eventData?.x ? 1 : 0.1,
+                }}
+            >
+                <h4>Event</h4>
+                <p>
+                    X: {Math.floor(data.eventData?.x)} Y: {Math.floor(data.eventData?.y)}
+                </p>
+                <p>
+                    Scale: x - {Math.floor(data.eventData?.scale?._x * 100) / 100} y - {Math.floor(data.eventData?.scale?._y * 100) / 100}
+                </p>
+            </div>
+
+            <div
+                style={{
+                    opacity: data.eventData?.screen ? 1 : 0.1,
+                }}
+            >
+                <h4>Screen</h4>
+                <p>
+                    X: {Math.floor(data.eventData?.screen?.x)} Y: {Math.floor(data.eventData?.screen?.y)}
+                </p>
+                <p>
+                    Scale: x - {Math.floor(data.eventData?.screen?.scale?._x * 100) / 100} y - {Math.floor(data.eventData?.screen?.scale?._y * 100) / 100}
+                </p>
+            </div>
+            <div
+                style={{
+                    opacity: data.eventData?.world ? 1 : 0.1,
+                }}
+            >
+                <h4>World</h4>
+                <p>
+                    X: {Math.floor(data.eventData?.world?.x)} Y: {Math.floor(data.eventData?.world?.y)}
+                </p>
+                <p>
+                    Scale: x - {Math.floor(data.eventData?.world?.scale?._x * 100) / 100} y - {Math.floor(data.eventData?.world?.scale?._y * 100) / 100}
+                </p>
+            </div>
+
+            <div
+                style={{
+                    opacity: data.eventData?.viewport ? 1 : 0.1,
+                }}
+            >
+                <h4>Viewport</h4>
+                <p>
+                    X: {Math.floor(data.eventData?.viewport?.x)} Y: {Math.floor(data.eventData?.viewport?.y)}
+                </p>
+                <p>
+                    Scale: x - {Math.floor(data.eventData?.viewport?.scale?._x * 100) / 100} y - {Math.floor(data.eventData?.viewport?.scale?._y * 100) / 100}
+                </p>
+            </div>
+        </div>
+    );
+}

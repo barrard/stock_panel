@@ -22,6 +22,8 @@ import OptionContracts from "./components/OptionContracts.js";
 import OptionByDate from "./components/OptionByDate.js";
 import PixiChart from "./components/charts/pixiChart";
 import GptChart from "./components/charts/GptChart";
+import BacktestChart from "./components/charts/BacktestChart";
+
 import BidAskStats from "./components/charts/BidAskStats";
 
 import CommodityChartPage from "./components/CommodityChartPage.js";
@@ -112,6 +114,7 @@ class App extends React.Component {
                     <Route path="/fundamentals" render={(props) => <Fundamentals {...props} />} />
                     <Route path="/pixi-chart" render={(props) => <PixiChart {...props} Socket={Socket} />} />
                     <Route path="/gpt-chart" render={(props) => <GptChart {...props} Socket={Socket} />} />
+                    <Route path="/pixi-backtest" render={(props) => <BacktestChart {...props} Socket={Socket} />} />
 
                     <Route path="/bid-ask-stats" render={(props) => <BidAskStats {...props} Socket={Socket} />} />
                     {/* Keep at bottom */}

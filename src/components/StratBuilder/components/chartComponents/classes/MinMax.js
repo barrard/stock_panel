@@ -1,14 +1,8 @@
-import { makeEMA } from "../../../../../indicators/indicatorHelpers/MovingAverage";
+// import { makeEMA } from "../../../../../indicators/indicatorHelpers/MovingAverage";
 import extrema from "../../../../../indicators/indicatorHelpers/extrema";
 
 class MinMax {
-    constructor(
-        data,
-        tolerance = 1,
-        zigZagTolerance = 0.019,
-        zigZagRegressionErrorLimit,
-        toggleZigzagDynamic
-    ) {
+    constructor(data, tolerance = 1, zigZagTolerance = 0.019, zigZagRegressionErrorLimit, toggleZigzagDynamic) {
         this.data = data.map((d) => ({ ...d, datetime: d.timestamp }));
         this.tolerance = tolerance > 0 ? tolerance : 1;
         this.zigZagTolerance = zigZagTolerance > 0 ? zigZagTolerance : 0.0001;
@@ -38,10 +32,7 @@ class MinMax {
             let lowToHigh;
             if (firstPoint.name === "high" && secondPoint.name === "low") {
                 lowToHigh = false;
-            } else if (
-                firstPoint.name === "low" &&
-                secondPoint.name === "high"
-            ) {
+            } else if (firstPoint.name === "low" && secondPoint.name === "high") {
                 lowToHigh = true;
             } else {
                 throw Error("fibs are broken");
@@ -106,8 +97,7 @@ class MinMax {
 
                     //why no y, WE NEED A y
                     //based on last value.name, if high then check is this high, else, take the low value
-                    const last_smoothMinMax =
-                        smoothMinMax[smoothMinMax.length - 1];
+                    const last_smoothMinMax = smoothMinMax[smoothMinMax.length - 1];
 
                     val = {
                         high: this.data[i].high,
@@ -146,10 +136,7 @@ class MinMax {
                 diff2 = Math.abs(lastVal.val.y - minMaxValue.val.low);
             }
 
-            if (
-                minMaxValue.name === lastVal.name ||
-                minMaxValue.name === "both"
-            ) {
+            if (minMaxValue.name === lastVal.name || minMaxValue.name === "both") {
                 if (lastVal.name === "high") {
                     if (minMaxValue.name === "high") {
                         if (minMaxValue.val.y >= lastVal.val.y) {
@@ -194,9 +181,7 @@ class MinMax {
             if (lastVal.name === "start") {
                 if (i !== 0) {
                     debugger;
-                    throw new Error(
-                        "this should only happen on the very first value"
-                    );
+                    throw new Error("this should only happen on the very first value");
                 }
                 //need a default to start with.
                 //try high
@@ -328,12 +313,7 @@ class MinMax {
             } else if (diff1 > lastVal.val.y * this.zigZagTolerance) {
                 //only go swing high, low, high, low, etc...
                 if (lastVal.name === minMaxValue.name) {
-                    if (
-                        (lastVal.name === "high" &&
-                            minMaxValue.val.y > lastVal.val.y) ||
-                        (lastVal.name === "low" &&
-                            minMaxValue.val.y < lastVal.val.y)
-                    ) {
+                    if ((lastVal.name === "high" && minMaxValue.val.y > lastVal.val.y) || (lastVal.name === "low" && minMaxValue.val.y < lastVal.val.y)) {
                         swings[swings.length - 1] = minMaxValue;
                     }
                 } else {

@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useMemo } from "react";
 import MiniPixiChart from "../../mini-pixi-chart";
-
+import Seismograph from "../../Seismograph";
 export default function PnL_AndOrderFlowStats(props) {
-    // console.log("PnL_AndOrderFlowStats");
     const {
         // accountPnLPositionUpdate = {},
         // instrumentPnLPositionUpdate = {},
         // orderTrackerCount = {},
         // bidAskRatios = {},
         Socket,
+        ticks,
     } = props;
+    // console.log(props);
 
     const [bidSizeToAskSizeRatio, setBidSizeToAskSizeRatio] = useState([0]);
     const [bidSizeToAskSizeRatioMA, setBidSizeToAskSizeRatioMA] = useState([0]);
@@ -31,8 +32,6 @@ export default function PnL_AndOrderFlowStats(props) {
         });
 
         Socket.on("orderTracker", (orderTrackerCount) => {
-            debugger;
-            console.log({ orderTrackerCount });
             const {
                 bidSizeToAskSizeRatio,
 
@@ -43,17 +42,15 @@ export default function PnL_AndOrderFlowStats(props) {
             setBidSizeToAskSizeRatio((arr) => [...arr, bidSizeToAskSizeRatio]);
             setBidSizeToAskSizeRatioMA((arr) => [...arr, bidSizeToAskSizeRatioMA]);
 
-            setOrderTrackerCount(orderTrackerCount);
+            setOrderTrackerCount({ ...orderTrackerCount });
         });
 
         return () => {
-            debugger;
-            console.log("socket OFFFFF");
             Socket.off("orderTracker");
             Socket.off("AccountPnLPositionUpdate");
             Socket.off("InstrumentPnLPositionUpdate");
         };
-    }, [Socket]);
+    }, []);
 
     const MiniChartMemo = useMemo(() => {
         console.log("useMemo");
@@ -77,6 +74,11 @@ export default function PnL_AndOrderFlowStats(props) {
         );
     }, [Socket]);
     //[Socket, bidSizeToAskSizeRatio, bidSizeToAskSizeRatioMA]
+    // console.log(orderTrackerCount.delta);
+
+    const SeismographChartMemo = useMemo(() => {
+        return <Seismograph data={[]} orderTrackerCount={orderTrackerCount} />;
+    }, [orderTrackerCount]);
 
     return (
         <>
@@ -102,6 +104,11 @@ export default function PnL_AndOrderFlowStats(props) {
                 <div className="col-6">{/* orderDelta: {orderTrackerCount.orderDelta} */}</div>
                 <div className="col-6">buyingPowerCount: {orderTrackerCount.buyingPowerCount}</div>
                 <div className="col-6">nullOrderDelta: {orderTrackerCount.nullOrderDelta}</div>
+                <div className="col-6">delta: {orderTrackerCount.delta}</div>
+                {/* <Seismograph data={ticks} delta={orderTrackerCount.delta} /> */}
+                {/* {SeismographChartMemo} */}
+                <div className="col-6">tradeSize: {orderTrackerCount.tradeSize}</div>
+                <div className="col-6">tradeCount: {orderTrackerCount.tradeCount}</div>
             </div>
             {/* 
             {MiniChartMemo}
