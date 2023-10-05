@@ -13,6 +13,8 @@ import { timeScaleValues, priceScaleValues } from "./utils.js";
 import { drawVolume } from "./drawFns.js";
 import Indicator from "./Indicator";
 import { eastCoastTime, isRTH } from "../../../../indicators/indicatorHelpers/IsMarketOpen";
+import API from "../../../API";
+
 export default class PixiData {
     constructor({
         ohlcDatas = [],
@@ -54,6 +56,7 @@ export default class PixiData {
         this.yLabel = false;
         //Containers
         this.mainChartContainer = new Container();
+        this.tradeWindowContainer = new Container();
         this.lowerIndicatorsData = {
             volume: new Indicator({
                 name: "volume",
@@ -89,6 +92,42 @@ export default class PixiData {
         this.crossHairXGfx = new Graphics();
         this.borderGfx = new Graphics();
 
+        //TRADE WINDOW
+        this.tradeWindowGfx = new Graphics();
+        this.TW_BuyButtonGfx = new Graphics();
+        this.TW_BuyButtonGfx.interactive = true;
+        this.TW_BuyButtonGfx.buttonMode = true;
+        this.BuyButtonClick = (e) => {
+            // Add your click handler code here
+            console.log(this.TW_BUY.text);
+            console.log(e);
+            debugger;
+            const priceType = this.TW_BUY.text === "LIMIT" ? 1 : 4;
+
+            console.log(`Sell ${this.TW_SELL.text} Button clicked!`);
+            this.sendOrder({ transactionType: 1, limitPrice: this.TW_Price, priceType });
+            console.log(`Buy ${this.TW_BUY.text} Button clicked!`);
+        };
+        this.TW_BuyButtonGfx.on("click", this.BuyButtonClick);
+        this.TW_SellButtonGfx = new Graphics();
+        this.TW_SellButtonGfx.interactive = true;
+        this.TW_SellButtonGfx.buttonMode = true;
+        this.SellButtonClick = (e) => {
+            // Add your click handler code here
+            console.log(this);
+            console.log(e);
+            debugger;
+            console.log(this.TW_SELL.text);
+            const priceType = this.TW_SELL.text === "LIMIT" ? 1 : 4;
+
+            console.log(`Sell ${this.TW_SELL.text} Button clicked!`);
+            this.sendOrder({ transactionType: 2, limitPrice: this.TW_Price, priceType });
+        };
+        this.TW_SellButtonGfx.on("click", this.SellButtonClick);
+        this.tradeWindowContainer.addChild(this.tradeWindowGfx);
+        this.tradeWindowContainer.addChild(this.TW_BuyButtonGfx);
+        this.tradeWindowContainer.addChild(this.TW_SellButtonGfx);
+
         //Liquidity
         this.liquidityContainer = new Container();
 
@@ -103,12 +142,24 @@ export default class PixiData {
             fontWeight: "bold",
             fill: 0x333333,
             align: "center",
+            userEvents: "none",
         });
 
         this.dateTxtLabel = new Text("", this.textStyle);
 
         this.priceTxtLabel = new Text("", this.textStyle);
         this.currentPriceTxtLabel = new Text("", this.textStyle);
+        //TRADE WINDOW TEXT
+        this.TW_value = new Text("", this.textStyle);
+        this.TW_BUY = new Text("BUY", this.textStyle);
+        this.TW_BUY.interactive = true;
+        this.TW_BUY.on("click", this.BuyButtonClick);
+        this.TW_SELL = new Text("SELL", this.textStyle);
+        this.TW_SELL.interactive = true;
+        this.TW_SELL.on("click", this.SellButtonClick);
+        this.tradeWindowContainer.addChild(this.TW_value);
+        this.tradeWindowContainer.addChild(this.TW_BUY);
+        this.tradeWindowContainer.addChild(this.TW_SELL);
 
         this.yAxis = new PixiAxis({
             chart: this,
@@ -205,6 +256,7 @@ export default class PixiData {
 
             this.mainChartContainer.addChild(this.volProfileGfx);
             this.pixiApp.stage.addChild(this.mainChartContainer);
+            this.updateCurrentPriceLabel(this.ohlcDatas.slice(-1)[0]?.close);
         } else {
             this.sliceStart += ohlcDatas.length;
             this.sliceEnd += ohlcDatas.length;
@@ -224,6 +276,70 @@ export default class PixiData {
     //     this.timeframe = timeframe;
     //     this.ohlcDatas.length = [];
     // }
+
+    /**
+     *
+     * @param {transactionType} obj 1 == buy 2 == sell
+     * priceType  1 == Limit 4 == stop market
+     * limitPrice the price
+     */
+    async sendOrder({ transactionType, limitPrice, priceType }) {
+        // alert(`${priceType} Sell ${limitPrice}`);
+        let resp = await API.rapi_submitOrder({
+            priceType,
+            limitPrice,
+            transactionType,
+        });
+
+        console.log(resp);
+    }
+    showTradeWindow(openTradeWindow) {
+        //draw a window that follows the mouse
+        this.openTradeWindow = openTradeWindow;
+        if (this.setTradeWindowPosition) return;
+        try {
+            this.tradeWindowGfx.clear();
+            if (!openTradeWindow) {
+                // this.mainChartContainer.removeChild(this.tradeWindowContainer);
+                this.tradeWindowContainer.position.set(-1000, -1000);
+                return console.log("clear");
+            }
+        } catch (e) {
+            console.log(e);
+            return;
+        }
+
+        console.log("this.showTradeWindow()");
+        this.tradeWindowContainer.position.set(this.mouseX, this.mouseY);
+        this.tradeWindowGfx.beginFill(0xffffff);
+        this.tradeWindowGfx.drawRect(0, 0, 200, 200);
+        this.tradeWindowGfx.endFill();
+        this.TW_Price = roundTick(this.priceScale.invert(this.mouseY), this.tickSize);
+        this.TW_value.text = formatter.format(this.TW_Price);
+        this.TW_value.position.set(25, 25);
+
+        const buttonsY = 50;
+        const leftBtnX = 25;
+        const rightBtnX = 125;
+        const buttonWidth = 50;
+        const buttonHeight = 20;
+
+        this.TW_SellButtonGfx.beginFill(0xff0000); // Fill color (green)
+        this.TW_SellButtonGfx.drawRect(leftBtnX, buttonsY, buttonWidth, buttonHeight); // Button dimensions
+        this.TW_SellButtonGfx.endFill();
+
+        this.TW_BuyButtonGfx.beginFill(0x00ff00); // Fill color (green)
+        this.TW_BuyButtonGfx.drawRect(rightBtnX, buttonsY, buttonWidth, buttonHeight); // Button dimensions
+        this.TW_BuyButtonGfx.endFill();
+
+        this.TW_BUY.position.set(rightBtnX, buttonsY);
+        const BUY_TXT = !this.lastPrice ? "" : this.TW_Price > this.lastPrice ? "STOP" : "LIMIT";
+        this.TW_BUY.text = BUY_TXT;
+
+        this.TW_SELL.position.set(leftBtnX, buttonsY);
+        const SELL_TXT = !this.lastPrice ? "" : this.TW_Price < this.lastPrice ? "STOP" : "LIMIT";
+        this.TW_SELL.text = SELL_TXT;
+    }
 
     disableIndicator(indicator, flag) {
         try {
@@ -510,7 +626,9 @@ export default class PixiData {
 
         this.updateDateCrossHairLabel();
         this.updatePriceCrossHairLabel();
-
+        if (this.openTradeWindow) {
+            this.showTradeWindow(this.openTradeWindow);
+        }
         if (this.drag && !this.gesture) {
             // this.hideCrosshair();
             if (!this.prevMouseX) {
@@ -868,8 +986,14 @@ export default class PixiData {
                 this.onMouseMove(e);
                 this.onDragStart();
             })
-            .on("pointerup", () => {
+            .on("pointerup", (e) => {
                 this.onDragEnd();
+                console.log(e.button);
+                if (this.openTradeWindow && e.button !== 2) {
+                    this.setTradeWindowPosition = true;
+                } else {
+                    this.setTradeWindowPosition = false;
+                }
             })
             .on("pointerupoutside", () => this.onDragEnd())
 
@@ -1106,6 +1230,7 @@ export default class PixiData {
 
         this.mainChartContainer.addChild(this.crossHairXGfx);
         this.mainChartContainer.addChild(this.crossHairYGfx);
+        this.mainChartContainer.addChild(this.tradeWindowContainer);
         //LABELS
         this.mainChartContainer.addChild(this.dateLabelAppendGfx);
         this.mainChartContainer.addChild(this.priceLabelAppendGfx);

@@ -41,6 +41,9 @@ export default function PixiChart({ Socket }) {
     const [mouseEnter, setMouseEnter] = useState(false);
     const [pixiData, setPixiData] = useState();
 
+    //Trade Window
+    const [openTradeWindow, setOpenTradeWindow] = useState(false);
+
     //Pixi Application
     const PixiAppRef = useRef();
     //the ui element
@@ -118,7 +121,6 @@ export default function PixiChart({ Socket }) {
 
     const loadTicks = async () => {
         const ticks = await API.getTicks();
-        debugger;
         setTicks(ticks);
     };
     //Fn to load ohlc data
@@ -221,12 +223,19 @@ export default function PixiChart({ Socket }) {
                 });
             })
             .catch((e) => {
-                debugger;
                 setLoading(false);
 
                 alert(e);
             });
     };
+
+    useEffect(() => {
+        if (!pixiData) return;
+
+        // if (openTradeWindow) {
+        pixiData.showTradeWindow(openTradeWindow);
+        // }
+    }, [openTradeWindow, pixiData]);
 
     useEffect(() => {
         if (!pixiData) return;
@@ -251,6 +260,7 @@ export default function PixiChart({ Socket }) {
 
         const lastBar = ohlcDatas.slice(-1)[0];
         const nextTimeBar = getNextTimeBar(data);
+        pixiData.updateCurrentPriceLabel(data.close);
 
         const newBar = {
             open: data.close,
@@ -462,7 +472,6 @@ export default function PixiChart({ Socket }) {
         });
 
         Socket.on("timeBarUpdate", (data) => {
-            debugger;
             setCurrentTimeBar(data);
         });
 
@@ -753,6 +762,11 @@ export default function PixiChart({ Socket }) {
             </div>
             <div
                 className="col-10"
+                onContextMenu={(e) => {
+                    e.preventDefault();
+                    console.log(`onContextMenu ${openTradeWindow}`);
+                    setOpenTradeWindow((v) => !v);
+                }}
                 onMouseEnter={(e) => {
                     setMouseEnter(true);
                 }}
@@ -780,7 +794,6 @@ export default function PixiChart({ Socket }) {
                     setTouch(false);
                     clearGesture();
                     setTouchMoveEvent(false);
-
                     setTouch1(false);
                     setTouch2(false);
                     setZoomGesture(false);
@@ -791,6 +804,7 @@ export default function PixiChart({ Socket }) {
                     clearLongPress();
                     setMouseEnter(false);
                     setLongPress(false);
+                    setOpenTradeWindow(false);
                 }}
                 onPointerEnter={() => setMouseEnter(true)}
                 onPointerLeave={() => setMouseEnter(false)}

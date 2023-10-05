@@ -44,7 +44,7 @@ export default class Chart {
 
         //SCALES
         this.priceScale = scaleLinear().range([this.options.height - (margin.top + margin.bottom), 0]);
-        this.volumeScale = scaleLinear().range([this.options.height - (margin.top + margin.bottom), 0]);
+        this.volumeScale = scaleLinear().range([this.options.height - (margin.top + margin.bottom), (this.options.height - (margin.top + margin.bottom)) / 2]);
         this.xScale = scaleLinear().range([0, this.options.width - (margin.left + margin.right)]);
 
         //Containers
@@ -179,6 +179,7 @@ export default class Chart {
         this.currentPriceLabelAppendGfx = new Graphics();
 
         //add minMax Gfx
+        this.combinedKeyLevelsGfx = new Graphics();
         this.minMaxGfx = new Graphics();
         this.minMaxFibsGfx = new Graphics();
         this.minMaxRegressionGfx = new Graphics();
@@ -186,6 +187,7 @@ export default class Chart {
         this.trendLinesGfx = new Graphics();
 
         this.volumeGfx = new Graphics();
+        this.pivotsGfx = new Graphics();
         this.testGfx = new Graphics();
 
         //ZigZag trend lines swings fibs
@@ -208,17 +210,20 @@ export default class Chart {
 
         this.viewport.mask = this.chartMask;
 
+        this.viewport.addChild(this.volumeGfx);
         this.viewport.addChild(this.candleStickWickGfx);
         this.viewport.addChild(this.candleStickGfx);
         this.viewport.addChild(this.priceGfx);
         this.viewport.addChild(this.trendLinesGfx);
+        this.viewport.addChild(this.combinedKeyLevelsGfx);
 
         this.viewport.addChild(this.minMaxGfx);
         this.viewport.addChild(this.minMaxFibsGfx);
         this.viewport.addChild(this.minMaxRegressionGfx);
         this.viewport.addChild(this.minMaxSwingsGfx);
 
-        this.viewport.addChild(this.volumeGfx);
+        this.viewport.addChild(this.pivotsGfx);
+
         this.app.stage.addChild(this.testGfx);
 
         this.testGfx.lineStyle(2, 0xffffff, 0.9);
@@ -283,10 +288,13 @@ export default class Chart {
     }
 
     setData(data) {
+        console.log(data);
         console.log("setting data");
-
+        debugger;
         this.data = this.processData(data?.bars);
         this.weeklyTrendLines = data.weeklyTrendLines;
+        this.lastTwoDaysCompiled = data.lastTwoDaysCompiled;
+        this.combinedKeyLevels = data.combinedKeyLevels;
         console.log(this.weeklyTrendLines);
     }
 
@@ -302,10 +310,12 @@ export default class Chart {
         this.makeVolumeScale();
 
         // this.drawPriceLine();
-        this.drawAllCandles();
         this.drawVolume();
-
+        this.drawAllCandles();
+        debugger;
         this.drawMinMax();
+        this.drawPivots();
+        this.drawCombinedKeyLevels();
         this.lastDragX = this.viewport.x; //this should be up at the top i think its always 0 to begin
         this.lastDragY = this.viewport.y; //this should be up at the top i think its always 0 to begin
         this.lastXRangeScale = Math.abs(this.xScale.range()[0] - this.xScale.range()[1]);
@@ -421,13 +431,109 @@ export default class Chart {
         const startingY = this.volumeScale(0);
 
         this.data.forEach((d, i) => {
-            const x = this.xScale(d.datetime);
+            const x = this.xScale(i);
             const y = this.volumeScale(d.volume);
             // if (i === 0) {
             this.volumeGfx.moveTo(x, startingY);
             // } else {
             this.volumeGfx.lineTo(x, y);
             // }
+        });
+    }
+
+    drawPivots() {
+        if (!this.pivotsGfx || !this.lastTwoDaysCompiled) {
+            return;
+        }
+
+        try {
+            this.pivotsGfx.clear();
+        } catch (err) {
+            // console.log("CLEAR() Error?");
+            // console.log(err);
+            return err;
+        }
+
+        Object.keys(this.lastTwoDaysCompiled).forEach((day) => {
+            const { RTH_OHLC = {}, closeTime, pivot = {} } = this.lastTwoDaysCompiled[day];
+            const { open, high, low, close, datetime } = RTH_OHLC;
+            let index = 0;
+            let foundStartingPoint = false;
+            while (!foundStartingPoint) {
+                const datetime = this.data[index]?.datetime;
+
+                let bool = datetime > closeTime;
+                if (bool || !datetime) {
+                    foundStartingPoint = true;
+                    // index = bool;
+                    break;
+                }
+                index++;
+            }
+
+            const x1 = index - 1;
+            const x2 = x1 + 400;
+            let y1 = pivot.p;
+            let y2 = pivot.p;
+            let line = { x1, x2, y1, y2 };
+            this.pivotsGfx.lineStyle(2, 0x0000ff, 1);
+
+            this.drawLine(this.pivotsGfx, line);
+
+            //SUPPORT
+            y1 = pivot.s1;
+            y2 = pivot.s1;
+            line = { x1, x2, y1, y2 };
+            this.pivotsGfx.lineStyle(2, 0x00ff00, 1);
+
+            this.drawLine(this.pivotsGfx, line);
+            y1 = pivot.s2;
+            y2 = pivot.s2;
+            line = { x1, x2, y1, y2 };
+            this.pivotsGfx.lineStyle(2, 0x00ff00, 0.7);
+
+            this.drawLine(this.pivotsGfx, line);
+
+            //RESISTANCE
+            y1 = pivot.r1;
+            y2 = pivot.r1;
+            line = { x1, x2, y1, y2 };
+            this.pivotsGfx.lineStyle(2, 0xff0000, 1);
+
+            this.drawLine(this.pivotsGfx, line);
+            y1 = pivot.r2;
+            y2 = pivot.r2;
+            line = { x1, x2, y1, y2 };
+            this.pivotsGfx.lineStyle(2, 0xff0000, 0.7);
+
+            this.drawLine(this.pivotsGfx, line);
+        });
+    }
+
+    drawCombinedKeyLevels() {
+        debugger;
+        if (!this.combinedKeyLevelsGfx || !this.combinedKeyLevels?.length) {
+            return;
+        }
+
+        try {
+            this.combinedKeyLevelsGfx.clear();
+        } catch (err) {
+            // console.log("CLEAR() Error?");
+            // console.log(err);
+            return err;
+        }
+
+        const x1 = this.data.length - 20;
+        const x2 = this.data.length + 20;
+        this.combinedKeyLevels.forEach((level) => {
+            // const x1 =
+            // const x2 =
+            const y1 = level.price;
+            const y2 = y1;
+            this.combinedKeyLevelsGfx.lineStyle(level.weight / 4, 0xffaa00, 0.7);
+
+            this.drawLine(this.combinedKeyLevelsGfx, { x1, x2, y1, y2 });
         });
     }
 
@@ -445,7 +551,7 @@ export default class Chart {
             return err;
         }
 
-        console.log(this.weeklyTrendLines);
+        // console.log(this.weeklyTrendLines);
         const {
             fibsList,
             highNodes,
@@ -455,7 +561,7 @@ export default class Chart {
             zigZag,
             regressionZigZag: { regressionHighLines, regressionLowLines },
         } = this.weeklyTrendLines[0].minMax;
-
+        debugger;
         //High/Low Nodes
         this.minMaxGfx.beginFill(0xff0000);
         highNodes.forEach((node) => {
@@ -486,23 +592,37 @@ export default class Chart {
         });
 
         regressionHighLines.forEach((line) => {
-            this.minMaxGfx.lineStyle(2, 0xff0000, 0.6);
-            this.drawLine(this.minMaxGfx, line);
+            this.minMaxRegressionGfx.lineStyle(2, 0xff0000, 0.6);
+            this.drawLine(this.minMaxRegressionGfx, line);
         });
 
         regressionLowLines.forEach((line) => {
-            this.minMaxGfx.lineStyle(2, 0x00ff00, 0.6);
-            this.drawLine(this.minMaxGfx, line);
+            this.minMaxRegressionGfx.lineStyle(2, 0x00ff00, 0.6);
+            this.drawLine(this.minMaxRegressionGfx, line);
         });
 
         //FIB REGRESSION ZIGZAGSS
-
         zigZagFibs.forEach((line) => {
             const { color, opacity = 1 } = line;
-            this.minMaxGfx.beginFill(color);
-            this.minMaxGfx.lineStyle(2, color, opacity);
+            // this.minMaxFibsGfx.beginFill(color);
+            this.minMaxFibsGfx.lineStyle(2, color, opacity);
 
-            this.drawLine(this.minMaxGfx, line);
+            this.drawLine(this.minMaxFibsGfx, line);
+        });
+
+        fibsList.forEach((fibLine, i) => {
+            // console.log(fibLine);
+            const { firstPoint, secondPoint } = fibLine;
+            const color = firstPoint.name === "low" ? "lawngreen" : "indianred";
+            // this.minMaxFibsGfx.beginFill(color);
+            this.minMaxFibsGfx.lineStyle(2, color, 0.4);
+            const x1 = firstPoint.index;
+            const x2 = secondPoint.index;
+
+            const y1 = firstPoint.val.y;
+            const y2 = secondPoint.val.y;
+
+            this.drawLine(this.minMaxFibsGfx, { x1, x2, y1, y2 });
         });
     }
 

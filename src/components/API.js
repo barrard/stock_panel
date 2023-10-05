@@ -86,7 +86,7 @@ async function getFromRedis({ symbol, exchange, start, finish, type, period }) {
     const data = await GET(`/API/redis/${exchange}/${symbol}/${type}/${period}/${start}/${finish}/`);
 
     if (!data) return [];
-    data.forEach((d) => (d.datetime = d.datetime * 1000));
+    // data.forEach((d) => (d.datetime = d.datetime * 1000));
     return data;
 }
 
