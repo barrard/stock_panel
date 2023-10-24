@@ -67,8 +67,12 @@ export default {
     getFromRedis,
     getOrderFlow,
     getTicks,
+    getCustomTicks,
 };
 
+async function getCustomTicks() {
+    return GET(`/API/custom-ticks`);
+}
 async function getTicks() {
     return GET(`/API/ticks`);
 }

@@ -23,13 +23,20 @@ export default function GptChart({ Socket }) {
         setData(ticks);
     }
 
+    function startBackTest() {
+        Socket.emit("to-backtester", {
+            type: "start-backtest",
+            time: 0,
+        });
+    }
+
     useEffect(() => {
         if (PixiRef.current) return;
         const options = {
             events,
             setEventsData,
             height: 700,
-            width: 1200,
+            width: 900,
             PixiChartRef,
             tickSize: 0.25, //TODO make dynamic
             margin: {
@@ -56,6 +63,10 @@ export default function GptChart({ Socket }) {
         Socket.on("backtester-bars", (d) => {
             console.log(d);
             setData(d);
+        });
+
+        Socket.on("backtester-bar-update", (d) => {
+            console.log(d);
         });
 
         Socket.emit("to-backtester", {
@@ -95,6 +106,9 @@ export default function GptChart({ Socket }) {
         <div className="container">
             {/* <BackTestCharJs /> */}
             {PlantStatusesMemo}
+            <div>
+                <button onClick={startBackTest}>START</button>
+            </div>
             <div ref={PixiChartRef}></div>
             <div>
                 {/* <h3>stats</h3> */}

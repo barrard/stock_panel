@@ -25,6 +25,7 @@ import GptChart from "./components/charts/GptChart";
 import BacktestChart from "./components/charts/BacktestChart";
 
 import BidAskStats from "./components/charts/BidAskStats";
+import BetterTickChart from "./components/charts/BetterTickChart";
 
 import CommodityChartPage from "./components/CommodityChartPage.js";
 import defaultFilterList from "./components/QuoteComponents/DefaultFilterList.js";
@@ -117,6 +118,8 @@ class App extends React.Component {
                     <Route path="/pixi-backtest" render={(props) => <BacktestChart {...props} Socket={Socket} />} />
 
                     <Route path="/bid-ask-stats" render={(props) => <BidAskStats {...props} Socket={Socket} />} />
+                    <Route path="/better-tick" render={(props) => <BetterTickChart {...props} Socket={Socket} />} />
+
                     {/* Keep at bottom */}
                     <Route exact path="/sign-up" component={SignupPage} />
                     <Route path="/login" component={LoginPage} />

@@ -179,6 +179,8 @@ export default class Chart {
         this.currentPriceLabelAppendGfx = new Graphics();
 
         //add minMax Gfx
+        this.combinedKeyLevelsContainer = new Container();
+
         this.combinedKeyLevelsGfx = new Graphics();
         this.minMaxGfx = new Graphics();
         this.minMaxFibsGfx = new Graphics();
@@ -215,7 +217,7 @@ export default class Chart {
         this.viewport.addChild(this.candleStickGfx);
         this.viewport.addChild(this.priceGfx);
         this.viewport.addChild(this.trendLinesGfx);
-        this.viewport.addChild(this.combinedKeyLevelsGfx);
+        this.viewport.addChild(this.combinedKeyLevelsContainer);
 
         this.viewport.addChild(this.minMaxGfx);
         this.viewport.addChild(this.minMaxFibsGfx);
@@ -512,12 +514,14 @@ export default class Chart {
 
     drawCombinedKeyLevels() {
         debugger;
-        if (!this.combinedKeyLevelsGfx || !this.combinedKeyLevels?.length) {
+        if (!this.combinedKeyLevelsContainer || !this.combinedKeyLevels?.length) {
             return;
         }
 
         try {
-            this.combinedKeyLevelsGfx.clear();
+            this.combinedKeyLevelsContainer.children.forEach((gfx) => {
+                gfx.clear();
+            });
         } catch (err) {
             // console.log("CLEAR() Error?");
             // console.log(err);
@@ -526,14 +530,40 @@ export default class Chart {
 
         const x1 = this.data.length - 20;
         const x2 = this.data.length + 20;
+        debugger;
         this.combinedKeyLevels.forEach((level) => {
+            const gfx = new Graphics();
+            gfx.interactive = true;
+            gfx.buttonMode = true;
             // const x1 =
             // const x2 =
-            const y1 = level.price;
-            const y2 = y1;
-            this.combinedKeyLevelsGfx.lineStyle(level.weight / 4, 0xffaa00, 0.7);
+            const y1 = level.highest;
+            const y2 = level.lowest;
+            const opacity = level.opacity;
+            gfx.beginFill(0xffaa00, opacity);
 
-            this.drawLine(this.combinedKeyLevelsGfx, { x1, x2, y1, y2 });
+            const data = {
+                x: this.xScale(x1),
+                y: this.priceScale(y1),
+                w: this.xScale(x2) - this.xScale(x1),
+                h: this.priceScale(y2) - this.priceScale(y1),
+            };
+            debugger;
+            this.drawRect(gfx, data);
+            gfx.endFill();
+            this.combinedKeyLevelsContainer.addChild(gfx);
+            gfx.on("mouseover", (e, t) => {
+                console.log("mouseove");
+                console.log({ e, t });
+                console.log(level);
+            });
+
+            // Define a mouseout event
+            gfx.on("mouseout", (e, t) => {
+                console.log("mouseout");
+                console.log({ e, t });
+                console.log(level);
+            });
         });
     }
 
@@ -587,7 +617,8 @@ export default class Chart {
                 val: { y },
             } = node;
             const x = index;
-            // const y = node[highLow];
+            this.minMaxGfx.beginFill(name === "high" ? 0xff5000 : name === "low" ? 0x00ff00 : 0x0000ff);
+
             this.drawMarker(this.minMaxGfx, { x, y, r: 5 });
         });
 
@@ -633,6 +664,10 @@ export default class Chart {
     drawLine(gfx, data) {
         gfx.moveTo(this.xScale(data.x1), this.priceScale(data.y1));
         gfx.lineTo(this.xScale(data.x2), this.priceScale(data.y2));
+    }
+
+    drawRect(gfx, data) {
+        gfx.drawRect(data.x, data.y, data.w, data.h);
     }
 
     drawAllCandles() {

@@ -443,6 +443,9 @@ export default class PixiData {
         }
     }
 
+    setLoadDataFn(fn) {
+        this.loadData = fn;
+    }
     setLiquidityData({ highLiquidity, bidSizeOrderRatio, askSizeOrderRatio, bidSizeToAskSizeRatio, bidOrderToAskOrderRatio }) {
         // console.log("set liquid data");
         this.liquidityData = highLiquidity;

@@ -150,7 +150,7 @@ export default function PixiChart({ Socket }) {
 
         // console.log("Loading data");
         setLoading(symbol.value);
-
+        debugger;
         // startDate = startDate || new Date().getTime();
         API.rapi_requestBars({
             symbol: symbol.value,
@@ -163,7 +163,7 @@ export default function PixiChart({ Socket }) {
             .then(async (_ohlcDatas) => {
                 setLoading(false);
 
-                if (!_ohlcDatas?.length) {
+                if (_ohlcDatas?.length < 2) {
                     // setOhlcDatas([]);
                     // setPixiData([]);
                     // setSymbolInputDisabled(false);
@@ -347,6 +347,8 @@ export default function PixiChart({ Socket }) {
                 setSymbolInputDisabled(false);
             }
         }, 1000);
+
+        pixiData?.setLoadDataFn(loadData);
 
         Socket.emit("requestTimeBarUpdate", {
             symbol: symbol.value,
