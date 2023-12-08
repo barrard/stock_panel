@@ -767,7 +767,7 @@ export default class Chart {
                 if (this.mouseX > this.chartWidth) {
                     //DRAG DOWN / UP
                     this.deltaDragY = this.mouseY - this.prevMouseY;
-                    if (Math.abs(this.deltaDragY) < 5 || Math.abs(this.deltaDragY) < 5) return;
+                    if (Math.abs(this.deltaDragY) < 5 && Math.abs(this.deltaDragY) > -5) return;
 
                     if (this.deltaDragY > 0) {
                         debugger;
@@ -850,7 +850,7 @@ export default class Chart {
     }
 
     dragUp() {
-        console.log("drag up ");
+        // console.log("drag up ");
         debugger;
         const prevPriceRange = this.priceScale.range()[0] - this.priceScale.range()[1];
 
@@ -858,28 +858,25 @@ export default class Chart {
         this.yAxis.render();
         const newPriceRange = this.priceScale.range()[0] - this.priceScale.range()[1];
         const diff = newPriceRange - prevPriceRange;
-        const yScale = diff / newPriceRange;
+        const yScale = diff / prevPriceRange;
         // this.makePriceScale();
         this.viewport.scale.y += yScale;
-        this.viewport.y -= diff / 2;
+        // this.viewport.y -= diff;
     }
 
     dragDown() {
         debugger;
         const prevPriceRange = this.priceScale.range()[0] - this.priceScale.range()[1];
 
-        console.log("drag down ");
+        // console.log("drag down ");
         this.priceScale.range([this.priceScale.range()[0] + this.deltaDragY, this.priceScale.range()[1] - this.deltaDragY]);
         this.yAxis.render();
         const newPriceRange = this.priceScale.range()[0] - this.priceScale.range()[1];
         const diff = newPriceRange - prevPriceRange;
-        const yScale = diff / newPriceRange;
+        const yScale = diff / prevPriceRange;
 
         this.viewport.scale.y += yScale;
-        this.viewport.y -= diff / 2;
-        // this.viewport.scaleX++;
-        // this.viewport.scaled += 0.1;
-        console.log(this.viewport.scaleY);
+        // this.viewport.y -= diff;
     }
 
     updateDateCrossHairLabel() {

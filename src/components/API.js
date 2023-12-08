@@ -68,7 +68,12 @@ export default {
     getOrderFlow,
     getTicks,
     getCustomTicks,
+    getBacktestDay,
 };
+
+async function getBacktestDay({ date, symbol, exchange }) {
+    return GET(`/API/rapi/backtest-day/${symbol}/${exchange}/${date}`);
+}
 
 async function getCustomTicks() {
     return GET(`/API/custom-ticks`);
@@ -254,7 +259,18 @@ async function deleteIndicator(ind, strat) {
     }
 }
 
-async function submitIndicator({ priceDataId, selectedInputs, selectedStrat, indicatorOpts, indicatorName, options, color, inputs, dataInputs, variablePeriods }) {
+async function submitIndicator({
+    priceDataId,
+    selectedInputs,
+    selectedStrat,
+    indicatorOpts,
+    indicatorName,
+    options,
+    color,
+    inputs,
+    dataInputs,
+    variablePeriods,
+}) {
     try {
         console.log({ variablePeriods });
         let list = await fetch(`${REACT_APP_API_SERVER}/API/addIndicator`, {
@@ -681,7 +697,19 @@ async function setTimeframeActive(id, timeframe, props) {
     // console.log({ slopeInts });
 }
 
-async function saveRegressionValues({ symbol, timeframe, minMaxTolerance, regressionErrorLimit, priceLevelMinMax, priceLevelSensitivity, fibonacciMinMax, fibonacciSensitivity, volProfileBins, volProfileBarCount, props }) {
+async function saveRegressionValues({
+    symbol,
+    timeframe,
+    minMaxTolerance,
+    regressionErrorLimit,
+    priceLevelMinMax,
+    priceLevelSensitivity,
+    fibonacciMinMax,
+    fibonacciSensitivity,
+    volProfileBins,
+    volProfileBarCount,
+    props,
+}) {
     try {
         let regressionData = await fetch(`${LOCAL_SERVER}/API/commodityRegressionSettings`, {
             credentials: "include",

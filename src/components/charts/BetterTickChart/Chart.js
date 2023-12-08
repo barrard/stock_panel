@@ -20,9 +20,10 @@ class CandleStickStockScaleChartWithVolumeBarV3 extends React.Component {
 
         debugger;
         const emaVol20 = ema()
-            .id(1)
-            .options({ windowSize: 200 })
-            .merge((d, c) => {
+            .id(2)
+            .options({ windowSize: 20 })
+            .merge((d, c, e, f) => {
+                debugger;
                 d.emaVol20 = c;
             })
             .accessor((d) => d.emaVol20);
@@ -63,11 +64,11 @@ class CandleStickStockScaleChartWithVolumeBarV3 extends React.Component {
             .accessor((d) => d.macd);
 
         const elderImpulseCalculator = elderImpulse().macdSource(macdCalculator.accessor()).emaSource(ema20.accessor());
-
+        debugger;
         const { type, data: initialData, width, ratio } = this.props;
 
-        const calculatedData = elderImpulseCalculator(macdCalculator(ema20(ema50(ema200(changeCalculator(initialData))))));
-
+        const calculatedData = emaVol20(elderImpulseCalculator(macdCalculator(ema20(ema50(ema200(changeCalculator(initialData)))))));
+        debugger;
         const xScaleProvider = discontinuousTimeScaleProvider.inputDateAccessor((d) => d.date);
         const { data, xScale, xAccessor, displayXAccessor } = xScaleProvider(initialData);
 
@@ -133,6 +134,7 @@ class CandleStickStockScaleChartWithVolumeBarV3 extends React.Component {
                 <Chart id={2} origin={(w, h) => [0, h - 150]} height={150} yExtents={(d) => d.volume}>
                     <XAxis axisAt="bottom" orient="bottom" />
                     <YAxis axisAt="left" orient="left" ticks={5} tickFormat={format(".2s")} />
+                    <LineSeries yAccessor={emaVol20.accessor()} stroke={"red"} />
                     <BarSeries
                         yAccessor={(d) => d.volume}
                         fill={(d) =>
@@ -155,7 +157,6 @@ class CandleStickStockScaleChartWithVolumeBarV3 extends React.Component {
                                 : "grey"
                         }
                     />
-                    <LineSeries yAccessor={emaVol20.accessor()} stroke={"red"} />
 
                     <MouseCoordinateX at="bottom" orient="bottom" displayFormat={timeFormat("%I:%M:%S %p")} />
                     <MouseCoordinateY at="right" orient="right" displayFormat={format(".2f")} />
