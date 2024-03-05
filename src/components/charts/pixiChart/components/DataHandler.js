@@ -608,7 +608,11 @@ export default class PixiData {
         }
         this.mouseX = this.mouseX - left;
         this.mouseY = this.mouseY - top;
-        if ((this.crosshair && (this.mouseX < 0 || this.mouseX > this.width - (right + left))) || this.mouseY < 0 || this.mouseY > this.height - (top + bottom)) {
+        if (
+            (this.crosshair && (this.mouseX < 0 || this.mouseX > this.width - (right + left))) ||
+            this.mouseY < 0 ||
+            this.mouseY > this.height - (top + bottom)
+        ) {
             this.hideCrosshair();
         } else if (!this.crosshair && this.mouseX > 0 && this.mouseX < this.width - (right + left)) {
             this.showCrosshair();
@@ -737,7 +741,13 @@ export default class PixiData {
     updateCurrentPriceLabel(price) {
         if (!price) return;
 
-        if (!this.currentPriceLabelAppendGfx || !this.currentPriceLabelAppendGfx?.transform || !this.currentPriceLabelAppendGfx?.position || !this.currentPriceTxtLabel) return;
+        if (
+            !this.currentPriceLabelAppendGfx ||
+            !this.currentPriceLabelAppendGfx?.transform ||
+            !this.currentPriceLabelAppendGfx?.position ||
+            !this.currentPriceTxtLabel
+        )
+            return;
         if (!this.lastPrice) {
             this.lastPrice = price;
         }
@@ -1024,9 +1034,9 @@ export default class PixiData {
             this.liquidityContainer.children.forEach((gfx) => {
                 gfx.clear();
             });
-            const colors = ["black", "darkblue", "lightgreen", "yellow", "orange", "red"];
+            const colors = ["black", "blue", "green", "yellow", "red"];
             const [min, max] = extent(this.liquidityData.map((l) => l.size));
-            const [pmin, pmax] = extent(this.liquidityData.map((l) => l.p));
+            // const [pmin, pmax] = extent(this.liquidityData.map((l) => l.p));
             //TEST
             // const dist = this.liquidityData.reduce((acc, l) => {
             //     if (!acc[l.size]) {
@@ -1040,7 +1050,7 @@ export default class PixiData {
             //TEST
             const total = max - min;
             const totalDiff = Math.ceil(total / colors.length - 1);
-            // console.log({ total, totalDiff });
+
             const colorFns = [];
             colors.forEach((color, i) => {
                 if (i === 0) return;

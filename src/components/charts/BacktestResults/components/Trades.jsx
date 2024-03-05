@@ -25,41 +25,49 @@ export default function Trades(props) {
     let count = 0;
 
     return (
-        <table class="table white">
-            <thead>
-                <tr>
-                    <th scope="col">Date</th>
-                    <th scope="col"></th>
-                    <th scope="col">Enter</th>
-                    <th scope="col">Exit</th>
-                    <th scope="col">P/L</th>
-                </tr>
-            </thead>
-            <tbody>
-                {Object.keys(dayTrades)
-                    .sort((a, b) => moment(a).valueOf() - moment(b).valueOf()) //sort descending
-                    .map((tradeDate, i) => {
-                        console.log(i % 2);
-                        const trades = dayTrades[tradeDate];
-                        const isDay = moment(backtestResultsDate).valueOf() == moment(tradeDate).valueOf();
-                        console.log(isDay);
-                        return (
-                            <React.Fragment key={tradeDate}>
-                                <TradeDate color={i} tradeDate={tradeDate} />
-                                {trades.map((t, i) => {
-                                    return (
-                                        <React.Fragment key={t.datetimeOpen + i}>
-                                            <Trade isDay={isDay} count={++count} trade={t} getBacktestDay={getBacktestDay} />
-                                        </React.Fragment>
-                                    );
-                                })}
-                            </React.Fragment>
-                        );
-                    })}
-            </tbody>
-        </table>
+        <TradeScroll>
+            <table class="table white">
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col"></th>
+                        <th scope="col">Enter</th>
+                        <th scope="col">Exit</th>
+                        <th scope="col">P/L</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {Object.keys(dayTrades)
+                        .sort((a, b) => moment(a).valueOf() - moment(b).valueOf()) //sort descending
+                        .map((tradeDate, i) => {
+                            const trades = dayTrades[tradeDate];
+                            const isDay = moment(backtestResultsDate).valueOf() == moment(tradeDate).valueOf();
+
+                            return (
+                                <React.Fragment key={tradeDate}>
+                                    <TradeDate color={i} tradeDate={tradeDate} />
+                                    {trades.map((t, i) => {
+                                        return (
+                                            <React.Fragment key={t.datetimeOpen + i}>
+                                                <Trade isDay={isDay} count={++count} trade={t} getBacktestDay={getBacktestDay} />
+                                            </React.Fragment>
+                                        );
+                                    })}
+                                </React.Fragment>
+                            );
+                        })}
+                </tbody>
+            </table>
+        </TradeScroll>
     );
 }
+
+const TradeScroll = styled.div`
+    /* overflow-y: scroll; */
+    max-height: 150vh;
+    width: 100%;
+    border: 1px solid red;
+`;
 
 function TradeDate(props) {
     return <DateLabel color={props.color}>{props.tradeDate}</DateLabel>;

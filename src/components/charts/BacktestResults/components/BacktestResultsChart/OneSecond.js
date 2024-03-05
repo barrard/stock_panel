@@ -9,15 +9,29 @@ export default function BacktestResultsChart(props = {}) {
     // const ohlc = props.data.largerTimeFrames?[1];
     const ohlc = props.data.seconds;
     const trades = props.trades;
-    const volumeData = ohlc.map((d) => ({ volume: d.bVol + d.aVol, time: d.dt }));
-    const priceData = ohlc.map((d) => ({ o: d.o, c: d.c, time: d.dt }));
-    const VALData = ohlc.map((d) => ({ val: d.valueAreaLow, time: d.datetime }));
-    const VAHData = ohlc.map((d) => ({ vah: d.valueAreaHigh, time: d.datetime }));
-    const VPOCData = ohlc.map((d) => ({ vpoc: d.VPOC, time: d.datetime }));
+    const volumeData = ohlc.map((d) => ({ y: d.bVol + d.aVol, x: d.dt }));
+    const priceData = ohlc.map((d) => ({ o: d.o, c: d.c, y: d.c, x: d.dt }));
+    const ma200 = getMA(priceData, 600);
+    // const _200Ma = priceData.map((d) => ({ o: d.o, c: d.c, time: d.dt }));
+    const VALData = ohlc.map((d) => ({ y: d.valueAreaLow, x: d.datetime }));
+    const VAHData = ohlc.map((d) => ({ y: d.valueAreaHigh, x: d.datetime }));
+    const VPOCData = ohlc.map((d) => ({ y: d.VPOC, x: d.datetime }));
+
+    function getMA(data, period) {
+        const ma = new Array(period);
+
+        for (let x = period; x < data.length; x++) {
+            let slicedData = data.slice(x - period, x);
+            const prices = slicedData.map((d) => d.y);
+            const avg = prices.reduce((acc, p) => (acc += p), 0) / prices.length;
+            ma.push({ x: data[x].x, y: avg });
+        }
+        return ma;
+    }
 
     useEffect(() => {
         const chartData = {
-            labels: volumeData.map((row) => row.time),
+            labels: volumeData.map((row) => row.x),
             datasets: [
                 {
                     // yAxisID: "price",
@@ -26,19 +40,21 @@ export default function BacktestResultsChart(props = {}) {
                     // borderWidth: 2,
                     // pointRadius: 0,
                     id: "ohlc",
+                    parsing: false,
                 },
 
                 {
                     yAxisID: "price",
-                    data: VPOCData.map((row) => row.vpoc),
+                    data: VPOCData.map((row) => row.y),
                     type: "line",
                     borderColor: "blue",
                     borderWidth: 2,
                     pointRadius: 0,
                     id: "VPOC",
+                    // parsing: false,
                 },
                 {
-                    data: VALData.map((row) => row.val),
+                    data: VALData.map((row) => row.y),
 
                     yAxisID: "price",
                     type: "line",
@@ -46,9 +62,23 @@ export default function BacktestResultsChart(props = {}) {
                     borderWidth: 2,
                     pointRadius: 0,
                     id: "VAL",
+                    // parsing: false,
                 },
+
                 {
-                    data: VAHData.map((row) => row.vah),
+                    data: ma200.map((row) => row.y),
+
+                    yAxisID: "price",
+                    type: "line",
+                    borderColor: "pink",
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    id: "ma200",
+                    // parsing: false,
+                },
+
+                {
+                    data: VAHData.map((row) => row.y),
 
                     yAxisID: "price",
                     type: "line",
@@ -56,23 +86,26 @@ export default function BacktestResultsChart(props = {}) {
                     borderWidth: 2,
                     pointRadius: 0,
                     id: "VAH",
+                    // parsing: false,
                 },
                 {
                     // label: "Acquisitions by year",
-                    data: priceData.map((row) => row.c),
+                    data: priceData.map((row) => row.y),
                     yAxisID: "price",
                     type: "line",
                     borderColor: "yellow",
                     borderWidth: 2,
                     pointRadius: 0,
                     id: "close",
+                    // parsing: false,
                 },
                 {
                     // label: "Acquisitions by year",
-                    data: volumeData.map((row) => row.volume),
+                    data: volumeData.map((row) => row.y),
                     backgroundColor: "yellow",
                     yAxisID: "volume",
                     id: "volume",
+                    // parsing: false,
                 },
                 {
                     yAxisID: "price",
@@ -121,7 +154,7 @@ export default function BacktestResultsChart(props = {}) {
                         },
                         // labels: priceData.map((d) => d.o),
                         stack: "d",
-                        stackWeight: 2,
+                        stackWeight: 4,
                         offset: true,
                         // grid: {
                         //     borderColor: "#fff",

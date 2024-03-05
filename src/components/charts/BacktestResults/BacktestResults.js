@@ -7,14 +7,24 @@ import BTRC from "./components/BacktestResultsChart";
 import moment from "moment";
 
 const CONST = {
-    getMoveGoingLimit: 1.5,
-    valueAreaRange: 5,
-    valueAreaOffset: 2,
+    //Value area strat
+    getMoveGoingLimit: 0.5, //1.5,
+    valueAreaRange: 4,
+    valueAreaOffset: 0,
     reEnterValueBuffer: 0,
-    goodTimeStart: 9,
-    goodTimeEnd: 16,
+    goodTimeStart: 10,
+    goodTimeEnd: 14,
     totalDaysToGet: 3,
-    daysOffset: 0,
+    offsetStart: 0,
+    volSpikeLimit: 7,
+    maTrigger: 600,
+    // orderflow scalp strat
+    lastBidAskRatioDiffLimit: 0.03,
+    deltaHistSlopeLimit: 30,
+
+    //management
+    stopLoss: 8,
+    profitTarget: 25,
 };
 export default function GptChart({ Socket }) {
     const [data, setData] = useState({
@@ -22,7 +32,6 @@ export default function GptChart({ Socket }) {
         largerTimeframes: {},
     });
     const [backtestResultsDate, setBacktestResultsDate] = useState("");
-    const [results, setResults] = useState({ trades: [] });
     const [selectedTrades, setSelectedTrades] = useState([]);
 
     const [getMoveGoingLimit, setGetMoveGoingLimit] = useState(CONST.getMoveGoingLimit);
@@ -32,8 +41,14 @@ export default function GptChart({ Socket }) {
     const [goodTimeStart, setGoodTimeStart] = useState(CONST.goodTimeStart);
     const [goodTimeEnd, setGoodTimeEnd] = useState(CONST.goodTimeEnd);
     const [totalDaysToGet, setTotalDays] = useState(CONST.totalDaysToGet);
-    const [daysOffset, setDaysOffset] = useState(CONST.daysOffset);
-    const [volSpikeLimit, setVolSpikeLimit] = useState(2);
+    const [maTrigger, setMaTrigger] = useState(CONST.maTrigger);
+    const [offsetStart, setOffsetStart] = useState(CONST.offsetStart);
+    const [volSpikeLimit, setVolSpikeLimit] = useState(CONST.volSpikeLimit);
+    const [lastBidAskRatioDiffLimit, setLastBidAskRatioDiffLimit] = useState(CONST.lastBidAskRatioDiffLimit);
+    const [deltaHistSlopeLimit, setDeltaHistSlopeLimit] = useState(CONST.deltaHistSlopeLimit);
+    const [stopLoss, setStopLoss] = useState(CONST.stopLoss);
+    const [profitTarget, setProfitTarget] = useState(CONST.profitTarget);
+    const [results, setResults] = useState({ trades: [], days: 0, totalDaysToGet: totalDaysToGet });
 
     const backtestArgs = {
         getMoveGoingLimit,
@@ -43,8 +58,13 @@ export default function GptChart({ Socket }) {
         goodTimeStart,
         goodTimeEnd,
         totalDaysToGet,
-        daysOffset,
+        offsetStart,
         volSpikeLimit,
+        maTrigger,
+        lastBidAskRatioDiffLimit,
+        deltaHistSlopeLimit,
+        profitTarget,
+        stopLoss,
     };
     // async function getAndSetData() {
     //     const symbol = "ES";
@@ -74,8 +94,11 @@ export default function GptChart({ Socket }) {
         });
 
         Socket.on("backtest-results", (d) => {
-            console.log(d);
-            setResults(d);
+            setResults((r) => {
+                const res = { ...r, ...d };
+
+                return res;
+            });
         });
 
         // Socket.emit("to-backtester", {
@@ -85,6 +108,7 @@ export default function GptChart({ Socket }) {
         return () => {
             Socket.off("backtester-bars");
             Socket.off("backtester-bar-update");
+            Socket.off("backtest-results");
         };
     }, []);
 
@@ -99,10 +123,14 @@ export default function GptChart({ Socket }) {
     // }, [results.trades]);
 
     return (
-        <div className="container">
+        <div className="container-fluid">
             {PlantStatusesMemo}
             <div className="row">
-                <h3>BACK TEST RESULTS</h3>
+                <div className="col">
+                    <h3>BACK TEST RESULTS</h3>
+                </div>
+                <div className="col">DAYS {results.days}</div>
+                <div className="col">totalDaysToGet : {totalDaysToGet}</div>
             </div>
 
             <div className="row ">
@@ -118,14 +146,35 @@ export default function GptChart({ Socket }) {
                         }}
                     >
                         <VariableInput inputClass="btn btn-primary" type="submit" value="Submit" />
+
+                        <VariableInput value={stopLoss} hint={`Stop loss.`} name="stopLoss" onChange={setStopLoss} />
+
+                        <VariableInput value={profitTarget} hint={`Profit Target.`} name="profitTarget" onChange={setProfitTarget} />
+
+                        <VariableInput
+                            value={lastBidAskRatioDiffLimit}
+                            hint={`rate of change in bid vs ask.`}
+                            name="lastBidAskRatioDiffLimit"
+                            onChange={setLastBidAskRatioDiffLimit}
+                        />
+
+                        <VariableInput
+                            value={deltaHistSlopeLimit}
+                            hint={`rate of slop in delta.`}
+                            name="deltaHistSlopeLimit"
+                            onChange={setDeltaHistSlopeLimit}
+                        />
+                        <VariableInput value={totalDaysToGet} hint={`How many to run backtest.`} name="totalDaysToGet" onChange={setTotalDays} />
+                        <VariableInput value={offsetStart} hint={`How many days to offset start of backtest.`} name="offsetStart" onChange={setOffsetStart} />
+
                         <VariableInput
                             hint={`How many xTimes bigger than vol avg to trigger volume spike.`}
                             name="volSpikeLimit"
                             value={volSpikeLimit}
                             onChange={setVolSpikeLimit}
                         />
-                        <VariableInput value={totalDaysToGet} hint={`How many to run backtest.`} name="totalDaysToGet" onChange={setTotalDays} />
-                        <VariableInput value={daysOffset} hint={`How many days to offset start of backtest.`} name="daysOffset" onChange={setDaysOffset} />
+                        <VariableInput value={maTrigger} hint={`Moving average trigger.`} name="maTrigger" onChange={setMaTrigger} />
+
                         <VariableInput
                             value={getMoveGoingLimit}
                             hint={`How many points must a bar move back towards value once outside to signal "Get the move going" Default 0.`}
@@ -164,15 +213,16 @@ export default function GptChart({ Socket }) {
                     {data.largerTimeFrames && <BTRC.LargerTimeFrames trades={selectedTrades} guid={6} data={data} tf={30} />}
                 </div>
                 {/* <div className="col-sm-4 col-xxl-2">{TradesMemo}</div> */}
-                <div className="col-sm-4 col-xxl-2">
+                <div className="col-sm-4 col-xxl-3">
                     <Trades
                         backtestResultsDate={backtestResultsDate}
                         trades={results.trades}
                         getBacktestDay={async (date) => {
                             if (backtestResultsDate === date) return;
                             const backtestDayData = await API.getBacktestDay({ symbol: "ES", exchange: "CME", date: encodeURIComponent(date) });
+                            console.log(backtestDayData);
                             setBacktestResultsDate(date);
-                            debugger;
+
                             setData(backtestDayData);
                             const filteredTrades = results.trades.filter((t) => {
                                 return moment(t.datetimeOpen).isSame(moment(date), "day");

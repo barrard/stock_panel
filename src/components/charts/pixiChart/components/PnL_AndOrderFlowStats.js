@@ -104,7 +104,6 @@ export default function PnL_AndOrderFlowStats(props) {
                 <div className="col-6">{/* orderDelta: {orderTrackerCount.orderDelta} */}</div>
                 <div className="col-6">buyingPowerCount: {orderTrackerCount.buyingPowerCount}</div>
                 <div className="col-6">nullOrderDelta: {orderTrackerCount.nullOrderDelta}</div>
-                <div className="col-6">delta: {orderTrackerCount.delta}</div>
                 {/* <Seismograph data={ticks} delta={orderTrackerCount.delta} /> */}
                 {/* {SeismographChartMemo} */}
                 <div className="col-6">tradeSize: {orderTrackerCount.tradeSize}</div>
@@ -143,7 +142,15 @@ export default function PnL_AndOrderFlowStats(props) {
                     {" / "}
                     {bidAskRatios?.nearPriceBidSizeToAskSizeRatioMA?.toFixed(2)}
                 </div>
+
                 <div className="col-6">
+                    runningOrderBookNearPriceSlope: {bidAskRatios?.runningOrderDepthNearPriceCount}
+                    {" / "}
+                    {bidAskRatios?.runningOrderBookNearPriceSlope?.toFixed(2)}
+                </div>
+                <div className="col-6">delta: {orderTrackerCount.delta}</div>
+
+                {/* <div className="col-6">
                     tick: {bidAskRatios?.tick?.toFixed(2)}
                     {" / "}
                     {bidAskRatios?.avgTICK?.toFixed(2)}
@@ -153,7 +160,7 @@ export default function PnL_AndOrderFlowStats(props) {
                     trin: {bidAskRatios?.trin?.toFixed(2)}
                     {" / "}
                     {bidAskRatios?.avgTRIN?.toFixed(2)}
-                </div>
+                </div> */}
             </div>
         </>
     );

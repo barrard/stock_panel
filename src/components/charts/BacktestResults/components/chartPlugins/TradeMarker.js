@@ -12,7 +12,7 @@ const tradeMarker = {
         } = chart;
 
         tradeData.data.forEach((trade) => {
-            console.log(trade);
+            // console.log(trade);
             const indexOpen = ohlcData.data.findIndex((ohlc) => ohlc.dt >= trade.datetimeOpen);
             const indexClose = ohlcData.data.findIndex((ohlc) => ohlc.dt >= trade.datetimeClose);
             if (indexOpen == undefined || indexClose == undefined) {

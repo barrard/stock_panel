@@ -150,7 +150,7 @@ export default function PixiChart({ Socket }) {
 
         // console.log("Loading data");
         setLoading(symbol.value);
-        debugger;
+
         // startDate = startDate || new Date().getTime();
         API.rapi_requestBars({
             symbol: symbol.value,
@@ -474,6 +474,7 @@ export default function PixiChart({ Socket }) {
         });
 
         Socket.on("timeBarUpdate", (data) => {
+            debugger;
             setCurrentTimeBar(data);
         });
 
@@ -735,7 +736,14 @@ export default function PixiChart({ Socket }) {
                             </button>
                         </div>
                         <div className="col ">
-                            <StartEndTimes backgroundDataFetch={backgroundDataFetch} setBackgroundDataFetch={setBackgroundDataFetch} setStartTime={setStartTime} setEndTime={setEndTime} startTime={startTime} endTime={endTime} />
+                            <StartEndTimes
+                                backgroundDataFetch={backgroundDataFetch}
+                                setBackgroundDataFetch={setBackgroundDataFetch}
+                                setStartTime={setStartTime}
+                                setEndTime={setEndTime}
+                                startTime={startTime}
+                                endTime={endTime}
+                            />
                         </div>
                     </div>
 

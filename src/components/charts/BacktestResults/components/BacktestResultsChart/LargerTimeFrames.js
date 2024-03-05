@@ -2,15 +2,25 @@ import React, { useEffect } from "react";
 import Chart from "chart.js/auto";
 import moment from "moment";
 import tradeMarker from "../chartPlugins/TradeMarker";
+import liquidityDraw from "../chartPlugins/liquidityDraw";
 
 const candlesSticks = {
     id: "candlesticks",
 };
 
 export default function LargerTimeFrames(props) {
-    console.log(props);
+    // console.log(props);
     const ohlc = props.data.largerTimeFrames?.[props.tf].map((d) => ({ ...d, dt: d.datetime }));
     const trades = props.trades;
+
+    function ifHas({ has }) {
+        const hasKey = ohlc.find((d) => d[has]);
+        let hasValues = [];
+        if (hasKey) {
+            hasValues = ohlc.map((d) => ({ [has]: d[has], time: d.datetime }));
+        }
+        return hasValues;
+    }
 
     // const ohlc = props.data.seconds;
     const volumeData = ohlc.map((d) => ({ volume: d.volume, time: d.datetime }));
@@ -18,15 +28,26 @@ export default function LargerTimeFrames(props) {
     const VALData = ohlc.map((d) => ({ val: d.valueAreaHigh, time: d.datetime }));
     const VAHData = ohlc.map((d) => ({ vah: d.valueAreaLow, time: d.datetime }));
     const VPOCData = ohlc.map((d) => ({ vpoc: d.VPOC, time: d.datetime }));
-    const hasVolMomo = ohlc.find((d) => d.volMomo);
-    let volMomo = [];
-    if (hasVolMomo) {
-        volMomo = ohlc.map((d) => ({ volMomo: d.volMomo, time: d.datetime }));
-        console.log({ volMomo });
-    }
+    // const hasVolMomo = ohlc.find((d) => d.volMomo);
+    let volMomo = ifHas({ has: "volMomo" });
+    let VPOC2 = ifHas({ has: "VPOC2" });
+    let VPOC3 = ifHas({ has: "VPOC3" });
+    let liquidityData = ifHas({ has: "liquidity" });
 
     useEffect(() => {
-        const datasets = [
+        let datasets = [];
+        if (liquidityData.length) {
+            datasets.push({
+                yAxisID: "price",
+                data: liquidityData,
+                type: "bar",
+                borderColor: "blue",
+                borderWidth: 2,
+                pointRadius: 0,
+                id: "liquidity",
+            });
+        }
+        datasets = datasets.concat([
             {
                 // yAxisID: "price",
                 data: ohlc,
@@ -66,7 +87,6 @@ export default function LargerTimeFrames(props) {
                 id: "VAH",
             },
             {
-                // label: "Acquisitions by year",
                 data: priceData.map((row) => row.c),
                 yAxisID: "price",
                 type: "line",
@@ -76,7 +96,6 @@ export default function LargerTimeFrames(props) {
                 id: "close",
             },
             {
-                // label: "Acquisitions by year",
                 data: volumeData.map((row) => row.volume),
                 backgroundColor: "yellow",
                 yAxisID: "volume",
@@ -91,8 +110,8 @@ export default function LargerTimeFrames(props) {
                 // pointRadius: 0,
                 id: "trades",
             },
-        ];
-        if (hasVolMomo) {
+        ]);
+        if (volMomo.length) {
             datasets.push({
                 id: "volMomo",
                 yAxisID: "volMomo",
@@ -103,6 +122,29 @@ export default function LargerTimeFrames(props) {
                 pointRadius: 0,
             });
         }
+        if (VPOC2.length) {
+            datasets.push({
+                id: "VPOC2",
+                yAxisID: "price",
+                data: VPOC2.map((row) => row.VPOC2),
+                type: "line",
+                borderColor: "steelblue",
+                borderWidth: 2,
+                pointRadius: 0,
+            });
+        }
+        if (VPOC3.length) {
+            datasets.push({
+                id: "VPOC3",
+                yAxisID: "price",
+                data: VPOC3.map((row) => row.VPOC3),
+                type: "line",
+                borderColor: "lightblue",
+                borderWidth: 2,
+                pointRadius: 0,
+            });
+        }
+
         const chartData = {
             labels: volumeData.map((row) => row.time),
             datasets,
@@ -136,7 +178,16 @@ export default function LargerTimeFrames(props) {
                         position: "left",
                         ticks: {
                             callback: function (value) {
-                                return formatter.format(value);
+                                try {
+                                    if (!value) {
+                                        debugger;
+                                        console.log("err");
+                                    }
+                                    return formatter.format(value);
+                                } catch (err) {
+                                    debugger;
+                                    console.log(err);
+                                }
                             },
                         },
                         stack: "d",
@@ -146,7 +197,7 @@ export default function LargerTimeFrames(props) {
                         //     borderColor: "#fff",
                         // },
                     },
-                    ...(hasVolMomo && {
+                    ...(volMomo.length && {
                         volMomo: {
                             beginAtZero: false,
                             type: "linear",
@@ -159,6 +210,32 @@ export default function LargerTimeFrames(props) {
                             // offset: true,
                         },
                     }),
+                    // ...(volMomo2.length && {
+                    //     volMomo2: {
+                    //         beginAtZero: false,
+                    //         type: "linear",
+                    //         position: "left",
+                    //         ticks: {
+                    //             callback: (value) => nFormatter(value, 1),
+                    //         },
+                    //         stack: "d",
+                    //         stackWeight: 2,
+                    //         // offset: true,
+                    //     },
+                    // }),
+                    // ...(volMomo3.length && {
+                    //     volMomo3: {
+                    //         beginAtZero: false,
+                    //         type: "linear",
+                    //         position: "left",
+                    //         ticks: {
+                    //             callback: (value) => nFormatter(value, 1),
+                    //         },
+                    //         stack: "d",
+                    //         stackWeight: 2,
+                    //         // offset: true,
+                    //     },
+                    // }),
                 },
                 animation: false,
                 plugins: {
@@ -192,7 +269,7 @@ export default function LargerTimeFrames(props) {
                 },
             },
             data: chartData,
-            plugins: [candlesSticks, tradeMarker],
+            plugins: [liquidityDraw, candlesSticks, tradeMarker],
         };
         const myChart = new Chart(document.getElementById("backtestResultsChart" + props.guid), chartConfig);
 
