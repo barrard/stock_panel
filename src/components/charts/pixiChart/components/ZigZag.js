@@ -18,8 +18,8 @@ export default class ZigZag {
     init() {
         this.minMax = new MinMax(
             this.data.ohlcDatas,
-            10, //parseFloat(minMaxTolerance),
-            0.005, //parseFloat(zigZagTolerance),
+            5, //parseFloat(minMaxTolerance),
+            0.001, //parseFloat(zigZagTolerance),
             2.0, //parseFloat(zigZagRegressionErrorLimit),
             false //toggleZigzagDynamic
         );

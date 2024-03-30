@@ -2,7 +2,11 @@ import React from "react";
 
 function makeOptions(options) {
     return options.map((o) => {
-        return <option value={o.value}>{o.name}</option>;
+        return (
+            <option key={o.value} value={o.value}>
+                {o.name}
+            </option>
+        );
     });
 }
 export default function Select(props) {
@@ -17,9 +21,7 @@ export default function Select(props) {
                 <select
                     disabled={disabled}
                     onChange={(e) => {
-                        const value = options.find(
-                            (o) => o.value == e.target.value
-                        );
+                        const value = options.find((o) => o.value == e.target.value);
                         setValue(value);
                     }}
                     className="form-control"

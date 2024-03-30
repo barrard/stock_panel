@@ -69,8 +69,17 @@ export default {
     getTicks,
     getCustomTicks,
     getBacktestDay,
+    getEconEventTypes,
+    getEconEventInstances,
 };
 
+async function getEconEventInstances(eventType) {
+    console.log(eventType);
+    return GET(`/API/getEconEventInstances/${eventType.value}`);
+}
+async function getEconEventTypes() {
+    return GET("/API/getEconEventTypes");
+}
 async function getBacktestDay({ date, symbol, exchange }) {
     return GET(`/API/rapi/backtest-day/${symbol}/${exchange}/${date}`);
 }
@@ -106,6 +115,7 @@ async function rapi_cancelOrder({ basketId }) {
 }
 
 async function rapi_requestBars({ symbol, exchange, barType, barTypePeriod, startIndex, finishIndex }) {
+    debugger;
     return await GET(`/API/rapi/requestBars/${symbol}/${exchange}/${barType}/${barTypePeriod}/${startIndex}/${finishIndex}`);
 }
 

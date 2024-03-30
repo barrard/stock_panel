@@ -98,6 +98,7 @@ export default function PixiChart({ Socket }) {
     const [symbolInput, setSymbolInput] = useState({
         value: "ES",
         name: "ES",
+        exchange: "CME",
     });
     const [exchangeInput, setExchangeInput] = useState({
         value: "CME",
@@ -228,6 +229,13 @@ export default function PixiChart({ Socket }) {
                 alert(e);
             });
     };
+
+    useEffect(() => {
+        setExchangeInput({
+            name: symbolInput.exchange,
+            value: symbolInput.exchange,
+        });
+    }, [symbolInput]);
 
     useEffect(() => {
         if (!pixiData) return;
@@ -698,17 +706,22 @@ export default function PixiChart({ Socket }) {
                                 value={symbolInput}
                                 setValue={setSymbolInput}
                                 options={[
-                                    { value: "ES", name: "ES" },
-                                    { value: "NQ", name: "NQ" },
-                                    { value: "CL", name: "CL" },
-                                    { value: "GC", name: "GC" },
+                                    { value: "ES", name: "E-mini S&P 500 Futures", exchange: "CME" },
+                                    { value: "NQ", name: "E-mini Nasdaq-100 Futures", exchange: "CME" },
+                                    { value: "YM", name: "EE-mini Dow Jones Industrial Average Futures", exchange: "CME" },
+                                    { value: "CL", name: "CL", exchange: "NYMEX" },
+                                    { value: "GC", name: "GC", exchange: "COMEX" },
+
+                                    { value: "GC", name: "GC", exchange: "COMEX" },
+                                    { value: "GC", name: "GC", exchange: "COMEX" },
+                                    { value: "GC", name: "GC", exchange: "COMEX" },
                                 ]}
                             />
                         </div>
 
                         <div className="col-auto">
                             <Select
-                                // disabled={symbolInputDisabled}
+                                disabled={true}
                                 label="Exchange"
                                 value={exchangeInput}
                                 setValue={setExchangeInput}
