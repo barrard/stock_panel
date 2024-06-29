@@ -3,12 +3,14 @@ import Chart from "chart.js/auto";
 import moment from "moment";
 
 import tradeMarker from "../chartPlugins/TradeMarker";
+import econEventMarker from "../chartPlugins/econEventMarker";
 
 export default function BacktestResultsChart(props = {}) {
     console.log(props);
     // const ohlc = props.data.largerTimeFrames?[1];
     const ohlc = props.data.seconds;
     const trades = props.trades;
+    const econEvents = props.data.econEvents;
     const volumeData = ohlc.map((d) => ({ y: d.bVol + d.aVol, x: d.dt }));
     const priceData = ohlc.map((d) => ({ o: d.o, c: d.c, y: d.c, x: d.dt }));
     const ma200 = getMA(priceData, 600);
@@ -116,6 +118,15 @@ export default function BacktestResultsChart(props = {}) {
                     // pointRadius: 0,
                     id: "trades",
                 },
+                {
+                    yAxisID: "price",
+                    data: econEvents,
+                    type: "line",
+                    // borderColor: "blue",
+                    // borderWidth: 2,
+                    // pointRadius: 0,
+                    id: "econEvents",
+                },
             ],
         };
         const config = {
@@ -162,6 +173,11 @@ export default function BacktestResultsChart(props = {}) {
                     },
                 },
                 animation: false,
+                // responsive: false, // Use this if your chart size is fixed
+                // maintainAspectRatio: false, // Often used with responsive: false
+                hover: {
+                    intersect: false, // Reduces redraws on mouse movement
+                },
                 plugins: {
                     legend: {
                         display: false,
@@ -194,7 +210,7 @@ export default function BacktestResultsChart(props = {}) {
                 },
             },
             data: chartData,
-            plugins: [tradeMarker],
+            plugins: [tradeMarker, econEventMarker],
         };
         const myChart = new Chart(document.getElementById("backtestResultsChart" + props.guid), config);
 

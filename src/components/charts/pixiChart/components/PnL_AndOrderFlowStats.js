@@ -144,13 +144,13 @@ export default function PnL_AndOrderFlowStats(props) {
                 </div>
 
                 <div className="col-6">
-                    runningOrderBookNearPriceSlope: {bidAskRatios?.runningOrderDepthNearPriceCount}
+                    runningOrderBookNearPriceSlope: {bidAskRatios?.runningOrderDepthNearPriceCount?.toFixed(2)}
                     {" / "}
                     {bidAskRatios?.runningOrderBookNearPriceSlope?.toFixed(2)}
                 </div>
                 <div className="col-6">delta: {orderTrackerCount.delta}</div>
 
-                {/* <div className="col-6">
+                <div className="col-6">
                     tick: {bidAskRatios?.tick?.toFixed(2)}
                     {" / "}
                     {bidAskRatios?.avgTICK?.toFixed(2)}
@@ -160,7 +160,7 @@ export default function PnL_AndOrderFlowStats(props) {
                     trin: {bidAskRatios?.trin?.toFixed(2)}
                     {" / "}
                     {bidAskRatios?.avgTRIN?.toFixed(2)}
-                </div> */}
+                </div>
             </div>
         </>
     );

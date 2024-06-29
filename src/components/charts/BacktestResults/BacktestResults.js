@@ -30,6 +30,7 @@ export default function GptChart({ Socket }) {
     const [data, setData] = useState({
         seconds: [],
         largerTimeframes: {},
+        econEvents: [],
     });
     const [backtestResultsDate, setBacktestResultsDate] = useState("");
     const [selectedTrades, setSelectedTrades] = useState([]);

@@ -122,7 +122,7 @@ class App extends React.Component {
 
                     <Route path="/bid-ask-stats" render={(props) => <BidAskStats {...props} Socket={Socket} />} />
                     <Route path="/better-tick" render={(props) => <BetterTickChart {...props} Socket={Socket} />} />
-                    <Route path="/econ-news" render={(props) => <EconData {...props} Socket={Socket} />} />
+                    <Route path="/econ-events" render={(props) => <EconData {...props} Socket={Socket} />} />
 
                     {/* Keep at bottom */}
                     <Route exact path="/sign-up" component={SignupPage} />

@@ -2,16 +2,8 @@ import React from "react";
 import { connect } from "react-redux";
 import { Link, withRouter } from "react-router-dom";
 
-import {
-    set_symbols_data,
-    set_search_symbol,
-    add_chart_data,
-} from "../redux/actions/stock_actions.js";
-import {
-    view_selected_stock,
-    view_selected_commodity,
-    getMinutelyCommodityData,
-} from "./landingPageComponents/chart_data_utils.js";
+import { set_symbols_data, set_search_symbol, add_chart_data } from "../redux/actions/stock_actions.js";
+import { view_selected_stock, view_selected_commodity, getMinutelyCommodityData } from "./landingPageComponents/chart_data_utils.js";
 import { is_loading, show_filter_list } from "../redux/actions/meta_actions.js";
 import { logout_user } from "../redux/actions/user_actions.js";
 import API from "./API.js";
@@ -28,13 +20,10 @@ class Main_Nav extends React.Component {
             // show_filter_list: false
         };
 
-        this.handle_search_symbol_input =
-            this.handle_search_symbol_input.bind(this);
+        this.handle_search_symbol_input = this.handle_search_symbol_input.bind(this);
         this.make_filter_list = this.make_filter_list.bind(this);
-        this.highlight_search_letters =
-            this.highlight_search_letters.bind(this);
-        this.filtered_stock_list_item =
-            this.filtered_stock_list_item.bind(this);
+        this.highlight_search_letters = this.highlight_search_letters.bind(this);
+        this.filtered_stock_list_item = this.filtered_stock_list_item.bind(this);
         this.handleLogout = this.handleLogout.bind(this);
         this.arrowKeyListSelect = this.arrowKeyListSelect.bind(this);
     }
@@ -65,11 +54,7 @@ class Main_Nav extends React.Component {
 
     arrowKeyListSelect(e) {
         console.log(e.key);
-        let {
-            highlightedSymbolListIndex,
-            listWindowScrollCount,
-            filtered_stock_list,
-        } = this.state;
+        let { highlightedSymbolListIndex, listWindowScrollCount, filtered_stock_list } = this.state;
         if (e.key === "ArrowDown") {
             //acess the list?
             highlightedSymbolListIndex++;
@@ -168,34 +153,26 @@ class Main_Nav extends React.Component {
         var filtered_stock_list = [];
 
         /* check symbol starts with */
-        symbol_starts_with = full_list.filter((list_item) =>
-            list_item.symbol.toUpperCase().startsWith(search_text)
-        );
+        symbol_starts_with = full_list.filter((list_item) => list_item.symbol.toUpperCase().startsWith(search_text));
         // console.log(symbol_starts_with);
         filtered_stock_list = [...filtered_stock_list, ...symbol_starts_with];
         if (filtered_stock_list.length < 100) {
             /* check name starts with */
-            desc_starts_with = full_list.filter((list_item) =>
-                list_item.description?.toUpperCase().startsWith(search_text)
-            );
+            desc_starts_with = full_list.filter((list_item) => list_item.description?.toUpperCase().startsWith(search_text));
             // console.log(desc_starts_with);
             filtered_stock_list = [...filtered_stock_list, ...desc_starts_with];
         }
 
         if (filtered_stock_list.length < 100) {
             /* check symbols */
-            symbol_list = full_list.filter((list_item) =>
-                list_item.symbol.toUpperCase().includes(search_text)
-            );
+            symbol_list = full_list.filter((list_item) => list_item.symbol.toUpperCase().includes(search_text));
             // console.log(symbol_list);
             filtered_stock_list = [...filtered_stock_list, ...symbol_list];
         }
 
         if (filtered_stock_list.length < 100) {
             /* check name */
-            desc_list = full_list.filter((list_item) =>
-                list_item.description?.toUpperCase().includes(search_text)
-            );
+            desc_list = full_list.filter((list_item) => list_item.description?.toUpperCase().includes(search_text));
             // console.log(desc_list);
             filtered_stock_list = [...filtered_stock_list, ...desc_list];
         }
@@ -207,26 +184,16 @@ class Main_Nav extends React.Component {
 
     /* Use the filtered stock list to make items */
     Filtered_Stock_List({ filtered_stock_list, search_symbol }) {
-        if (search_symbol.split("")[0] === "/")
-            search_symbol = search_symbol.slice(1);
+        if (search_symbol.split("")[0] === "/") search_symbol = search_symbol.slice(1);
         return (
             <div className="filtered_stock_list">
                 <>
                     {filtered_stock_list.length == 0 && (
                         <div className="filtered_stock_list_item">
-                            Sorry there aren't any stocks matching{" "}
-                            <span className="highlight_search">
-                                {search_symbol}
-                            </span>
+                            Sorry there aren't any stocks matching <span className="highlight_search">{search_symbol}</span>
                         </div>
                     )}
-                    {filtered_stock_list.map((data, index) =>
-                        this.filtered_stock_list_item(
-                            data,
-                            index,
-                            search_symbol
-                        )
-                    )}
+                    {filtered_stock_list.map((data, index) => this.filtered_stock_list_item(data, index, search_symbol))}
                 </>
             </div>
         );
@@ -242,9 +209,7 @@ class Main_Nav extends React.Component {
         let isSelected = index === this.state.highlightedSymbolListIndex;
         return (
             <div
-                className={`filtered_stock_list_item ${
-                    isSelected ? "selectedSymbolListItem" : " "
-                }`}
+                className={`filtered_stock_list_item ${isSelected ? "selectedSymbolListItem" : " "}`}
                 key={index}
                 onClick={() => {
                     if (isCommodity) {
@@ -254,40 +219,20 @@ class Main_Nav extends React.Component {
                     }
                 }}
             >
-                <span
-                    dangerouslySetInnerHTML={this.highlight_search_letters(
-                        data.symbol,
-                        search
-                    )}
-                />
+                <span dangerouslySetInnerHTML={this.highlight_search_letters(data.symbol, search)} />
                 {" - "}
-                <span
-                    dangerouslySetInnerHTML={this.highlight_search_letters(
-                        data.description,
-                        search
-                    )}
-                />
+                <span dangerouslySetInnerHTML={this.highlight_search_letters(data.description, search)} />
             </div>
         );
     }
 
     highlight_search_letters(name, search) {
-        let index_of_search_term_name = name
-            .toUpperCase()
-            .indexOf(search.toUpperCase());
+        let index_of_search_term_name = name.toUpperCase().indexOf(search.toUpperCase());
 
         if (index_of_search_term_name >= 0) {
             var split_name = name.split("");
-            split_name.splice(
-                index_of_search_term_name + search.length,
-                0,
-                `</span>`
-            );
-            split_name.splice(
-                index_of_search_term_name,
-                0,
-                `<span class="highlight_search">`
-            );
+            split_name.splice(index_of_search_term_name + search.length, 0, `</span>`);
+            split_name.splice(index_of_search_term_name, 0, `<span class="highlight_search">`);
             name = split_name.join("");
         }
         return { __html: name };
@@ -302,46 +247,26 @@ class Main_Nav extends React.Component {
         let { pathname } = this.props.location;
         return (
             <nav className="navbar navbar-dark bg-dark relative ">
-                <Link
-                    title="Home"
-                    activeclassname="active"
-                    className="navbar-brand "
-                    to="/"
-                >
+                <Link title="Home" activeclassname="active" className="navbar-brand " to="/">
                     Home
                 </Link>
 
-                <Link
-                    title="Option Alerts"
-                    activeclassname="active"
-                    className="navbar-brand "
-                    to="/op-alerts"
-                >
+                <Link title="Option Alerts" activeclassname="active" className="navbar-brand " to="/op-alerts">
                     Op Alerts
                 </Link>
 
-                <Link
-                    title="Fundamentals"
-                    activeclassname="active"
-                    className="navbar-brand "
-                    to="/fundamentals"
-                >
+                <Link title="Fundamentals" activeclassname="active" className="navbar-brand " to="/fundamentals">
                     Fundamentals
+                </Link>
+                <Link title="Econ Events" activeclassname="active" className="navbar-brand " to="/econ-events">
+                    Econ Events
                 </Link>
 
                 {/* <div className="collapse navbar-collapse" id="navbarSupportedContent"> */}
                 <ul className="nav-bar-links">
-                    {!isLoggedIn && (
-                        <Register_Login_Links pathname={pathname} />
-                    )}
+                    {!isLoggedIn && <Register_Login_Links pathname={pathname} />}
                     {isLoggedIn && (
-                        <Logout_Link
-                            username={
-                                this.props.user.user.primary_email.split("@")[0]
-                            }
-                            pathname={pathname}
-                            handleLogout={this.handleLogout}
-                        />
+                        <Logout_Link username={this.props.user.user.primary_email.split("@")[0]} pathname={pathname} handleLogout={this.handleLogout} />
                     )}
 
                     {/* {isLoggedIn && <TradesLink />} */}
@@ -355,9 +280,7 @@ class Main_Nav extends React.Component {
                         }, 200)
                     }
                     arrowKeyListSelect={this.arrowKeyListSelect}
-                    handle_search_input={(e) =>
-                        this.handle_search_symbol_input(e)
-                    }
+                    handle_search_input={(e) => this.handle_search_symbol_input(e)}
                     search_symbol={this.state.search_symbol}
                     handle_search={(e) => this.handle_search(e)}
                 />
@@ -380,13 +303,7 @@ export default connect(mapStateToProps)(withRouter(Main_Nav));
 
 /*              Nav components               */
 
-const Navbar_Search = ({
-    handle_search_input,
-    handle_search,
-    arrowKeyListSelect,
-    search_symbol,
-    handle_search_input_blur,
-}) => (
+const Navbar_Search = ({ handle_search_input, handle_search, arrowKeyListSelect, search_symbol, handle_search_input_blur }) => (
     <div className="form-inline ">
         <label className="white" htmlFor="symbol search">
             Symbol Search
@@ -404,22 +321,12 @@ const Navbar_Search = ({
     </div>
 );
 
-const TradesLink = ({ pathname }) => (
-    <Navbar_Links name="Trades" path={"/trades"} pathname={pathname} />
-);
+const TradesLink = ({ pathname }) => <Navbar_Links name="Trades" path={"/trades"} pathname={pathname} />;
 
 const Logout_Link = ({ username, pathname, handleLogout }) => (
     <>
-        <Navbar_Links
-            name={`${username} Profile`}
-            path={"/account-profile"}
-            pathname={pathname}
-        />
-        <Navbar_Links
-            name={`Strat Builder`}
-            path={"/strat-builder"}
-            pathname={pathname}
-        />
+        <Navbar_Links name={`${username} Profile`} path={"/account-profile"} pathname={pathname} />
+        <Navbar_Links name={`Strat Builder`} path={"/strat-builder"} pathname={pathname} />
         <LogOutBtn handleLogout={handleLogout} />
         {/* <Navbar_Links name="Logout" path={`${}/auth/logout`} pathname={pathname} /> */}
     </>
@@ -430,23 +337,14 @@ const Register_Login_Links = ({ pathname }) => {
         <>
             <Navbar_Links name="Login" path={"/login"} pathname={pathname} />
 
-            <Navbar_Links
-                name="Sign Up"
-                path={"/sign-up"}
-                pathname={pathname}
-            />
+            <Navbar_Links name="Sign Up" path={"/sign-up"} pathname={pathname} />
         </>
     );
 };
 
 const LogOutBtn = ({ handleLogout }) => (
     <li className="nav-item clickable">
-        <Link
-            to={"/h"}
-            onClick={handleLogout}
-            className={`nav-link white`}
-            href={`${process.env.REACT_APP_API_SERVER}/auth/logout`}
-        >
+        <Link to={"/h"} onClick={handleLogout} className={`nav-link white`} href={`${process.env.REACT_APP_API_SERVER}/auth/logout`}>
             {"Logout"}
         </Link>
     </li>
@@ -454,10 +352,7 @@ const LogOutBtn = ({ handleLogout }) => (
 
 const Navbar_Links = ({ path, pathname, name }) => (
     <li className="nav-item">
-        <Link
-            className={`${pathname == path ? "active " : " "} nav-link white`}
-            to={path}
-        >
+        <Link className={`${pathname == path ? "active " : " "} nav-link white`} to={path}>
             {name}
         </Link>
     </li>
