@@ -18,6 +18,7 @@ export default function TradeControls(props) {
     }, [props.lastTrade.tradePrice]);
 
     const sendOrder = async (transactionType) => {
+        debugger;
         // alert(`${priceType} Sell ${limitPrice}`);
         let resp = await API.rapi_submitOrder({
             priceType: priceType.value,
@@ -31,18 +32,12 @@ export default function TradeControls(props) {
     return (
         <div className="row g-0">
             <div className="col-2 d-flex align-items-center">
-                <button
-                    onClick={() => sendOrder({ transactionType: 1 })}
-                    className="btn btn-success w-100"
-                >
+                <button onClick={() => sendOrder({ transactionType: 1 })} className="btn btn-success w-100">
                     Buy
                 </button>
             </div>
             <div className="col-2 d-flex align-items-center">
-                <button
-                    onClick={() => sendOrder({ transactionType: 2 })}
-                    className="btn btn-danger w-100"
-                >
+                <button onClick={() => sendOrder({ transactionType: 2 })} className="btn btn-danger w-100">
                     Sell
                 </button>
             </div>
@@ -63,13 +58,7 @@ export default function TradeControls(props) {
             <div className="col-4">
                 <div className="row g-0">
                     <div className="col-10">
-                        <Input
-                            step={0.25}
-                            type="number"
-                            setValue={setLimitPrice}
-                            value={limitPrice}
-                            label="Limit Price"
-                        />
+                        <Input step={0.25} type="number" setValue={setLimitPrice} value={limitPrice} label="Limit Price" />
                     </div>
                     <div className="col-2 d-flex flex-column justify-content-end">
                         <div className="col-12 d-flex">
@@ -78,8 +67,7 @@ export default function TradeControls(props) {
                                 title="up"
                                 onClick={() =>
                                     setLimitPrice((limit) => {
-                                        const newPrice =
-                                            parseFloat(limit) + 0.25;
+                                        const newPrice = parseFloat(limit) + 0.25;
                                         console.log({ newPrice });
                                         return newPrice;
                                     })
@@ -94,8 +82,7 @@ export default function TradeControls(props) {
                                 title="down"
                                 onClick={() => {
                                     setLimitPrice((limit) => {
-                                        const newPrice =
-                                            parseFloat(limit) - 0.25;
+                                        const newPrice = parseFloat(limit) - 0.25;
                                         console.log({ newPrice });
                                         return newPrice;
                                     });

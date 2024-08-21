@@ -53,7 +53,9 @@ export default function Select(props) {
     const listRef = useRef(null);
 
     useEffect(() => {
-        setFilteredOptions(options.filter((option) => (typeof option.name === "string" ? option.name.toLowerCase().includes(searchTerm.toLowerCase()) : true)));
+        setFilteredOptions(
+            options.filter((option) => (typeof option.name === "string" ? option.name.toLowerCase().includes(searchTerm?.toLowerCase()) : true))
+        );
     }, [searchTerm, options]);
 
     useEffect(() => {

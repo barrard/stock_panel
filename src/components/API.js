@@ -115,7 +115,6 @@ async function rapi_cancelOrder({ basketId }) {
 }
 
 async function rapi_requestBars({ symbol, exchange, barType, barTypePeriod, startIndex, finishIndex }) {
-    debugger;
     return await GET(`/API/rapi/requestBars/${symbol}/${exchange}/${barType}/${barTypePeriod}/${startIndex}/${finishIndex}`);
 }
 

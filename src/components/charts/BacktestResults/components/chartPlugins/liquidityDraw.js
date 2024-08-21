@@ -18,7 +18,7 @@ const liquidityDraw = {
         const colors = ["black", "blue", "green", "yellow", "red"];
         const liquidityHeight = 1; //1 point for ES
         let barCount = 0; // liquidityHeight deprecated for 4000, 40001 //Todo this is close * tick * tickSizeLiquidity ( 0.25 * 4 = 1 + close)
-        const barHeight = y.getPixelForValue(4000) - y.getPixelForValue(4001);
+        const barHeight = y.getPixelForValue(0) - y.getPixelForValue(1);
 
         liquidityData.data.forEach((liquidity, l) => {
             if (Array.isArray(liquidity.liquidity)) return;

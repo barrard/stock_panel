@@ -296,10 +296,10 @@ export default function PixiChart({ Socket }) {
         pixiData.replaceLast(data);
         pixiData.prependData(newBar);
 
-        setOhlcDatas((ohlcDatas) => {
-            ohlcDatas[0] = lastBar;
-            return [...ohlcDatas, newBar];
-        });
+        // setOhlcDatas((ohlcDatas) => {
+        //     ohlcDatas[0] = lastBar;
+        //     return [...ohlcDatas, newBar];
+        // });
         // }
     }, [currentTimeBar]);
 
@@ -482,7 +482,7 @@ export default function PixiChart({ Socket }) {
         });
 
         Socket.on("timeBarUpdate", (data) => {
-            debugger;
+            if (data.symbol !== pixiData.symbol.value) return;
             setCurrentTimeBar(data);
         });
 
@@ -515,7 +515,7 @@ export default function PixiChart({ Socket }) {
             //BACK TESTER
             Socket.off("backtester-bars");
         };
-    }, []);
+    }, [symbol]);
     // }, [symbol, barType, barTypePeriod]);
 
     useEffect(() => {
@@ -541,16 +541,20 @@ export default function PixiChart({ Socket }) {
 
         /////////////////////////////////////
         Socket.on("lastTrade", onLastTrade({ setLastTrade, setOhlcDatas, pixiData }));
+        // Socket.on("lastTickBar", onLastTrade({ setLastTrade, setOhlcDatas, pixiData, tickBar: true }));
 
         Socket.on("liquidity", (data) => {
+            if (data.symbol !== pixiData.symbol.value) return;
+
             pixiData.setLiquidityData(data);
         });
         ////////////////////////////////////////////////////
         return () => {
             Socket.off("lastTrade");
+            Socket.off("lastTickBar");
             Socket.off("liquidity");
         };
-    }, [ohlcDatas, PixiAppRef.current]);
+    }, [ohlcDatas, PixiAppRef.current, pixiData, setOhlcDatas, setLastTrade, symbol]);
 
     // useEffect(() => {
     //     if (!ohlcDatas.length) return;
@@ -642,19 +646,20 @@ export default function PixiChart({ Socket }) {
         [plantStatus]
     );
 
-    const PnL_AndOrderFlowStatsMemo = useMemo(() => {
-        return (
-            <PnL_AndOrderFlowStats
-                Socket={Socket}
-                // ticks={ticks}
-                // bidAskRatios={bidAskRatios}
-                //  instrumentPnLPositionUpdate={instrumentPnLPositionUpdate}
-                //   accountPnLPositionUpdate={accountPnLPositionUpdate}
-                //   orderTrackerCount={orderTrackerCount}
-            />
-        );
-    }, [Socket]);
-
+    // const PnL_AndOrderFlowStatsMemo = useMemo(() => {
+    //     return (
+    // <PnL_AndOrderFlowStats
+    //     Socket={Socket}
+    //     symbol={symbol}
+    //     // ticks={ticks}
+    //     // bidAskRatios={bidAskRatios}
+    //     //  instrumentPnLPositionUpdate={instrumentPnLPositionUpdate}
+    //     //   accountPnLPositionUpdate={accountPnLPositionUpdate}
+    //     //   orderTrackerCount={orderTrackerCount}
+    // />
+    // );
+    // }, [Socket, symbol]);
+    console.log("das render");
     return (
         <>
             <div className="row">
@@ -708,8 +713,8 @@ export default function PixiChart({ Socket }) {
                                 options={[
                                     //Index Futures
                                     { value: "ES", name: "S&P 500 Index (E-mini) (ES)", exchange: "CME" },
-                                    { value: "NQ", name: "E-mini Nasdaq-100 Futures", exchange: "CME" },
-                                    { value: "YM", name: "Dow Jones Industrial Average (Mini) (YM)", exchange: "CME" },
+                                    { value: "NQ", name: "Nasdaq-100 Futures (E-mini) (NQ)", exchange: "CME" },
+                                    { value: "YM", name: "Dow Jones Industrial Average (Mini) (YM)", exchange: "CBOT" },
                                     { value: "RTY", name: "Russell 2000 Index (Mini) (RTY):", exchange: "CME" },
                                     { value: "NK", name: "Nikkei 225 (NK):", exchange: "CME" },
 
@@ -796,7 +801,16 @@ export default function PixiChart({ Socket }) {
                     >
                         LOAD TICKS
                     </button> */}
-                    {PnL_AndOrderFlowStatsMemo}
+                    {/* {PnL_AndOrderFlowStatsMemo} */}
+                    <PnL_AndOrderFlowStats
+                        Socket={Socket}
+                        symbol={symbol.value}
+                        // ticks={ticks}
+                        // bidAskRatios={bidAskRatios}
+                        //  instrumentPnLPositionUpdate={instrumentPnLPositionUpdate}
+                        //   accountPnLPositionUpdate={accountPnLPositionUpdate}
+                        //   orderTrackerCount={orderTrackerCount}
+                    />
                 </div>
                 <div className="col-12">
                     <div className="row">

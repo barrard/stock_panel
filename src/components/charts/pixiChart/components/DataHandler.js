@@ -27,7 +27,9 @@ export default class PixiData {
         margin,
         tickSize,
         // timeframe,
+        symbol,
     }) {
+        this.symbol = symbol;
         this.allTicks = [];
         this.crossHairYScale = false;
         this.currentMinute = false;
@@ -446,10 +448,11 @@ export default class PixiData {
     setLoadDataFn(fn) {
         this.loadData = fn;
     }
-    setLiquidityData({ highLiquidity, bidSizeOrderRatio, askSizeOrderRatio, bidSizeToAskSizeRatio, bidOrderToAskOrderRatio }) {
+    setLiquidityData(data) {
+        const { highLiquidity, bidSizeOrderRatio, askSizeOrderRatio, bidSizeToAskSizeRatio, bidOrderToAskOrderRatio, symbol } = data;
+        if (symbol !== this.symbol.value) return;
         // console.log("set liquid data");
         this.liquidityData = highLiquidity;
-
         this.drawLiquidity();
     }
     prependData(data) {
@@ -1034,35 +1037,116 @@ export default class PixiData {
             this.liquidityContainer.children.forEach((gfx) => {
                 gfx.clear();
             });
+
             const colors = ["black", "blue", "green", "yellow", "red"];
-            const [min, max] = extent(this.liquidityData.map((l) => l.size));
-            // const [pmin, pmax] = extent(this.liquidityData.map((l) => l.p));
-            //TEST
-            // const dist = this.liquidityData.reduce((acc, l) => {
-            //     if (!acc[l.size]) {
-            //         acc[l.size] = 0;
-            //     }
-            //     acc[l.size]++;
-            //     return acc;
-            // }, {});
-            // console.log(dist);
-            // debugger;
-            //TEST
-            const total = max - min;
-            const totalDiff = Math.ceil(total / colors.length - 1);
+            // const [min, max] = extent(this.liquidityData.map((l) => l.size));
+            // const liquidValues = this.liquidityData.map((l) => l.size);
+
+            //NEW STYLE
+            function calculateQuartiles(data, key) {
+                const sortedData = [...data].sort((a, b) => a[key] - b[key]);
+                const len = sortedData.length;
+
+                const q1 = sortedData[Math.floor(len * 0.25)][key];
+                const q2 = sortedData[Math.floor(len * 0.5)][key];
+                const q3 = sortedData[Math.floor(len * 0.75)][key];
+
+                return { q1, q2, q3 };
+            }
+
+            function handleOutliers(data, key, method = "cap") {
+                const { q1, q2, q3 } = calculateQuartiles(data, key);
+                const iqr = q3 - q1;
+                const lowerBound = q1 - 3 * iqr;
+                const upperBound = q3 + 3 * iqr;
+
+                return data
+                    .map((item) => {
+                        let value = item[key];
+                        if (method === "cap") {
+                            // if (value < lowerBound) value = lowerBound;
+                            if (value > upperBound) value = upperBound;
+                        } else if (method === "remove") {
+                            if (value < lowerBound || value > upperBound) return null;
+                        }
+                        return { ...item, [key]: value };
+                    })
+                    .filter((item) => item !== null);
+            }
+
+            function calculatePercentiles(data, key, percentiles) {
+                const values = data.map((item) => item[key]).sort((a, b) => a - b);
+                const len = values.length;
+
+                return percentiles.map((p) => ({
+                    percentile: p,
+                    value: values[Math.floor((p / 100) * (len - 1))],
+                }));
+            }
+
+            function interpolate(x, x1, y1, x2, y2) {
+                return y1 + ((x - x1) * (y2 - y1)) / (x2 - x1);
+            }
+
+            function getPercentileInfo(value, percentileData) {
+                if (value <= percentileData[0].value) {
+                    return { percentile: 0, index: 0 };
+                }
+                if (value >= percentileData[percentileData.length - 1].value) {
+                    return { percentile: 100, index: percentileData.length - 1 };
+                }
+
+                for (let i = 0; i < percentileData.length - 1; i++) {
+                    if (value >= percentileData[i].value && value <= percentileData[i + 1].value) {
+                        const interpolatedPercentile = interpolate(
+                            value,
+                            percentileData[i].value,
+                            percentileData[i].percentile,
+                            percentileData[i + 1].value,
+                            percentileData[i + 1].percentile
+                        );
+                        return {
+                            percentile: interpolatedPercentile,
+                            index: i,
+                        };
+                    }
+                }
+            }
+
+            // Clean data by capping outliers
+            const cleanedDataCapped = handleOutliers(this.liquidityData, "size", "cap");
+
+            // Clean data by removing outliers
+            // const cleanedDataRemoved = handleOutliers(this.liquidityData, 'size', 'remove');
+
+            const percentiles = [0, 50, 75, 90, 100]; // Including 0 percentile for better interpolation
+            // Calculate percentile data for 'size'
+            const percentileData = calculatePercentiles(cleanedDataCapped, "size", percentiles);
+
+            // Add continuous percentile and index information to original data
+            const enrichedData = cleanedDataCapped.map((item) => {
+                const { percentile, index } = getPercentileInfo(item.size, percentileData);
+                return {
+                    ...item,
+                    sizePercentile: percentile,
+                    sizePercentileIndex: index,
+                };
+            });
+
+            //NEW STYLE
 
             const colorFns = [];
             colors.forEach((color, i) => {
                 if (i === 0) return;
                 // if (i === colors.length - 1) return;
                 const colorScale = scaleLinear().range([0, 1]);
-                colorScale.domain([totalDiff * (i - 1), totalDiff * i]);
+                colorScale.domain([percentileData[i - 1].percentile, percentileData[i].percentile]);
                 colorFns.push((size) => {
                     return interpolateLab(colors[i - 1], colors[i])(colorScale(size));
                 });
             });
             const height = this.priceScale(0) - this.priceScale(liquidityHeight);
-            this.liquidityData.forEach((liquidity, i) => {
+            enrichedData.forEach((liquidity, i) => {
                 const x = 0;
                 const y = this.priceScale(liquidity.p) - height;
                 // if (y < 0) return;
@@ -1070,23 +1154,25 @@ export default class PixiData {
                 let liquidityGfx = this.liquidityContainer.children[i];
                 if (!liquidityGfx) {
                     liquidityGfx = new Graphics();
-                    liquidityGfx.interactive = true;
+                    // liquidityGfx.interactive = true;
                     // liquidityGfx.on("mouseenter", function (e) {
                     //     // console.log(this);
                     //     console.log(
-                    //         ` price ${this.liquidityPrice} orders ${this.liquidityOrders} size ${this.liquiditySize} `
+                    //         this.liquidity
+                    //         // ` price ${this.liquidityPrice} orders ${this.liquidityOrders} size ${this.liquiditySize} ${this.} `
                     //     );
                     // });
                     this.liquidityContainer.addChild(liquidityGfx);
                 } else {
                     liquidityGfx.clear();
                 }
-                let colorFnIndex = Math.floor((liquidity.size / totalDiff).toFixed(2));
+                let colorFnIndex = liquidity.sizePercentileIndex; // Math.floor((liquidity.size / percentileData).toFixed(2));
                 if (colorFnIndex >= colorFns.length) {
                     colorFnIndex = colorFns.length - 1;
                 }
                 const colorFn = colorFns[colorFnIndex];
-                let color = colorFn(liquidity.size); // "rgb(142, 92, 109)"
+                let color = colorFn(liquidity.sizePercentile); // "rgb(142, 92, 109)"
+
                 color = color.replace("rgb(", "");
                 color = color.replace(")", "");
                 const [r, g, b] = color.split(",");
@@ -1095,13 +1181,14 @@ export default class PixiData {
                 liquidityGfx.alpha = 0.5;
                 // liquidityGfx.lineStyle(2, 0xdddddd, 0.1);
                 const rect = liquidityGfx.drawRect(x, y, width - (this.margin.left + this.margin.right), height);
-                rect.liquidityPrice = liquidity.p;
-                rect.liquiditySize = liquidity.size;
-                rect.liquidityOrders = liquidity.orders;
+                // rect.liquidityPrice = liquidity.p;
+                // rect.liquiditySize = liquidity.size;
+                // rect.liquidityOrders = liquidity.orders;
+                rect.liquidity = liquidity;
             });
         } catch (err) {
             // console.log("CLEAR() Error?");
-            console.log(err);
+            console.error(err);
             return err;
         }
         // const testLiqGfx = new Graphics();

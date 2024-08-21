@@ -19,6 +19,7 @@ export default function BacktestResultsChart(props = {}) {
     const VAHData = ohlc.map((d) => ({ y: d.valueAreaHigh, x: d.datetime }));
     const VPOCData = ohlc.map((d) => ({ y: d.VPOC, x: d.datetime }));
 
+    console.log(econEvents);
     function getMA(data, period) {
         const ma = new Array(period);
 

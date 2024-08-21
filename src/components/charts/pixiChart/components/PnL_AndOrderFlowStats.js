@@ -9,8 +9,8 @@ export default function PnL_AndOrderFlowStats(props) {
         // bidAskRatios = {},
         Socket,
         ticks,
+        symbol,
     } = props;
-    // console.log(props);
 
     const [bidSizeToAskSizeRatio, setBidSizeToAskSizeRatio] = useState([0]);
     const [bidSizeToAskSizeRatioMA, setBidSizeToAskSizeRatioMA] = useState([0]);
@@ -19,19 +19,30 @@ export default function PnL_AndOrderFlowStats(props) {
     const [instrumentPnLPositionUpdate, setInstrumentPnLPositionUpdate] = useState({});
     const [bidAskRatios, setBidAskRatios] = useState({});
 
+    useEffect(() => {
+        console.log("symbol change");
+        setBidSizeToAskSizeRatio([0]);
+        setBidSizeToAskSizeRatioMA([0]);
+    }, [symbol]);
+
     // console.log(bidAskRatios);
     useEffect(() => {
         Socket.on("InstrumentPnLPositionUpdate", (message) => {
+            debugger;
             // console.log(message);
             setInstrumentPnLPositionUpdate(message);
         });
 
         Socket.on("AccountPnLPositionUpdate", (message) => {
+            debugger;
             // console.log(message);
             setAccountPnLPositionUpdate(message);
         });
 
         Socket.on("orderTracker", (orderTrackerCount) => {
+            if (symbol !== orderTrackerCount.symbol) return;
+            console.log(`match!  ${symbol} == ${orderTrackerCount.symbol}`);
+
             const {
                 bidSizeToAskSizeRatio,
 
@@ -50,7 +61,7 @@ export default function PnL_AndOrderFlowStats(props) {
             Socket.off("AccountPnLPositionUpdate");
             Socket.off("InstrumentPnLPositionUpdate");
         };
-    }, []);
+    }, [symbol]);
 
     const MiniChartMemo = useMemo(() => {
         console.log("useMemo");
