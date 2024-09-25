@@ -10,6 +10,7 @@ export default function PnL_AndOrderFlowStats(props) {
         Socket,
         ticks,
         symbol,
+        lastTradesRef,
     } = props;
 
     const [bidSizeToAskSizeRatio, setBidSizeToAskSizeRatio] = useState([0]);
@@ -27,39 +28,47 @@ export default function PnL_AndOrderFlowStats(props) {
 
     // console.log(bidAskRatios);
     useEffect(() => {
-        Socket.on("InstrumentPnLPositionUpdate", (message) => {
+        Socket.on("accountPnL", (message) => {
             debugger;
             // console.log(message);
-            setInstrumentPnLPositionUpdate(message);
+            setInstrumentPnLPositionUpdate(message.positionData);
+            setAccountPnLPositionUpdate(message.accountPnLPosition);
         });
 
-        Socket.on("AccountPnLPositionUpdate", (message) => {
-            debugger;
-            // console.log(message);
-            setAccountPnLPositionUpdate(message);
-        });
+        // Socket.on("AccountPnLPositionUpdate", (message) => {
+        //     debugger;
+        //     // console.log(message);
+        //     setAccountPnLPositionUpdate(message);
+        // });
 
-        Socket.on("orderTracker", (orderTrackerCount) => {
-            if (symbol !== orderTrackerCount.symbol) return;
-            console.log(`match!  ${symbol} == ${orderTrackerCount.symbol}`);
+        // Socket.on("orderTracker", (orderTrackerCount) => {
+        //     const sym = orderTrackerCount.symbol;
+        //     if (!lastTradesRef?.current?.[sym]) {
+        //         lastTradesRef.current[sym] = {};
+        //     }
+        //     // if (lastTradesRef?.current?.[sym]) {
+        //     lastTradesRef.current[sym] = { ...lastTradesRef.current[sym], ...orderTrackerCount };
+        //     // }
+        //     if (symbol !== orderTrackerCount.symbol) return;
+        //     // console.log(`match!  ${symbol} == ${orderTrackerCount.symbol}`);
 
-            const {
-                bidSizeToAskSizeRatio,
+        //     const {
+        //         bidSizeToAskSizeRatio,
 
-                bidSizeToAskSizeRatioMA,
-            } = orderTrackerCount;
-            setBidAskRatios(orderTrackerCount);
+        //         bidSizeToAskSizeRatioMA,
+        //     } = orderTrackerCount;
+        //     setBidAskRatios(orderTrackerCount);
 
-            setBidSizeToAskSizeRatio((arr) => [...arr, bidSizeToAskSizeRatio]);
-            setBidSizeToAskSizeRatioMA((arr) => [...arr, bidSizeToAskSizeRatioMA]);
+        //     setBidSizeToAskSizeRatio((arr) => [...arr, bidSizeToAskSizeRatio]);
+        //     setBidSizeToAskSizeRatioMA((arr) => [...arr, bidSizeToAskSizeRatioMA]);
 
-            setOrderTrackerCount({ ...orderTrackerCount });
-        });
+        //     setOrderTrackerCount({ ...orderTrackerCount });
+        // });
 
         return () => {
             Socket.off("orderTracker");
-            Socket.off("AccountPnLPositionUpdate");
-            Socket.off("InstrumentPnLPositionUpdate");
+            // Socket.off("AccountPnLPositionUpdate");
+            Socket.off("accountPnL");
         };
     }, [symbol]);
 
@@ -93,33 +102,34 @@ export default function PnL_AndOrderFlowStats(props) {
 
     return (
         <>
-            <div className="row">
+            {/* <div className="row">
                 <div className="col-6"></div>
-                <div className="col-6">P&accountBalance = {accountPnLPositionUpdate.accountBalance}</div>
+                <div className="col-6">P&accountBalance = {accountPnLPositionUpdate.accountBalance}</div> */}
 
-                <div className="col-6">P&L = {instrumentPnLPositionUpdate.openPositionPnl}</div>
-                <div className="col-6">dayClosedPnl = {instrumentPnLPositionUpdate.dayClosedPnl}</div>
-            </div>
-            <div className="row">
-                <div className="col-6">netQuantity = {instrumentPnLPositionUpdate.netQuantity}</div>
-                <div className="col-6">avgOpenFillPrice ={instrumentPnLPositionUpdate.avgOpenFillPrice}</div>
-            </div>
+            {/* <div className="col-6">P&L = {instrumentPnLPositionUpdate.openPositionPnl}</div> */}
+            {/* <div className="col-6">dayClosedPnl = {instrumentPnLPositionUpdate.dayClosedPnl}</div> */}
+            {/* </div> */}
+            {/* <div className="row"> */}
+            {/* <div className="col-6">netQuantity = {instrumentPnLPositionUpdate.netQuantity}</div> */}
+            {/* <div className="col-6">avgOpenFillPrice ={instrumentPnLPositionUpdate.avgOpenFillPrice}</div> */}
+            {/* </div> */}
 
-            <div className="row">
-                <div className="col-6">fillBuyQty = {instrumentPnLPositionUpdate.fillBuyQty}</div>
-                <div className="col-6">fillSellQty = {instrumentPnLPositionUpdate.fillSellQty}</div>
-            </div>
-            <div className="row">
-                <div className="col-6">bigPlayers: {orderTrackerCount.bigPlayer}</div>
-                <div className="col-6">orderDelta: {orderTrackerCount.orderDelta}</div>
-                <div className="col-6">{/* orderDelta: {orderTrackerCount.orderDelta} */}</div>
-                <div className="col-6">buyingPowerCount: {orderTrackerCount.buyingPowerCount}</div>
-                <div className="col-6">nullOrderDelta: {orderTrackerCount.nullOrderDelta}</div>
-                {/* <Seismograph data={ticks} delta={orderTrackerCount.delta} /> */}
-                {/* {SeismographChartMemo} */}
-                <div className="col-6">tradeSize: {orderTrackerCount.tradeSize}</div>
-                <div className="col-6">tradeCount: {orderTrackerCount.tradeCount}</div>
-            </div>
+            {/* <div className="row"> */}
+            {/* <div className="col-6">fillBuyQty = {instrumentPnLPositionUpdate.fillBuyQty}</div> */}
+            {/* <div className="col-6">fillSellQty = {instrumentPnLPositionUpdate.fillSellQty}</div> */}
+            {/* </div> */}
+            {/* <div className="row"> */}
+            {/* <div className="col-6">bigPlayers: {orderTrackerCount.bigPlayer}</div> */}
+            {/* <div className="col-6">orderDelta: {orderTrackerCount.orderDelta}</div> */}
+            {/* <div className="col-6">orderDelta: {orderTrackerCount.orderDelta}</div> */}
+            {/* <div className="col-6">buyingPowerCount: {orderTrackerCount.buyingPowerCount}</div> */}
+            {/* <div className="col-6">nullOrderDelta: {orderTrackerCount.nullOrderDelta}</div> */}
+            {/* <Seismograph data={ticks} delta={orderTrackerCount.delta} /> */}
+            {/* {SeismographChartMemo} */}
+            {/* <div className="col-6">tradeSize: {orderTrackerCount.tradeSize}</div> */}
+            {/* <div className="col-6">tradeCount: {orderTrackerCount.tradeCount}</div> */}
+            {/* </div> */}
+
             {/* 
             {MiniChartMemo}
             <MiniPixiChart
@@ -137,7 +147,7 @@ export default function PnL_AndOrderFlowStats(props) {
                 chartData={bidSizeToAskSizeRatio}
             /> */}
 
-            <div className="row">
+            {/* <div className="row">
                 <div className="col-6">bidSizeOrderRatio: {bidAskRatios?.bidSizeOrderRatio?.toFixed(2)}</div>
                 <div className="col-6">askSizeOrderRatio: {bidAskRatios?.askSizeOrderRatio?.toFixed(2)}</div>
                 <div className="col-6">
@@ -172,7 +182,7 @@ export default function PnL_AndOrderFlowStats(props) {
                     {" / "}
                     {bidAskRatios?.avgTRIN?.toFixed(2)}
                 </div>
-            </div>
+            </div> */}
         </>
     );
 }

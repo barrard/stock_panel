@@ -49,29 +49,12 @@ export const LoadingButton = ({ disabled = false, loading, submit, name }) => {
     );
 };
 
-export const IconButton = ({
-    borderColor,
-    onClick,
-    icon,
-    index,
-    title,
-    color,
-    bgColor,
-    rIcon,
-    onContextMenu = () => {},
-}) => {
+export const IconButton = ({ borderColor, onClick, icon, index, title, color, bgColor, rIcon, text, onContextMenu = () => {} }) => {
     return (
-        <HoverIcon
-            onContextMenu={onContextMenu}
-            title={title}
-            onClick={onClick}
-            index={index}
-            color={color}
-            bgColor={bgColor}
-            borderColor={borderColor}
-        >
+        <HoverIcon onContextMenu={onContextMenu} title={title} onClick={onClick} index={index} color={color} bgColor={bgColor} borderColor={borderColor}>
             {icon && <FontAwesomeIcon icon={icon} />}
             {rIcon && rIcon}
+            {text && text}
         </HoverIcon>
     );
 };
@@ -100,10 +83,7 @@ const HoverIcon = styled.div`
     border-radius: 10px;
     cursor: pointer;
     display: inline;
-    border: ${({ borderColor }) =>
-        borderColor
-            ? `1px solid ${borderColor}`
-            : `1px solid ${"rgba(50,50,50,0.5)"}`};
+    border: ${({ borderColor }) => (borderColor ? `1px solid ${borderColor}` : `1px solid ${"rgba(50,50,50,0.5)"}`)};
 
     /* animation-iteration-count: infinite; */
     &:hover {
@@ -128,24 +108,11 @@ const HoverIcon = styled.div`
     }
 `;
 
-export const Input = ({
-    min,
-    onChange,
-    label,
-    value,
-    disabled,
-    type = "text",
-}) => {
+export const Input = ({ min, onChange, label, value, disabled, type = "text" }) => {
     return (
         <div style={{ maxWidth: "4em", display: "flex", alignItems: "center" }}>
             <StyledInputLabel htmlFor="">{label}</StyledInputLabel>
-            <StyledInput
-                min={min ? min : "-999999999"}
-                type={type}
-                disabled={disabled}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-            />
+            <StyledInput min={min ? min : "-999999999"} type={type} disabled={disabled} value={value} onChange={(e) => onChange(e.target.value)} />
         </div>
     );
 };
@@ -167,13 +134,7 @@ const SelectStyles = {
     option: (styles, { data, isDisabled, isFocused, isSelected }) => {
         return {
             ...styles,
-            backgroundColor: isDisabled
-                ? null
-                : isSelected
-                ? "#666"
-                : isFocused
-                ? "#222"
-                : null,
+            backgroundColor: isDisabled ? null : isSelected ? "#666" : isFocused ? "#222" : null,
             color: "white",
             cursor: isDisabled ? "not-allowed" : "default",
             borderBottom: `1px solid ${isSelected ? "goldenRod" : "white"}`,
@@ -191,12 +152,7 @@ const SelectStyles = {
 export const Select = ({ options, setValue, value }) => {
     return (
         <div>
-            <ReactSelect
-                styles={SelectStyles}
-                options={options}
-                onChange={setValue}
-                value={value}
-            />
+            <ReactSelect styles={SelectStyles} options={options} onChange={setValue} value={value} />
         </div>
     );
 };

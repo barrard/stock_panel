@@ -139,6 +139,44 @@ export function timeScaleValues({ highest, lowest, values }) {
     return timeValues;
 }
 
+export const symbolOptions = [
+    //Index Futures
+    { value: "ES", name: "S&P 500 Index (E-mini) (ES)", exchange: "CME" },
+    { value: "NQ", name: "Nasdaq-100 Futures (E-mini) (NQ)", exchange: "CME" },
+    { value: "YM", name: "Dow Jones Industrial Average (Mini) (YM)", exchange: "CBOT" },
+    { value: "RTY", name: "Russell 2000 Index (Mini) (RTY):", exchange: "CME" },
+    { value: "NK", name: "Nikkei 225 (NK):", exchange: "CME" },
+
+    // Interest Rate Futures
+    { value: "ZT", name: "2-Year Treasury Note (ZT)", exchange: "CBOT" },
+    { value: "ZF", name: "5-Year Treasury Note (ZF)", exchange: "CBOT" },
+    { value: "ZN", name: "10-Year Treasury Note (ZN)", exchange: "CBOT" },
+    { value: "ZB", name: "30-Year Treasury Bond (ZB)", exchange: "CBOT" },
+    { value: "GE", name: "Eurodollar (GE)", exchange: "CME" },
+    //Financial Futures
+    { value: "VX", name: "Volatility Index (VX)", exchange: "CBOE" },
+    { value: "6E", name: "Euro FX (EUR/USD) (6E)", exchange: "CME" },
+
+    // Energy Futures
+    { value: "CL", name: "Crude Oil (WTI) (CL)", exchange: "NYMEX" },
+    { value: "NG", name: "Natural Gas (NG)", exchange: "NYMEX" },
+    { value: "RB", name: "Gasoline (RB)", exchange: "NYMEX" },
+    { value: "HO", name: "Heating Oil (HO)", exchange: "NYMEX" },
+
+    //Agricultural Futures
+    { value: "ZC", name: "Corn (ZC): ", exchange: "CBOT" },
+    { value: "ZS", name: "Soybeans (ZS)", exchange: "CBOT" },
+    { value: "ZW", name: "Wheat (ZW)", exchange: "CBOT" },
+    { value: "LC", name: "Live Cattle (LC)", exchange: "CME" },
+    { value: "FC", name: "Feeder Cattle (FC)", exchange: "CME" },
+    { value: "LH", name: "Lean Hogs (LH)", exchange: "CME" },
+
+    //METALS COMEX
+    { value: "GC", name: "Gold (GC)", exchange: "COMEX" },
+    { value: "SI", name: "Silver (SI)", exchange: "COMEX" },
+    { value: "HG", name: "Copper (HG)", exchange: "COMEX" },
+];
+
 export function parseBarTypeTimeFrame({ barType, barTypePeriod }) {
     let timeBerBar;
     if (barType === 1) {

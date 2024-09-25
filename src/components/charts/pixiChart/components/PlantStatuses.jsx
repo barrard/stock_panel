@@ -19,37 +19,24 @@ export default function PlantStatuses(props = {}) {
     }, [plantStatus]);
 
     return (
-        <div className="row ">
-            <div className="col">
-                <PlantIndicator
-                    active={plantStatus["MarketDataPlant"]}
-                    title={"MarketDataPlant"}
-                ></PlantIndicator>
-            </div>
-            <div className="col">
-                <PlantIndicator
-                    active={plantStatus["PnL_Plant"]}
-                    title={"PnL_Plant"}
-                ></PlantIndicator>
-            </div>
-            <div className="col">
-                <PlantIndicator
-                    active={plantStatus["HistoryPlant"]}
-                    title={"HistoryPlant"}
-                ></PlantIndicator>
-            </div>
-            <div className="col">
-                <PlantIndicator
-                    active={plantStatus["OrderPlant"]}
-                    title={"OrderPlant"}
-                ></PlantIndicator>
-            </div>
-        </div>
+        <Container>
+            <PlantIndicator active={plantStatus["MarketDataPlant"]} title={"MarketDataPlant"}></PlantIndicator>
+            <PlantIndicator active={plantStatus["PnL_Plant"]} title={"PnL_Plant"}></PlantIndicator>
+            <PlantIndicator active={plantStatus["HistoryPlant"]} title={"HistoryPlant"}></PlantIndicator>
+            <PlantIndicator active={plantStatus["OrderPlant"]} title={"OrderPlant"}></PlantIndicator>
+        </Container>
     );
 }
 
+const Container = styled.div`
+    display: flex;
+    top: -1em;
+    position: absolute;
+`;
+
 const PlantIndicator = styled.div`
     border-radius: 50%;
+    margin-left: 5px;
     width: 10px;
     height: 10px;
     background: ${({ active }) => (active ? "green" : "red")};

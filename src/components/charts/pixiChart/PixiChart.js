@@ -13,17 +13,22 @@ import { IconButton } from "../../StratBuilder/components";
 import { Flex } from "../../StratBuilder/components/chartComponents/styled";
 
 import PixiData from "./components/DataHandler";
-import TradeControls from "./components/TradeControls";
+// import TradeControls from "./components/TradeControls";
 import OrdersList from "./components/OrdersList";
 import Select from "./components/Select";
 import Input from "./components/Input";
 
+import SymbolBtns from "./components/SymbolBtns";
+import TimeFrameBtns from "./components/TimeFrameBtns";
 import IndicatorsBtns from "./components/IndicatorsBtns";
-import StartEndTimes from "./components/StartEndTimes";
+import MarketOverview from "./components/MarketOverview";
+// import StartEndTimes from "./components/StartEndTimes";
 import PnL_AndOrderFlowStats from "./components/PnL_AndOrderFlowStats";
-import { parseBarTypeTimeFrame } from "./components/utils";
+import AccountInfoTable from "./components/AccountInfoTable";
+import { parseBarTypeTimeFrame, symbolOptions } from "./components/utils";
 import onLastTrade from "./handlers/onLastTrade";
 import PlantStatuses from "./components/PlantStatuses";
+import { TICKS } from "../../../indicators/indicatorHelpers/TICKS";
 
 function getNextTimeBar(data) {
     const { barType, barTypePeriod } = data;
@@ -32,6 +37,7 @@ function getNextTimeBar(data) {
     return nextTime;
 }
 export default function PixiChart({ Socket }) {
+    const ticks = TICKS();
     //TODO really set this
     const [width, setWidth] = useState(Math.floor(window.innerWidth * 0.9));
     //TODO cjould be input
@@ -54,6 +60,9 @@ export default function PixiChart({ Socket }) {
     const newSymbolTimerRef = useRef();
     // const pixiDataRef = useRef();
     const loadDataRef = useRef();
+    //price data
+    const lastTradesRef = useRef({});
+    const tickSizeRef = useRef({});
 
     const [rerender, setRerender] = useState({});
 
@@ -68,6 +77,7 @@ export default function PixiChart({ Socket }) {
     const [touch1, setTouch1] = useState(false);
     const [touch2, setTouch2] = useState(false);
     const [touchMoveEvent, setTouchMoveEvent] = useState(false);
+    const [fullSymbols, setFullSymbols] = useState([]);
     // const [currentMinute, setCurrentMinute] = useState(false);
 
     const [timeAndSales, setTimeAndSales] = useState([]);
@@ -90,7 +100,7 @@ export default function PixiChart({ Socket }) {
     const [barTypePeriod, setBarTypePeriod] = useState(60);
     const [barTypeInput, setBarTypeInput] = useState({
         value: 1,
-        name: "Second",
+        name: "Seconds",
     });
     const [barTypePeriodInput, setBarTypePeriodInput] = useState(60);
     const [symbol, setSymbol] = useState({ name: "ES", value: "ES" });
@@ -99,16 +109,9 @@ export default function PixiChart({ Socket }) {
         value: "ES",
         name: "ES",
         exchange: "CME",
+        tickSize: ticks["ES"],
     });
-    const [exchangeInput, setExchangeInput] = useState({
-        value: "CME",
-        name: "CME",
-    });
-    const [symbolInputDisabled, setSymbolInputDisabled] = useState(false);
 
-    // const [accountPnLPositionUpdate, setAccountPnLPositionUpdate] = useState({});
-    // const [instrumentPnLPositionUpdate, setInstrumentPnLPositionUpdate] = useState({});
-    // const [orderTrackerCount, setOrderTrackerCount] = useState({});
     const [currentTimeBar, setCurrentTimeBar] = useState();
     const [orders, setOrders] = useState({});
     const [lastTrade, setLastTrade] = useState({});
@@ -118,17 +121,20 @@ export default function PixiChart({ Socket }) {
     const [lastTwoDaysCompiled, setLastTwoDaysCompiled] = useState({});
     // const [bidAskRatios, setBidAskRatios] = useState({});
     const [plantStatus, setPlantStatus] = useState({});
-    const [ticks, setTicks] = useState([]);
+    // const [ticks, setTicks] = useState([]);
 
     const loadTicks = async () => {
         const ticks = await API.getTicks();
-        setTicks(ticks);
+        // setTicks(ticks);
     };
     //Fn to load ohlc data
     const loadData = ({
         startIndex = startTime ? new Date(startTime).getTime() : null, //= new Date().getTime() - 1000 * 60 * 60 * 24,
         finishIndex = new Date().getTime(),
         isNew = false,
+        symbol,
+        barType,
+        barTypePeriod,
     }) => {
         if (loading) {
             return console.log("No can, I stay loading");
@@ -155,9 +161,9 @@ export default function PixiChart({ Socket }) {
         // startDate = startDate || new Date().getTime();
         API.rapi_requestBars({
             symbol: symbol.value,
-            exchange: exchange.value,
-            barType: barType.value,
-            barTypePeriod,
+            exchange: symbol.exchange,
+            barType: barTypeInput.value,
+            barTypePeriod: barTypePeriodInput,
             startIndex,
             finishIndex,
         })
@@ -173,6 +179,9 @@ export default function PixiChart({ Socket }) {
                         return await loadData({
                             finishIndex: startIndex,
                             isNew,
+                            symbol,
+                            barType,
+                            barTypePeriod,
                         });
                 }
                 loadDataRef.current = 0;
@@ -211,7 +220,7 @@ export default function PixiChart({ Socket }) {
                         allOhlcData = _ohlcDatas.concat(ohlcDatas);
                     }
                     setPixiData((pixiData) => {
-                        setSymbolInputDisabled(false);
+                        // setSymbolInputDisabled(false);
                         if (!pixiData?.init) return alert("WHY??"); //WHY???
                         if (isNew) {
                             pixiData.ohlcDatas = [];
@@ -230,12 +239,13 @@ export default function PixiChart({ Socket }) {
             });
     };
 
-    useEffect(() => {
-        setExchangeInput({
-            name: symbolInput.exchange,
-            value: symbolInput.exchange,
-        });
-    }, [symbolInput]);
+    // useEffect(() => {
+    //     debugger;
+    //     setExchangeInput({
+    //         name: symbolInput.exchange,
+    //         value: symbolInput.exchange,
+    //     });
+    // }, [symbolInput]);
 
     useEffect(() => {
         if (!pixiData) return;
@@ -343,32 +353,44 @@ export default function PixiChart({ Socket }) {
             clearInterval(newSymbolTimerRef.current);
         }
         newSymbolTimerRef.current = setTimeout(() => {
-            setSymbolInputDisabled(true);
             if (loading !== symbol.value) {
                 loadData({
                     finishIndex: endTime ? new Date(endTime).getTime() || new Date().getTime() : new Date().getTime(),
                     isNew: true,
+                    symbol: symbolInput,
+                    barType: barTypeInput,
+                    barTypePeriod: barTypePeriodInput,
                 });
             } else {
                 alert(`Not loading ${symbol.name}`);
-
-                setSymbolInputDisabled(false);
             }
         }, 1000);
 
         pixiData?.setLoadDataFn(loadData);
 
         Socket.emit("requestTimeBarUpdate", {
-            symbol: symbol.value,
-            exchange: exchange.value,
-            barType: barType.value,
+            symbol: symbolInput.value,
+            exchange: symbolInput.exchange,
+            barType: barTypeInput.value,
             barTypePeriod,
         });
+
+        if (barType.value !== barTypeInput.value) {
+            setBarType({ ...barTypeInput });
+            pixiData?.setTimeframe({ barType: barTypeInput, barTypePeriod: barTypePeriodInput });
+        }
+        if (barTypePeriod !== barTypePeriodInput) {
+            setBarTypePeriod(barTypePeriodInput);
+            pixiData?.setTimeframe({ barType: barTypeInput, barTypePeriod: barTypePeriodInput });
+        }
+        if (symbol.value !== symbolInput.value) {
+            setSymbol({ ...symbolInput });
+        }
 
         return () => {
             // Socket.off("timeBarUpdate");
         };
-    }, [symbol, barType, barTypePeriod]);
+    }, [barTypeInput, barTypePeriodInput, symbolInput]);
 
     //on load get data
     useEffect(() => {
@@ -405,10 +427,12 @@ export default function PixiChart({ Socket }) {
             pixiApp: PixiAppRef.current,
             loadData,
             width,
-            symbol: symbol,
+            symbol: symbolInput,
+            barType: barTypeInput,
+            barTypePeriod: barTypePeriodInput,
             // height,
             // volHeight,
-            tickSize: 0.25,
+            // tickSize: 0.25,
             // timeframe,
             margin: {
                 top: 50,
@@ -423,19 +447,6 @@ export default function PixiChart({ Socket }) {
         Socket.on("rapi-message", (message) => {
             toastr.success(message);
         });
-
-        // Socket.on("AccountPnLPositionUpdate", (message) => {
-        //     // console.log(message);
-        //     setAccountPnLPositionUpdate(message);
-        // });
-
-        // Socket.on("InstrumentPnLPositionUpdate", (message) => {
-        //     // console.log(message);
-        //     setInstrumentPnLPositionUpdate(message);
-        // });
-        // Socket.on("orderTracker", (orderTrackerCount) => {
-        //     setOrderTrackerCount(orderTrackerCount);
-        // });
 
         Socket.on("compileHistoryTracker", ({ lastTwoDaysCompiled, lastWeeklyData, combinedKeyLevels }) => {
             // console.log(lastTwoDaysCompiled);
@@ -506,8 +517,7 @@ export default function PixiChart({ Socket }) {
             setPixiData(false);
             Socket.off("rapi-message");
             Socket.off("PlantStatus");
-            // Socket.off("AccountPnLPositionUpdate");
-            // Socket.off("InstrumentPnLPositionUpdate");
+
             Socket.off("orderTracker");
             Socket.off("ordersShown");
             Socket.off("lastTwoDaysCompiled");
@@ -535,12 +545,13 @@ export default function PixiChart({ Socket }) {
     //Fn to handle new data
     useEffect(() => {
         // if (!ohlcDatas.length || !PixiAppRef.current || !pixiData) return;
-        if (!pixiData) return;
 
+        tickSizeRef.current = TICKS()[symbol.value];
+        if (!pixiData) return;
         pixiData.draw();
 
         /////////////////////////////////////
-        Socket.on("lastTrade", onLastTrade({ setLastTrade, setOhlcDatas, pixiData }));
+        Socket.on("lastTrade", onLastTrade({ setLastTrade, setOhlcDatas, pixiData, lastTradesRef }));
         // Socket.on("lastTickBar", onLastTrade({ setLastTrade, setOhlcDatas, pixiData, tickBar: true }));
 
         Socket.on("liquidity", (data) => {
@@ -614,6 +625,20 @@ export default function PixiChart({ Socket }) {
     //     pixiData.loadMoreData();
     // }, [timeframe]);
 
+    useEffect(() => {
+        API.getFrontMonthSymbols()
+            .then((d) => {
+                if (!d.length) {
+                    alert("Missing full symbols");
+                }
+                setFullSymbols([...d]);
+            })
+            .catch((e) => {
+                console.error(e);
+                alert("Missing full symbols");
+            });
+    }, []);
+
     const clearLongPress = () => {
         clearInterval(longPressTimer);
         setLongPressTimer(false);
@@ -646,43 +671,36 @@ export default function PixiChart({ Socket }) {
         [plantStatus]
     );
 
-    // const PnL_AndOrderFlowStatsMemo = useMemo(() => {
-    //     return (
-    // <PnL_AndOrderFlowStats
-    //     Socket={Socket}
-    //     symbol={symbol}
-    //     // ticks={ticks}
-    //     // bidAskRatios={bidAskRatios}
-    //     //  instrumentPnLPositionUpdate={instrumentPnLPositionUpdate}
-    //     //   accountPnLPositionUpdate={accountPnLPositionUpdate}
-    //     //   orderTrackerCount={orderTrackerCount}
-    // />
-    // );
-    // }, [Socket, symbol]);
+    const TimeFrameBtnsMemo = useMemo(
+        () => (
+            <TimeFrameBtns
+                backgroundDataFetch={backgroundDataFetch}
+                setBackgroundDataFetch={setBackgroundDataFetch}
+                setStartTime={setStartTime}
+                setEndTime={setEndTime}
+                startTime={startTime}
+                endTime={endTime}
+                setBarType={setBarTypeInput}
+                setBarTypePeriod={setBarTypePeriodInput}
+                barType={barType}
+                barTypePeriod={barTypePeriod}
+            />
+        ),
+        [barType, barTypePeriod]
+    );
+    const SymbolBtnsMemo = useMemo(
+        () => <SymbolBtns symbolOptions={symbolOptions} symbol={symbolInput} setSymbol={setSymbolInput} />,
+        [barType, barTypePeriod, symbolInput]
+    );
+
     console.log("das render");
     return (
         <>
-            <div className="row">
-                <div className="col-6">
-                    <div className="row d-flex border">
-                        <div className="col-auto">
-                            <IndicatorsBtns
-                                setDrawZigZag={setDrawZigZag}
-                                setDrawMarketProfile={setDrawMarketProfile}
-                                setDrawOrderBook={setDrawOrderBook}
-                                togglePivotLines={togglePivotLines}
-                                setDrawPivotLines={setDrawPivotLines}
-                                toggleZigZag={toggleZigZag}
-                                toggleMarketProfile={toggleMarketProfile}
-                                toggleOrderbook={toggleOrderbook}
-                                setDrawOrders={setDrawOrders}
-                                toggleOrders={toggleOrders}
-                            />
-                        </div>
-                        <div className="col-auto">{PlantStatusesMemo}</div>
-                    </div>
-                    <div className="row g-1">
-                        <div className="col-auto">
+            <div className="row relative">
+                <div className="absolute ">{PlantStatusesMemo}</div>
+                <div className="col-6 ">
+                    <div className="row g-1 ">
+                        {/* <div className="col-auto">
                             <Select
                                 label="Bar Type"
                                 value={barTypeInput}
@@ -694,8 +712,8 @@ export default function PixiChart({ Socket }) {
                                     { value: 4, name: "Weekly" },
                                 ]}
                             />
-                        </div>
-                        <div className="col-2">
+                        </div> */}
+                        {/* <div className="col-2">
                             <Input
                                 // disabled={symbolInputDisabled}
                                 type="number"
@@ -703,54 +721,9 @@ export default function PixiChart({ Socket }) {
                                 value={barTypePeriodInput}
                                 label="BarTypePeriod"
                             />
-                        </div>
-                        <div className="col-auto ">
-                            <Select
-                                // disabled={symbolInputDisabled}
-                                label="Symbol"
-                                value={symbolInput}
-                                setValue={setSymbolInput}
-                                options={[
-                                    //Index Futures
-                                    { value: "ES", name: "S&P 500 Index (E-mini) (ES)", exchange: "CME" },
-                                    { value: "NQ", name: "Nasdaq-100 Futures (E-mini) (NQ)", exchange: "CME" },
-                                    { value: "YM", name: "Dow Jones Industrial Average (Mini) (YM)", exchange: "CBOT" },
-                                    { value: "RTY", name: "Russell 2000 Index (Mini) (RTY):", exchange: "CME" },
-                                    { value: "NK", name: "Nikkei 225 (NK):", exchange: "CME" },
+                        </div> */}
 
-                                    // Interest Rate Futures
-                                    { value: "ZT", name: "2-Year Treasury Note (ZT)", exchange: "CBOT" },
-                                    { value: "ZF", name: "5-Year Treasury Note (ZF)", exchange: "CBOT" },
-                                    { value: "ZN", name: "10-Year Treasury Note (ZN)", exchange: "CBOT" },
-                                    { value: "ZB", name: "30-Year Treasury Bond (ZB)", exchange: "CBOT" },
-                                    { value: "GE", name: "Eurodollar (GE)", exchange: "CME" },
-                                    //Financial Futures
-                                    { value: "VX", name: "Volatility Index (VX)", exchange: "CBOE" },
-                                    { value: "6E", name: "Euro FX (EUR/USD) (6E)", exchange: "CME" },
-
-                                    // Energy Futures
-                                    { value: "CL", name: "Crude Oil (WTI) (CL)", exchange: "NYMEX" },
-                                    { value: "NG", name: "Natural Gas (NG)", exchange: "NYMEX" },
-                                    { value: "RB", name: "Gasoline (RB)", exchange: "NYMEX" },
-                                    { value: "HO", name: "Heating Oil (HO)", exchange: "NYMEX" },
-
-                                    //Agricultural Futures
-                                    { value: "ZC", name: "Corn (ZC): ", exchange: "CBOT" },
-                                    { value: "ZS", name: "Soybeans (ZS)", exchange: "CBOT" },
-                                    { value: "ZW", name: "Wheat (ZW)", exchange: "CBOT" },
-                                    { value: "LC", name: "Live Cattle (LC)", exchange: "CME" },
-                                    { value: "FC", name: "Feeder Cattle (FC)", exchange: "CME" },
-                                    { value: "LH", name: "Lean Hogs (LH)", exchange: "CME" },
-
-                                    //METALS COMEX
-                                    { value: "GC", name: "Gold (GC)", exchange: "COMEX" },
-                                    { value: "SI", name: "Silver (SI)", exchange: "COMEX" },
-                                    { value: "HG", name: "Copper (HG)", exchange: "COMEX" },
-                                ]}
-                            />
-                        </div>
-
-                        <div className="col-auto">
+                        {/* <div className="col-auto">
                             <Select
                                 disabled={true}
                                 label="Exchange"
@@ -764,22 +737,22 @@ export default function PixiChart({ Socket }) {
                                     { value: "CME", name: "CME" },
                                 ]}
                             />
-                        </div>
+                        </div> */}
 
                         <div className="col-2 border d-flex">
-                            <button
+                            {/* <button
                                 onClick={() => {
                                     setBarType({ ...barTypeInput });
                                     setBarTypePeriod(barTypePeriodInput);
                                     setSymbol({ ...symbolInput });
-                                    setExchange({ ...exchangeInput });
+                                    // setExchange({ ...exchangeInput });
                                 }}
                                 className="btn btn-secondary flex-fill d-flex flex-1 justify-content-center h-100 align-items-center"
                             >
                                 GET
-                            </button>
+                            </button> */}
                         </div>
-                        <div className="col ">
+                        {/* <div className="col ">
                             <StartEndTimes
                                 backgroundDataFetch={backgroundDataFetch}
                                 setBackgroundDataFetch={setBackgroundDataFetch}
@@ -788,38 +761,78 @@ export default function PixiChart({ Socket }) {
                                 startTime={startTime}
                                 endTime={endTime}
                             />
-                        </div>
+                        </div> */}
                     </div>
 
-                    <TradeControls lastTrade={lastTrade} />
+                    {/* <TradeControls fullSymbols={fullSymbols} symbol={symbolInput} lastTrade={lastTrade} /> */}
                 </div>
-                <div className="col-6">
-                    {/* <button
+                {/* <div className="col-6"> */}
+                {/* <button
                         onClick={() => {
                             loadTicks();
                         }}
                     >
                         LOAD TICKS
                     </button> */}
-                    {/* {PnL_AndOrderFlowStatsMemo} */}
-                    <PnL_AndOrderFlowStats
+                {/* {PnL_AndOrderFlowStatsMemo} */}
+                {/*   TODO THIS NEEDS TO GO ON THE MARKET DATA ROW */}
+                {/* <PnL_AndOrderFlowStats
                         Socket={Socket}
                         symbol={symbol.value}
+                        lastTradesRef={lastTradesRef}
                         // ticks={ticks}
                         // bidAskRatios={bidAskRatios}
                         //  instrumentPnLPositionUpdate={instrumentPnLPositionUpdate}
                         //   accountPnLPositionUpdate={accountPnLPositionUpdate}
                         //   orderTrackerCount={orderTrackerCount}
-                    />
-                </div>
+                    /> */}
+                {/* </div> */}
+                <AccountInfoTable Socket={Socket} />
+
+                <MarketOverview Socket={Socket} lastTradesRef={lastTradesRef} fullSymbols={fullSymbols} />
                 <div className="col-12">
                     <div className="row">
-                        <div className="col">Start {new Date(startTime).toLocaleString()}</div>
-                        <div className="col">end {new Date(endTime).toLocaleString()}</div>
-                        <div className="col">Symbol {symbol.name}</div>
-                        <div className="col">Exchange {exchange.name}</div>
-                        <div className="col">BarType val {barType.name}</div>
-                        <div className="col">BarTypePeriod {barTypePeriod}</div>
+                        {/* <div className="col">Start {new Date(startTime).toLocaleString()}</div>
+                        <div className="col">end {new Date(endTime).toLocaleString()}</div> */}
+                        <div className="col-auto">Symbol {symbol.name}</div>
+                        <div className="col-auto">Exchange {exchange.name}</div>
+                        <div className="col-auto">BarType val {barType.name}</div>
+                        <div className="col-auto">BarTypePeriod {barTypePeriod}</div>
+                    </div>
+                </div>
+                <div className="row d-flex border">
+                    <div className="col-auto">
+                        <IndicatorsBtns
+                            setDrawZigZag={setDrawZigZag}
+                            setDrawMarketProfile={setDrawMarketProfile}
+                            setDrawOrderBook={setDrawOrderBook}
+                            togglePivotLines={togglePivotLines}
+                            setDrawPivotLines={setDrawPivotLines}
+                            toggleZigZag={toggleZigZag}
+                            toggleMarketProfile={toggleMarketProfile}
+                            toggleOrderbook={toggleOrderbook}
+                            setDrawOrders={setDrawOrders}
+                            toggleOrders={toggleOrders}
+                        />
+                    </div>
+
+                    <div className="col-auto">
+                        {TimeFrameBtnsMemo}
+                        {/* <TimeFrameBtns setBarType={setBarTypeInput} setBarTypePeriod={setBarTypePeriodInput} barType={barType} barTypePeriod={barTypePeriod} /> */}
+                    </div>
+                    <div className="col-auto">
+                        {SymbolBtnsMemo}
+                        {/* <TimeFrameBtns setBarType={setBarTypeInput} setBarTypePeriod={setBarTypePeriodInput} barType={barType} barTypePeriod={barTypePeriod} /> */}
+                    </div>
+
+                    <div className="col-auto border ">
+                        <Select
+                            // disabled={symbolInputDisabled}
+                            // label="Symbol"
+                            value={symbolInput}
+                            setValue={setSymbolInput}
+                            options={symbolOptions}
+                        />
                     </div>
                 </div>
             </div>

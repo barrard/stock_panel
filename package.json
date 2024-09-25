@@ -2,6 +2,13 @@
     "name": "stock_panel",
     "version": "0.1.0",
     "private": true,
+    "scripts": {
+        "dev": "react-scripts start",
+        "build": "react-scripts build",
+        "test": "react-scripts test",
+        "eject": "react-scripts eject",
+        "start": "npx serve -n -l 3011 -s build"
+    },
     "dependencies": {
         "@fortawesome/fontawesome-free": "^6.1.1",
         "@fortawesome/fontawesome-svg-core": "^1.2.36",
@@ -54,13 +61,6 @@
         "use-is-in-viewport": "^1.0.9",
         "web-vitals": "^2.1.4",
         "xlsx": "^0.18.5"
-    },
-    "scripts": {
-        "dev": "react-scripts start",
-        "build": "react-scripts build",
-        "test": "react-scripts test",
-        "eject": "react-scripts eject",
-        "start": "npx serve -n -l 3011 -s build"
     },
     "eslintConfig": {
         "extends": [

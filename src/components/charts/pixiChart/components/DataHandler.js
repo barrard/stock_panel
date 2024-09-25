@@ -13,6 +13,7 @@ import { timeScaleValues, priceScaleValues } from "./utils.js";
 import { drawVolume } from "./drawFns.js";
 import Indicator from "./Indicator";
 import { eastCoastTime, isRTH } from "../../../../indicators/indicatorHelpers/IsMarketOpen";
+import { TICKS } from "../../../../indicators/indicatorHelpers/TICKS";
 import API from "../../../API";
 
 export default class PixiData {
@@ -25,11 +26,16 @@ export default class PixiData {
         indicatorHeight = 150,
         loadData,
         margin,
-        tickSize,
+        // tickSize,
         // timeframe,
         symbol,
+        barType,
+        barTypePeriod,
     }) {
         this.symbol = symbol;
+        this.tickSize = TICKS()[symbol.value];
+        this.barType = barType;
+        this.barTypePeriod = barTypePeriod;
         this.allTicks = [];
         this.crossHairYScale = false;
         this.currentMinute = false;
@@ -48,7 +54,6 @@ export default class PixiData {
         this.slicedData = [];
         this.sliceEnd = ohlcDatas.length;
         this.sliceStart = 0;
-        this.tickSize = tickSize;
         // this.timeframe = timeframe;
         this.touches = 0;
         this.viewPort = viewPort;
@@ -447,6 +452,10 @@ export default class PixiData {
 
     setLoadDataFn(fn) {
         this.loadData = fn;
+    }
+    setTimeframe({ barType, barTypePeriod }) {
+        this.barType = barType;
+        this.barTypePeriod = barTypePeriod;
     }
     setLiquidityData(data) {
         const { highLiquidity, bidSizeOrderRatio, askSizeOrderRatio, bidSizeToAskSizeRatio, bidOrderToAskOrderRatio, symbol } = data;
@@ -898,12 +907,13 @@ export default class PixiData {
             console.log("load more data");
             const finish = this.ohlcDatas.length ? this.ohlcDatas[0].timestamp : new Date().getTime();
             console.log({ finish: new Date(finish).toLocaleString() });
+            debugger;
             this.loadData({
-                // barType: 2,
-                // barTypePeriod: 1,
+                barType: this.barType,
+                barTypePeriod: this.barTypePeriod,
                 // startIndex: new Date(finish - 1000 * 60 * 60 * 24).getTime(),
                 finishIndex: new Date(finish).getTime(),
-                // symbol,
+                symbol: this.symbol,
                 // exchange :,
             });
         }

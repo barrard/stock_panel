@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import styled from "styled-components";
 import { IconButton } from "../../../StratBuilder/components";
 
 import { AiOutlinePlus, AiOutlineMinus } from "react-icons/ai";
@@ -6,9 +7,13 @@ import { AiOutlinePlus, AiOutlineMinus } from "react-icons/ai";
 import API from "../../../API";
 import Select from "./Select";
 import Input from "./Input";
-export default function TradeControls(props) {
-    const [priceType, setPriceType] = useState({ value: 2 });
+import { TICKS } from "../../../../indicators/indicatorHelpers/TICKS";
+const ticks = TICKS();
+export default function TradeControls(props = {}) {
+    const { symbolData, symbol, lastTrade } = props;
+    const [priceType, setPriceType] = useState(2);
     const [limitPrice, setLimitPrice] = useState(props.lastTrade.tradePrice);
+    // const symbolData = fullSymbols.find((s) => s.baseSymbol == symbol.value);
 
     useEffect(() => {
         if (!limitPrice) {
@@ -17,82 +22,108 @@ export default function TradeControls(props) {
         }
     }, [props.lastTrade.tradePrice]);
 
-    const sendOrder = async (transactionType) => {
+    const sendOrder = async (transactionInfo) => {
         debugger;
         // alert(`${priceType} Sell ${limitPrice}`);
         let resp = await API.rapi_submitOrder({
-            priceType: priceType.value,
+            symbol: symbolData.fullSymbol,
+            exchange: symbolData.exchange,
+            priceType,
             limitPrice,
-            ...transactionType,
+            ...transactionInfo,
         });
 
         console.log(resp);
     };
 
+    const orderTypes = [
+        { value: 2, name: "Market" },
+        { value: 1, name: "Limit" },
+        { value: 3, name: "Stop Limit" },
+        { value: 4, name: "Stop Market" },
+    ];
+
     return (
-        <div className="row g-0">
-            <div className="col-2 d-flex align-items-center">
-                <button onClick={() => sendOrder({ transactionType: 1 })} className="btn btn-success w-100">
-                    Buy
-                </button>
+        <div className="row g-0  flex-column">
+            {/* <div className="col"></div> */}
+
+            <div className="row g-0 justify-content-center">
+                {symbolData?.fullSymbol}
+
+                {orderTypes.map((type) => (
+                    <div key={type.value} className="col-auto">
+                        <OrderTypeButton
+                            key={type.value}
+                            selected={priceType === type.value}
+                            onClick={() => setPriceType(type.value)}
+                            variant={priceType === type.value ? "default" : "outline"}
+                        >
+                            {type.name}
+                        </OrderTypeButton>
+                    </div>
+                ))}
             </div>
-            <div className="col-2 d-flex align-items-center">
-                <button onClick={() => sendOrder({ transactionType: 2 })} className="btn btn-danger w-100">
-                    Sell
-                </button>
+            <div className="row g-0 justify-content-center align-items-center">
+                <div className="col-auto">
+                    <Input step={ticks[symbolData?.baseSymbol]} type="number" setValue={setLimitPrice} value={limitPrice} />
+                </div>
+                <div className="col-auto">
+                    <IconButton
+                        borderColor={"green"}
+                        title="up"
+                        onClick={() =>
+                            setLimitPrice((limit) => {
+                                const newPrice = (parseFloat(limit) + ticks[symbolData?.baseSymbol]).toFixed(2);
+                                return newPrice;
+                            })
+                        }
+                        rIcon={<AiOutlinePlus />}
+                    />
+                    <IconButton
+                        borderColor={"red"}
+                        title="down"
+                        onClick={() => {
+                            setLimitPrice((limit) => {
+                                const newPrice = (parseFloat(limit) - ticks[symbolData?.baseSymbol]).toFixed(2);
+                                return newPrice;
+                            });
+                        }}
+                        rIcon={<AiOutlineMinus />}
+                    />
+                </div>
             </div>
 
-            <div className="col-auto">
-                <Select
-                    label="Order Type"
-                    value={priceType}
-                    setValue={setPriceType}
-                    options={[
-                        { value: 1, name: "Limit" },
-                        { value: 2, name: "Market" },
-                        { value: 3, name: "Stop Limit" },
-                        { value: 4, name: "Stop Market" },
-                    ]}
-                />
-            </div>
-            <div className="col-4">
-                <div className="row g-0">
-                    <div className="col-10">
-                        <Input step={0.25} type="number" setValue={setLimitPrice} value={limitPrice} label="Limit Price" />
-                    </div>
-                    <div className="col-2 d-flex flex-column justify-content-end">
-                        <div className="col-12 d-flex">
-                            <IconButton
-                                borderColor={"green"}
-                                title="up"
-                                onClick={() =>
-                                    setLimitPrice((limit) => {
-                                        const newPrice = parseFloat(limit) + 0.25;
-                                        console.log({ newPrice });
-                                        return newPrice;
-                                    })
-                                }
-                                rIcon={<AiOutlinePlus />}
-                            />
-                        </div>
+            <div className="row g-0 justify-content-center align-items-center">
+                <div className="col-auto d-flex align-items-center ">
+                    <BuySellButton color="green" onClick={() => sendOrder({ transactionType: 1 })}>
+                        Buy
+                    </BuySellButton>
 
-                        <div className="col-12 d-flex">
-                            <IconButton
-                                borderColor={"red"}
-                                title="down"
-                                onClick={() => {
-                                    setLimitPrice((limit) => {
-                                        const newPrice = parseFloat(limit) - 0.25;
-                                        console.log({ newPrice });
-                                        return newPrice;
-                                    });
-                                }}
-                                rIcon={<AiOutlineMinus />}
-                            />
-                        </div>
-                    </div>
+                    <BuySellButton color="red" onClick={() => sendOrder({ transactionType: 2 })}>
+                        Sell
+                    </BuySellButton>
                 </div>
             </div>
         </div>
     );
 }
+
+const BuySellButton = styled.div`
+    border-radius: 5px;
+    margin: 0px 2px;
+    padding: 2px 15px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    background: ${({ color }) => color};
+    user-select: none;
+`;
+
+const OrderTypeButton = styled.div`
+    border-radius: 5px;
+    margin: 0px 2px;
+    padding: 2px 5px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    background: ${({ selected }) => (selected ? "steelblue" : "grey")};
+    user-select: none;
+`;

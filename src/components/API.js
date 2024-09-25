@@ -64,6 +64,7 @@ export default {
     rapi_requestBars,
     rapi_submitOrder,
     rapi_cancelOrder,
+    getFrontMonthSymbols,
     getFromRedis,
     getOrderFlow,
     getTicks,
@@ -109,7 +110,9 @@ async function getFromRedis({ symbol, exchange, start, finish, type, period }) {
 }
 
 //  ````````   $$$$$$    ````````    RAPI    ``````````    $$$$$$$$$$$$$$
-
+async function getFrontMonthSymbols() {
+    return await GET("/API/rapi/get-front-month-symbols");
+}
 async function rapi_cancelOrder({ basketId }) {
     return await GET(`/API/rapi/cancelOrder/${basketId}`);
 }

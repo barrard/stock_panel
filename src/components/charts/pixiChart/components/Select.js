@@ -13,13 +13,22 @@ const Label = styled.label`
     font-weight: bold;
 `;
 
+const StyledX = styled.div`
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 5px;
+    cursor: pointer;
+`;
+
 const InputWrapper = styled.div`
     position: relative;
 `;
 
 const Input = styled.input`
+    text-align: center;
     width: 100%;
-    padding: 10px;
+    padding: 0px;
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 16px;
@@ -100,9 +109,11 @@ export default function Select(props) {
 
     return (
         <SelectContainer className="row g-">
-            <div className="col-12">
-                <Label htmlFor={`select-${label}`}>{label}</Label>
-            </div>
+            {!!label && (
+                <div className="col-12 white">
+                    <Label htmlFor={`select-${label} white`}>{label}</Label>
+                </div>
+            )}
             <div className="col-12">
                 <InputWrapper>
                     <Input
@@ -133,6 +144,14 @@ export default function Select(props) {
                             {makeOptions(filteredOptions, selectedOption, setValue)}
                         </OptionsList>
                     )}
+                    <StyledX
+                        onClick={() => {
+                            setSearchTerm("");
+                            setIsOpen(true);
+                        }}
+                    >
+                        X{/* <div className="white btn btn-primary btn-sm absolute">X</div> */}
+                    </StyledX>
                 </InputWrapper>
             </div>
         </SelectContainer>
