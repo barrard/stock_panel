@@ -26,7 +26,12 @@ export default function PlantStatuses(props = {}) {
             setPlantStatus({});
         }, 30000);
     }, [plantStatus]);
-
+    // MongoDB shell version v5.0.28
+    // sudo apt-get install -y mongodb-org=5.0.28 mongodb-org-database=5.0.28 mongodb-org-server=5.0.28 mongodb-mongosh=5.0.28 mongodb-org-mongos=5.0.28 mongodb-org-tools=5.0.28
+    // curl -fsSL https://www.mongodb.org/static/pgp/server-5.0.asc | \
+    // sudo gpg -o /usr/share/keyrings/mongodb-server-5.0.gpg \
+    // --dearmor
+    // echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-5.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/5.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-5.0.list
     return (
         <div className="row ">
             <div className="col">

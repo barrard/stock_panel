@@ -1,3 +1,10 @@
+### `sudo apt-get update`
+### `sudo apt-get install build-essential`
+### `rm package-lock.json`
+### `npm cache clean --force`
+### `npm i --legacy-peer-deps`
+### `npm install -g node-pre-gyp`
+### `npm install --save-dev ajv@^8 --legacy-peer-deps`
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).

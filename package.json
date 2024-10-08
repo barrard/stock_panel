@@ -5,9 +5,10 @@
     "scripts": {
         "dev": "react-scripts start",
         "build": "react-scripts build",
+        "start:prod": "NODE_ENV=production npx serve -n -l 3011 -s build",
         "test": "react-scripts test",
         "eject": "react-scripts eject",
-        "start": "npx serve -n -l 3011 -s build"
+        "start": "NODE_ENV=production npx serve -n -l 3011 -s build"
     },
     "dependencies": {
         "@fortawesome/fontawesome-free": "^6.1.1",
@@ -35,10 +36,10 @@
         "pixi-viewport": "^5.0.1",
         "pixi.js": "^7.2.1",
         "rc-slider": "^10.0.0",
-        "react": "^18.2.0",
+        "react": "18.2.0",
         "react-chartjs-2": "^4.3.1",
         "react-color": "^2.19.3",
-        "react-dom": "^18.2.0",
+        "react-dom": "18.2.0",
         "react-dropdown-select": "^4.5.2",
         "react-icons": "^3.11.0",
         "react-range": "^1.8.13",
@@ -50,7 +51,7 @@
         "react-stockcharts": "^0.7.8",
         "react-swipeable": "^5.5.1",
         "react-switch": "^5.0.1",
-        "reaviz": "^9.5.1",
+        "reaviz": "^9.5.5",
         "redux": "^4.0.5",
         "redux-thunk": "^2.3.0",
         "simple-statistics": "^7.7.5",
@@ -81,6 +82,7 @@
         ]
     },
     "devDependencies": {
+        "ajv": "^8.17.1",
         "typescript": "^4.7.4"
     }
 }

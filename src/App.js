@@ -13,10 +13,10 @@ import LandingPage from "./components/landingPage.js";
 import SignupPage from "./components/SignupPage.js";
 import LoginPage from "./components/LoginPage.js";
 import StockChart from "./components/StockChartPage.js";
-import MiniCharts from "./components/MiniCharts";
+// import MiniCharts from "./components/MiniCharts";
 import StratBuilder from "./components/StratBuilder";
 import Fundamentals from "./components/Fundamentals";
-import AccountProfile from "./components/AccountProfilePage.js";
+// import AccountProfile from "./components/AccountProfilePage.js";
 import OpAlerts from "./components/OpUnusualVolPage.js";
 import OptionContracts from "./components/OptionContracts.js";
 import OptionByDate from "./components/OptionByDate.js";
@@ -95,12 +95,12 @@ class App extends React.Component {
                         // component={QuoteContainer}
                         render={(props) => <QuoteContainer {...props} Socket={Socket} />}
                     />
-                    <Route
+                    {/* <Route
                         exact
                         path="/mini-charts"
                         // component={QuoteContainer}
                         render={(props) => <MiniCharts {...props} Socket={Socket} />}
-                    />
+                    /> */}
                     <Route
                         exact
                         path="/stockbot"
@@ -112,7 +112,7 @@ class App extends React.Component {
                     <Route path="/op-alerts" render={(props) => <OpAlerts {...props} />} />
                     <Route path="/options/:symbol" render={(props) => <OptionContracts {...props} />} />
                     <Route path="/option-date/:month/:day/:year" render={(props) => <OptionByDate {...props} />} />
-                    <Route path="/account-profile" render={(props) => <AccountProfile {...props} Socket={Socket} />} />
+                    {/* <Route path="/account-profile" render={(props) => <AccountProfile {...props} Socket={Socket} />} /> */}
                     <Route path="/strat-builder" render={(props) => <StratBuilder {...props} />} />
                     <Route path="/fundamentals" render={(props) => <Fundamentals {...props} />} />
                     <Route path="/pixi-chart" render={(props) => <PixiChart {...props} Socket={Socket} />} />
