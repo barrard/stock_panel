@@ -29,10 +29,13 @@ export default class PixiData {
         // tickSize,
         // timeframe,
         symbol,
+        fullSymbol = {},
         barType,
         barTypePeriod,
     }) {
+        debugger;
         this.symbol = symbol;
+        this.fullSymbol = fullSymbol;
         this.tickSize = TICKS()[symbol.value];
         this.barType = barType;
         this.barTypePeriod = barTypePeriod;
@@ -108,12 +111,11 @@ export default class PixiData {
             // Add your click handler code here
             console.log(this.TW_BUY.text);
             console.log(e);
-            debugger;
+
             const priceType = this.TW_BUY.text === "LIMIT" ? 1 : 4;
 
-            console.log(`Sell ${this.TW_SELL.text} Button clicked!`);
             this.sendOrder({ transactionType: 1, limitPrice: this.TW_Price, priceType });
-            console.log(`Buy ${this.TW_BUY.text} Button clicked!`);
+            // console.log(`Buy ${this.TW_BUY.text} Button clicked!`);
         };
         this.TW_BuyButtonGfx.on("click", this.BuyButtonClick);
         this.TW_SellButtonGfx = new Graphics();
@@ -123,11 +125,11 @@ export default class PixiData {
             // Add your click handler code here
             console.log(this);
             console.log(e);
-            debugger;
+
             console.log(this.TW_SELL.text);
             const priceType = this.TW_SELL.text === "LIMIT" ? 1 : 4;
 
-            console.log(`Sell ${this.TW_SELL.text} Button clicked!`);
+            // console.log(`Sell ${this.TW_SELL.text} Button clicked!`);
             this.sendOrder({ transactionType: 2, limitPrice: this.TW_Price, priceType });
         };
         this.TW_SellButtonGfx.on("click", this.SellButtonClick);
@@ -145,7 +147,7 @@ export default class PixiData {
 
         this.textStyle = new TextStyle({
             fontFamily: "Arial",
-            fontSize: 16,
+            fontSize: 20,
             fontWeight: "bold",
             fill: 0x333333,
             align: "center",
@@ -157,6 +159,10 @@ export default class PixiData {
         this.priceTxtLabel = new Text("", this.textStyle);
         this.currentPriceTxtLabel = new Text("", this.textStyle);
         //TRADE WINDOW TEXT
+
+        this.TW_symbol = new Text(this.fullSymbol?.current?.fullSymbol, this.textStyle);
+        this.TW_exchange = new Text(this.symbol.exchange, this.textStyle);
+        this.TW_exchange.resolution = 10;
         this.TW_value = new Text("", this.textStyle);
         this.TW_BUY = new Text("BUY", this.textStyle);
         this.TW_BUY.interactive = true;
@@ -164,6 +170,8 @@ export default class PixiData {
         this.TW_SELL = new Text("SELL", this.textStyle);
         this.TW_SELL.interactive = true;
         this.TW_SELL.on("click", this.SellButtonClick);
+        this.tradeWindowContainer.addChild(this.TW_symbol);
+        this.tradeWindowContainer.addChild(this.TW_exchange);
         this.tradeWindowContainer.addChild(this.TW_value);
         this.tradeWindowContainer.addChild(this.TW_BUY);
         this.tradeWindowContainer.addChild(this.TW_SELL);
@@ -292,10 +300,13 @@ export default class PixiData {
      */
     async sendOrder({ transactionType, limitPrice, priceType }) {
         // alert(`${priceType} Sell ${limitPrice}`);
+        debugger;
         let resp = await API.rapi_submitOrder({
             priceType,
             limitPrice,
             transactionType,
+            symbol: this.fullSymbol?.current?.fullSymbol,
+            exchange: this.symbol.exchange,
         });
 
         console.log(resp);
@@ -316,14 +327,17 @@ export default class PixiData {
             return;
         }
 
+        this.TW_symbol.text = this.fullSymbol?.current?.fullSymbol;
         console.log("this.showTradeWindow()");
         this.tradeWindowContainer.position.set(this.mouseX, this.mouseY);
-        this.tradeWindowGfx.beginFill(0xffffff);
+        this.tradeWindowGfx.beginFill(0xcccccc);
         this.tradeWindowGfx.drawRect(0, 0, 200, 200);
         this.tradeWindowGfx.endFill();
         this.TW_Price = roundTick(this.priceScale.invert(this.mouseY), this.tickSize);
         this.TW_value.text = formatter.format(this.TW_Price);
         this.TW_value.position.set(25, 25);
+        this.TW_symbol.position.set(25, 0);
+        this.TW_exchange.position.set(125, 0);
 
         const buttonsY = 50;
         const leftBtnX = 25;
@@ -907,7 +921,7 @@ export default class PixiData {
             console.log("load more data");
             const finish = this.ohlcDatas.length ? this.ohlcDatas[0].timestamp : new Date().getTime();
             console.log({ finish: new Date(finish).toLocaleString() });
-            debugger;
+
             this.loadData({
                 barType: this.barType,
                 barTypePeriod: this.barTypePeriod,

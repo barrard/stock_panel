@@ -12,10 +12,7 @@ import { extent, max, min } from "d3-array";
 
 import { scaleLinear } from "d3";
 
-import {
-    eastCoastTime,
-    isRTH,
-} from "../../../../indicators/indicatorHelpers/IsMarketOpen";
+import { eastCoastTime, isRTH } from "../../../../indicators/indicatorHelpers/IsMarketOpen";
 
 export default class DrawOrders {
     constructor(dataHandler) {
@@ -44,6 +41,9 @@ export default class DrawOrders {
                 this.drawMarker(order);
             } else if (order.status === "trigger pending") {
                 this.drawStop(order);
+            } else if (order.status === "Cancellation Failed") {
+                // this.drawStop(order);
+                console.log("Cancellation Failed and we dont care");
             } else {
                 console.log(order);
             }
@@ -54,9 +54,7 @@ export default class DrawOrders {
         if (!this.ordersGfx?._geometry || !this.data.slicedData.length) return;
 
         const time = Math.floor(order.ssboe * 1000);
-        let endIndex = this.data.slicedData.findIndex(
-            (d) => d.timestamp > time
-        );
+        let endIndex = this.data.slicedData.findIndex((d) => d.timestamp > time);
 
         if (endIndex < 0) {
             return;
@@ -79,9 +77,7 @@ export default class DrawOrders {
         if (!this.ordersGfx?._geometry || !this.data.slicedData.length) return;
 
         const time = Math.floor(Math.floor(order.ssboe / 100) * 100000);
-        let endIndex = this.data.slicedData.findIndex(
-            (d) => d.timestamp > time
-        );
+        let endIndex = this.data.slicedData.findIndex((d) => d.timestamp > time);
 
         if (endIndex < 0) {
             return;
@@ -94,10 +90,7 @@ export default class DrawOrders {
         const y = this.data.priceScale(price);
         const radius = 6; //this.data.priceScale(0) - this.data.priceScale(1);
         // console.log({ radius });
-        const color =
-            order.transactionType === "BUY" || order.transactionType === 1
-                ? 0x00ff00
-                : 0xff0000;
+        const color = order.transactionType === "BUY" || order.transactionType === 1 ? 0x00ff00 : 0xff0000;
         this.ordersGfx.beginFill(color, 0.5);
         this.ordersGfx.lineStyle(2, color, 0.9);
         if (order.completionReason === "C" || order.reportType == "cancel") {
@@ -116,9 +109,7 @@ export default class DrawOrders {
         if (!this.ordersGfx?._geometry || !this.data.slicedData.length) return;
 
         const time = Math.floor(order.ssboe * 1000);
-        let endIndex = this.data.slicedData.findIndex(
-            (d) => d.timestamp >= time
-        );
+        let endIndex = this.data.slicedData.findIndex((d) => d.timestamp >= time);
 
         if (endIndex < 0) {
             return;

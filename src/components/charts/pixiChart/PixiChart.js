@@ -40,7 +40,7 @@ export default function PixiChart({ Socket }) {
     const ticks = TICKS();
     //TODO really set this
     const [width, setWidth] = useState(Math.floor(window.innerWidth * 0.9));
-    //TODO cjould be input
+    //TODO could be input
     // const [height, setHeight] = useState(1000);
     //should be another window
     // const [volHeight, setVolHeight] = useState(300);
@@ -63,6 +63,8 @@ export default function PixiChart({ Socket }) {
     //price data
     const lastTradesRef = useRef({});
     const tickSizeRef = useRef({});
+    //Full Symbol
+    const fullSymbolRef = useRef();
 
     const [rerender, setRerender] = useState({});
 
@@ -386,11 +388,18 @@ export default function PixiChart({ Socket }) {
         if (symbol.value !== symbolInput.value) {
             setSymbol({ ...symbolInput });
         }
+        debugger;
+        const baseSymbol = fullSymbols.find((d) => d.baseSymbol === symbolInput.value);
+        fullSymbolRef.current = baseSymbol;
 
         return () => {
             // Socket.off("timeBarUpdate");
         };
     }, [barTypeInput, barTypePeriodInput, symbolInput]);
+    useEffect(() => {
+        const baseSymbol = fullSymbols.find((d) => d.baseSymbol === symbolInput.value);
+        fullSymbolRef.current = baseSymbol;
+    }, [fullSymbols]);
 
     //on load get data
     useEffect(() => {
@@ -407,6 +416,8 @@ export default function PixiChart({ Socket }) {
             // height,
             backgroundColor: 0x333333,
             antialias: true,
+            resolution: window.devicePixelRatio || 1,
+            autoDensity: true,
         });
         PixiAppRef.current.view.style["image-rendering"] = "pixelated";
 
@@ -428,6 +439,7 @@ export default function PixiChart({ Socket }) {
             loadData,
             width,
             symbol: symbolInput,
+            fullSymbol: fullSymbolRef,
             barType: barTypeInput,
             barTypePeriod: barTypePeriodInput,
             // height,
@@ -477,10 +489,9 @@ export default function PixiChart({ Socket }) {
         Socket.on("ordersShown", (data) => {
             Object.keys(data).forEach((basketId) => {
                 const currentOrder = orders[basketId] || {};
-
+                debugger;
                 orders[basketId] = { ...currentOrder, ...data[basketId] };
             });
-            // console.log(orders);
 
             setOrders({ ...orders });
         });
@@ -632,6 +643,9 @@ export default function PixiChart({ Socket }) {
                     alert("Missing full symbols");
                 }
                 setFullSymbols([...d]);
+                const baseSymbol = d.find((d) => d.baseSymbol === symbolInput.value);
+                debugger;
+                fullSymbolRef.current = baseSymbol;
             })
             .catch((e) => {
                 console.error(e);
@@ -698,108 +712,21 @@ export default function PixiChart({ Socket }) {
         <>
             <div className="row relative">
                 <div className="absolute ">{PlantStatusesMemo}</div>
-                <div className="col-6 ">
-                    <div className="row g-1 ">
-                        {/* <div className="col-auto">
-                            <Select
-                                label="Bar Type"
-                                value={barTypeInput}
-                                setValue={setBarTypeInput}
-                                options={[
-                                    { value: 1, name: "Seconds" },
-                                    { value: 2, name: "Minute" },
-                                    { value: 3, name: "Daily" },
-                                    { value: 4, name: "Weekly" },
-                                ]}
-                            />
-                        </div> */}
-                        {/* <div className="col-2">
-                            <Input
-                                // disabled={symbolInputDisabled}
-                                type="number"
-                                setValue={setBarTypePeriodInput}
-                                value={barTypePeriodInput}
-                                label="BarTypePeriod"
-                            />
-                        </div> */}
+                <div className="col-6 ">{/* <TradeControls fullSymbols={fullSymbols} symbol={symbolInput} lastTrade={lastTrade} /> */}</div>
 
-                        {/* <div className="col-auto">
-                            <Select
-                                disabled={true}
-                                label="Exchange"
-                                value={exchangeInput}
-                                setValue={setExchangeInput}
-                                options={[
-                                    { value: "SMFE", name: "SMFE" },
-                                    { value: "COMEX", name: "COMEX" },
-                                    { value: "CBOT", name: "CBOT" },
-                                    { value: "NYMEX", name: "NYMEX" },
-                                    { value: "CME", name: "CME" },
-                                ]}
-                            />
-                        </div> */}
-
-                        <div className="col-2 border d-flex">
-                            {/* <button
-                                onClick={() => {
-                                    setBarType({ ...barTypeInput });
-                                    setBarTypePeriod(barTypePeriodInput);
-                                    setSymbol({ ...symbolInput });
-                                    // setExchange({ ...exchangeInput });
-                                }}
-                                className="btn btn-secondary flex-fill d-flex flex-1 justify-content-center h-100 align-items-center"
-                            >
-                                GET
-                            </button> */}
-                        </div>
-                        {/* <div className="col ">
-                            <StartEndTimes
-                                backgroundDataFetch={backgroundDataFetch}
-                                setBackgroundDataFetch={setBackgroundDataFetch}
-                                setStartTime={setStartTime}
-                                setEndTime={setEndTime}
-                                startTime={startTime}
-                                endTime={endTime}
-                            />
-                        </div> */}
-                    </div>
-
-                    {/* <TradeControls fullSymbols={fullSymbols} symbol={symbolInput} lastTrade={lastTrade} /> */}
-                </div>
-                {/* <div className="col-6"> */}
-                {/* <button
-                        onClick={() => {
-                            loadTicks();
-                        }}
-                    >
-                        LOAD TICKS
-                    </button> */}
-                {/* {PnL_AndOrderFlowStatsMemo} */}
-                {/*   TODO THIS NEEDS TO GO ON THE MARKET DATA ROW */}
-                {/* <PnL_AndOrderFlowStats
-                        Socket={Socket}
-                        symbol={symbol.value}
-                        lastTradesRef={lastTradesRef}
-                        // ticks={ticks}
-                        // bidAskRatios={bidAskRatios}
-                        //  instrumentPnLPositionUpdate={instrumentPnLPositionUpdate}
-                        //   accountPnLPositionUpdate={accountPnLPositionUpdate}
-                        //   orderTrackerCount={orderTrackerCount}
-                    /> */}
-                {/* </div> */}
                 <AccountInfoTable Socket={Socket} />
 
                 <MarketOverview Socket={Socket} lastTradesRef={lastTradesRef} fullSymbols={fullSymbols} />
-                <div className="col-12">
+                {/* <div className="col-12">
                     <div className="row">
-                        {/* <div className="col">Start {new Date(startTime).toLocaleString()}</div>
-                        <div className="col">end {new Date(endTime).toLocaleString()}</div> */}
+                        <div className="col">Start {new Date(startTime).toLocaleString()}</div>
+                        <div className="col">end {new Date(endTime).toLocaleString()}</div>
                         <div className="col-auto">Symbol {symbol.name}</div>
                         <div className="col-auto">Exchange {exchange.name}</div>
                         <div className="col-auto">BarType val {barType.name}</div>
                         <div className="col-auto">BarTypePeriod {barTypePeriod}</div>
                     </div>
-                </div>
+                </div> */}
                 <div className="row d-flex border">
                     <div className="col-auto">
                         <IndicatorsBtns
