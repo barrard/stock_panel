@@ -529,7 +529,7 @@ export default function PixiChart({ Socket }) {
             Socket.off("rapi-message");
             Socket.off("PlantStatus");
 
-            Socket.off("orderTracker");
+            // Socket.off("orderTracker");
             Socket.off("ordersShown");
             Socket.off("lastTwoDaysCompiled");
             Socket.off("timeBarUpdate");

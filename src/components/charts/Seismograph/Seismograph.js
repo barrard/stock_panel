@@ -13,7 +13,7 @@ export default function SeismographChart(props = {}) {
         },
         dimension = {
             height: 100,
-            width: 200,
+            width: 400,
         },
         Socket,
         data = [],

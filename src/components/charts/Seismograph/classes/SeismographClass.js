@@ -51,6 +51,7 @@ export default class Chart {
         this.y2 = 0;
         this.x2 = Math.sqrt(this.needleLen ** 2 - this.y2 ** 2);
         this.prevY2 = this.y2;
+        this.prevValue = undefined;
 
         //SCALES
         this.yScale = scaleLinear().range([this.options.height - (margin.top + margin.bottom), 0]);
@@ -104,14 +105,20 @@ export default class Chart {
     }
 
     setValue(value) {
-        this.data.push(value);
+        if (this.prevValue === undefined) {
+            this.prevValue = value;
+
+            return;
+        }
+        const change = this.prevValue - value;
+        this.data.push(change);
         this.makeYScale();
 
         this.drawCenterLine();
 
         this.pathPoints = this.pathPoints.slice(this.dataCutoff * 60);
         this.updateAvg();
-        this.updateNeedle(value);
+        this.updateNeedle(change);
     }
 
     updateAvg() {
@@ -127,7 +134,7 @@ export default class Chart {
         this.pathPoints.push({ x, y });
         this.lineGfx.clear();
         this.lineGfx.lineStyle(0.5, 0xff0000);
-        const multiplier = 50;
+        const multiplier = 5;
         const offset = this.pathPoints.length / multiplier;
         this.lineGfx.moveTo(this.pathPoints[0].x - offset, this.pathPoints[0].y);
 
@@ -146,9 +153,9 @@ export default class Chart {
             const offset = (this.pathPoints.length - i) / multiplier;
             this.lineGfx.lineTo(this.pathPoints[i].x - offset, this.pathPoints[i].y);
             if (i % 60 === 0) {
-                debugger;
+                // debugger;
                 Object.keys(this.ma).forEach((ma) => {
-                    debugger;
+                    // debugger;
                     const val = this.ma[ma][maCount - ma] || 0;
                     const color = this.maColors[ma];
                     const maGfx = this.maGfx[ma];
@@ -171,6 +178,7 @@ export default class Chart {
             duration: 0.9,
             y2: this.y2,
             onUpdate: () => {
+                if (!this.needleGfx._geometry) return;
                 this.needleGfx.clear();
 
                 this.x2 = Math.sqrt(this.needleLen ** 2 - (this.yScale(0) - this.yScale(newY2.y2)) ** 2);

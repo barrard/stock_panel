@@ -66,7 +66,7 @@ export default function PnL_AndOrderFlowStats(props) {
         // });
 
         return () => {
-            Socket.off("orderTracker");
+            // Socket.off("orderTracker");
             // Socket.off("AccountPnLPositionUpdate");
             Socket.off("accountPnL");
         };

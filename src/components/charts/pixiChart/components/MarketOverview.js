@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import styled from "styled-components";
 import TradeControls from "./TradeControls";
 import { priceFormat } from "../../chartHelpers/utils.js";
+import Seismograph from "../../Seismograph";
+
 const MarketOverview = ({ lastTradesRef, fullSymbols, Socket }) => {
     // if (!lastTradesRef.current) lastTradesRef.current = {};
 
@@ -41,7 +43,7 @@ const MarketOverview = ({ lastTradesRef, fullSymbols, Socket }) => {
                             <th className="border p-2 text-left">Symbol</th>
                             <th className="border p-2 text-left">Trade Price</th>
                             <th className="border p-2 text-left small">Bid/Ask Ratio/MA</th>
-                            <th className="border p-2 text-left small">Near Price Bid/Ask Ratio/MA</th>
+                            {/* <th className="border p-2 text-left small">Near Price Bid/Ask Ratio/MA</th> */}
 
                             <th className="border p-2 text-left">Delta</th>
                             <th className="border p-2 text-left">PnL</th>
@@ -87,18 +89,63 @@ function MarketItem(props) {
         setExpandedRow(!!!expandedRow);
     };
 
+    const PriceQuote = ({ lastTrade }) => {
+        return (
+            <>
+                <div className="col-12">{priceFormat(lastTrade?.tradePrice?.toFixed(2))}</div>
+                <div className="row">
+                    <div className="col-6">
+                        <ValChange num={lastTrade?.percChange} className="col">
+                            {priceFormat(lastTrade?.percChange?.toFixed(2))}
+                            <Small>%</Small>
+                        </ValChange>
+                    </div>
+                    <div className="col-6">
+                        <ValChange num={lastTrade?.totalChange} className="col">
+                            {priceFormat(lastTrade?.totalChange?.toFixed(2))}
+                        </ValChange>
+                    </div>
+                </div>
+            </>
+        );
+    };
+
+    const BidAskRatio = ({ lastTrade }) => {
+        return (
+            <div className="row">
+                <div className="col-12">
+                    <ValChange num={lastTrade?.nearPriceBidSizeToAskSizeRatio?.toFixed(2) - lastTrade?.nearPriceBidSizeToAskSizeRatioMA?.toFixed(2)}>
+                        {lastTrade?.nearPriceBidSizeToAskSizeRatio?.toFixed(2)} / {lastTrade?.nearPriceBidSizeToAskSizeRatioMA.toFixed(2)}
+                    </ValChange>
+                </div>
+                <Small className="col-12">
+                    {lastTrade?.bidSizeToAskSizeRatio?.toFixed(2)} / {lastTrade?.bidSizeToAskSizeRatioMA?.toFixed(2)}
+                </Small>
+            </div>
+        );
+    };
+
+    const SeismographChartMemo = useMemo(() => {
+        return <Seismograph data={[]} orderTrackerCount={lastTrade} />;
+    }, [lastTrade]);
     return (
         <React.Fragment>
             <TR key={symbol} color={symbolsColors[symbol]} onClick={() => toggleRow(index)} className="hover:bg-gray-50">
                 <TD className="border p-2">{symbol}</TD>
-                <TD className="border p-2">{priceFormat(lastTrade?.tradePrice?.toFixed(2))}</TD>
+                {/* <TD className="border p-2">{priceFormat(lastTrade?.tradePrice?.toFixed(2))}</TD> */}
                 <TD className="border p-2">
-                    {lastTrade?.bidSizeToAskSizeRatio?.toFixed(2)} / {lastTrade?.bidSizeToAskSizeRatioMA?.toFixed(2)}
+                    <PriceQuote lastTrade={lastTrade} />
                 </TD>
                 <TD className="border p-2">
+                    {/* {lastTrade?.bidSizeToAskSizeRatio?.toFixed(2)} / {lastTrade?.bidSizeToAskSizeRatioMA?.toFixed(2)} */}
+                    <BidAskRatio lastTrade={lastTrade} />
+                </TD>
+                {/* <TD className="border p-2">
                     {lastTrade?.nearPriceBidSizeToAskSizeRatio?.toFixed(2)} / {lastTrade?.nearPriceBidSizeToAskSizeRatioMA.toFixed(2)}
+                </TD> */}
+                <TD className="border p-2">
+                    <ValChange num={lastTrade?.delta}>{priceFormat(lastTrade?.delta?.toFixed(2))}</ValChange>
                 </TD>
-                <TD className="border p-2">{lastTrade?.delta}</TD>
                 <TD className="border p-2">{pnlData?.openPositionPnl ? priceFormat(pnlData?.openPositionPnl) : 0}</TD>
                 <TD className="border p-2">{pnlData?.netQuantity}</TD>
                 <TD className="border p-2">
@@ -110,6 +157,7 @@ function MarketItem(props) {
                 <TD className="border p-2">{pnlData?.avgOpenFillPrice ? priceFormat(pnlData?.avgOpenFillPrice) : 0}</TD>
                 <TD className="border p-2">{pnlData?.dayClosedPnl ? priceFormat(pnlData?.dayClosedPnl) : 0}</TD>
             </TR>
+            <TR>{/* <td colSpan="6">{SeismographChartMemo}</td> */}</TR>
             {expandedRow && (
                 <TR color={symbolsColors[symbol]}>
                     <td colSpan="6">
@@ -120,6 +168,17 @@ function MarketItem(props) {
         </React.Fragment>
     );
 }
+
+const Small = styled.div`
+    font-size: 12px;
+    display: inline;
+`;
+const ValChange = styled.div`
+    color: ${({ num }) => (num < 0 ? "#FF6B6B" : num > 0 ? "#4ADE80" : "white")};
+    font-size: 12px;
+    font-weight: 700;
+    text-shadow: 1px 1px 2px black;
+`;
 
 const TD = styled.td`
     text-align: center;
@@ -132,6 +191,7 @@ const TR = styled.tr`
         box-shadow: inset 0 0 0 5px #63560d;
     }
     transition: all 0.2s ease-in-out;
-    border: 2px solid ${({ color }) => color || "pink"};
+    box-shadow: inset 0 0 0 4px ${({ color }) => color};
+
     padding: 20px;
 `;
