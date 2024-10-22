@@ -2,26 +2,33 @@ import React, { useEffect, useRef, useState, useMemo } from "react";
 import Chart from "./classes/BacktestChartClass";
 import API from "../../API";
 import BackTesterStatus from "./components/BackTesterStatus";
+import { GetSymbolBtn, SetIndicatorBtn } from "./components/styled";
+import { TICKS } from "../../../indicators/indicatorHelpers/TICKS";
 // import BackTestCharJs from "../BackTestChartJS";
 const events = ["zoomed", "drag-end", "zoomed-end", "pinch-end"];
 
 export default function GptChart({ Socket }) {
     const PixiChartRef = useRef();
     const PixiRef = useRef();
+    const [enableMinMax, setEnableMinMax] = useState(true);
+    const [enablePivots, setEnablePivots] = useState(true);
+    const [enableCombinedKeyLevels, setEnableCombinedKeyLevels] = useState(true);
+    const [symbol, setSymbol] = useState("ES");
 
     const [data, setData] = useState([]);
     const [eventsData, setEventsData] = useState({});
 
     const [chart, setChart] = useState(false);
-    async function getAndSetData() {
-        const symbol = "ES";
-        const from = 1671185580000;
-        const to = 1671186720000;
-        const data = await API.getTicksFrom({ symbol, from, to });
-        const ticks = data.map((d) => d.ticks).flat();
-        console.log(ticks);
-        setData(ticks);
-    }
+
+    // async function getAndSetData() {
+    //     const symbol = "ES";
+    //     const from = 1671185580000;
+    //     const to = 1671186720000;
+    //     const data = await API.getTicksFrom({ symbol, from, to });
+    //     const ticks = data.map((d) => d.ticks).flat();
+    //     console.log(ticks);
+    //     setData(ticks);
+    // }
 
     function startBackTest() {
         Socket.emit("to-backtester", {
@@ -33,12 +40,16 @@ export default function GptChart({ Socket }) {
     useEffect(() => {
         if (PixiRef.current) return;
         const options = {
+            symbol,
             events,
             setEventsData,
             height: 700,
             width: 900,
             PixiChartRef,
-            tickSize: 0.25, //TODO make dynamic
+            tickSize: TICKS()[symbol],
+            enableCombinedKeyLevels,
+            enableMinMax,
+            enablePivots,
             margin: {
                 top: 10,
                 left: 10,
@@ -61,6 +72,7 @@ export default function GptChart({ Socket }) {
 
         // BACK TESTER
         Socket.on("backtester-bars", (d) => {
+            debugger;
             console.log(d);
             setData(d);
         });
@@ -80,17 +92,24 @@ export default function GptChart({ Socket }) {
         };
     }, []);
 
+    async function getBacktestData(symbol) {
+        const data = await API.getBacktestData(symbol);
+        setData(data);
+    }
+
     useEffect(() => {
         console.log("data updated.");
         if (data?.bars?.length && PixiRef.current) {
             PixiRef.current.setData(data);
-            PixiRef.current.setupChart();
+            const tickSize = TICKS()[symbol];
+            debugger;
+            PixiRef.current.setupChart({ tickSize, indicators: { enableCombinedKeyLevels, enableMinMax, enablePivots } });
         } else {
             console.log("no can");
             console.log("data", data);
             console.log("PixiRef", PixiRef);
         }
-    }, [data, PixiRef.current]);
+    }, [data, PixiRef.current, enableCombinedKeyLevels, enableMinMax, enablePivots, symbol]);
 
     const viewportEvents = events.map((name) => {
         return DisplayEvent({ name, eventData: eventsData[name] });
@@ -102,6 +121,13 @@ export default function GptChart({ Socket }) {
         [Socket]
     );
 
+    const indicatorsBtnStructrure = [
+        { group: "drawMinMax", enabled: enableMinMax, labels: [""] },
+
+        { group: "drawPivots", enabled: enablePivots, labels: [""] },
+        { group: "drawCombinedKeyLevels", enabled: enableCombinedKeyLevels, labels: [""] },
+    ];
+
     return (
         <div className="container">
             {/* <BackTestCharJs /> */}
@@ -109,7 +135,38 @@ export default function GptChart({ Socket }) {
             <div>
                 <button onClick={startBackTest}>START</button>
             </div>
-            <div ref={PixiChartRef}></div>
+            <div className="row">
+                <div className="col-auto">
+                    <GetSymbolBtn setSymbol={setSymbol} getData={getBacktestData} symbol="ES" />
+                </div>
+
+                <div className="col-auto">
+                    <GetSymbolBtn setSymbol={setSymbol} getData={getBacktestData} symbol="CL" />
+                </div>
+                <div className="col-auto">
+                    <GetSymbolBtn setSymbol={setSymbol} getData={getBacktestData} symbol="NQ" />
+                </div>
+                <div className="col-auto">
+                    <GetSymbolBtn setSymbol={setSymbol} getData={getBacktestData} symbol="GC" />
+                </div>
+                <div className="col-auto">
+                    <GetSymbolBtn setSymbol={setSymbol} getData={getBacktestData} symbol="YM" />
+                </div>
+            </div>
+            <div className="row">
+                <div className="col">
+                    <div ref={PixiChartRef}></div>
+                </div>
+                <div className="col">
+                    <SetIndicatorBtn
+                        onClick={() => setEnableCombinedKeyLevels(!enableCombinedKeyLevels)}
+                        indicatorName="CombinedKeyLevels"
+                        enabled={enableCombinedKeyLevels}
+                    />
+                    <SetIndicatorBtn onClick={() => setEnableMinMax(!enableMinMax)} indicatorName="MinMax" enabled={enableMinMax} />
+                    <SetIndicatorBtn onClick={() => setEnablePivots(!enablePivots)} indicatorName="Pivots" enabled={enablePivots} />
+                </div>
+            </div>
             <div>
                 {/* <h3>stats</h3> */}
                 {/* <div className="row">{viewportEvents}</div> */}

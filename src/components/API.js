@@ -72,7 +72,12 @@ export default {
     getBacktestDay,
     getEconEventTypes,
     getEconEventInstances,
+    getBacktestData,
 };
+
+async function getBacktestData(symbol) {
+    return GET(`/API/getBacktestData/${symbol}`);
+}
 
 async function getEconEventInstances(eventType) {
     console.log(eventType);

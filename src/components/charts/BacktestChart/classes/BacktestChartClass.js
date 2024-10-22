@@ -9,7 +9,8 @@ import { slopeAndIntercept, xOfY, findTheBreakAndHolds } from "../../../../indic
 
 export default class Chart {
     constructor(data, options) {
-        const { width, height, margin, tickSize } = options;
+        const { width, height, margin, symbol, tickSize } = options;
+
         const { left, top, right, bottom } = margin;
         this.options = options;
         this.tickSize = tickSize;
@@ -251,6 +252,10 @@ export default class Chart {
         });
     }
 
+    updateIndicators(indicators) {
+        alert("TODO: updateIndicators");
+    }
+
     getTime(dateIndex) {
         // const dateIndex = Math.floor(this.xScale.invert(x));
         let date = this.data[dateIndex]
@@ -292,7 +297,7 @@ export default class Chart {
     setData(data) {
         console.log(data);
         console.log("setting data");
-        debugger;
+
         this.data = this.processData(data?.bars);
         this.weeklyTrendLines = data.weeklyTrendLines;
         this.lastTwoDaysCompiled = data.lastTwoDaysCompiled;
@@ -300,7 +305,8 @@ export default class Chart {
         console.log(this.weeklyTrendLines);
     }
 
-    setupChart() {
+    setupChart({ tickSize = 0.25, indicators = { enableCombinedKeyLevels: true, enableMinMax: true, enablePivots: true } }) {
+        this.tickSize = tickSize;
         console.log("setupChart");
 
         this.options.PixiChartRef.current.appendChild(this.app.view);
@@ -314,8 +320,11 @@ export default class Chart {
         // this.drawPriceLine();
         this.drawVolume();
         this.drawAllCandles();
-        debugger;
-        this.drawMinMax();
+
+        if (indicators?.enableMinMax) {
+            this.drawMinMax();
+        }
+
         this.drawPivots();
         this.drawCombinedKeyLevels();
         this.lastDragX = this.viewport.x; //this should be up at the top i think its always 0 to begin
@@ -513,7 +522,6 @@ export default class Chart {
     }
 
     drawCombinedKeyLevels() {
-        debugger;
         if (!this.combinedKeyLevelsContainer || !this.combinedKeyLevels?.length) {
             return;
         }
@@ -530,7 +538,7 @@ export default class Chart {
 
         const x1 = this.data.length - 20;
         const x2 = this.data.length + 20;
-        debugger;
+
         this.combinedKeyLevels.forEach((level) => {
             const gfx = new Graphics();
             gfx.interactive = true;
@@ -548,7 +556,7 @@ export default class Chart {
                 w: this.xScale(x2) - this.xScale(x1),
                 h: this.priceScale(y2) - this.priceScale(y1),
             };
-            debugger;
+
             this.drawRect(gfx, data);
             gfx.endFill();
             this.combinedKeyLevelsContainer.addChild(gfx);
@@ -575,6 +583,8 @@ export default class Chart {
 
         try {
             this.minMaxGfx.clear();
+            this.minMaxRegressionGfx.clear();
+            this.minMaxFibsGfx.clear();
         } catch (err) {
             // console.log("CLEAR() Error?");
             // console.log(err);
@@ -591,10 +601,10 @@ export default class Chart {
             zigZag,
             regressionZigZag: { regressionHighLines, regressionLowLines },
         } = this.weeklyTrendLines[0].minMax;
-        debugger;
+
         //High/Low Nodes
         this.minMaxGfx.beginFill(0xff0000);
-        highNodes.forEach((node) => {
+        highNodes?.forEach((node) => {
             const { highLow, index } = node;
             const x = index;
             const y = node[highLow];
@@ -602,7 +612,7 @@ export default class Chart {
         });
 
         this.minMaxGfx.beginFill(0x00ff00);
-        lowNodes.forEach((node) => {
+        lowNodes?.forEach((node) => {
             const { highLow, index } = node;
             const x = index;
             const y = node[highLow];
@@ -610,7 +620,7 @@ export default class Chart {
         });
 
         this.minMaxGfx.beginFill(0x0000ff);
-        swings.forEach((node) => {
+        swings?.forEach((node) => {
             const {
                 name,
                 index,
@@ -622,18 +632,18 @@ export default class Chart {
             this.drawMarker(this.minMaxGfx, { x, y, r: 5 });
         });
 
-        regressionHighLines.forEach((line) => {
+        regressionHighLines?.forEach((line) => {
             this.minMaxRegressionGfx.lineStyle(2, 0xff0000, 0.6);
             this.drawLine(this.minMaxRegressionGfx, line);
         });
 
-        regressionLowLines.forEach((line) => {
+        regressionLowLines?.forEach((line) => {
             this.minMaxRegressionGfx.lineStyle(2, 0x00ff00, 0.6);
             this.drawLine(this.minMaxRegressionGfx, line);
         });
 
         //FIB REGRESSION ZIGZAGSS
-        zigZagFibs.forEach((line) => {
+        zigZagFibs?.forEach((line) => {
             const { color, opacity = 1 } = line;
             // this.minMaxFibsGfx.beginFill(color);
             this.minMaxFibsGfx.lineStyle(2, color, opacity);
@@ -641,7 +651,7 @@ export default class Chart {
             this.drawLine(this.minMaxFibsGfx, line);
         });
 
-        fibsList.forEach((fibLine, i) => {
+        fibsList?.forEach((fibLine, i) => {
             // console.log(fibLine);
             const { firstPoint, secondPoint } = fibLine;
             const color = firstPoint.name === "low" ? "lawngreen" : "indianred";
