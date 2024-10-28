@@ -32,6 +32,11 @@ export default class Chart {
         this.lastDragY = 0;
         this.lastXRangeScale = 0;
 
+        //Indicators
+        this.enableCombinedKeyLevels = options.enableCombinedKeyLevels;
+        this.enableMinMax = options.enableMinMax;
+        this.enablePivots = options.enablePivots;
+
         this.viewport = new Viewport({
             // screenWidth: width - (left + right),
             // screenHeight: height - (top + bottom),
@@ -308,8 +313,11 @@ export default class Chart {
     setupChart({ tickSize = 0.25, indicators = { enableCombinedKeyLevels: true, enableMinMax: true, enablePivots: true } }) {
         this.tickSize = tickSize;
         console.log("setupChart");
-
+        debugger;
         this.options.PixiChartRef.current.appendChild(this.app.view);
+        this.enableCombinedKeyLevels = indicators?.enableCombinedKeyLevels;
+        this.enableMinMax = indicators?.enableMinMax;
+        this.enablePivots = indicators?.enablePivots;
 
         //make some scales
 
@@ -321,12 +329,22 @@ export default class Chart {
         this.drawVolume();
         this.drawAllCandles();
 
-        if (indicators?.enableMinMax) {
+        if (this.enableMinMax) {
             this.drawMinMax();
+        } else {
+            this.clearMinMax();
         }
 
-        this.drawPivots();
-        this.drawCombinedKeyLevels();
+        if (this.enablePivots) {
+            this.drawPivots();
+        } else {
+            this.clearPivots();
+        }
+        if (this.enableCombinedKeyLevels) {
+            this.drawCombinedKeyLevels();
+        } else {
+            this.clearCombinedKeyLevels();
+        }
         this.lastDragX = this.viewport.x; //this should be up at the top i think its always 0 to begin
         this.lastDragY = this.viewport.y; //this should be up at the top i think its always 0 to begin
         this.lastXRangeScale = Math.abs(this.xScale.range()[0] - this.xScale.range()[1]);
@@ -452,13 +470,16 @@ export default class Chart {
         });
     }
 
+    clearPivots() {
+        this.pivotsGfx.clear();
+    }
     drawPivots() {
         if (!this.pivotsGfx || !this.lastTwoDaysCompiled) {
             return;
         }
 
         try {
-            this.pivotsGfx.clear();
+            this.clearPivots();
         } catch (err) {
             // console.log("CLEAR() Error?");
             // console.log(err);
@@ -521,7 +542,14 @@ export default class Chart {
         });
     }
 
+    clearCombinedKeyLevels() {
+        this.combinedKeyLevelsContainer.children.forEach((gfx) => {
+            gfx.clear();
+        });
+    }
+
     drawCombinedKeyLevels() {
+        debugger;
         if (!this.combinedKeyLevelsContainer || !this.combinedKeyLevels?.length) {
             return;
         }
@@ -536,43 +564,54 @@ export default class Chart {
             return err;
         }
 
+        this.combinedKeyLevels.forEach((level) => {
+            this.drawZoneLevel(level);
+        });
+    }
+
+    drawZoneLevel(level) {
         const x1 = this.data.length - 20;
         const x2 = this.data.length + 20;
+        const gfx = new Graphics();
+        gfx.interactive = true;
+        gfx.buttonMode = true;
+        // const x1 =
+        // const x2 =
+        const y1 = level.highest;
+        const y2 = level.lowest;
+        const opacity = level.opacity;
+        debugger;
+        const hasLvn = level.labels.find((item) => item.includes("lvn"));
 
-        this.combinedKeyLevels.forEach((level) => {
-            const gfx = new Graphics();
-            gfx.interactive = true;
-            gfx.buttonMode = true;
-            // const x1 =
-            // const x2 =
-            const y1 = level.highest;
-            const y2 = level.lowest;
-            const opacity = level.opacity;
-            gfx.beginFill(0xffaa00, opacity);
+        gfx.beginFill(hasLvn ? 0x00c8ff : 0xffaa00, opacity);
 
-            const data = {
-                x: this.xScale(x1),
-                y: this.priceScale(y1),
-                w: this.xScale(x2) - this.xScale(x1),
-                h: this.priceScale(y2) - this.priceScale(y1),
-            };
+        const data = {
+            x: this.xScale(x1),
+            y: this.priceScale(y1),
+            w: this.xScale(x2) - this.xScale(x1),
+            h: this.priceScale(y2) - this.priceScale(y1),
+        };
 
-            this.drawRect(gfx, data);
-            gfx.endFill();
-            this.combinedKeyLevelsContainer.addChild(gfx);
-            gfx.on("mouseover", (e, t) => {
-                console.log("mouseove");
-                console.log({ e, t });
-                console.log(level);
-            });
-
-            // Define a mouseout event
-            gfx.on("mouseout", (e, t) => {
-                console.log("mouseout");
-                console.log({ e, t });
-                console.log(level);
-            });
+        this.drawRect(gfx, data);
+        gfx.endFill();
+        this.combinedKeyLevelsContainer.addChild(gfx);
+        gfx.on("mouseover", (e, t) => {
+            console.log("mouseove");
+            console.log({ e, t });
+            console.log(level);
         });
+
+        // Define a mouseout event
+        gfx.on("mouseout", (e, t) => {
+            console.log("mouseout");
+            console.log({ e, t });
+            console.log(level);
+        });
+    }
+    clearMinMax() {
+        this.minMaxGfx.clear();
+        this.minMaxRegressionGfx.clear();
+        this.minMaxFibsGfx.clear();
     }
 
     drawMinMax() {
@@ -582,9 +621,7 @@ export default class Chart {
         }
 
         try {
-            this.minMaxGfx.clear();
-            this.minMaxRegressionGfx.clear();
-            this.minMaxFibsGfx.clear();
+            this.clearMinMax();
         } catch (err) {
             // console.log("CLEAR() Error?");
             // console.log(err);

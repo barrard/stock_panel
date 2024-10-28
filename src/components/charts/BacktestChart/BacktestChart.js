@@ -137,20 +137,20 @@ export default function GptChart({ Socket }) {
             </div>
             <div className="row">
                 <div className="col-auto">
-                    <GetSymbolBtn setSymbol={setSymbol} getData={getBacktestData} symbol="ES" />
+                    <GetSymbolBtn enabled={symbol == "ES"} setSymbol={setSymbol} getData={getBacktestData} symbol="ES" />
                 </div>
 
                 <div className="col-auto">
-                    <GetSymbolBtn setSymbol={setSymbol} getData={getBacktestData} symbol="CL" />
+                    <GetSymbolBtn enabled={symbol == "CL"} setSymbol={setSymbol} getData={getBacktestData} symbol="CL" />
                 </div>
                 <div className="col-auto">
-                    <GetSymbolBtn setSymbol={setSymbol} getData={getBacktestData} symbol="NQ" />
+                    <GetSymbolBtn enabled={symbol == "NQ"} setSymbol={setSymbol} getData={getBacktestData} symbol="NQ" />
                 </div>
                 <div className="col-auto">
-                    <GetSymbolBtn setSymbol={setSymbol} getData={getBacktestData} symbol="GC" />
+                    <GetSymbolBtn enabled={symbol == "GC"} setSymbol={setSymbol} getData={getBacktestData} symbol="GC" />
                 </div>
                 <div className="col-auto">
-                    <GetSymbolBtn setSymbol={setSymbol} getData={getBacktestData} symbol="YM" />
+                    <GetSymbolBtn enabled={symbol == "YM"} setSymbol={setSymbol} getData={getBacktestData} symbol="YM" />
                 </div>
             </div>
             <div className="row">
@@ -158,11 +158,7 @@ export default function GptChart({ Socket }) {
                     <div ref={PixiChartRef}></div>
                 </div>
                 <div className="col">
-                    <SetIndicatorBtn
-                        onClick={() => setEnableCombinedKeyLevels(!enableCombinedKeyLevels)}
-                        indicatorName="CombinedKeyLevels"
-                        enabled={enableCombinedKeyLevels}
-                    />
+                    <SetIndicatorBtn onClick={() => setEnableCombinedKeyLevels(!enableCombinedKeyLevels)} indicatorName="CombinedKeyLevels" enabled={enableCombinedKeyLevels} />
                     <SetIndicatorBtn onClick={() => setEnableMinMax(!enableMinMax)} indicatorName="MinMax" enabled={enableMinMax} />
                     <SetIndicatorBtn onClick={() => setEnablePivots(!enablePivots)} indicatorName="Pivots" enabled={enablePivots} />
                 </div>

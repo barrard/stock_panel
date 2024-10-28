@@ -9,9 +9,7 @@ const MarketOverview = ({ lastTradesRef, fullSymbols, Socket }) => {
 
     const [instrumentPnLPositionUpdate, setInstrumentPnLPositionUpdate] = useState({});
 
-    const sortedEntries = Object.entries(lastTradesRef.current).sort(
-        ([, tradeA], [, tradeB]) => tradeB.nearPriceBidSizeToAskSizeRatio - tradeA.nearPriceBidSizeToAskSizeRatio
-    );
+    const sortedEntries = Object.entries(lastTradesRef.current).sort(([, tradeA], [, tradeB]) => tradeB.nearPriceBidSizeToAskSizeRatio - tradeA.nearPriceBidSizeToAskSizeRatio);
 
     useEffect(() => {
         Socket.on("positionPnL", (message) => {
@@ -40,18 +38,38 @@ const MarketOverview = ({ lastTradesRef, fullSymbols, Socket }) => {
                 <table className="w-full border-collapse ">
                     <thead>
                         <tr className="bg-gray-100">
-                            <th className="border p-2 text-left">Symbol</th>
-                            <th className="border p-2 text-left">Trade Price</th>
-                            <th className="border p-2 text-left small">Bid/Ask Ratio/MA</th>
-                            {/* <th className="border p-2 text-left small">Near Price Bid/Ask Ratio/MA</th> */}
+                            <TD w={50} className="border ">
+                                Sym.
+                            </TD>
+                            <TD w={50} className="border ">
+                                Trade Price
+                            </TD>
+                            <TD w={50} className="border  small">
+                                Bid/Ask Ratio/MA
+                            </TD>
+                            {/* <TD w={50} className="border  small">Near Price Bid/Ask Ratio/MA</TD> */}
 
-                            <th className="border p-2 text-left">Delta</th>
-                            <th className="border p-2 text-left">PnL</th>
-                            <th className="border p-2 text-left">Position</th>
-                            <th className="border p-2 text-left">Orders b/s</th>
-                            <th className="border p-2 text-left">Filled b/s</th>
-                            <th className="border p-2 text-left">Avg</th>
-                            <th className="border p-2 text-left">Day</th>
+                            <TD w={50} className="border ">
+                                Delta
+                            </TD>
+                            <TD w={50} className="border ">
+                                PnL
+                            </TD>
+                            <TD w={50} className="border ">
+                                Position
+                            </TD>
+                            <TD w={50} className="border ">
+                                Orders b/s
+                            </TD>
+                            <TD w={50} className="border ">
+                                Filled b/s
+                            </TD>
+                            <TD w={50} className="border ">
+                                Avg
+                            </TD>
+                            <TD w={50} className="border ">
+                                Day
+                            </TD>
                         </tr>
                     </thead>
                     <tbody>
@@ -125,24 +143,25 @@ function MarketItem(props) {
         );
     };
 
-    const SeismographChartMemo = useMemo(() => {
-        return <Seismograph data={[]} orderTrackerCount={lastTrade} />;
-    }, [lastTrade]);
+    // const SeismographChartMemo = useMemo(() => {
+    //     return <Seismograph data={[]} orderTrackerCount={lastTrade} />;
+    // }, [lastTrade]);
+
     return (
         <React.Fragment>
             <TR key={symbol} color={symbolsColors[symbol]} onClick={() => toggleRow(index)} className="hover:bg-gray-50">
-                <TD className="border p-2">{symbol}</TD>
+                <TD w={40} className="border p-2">
+                    {symbol}
+                </TD>
                 {/* <TD className="border p-2">{priceFormat(lastTrade?.tradePrice?.toFixed(2))}</TD> */}
-                <TD className="border p-2">
+                <TD w={100} className="border p-2">
                     <PriceQuote lastTrade={lastTrade} />
                 </TD>
-                <TD className="border p-2">
+                <TD w={100} className="border p-2">
                     {/* {lastTrade?.bidSizeToAskSizeRatio?.toFixed(2)} / {lastTrade?.bidSizeToAskSizeRatioMA?.toFixed(2)} */}
                     <BidAskRatio lastTrade={lastTrade} />
                 </TD>
-                {/* <TD className="border p-2">
-                    {lastTrade?.nearPriceBidSizeToAskSizeRatio?.toFixed(2)} / {lastTrade?.nearPriceBidSizeToAskSizeRatioMA.toFixed(2)}
-                </TD> */}
+
                 <TD className="border p-2">
                     <ValChange num={lastTrade?.delta}>{priceFormat(lastTrade?.delta?.toFixed(2))}</ValChange>
                 </TD>
@@ -169,6 +188,7 @@ function MarketItem(props) {
     );
 }
 
+const SetWidth = styled.div``;
 const Small = styled.div`
     font-size: 12px;
     display: inline;
@@ -182,6 +202,9 @@ const ValChange = styled.div`
 
 const TD = styled.td`
     text-align: center;
+    max-width ${({ w }) => w + "px"};
+    min-width ${({ w }) => w + "px"};
+    width: ${({ w }) => w + "px"};
 `;
 
 const TR = styled.tr`
