@@ -28,7 +28,11 @@ export default function DistroChart(props) {
         const values = labels.map((l) => data[l]);
         if (labels.length < 1) return;
         const range = [Math.min(...labels), Math.max(...labels)];
-
+        if (range[0] === range[1]) {
+            debugger;
+            range[0] = 0;
+            range[1] = 1;
+        }
         setRange(range);
         setStartingRange(range);
         setMin(range[0]);

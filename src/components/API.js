@@ -73,7 +73,22 @@ export default {
     getEconEventTypes,
     getEconEventInstances,
     getBacktestData,
+    getOrders,
 };
+
+async function getOrders(opts = {}) {
+    const { symbol, skip, limit = 2000, bracketId } = opts;
+
+    let resp = await fetch(`${REACT_APP_API_SERVER}/API/get-orders`, {
+        ...POST({
+            query: { symbol, bracketId },
+            limit,
+            skip,
+        }),
+    });
+    resp = await handleResponse(resp);
+    return resp;
+}
 
 async function getBacktestData(symbol) {
     return GET(`/API/getBacktestData/${symbol}`);
@@ -276,18 +291,7 @@ async function deleteIndicator(ind, strat) {
     }
 }
 
-async function submitIndicator({
-    priceDataId,
-    selectedInputs,
-    selectedStrat,
-    indicatorOpts,
-    indicatorName,
-    options,
-    color,
-    inputs,
-    dataInputs,
-    variablePeriods,
-}) {
+async function submitIndicator({ priceDataId, selectedInputs, selectedStrat, indicatorOpts, indicatorName, options, color, inputs, dataInputs, variablePeriods }) {
     try {
         console.log({ variablePeriods });
         let list = await fetch(`${REACT_APP_API_SERVER}/API/addIndicator`, {
@@ -714,19 +718,7 @@ async function setTimeframeActive(id, timeframe, props) {
     // console.log({ slopeInts });
 }
 
-async function saveRegressionValues({
-    symbol,
-    timeframe,
-    minMaxTolerance,
-    regressionErrorLimit,
-    priceLevelMinMax,
-    priceLevelSensitivity,
-    fibonacciMinMax,
-    fibonacciSensitivity,
-    volProfileBins,
-    volProfileBarCount,
-    props,
-}) {
+async function saveRegressionValues({ symbol, timeframe, minMaxTolerance, regressionErrorLimit, priceLevelMinMax, priceLevelSensitivity, fibonacciMinMax, fibonacciSensitivity, volProfileBins, volProfileBarCount, props }) {
     try {
         let regressionData = await fetch(`${LOCAL_SERVER}/API/commodityRegressionSettings`, {
             credentials: "include",

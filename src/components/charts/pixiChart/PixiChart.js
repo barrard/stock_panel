@@ -388,7 +388,7 @@ export default function PixiChart({ Socket }) {
         if (symbol.value !== symbolInput.value) {
             setSymbol({ ...symbolInput });
         }
-        debugger;
+
         const baseSymbol = fullSymbols.find((d) => d.baseSymbol === symbolInput.value);
         fullSymbolRef.current = baseSymbol;
 
@@ -478,7 +478,10 @@ export default function PixiChart({ Socket }) {
         Socket.emit("getCompileHistoryTracker");
 
         if (!Object.keys(orders).length) {
-            Socket.emit("getOrders", { ok: "?" });
+            getOrders();
+
+            //somewhat deprecating this with a new server endpoint
+            // Socket.emit("getOrders", { ok: "?" });
         }
 
         Socket.on("orderCancelled", (data) => {
@@ -487,6 +490,7 @@ export default function PixiChart({ Socket }) {
             console.log(data);
         });
         Socket.on("ordersShown", (data) => {
+            debugger;
             Object.keys(data).forEach((basketId) => {
                 const currentOrder = orders[basketId] || {};
                 debugger;
@@ -578,40 +582,6 @@ export default function PixiChart({ Socket }) {
         };
     }, [ohlcDatas, PixiAppRef.current, pixiData, setOhlcDatas, setLastTrade, symbol]);
 
-    // useEffect(() => {
-    //     if (!ohlcDatas.length) return;
-    //     if (!currentMinute) return;
-    //     const data = currentMinute[symbol.slice(1)];
-    //     const lastOhlc = ohlcDatas.slice(-1)[0];
-    //     if (!data) return;
-
-    //     console.log(new Date(data.timestamp).toLocaleString());
-    //     const dataTime = new Date(data.timestamp).getMinutes();
-    //     const lastDataTime = new Date(lastOhlc.timestamp).getMinutes();
-    //     const sameTime = dataTime === lastDataTime;
-    //     if (!sameTime) {
-    //         setOhlcDatas((ohlcDatas) => ohlcDatas.concat([data]));
-    //         pixiData.prependData(data);
-    //     }
-    // }, [currentMinute]);
-
-    // useEffect(() => {
-    //     if (!ohlcDatas.length) return;
-    //     if (!timeAndSales.length) return;
-    //     const lastOhlc = ohlcDatas.slice(-1)[0];
-    //     const updatedLastOhlc = timeAndSales.reduce((acc, timeAndSales) => {
-    //         const close = timeAndSales["2"];
-    //         lastOhlc.volume += timeAndSales["3"];
-    //         lastOhlc.close = close;
-    //         if (lastOhlc.low > close) lastOhlc.low = close;
-    //         if (lastOhlc.high < close) lastOhlc.high = close;
-    //         return lastOhlc;
-    //     }, lastOhlc);
-
-    //     pixiData.replaceLast(updatedLastOhlc);
-    //     pixiData.updateCurrentPriceLabel(updatedLastOhlc.close);
-    // }, [timeAndSales]);
-
     useEffect(() => {
         let touch1MoveDiff;
         if (touch1 && touch2) {
@@ -628,19 +598,11 @@ export default function PixiChart({ Socket }) {
         setTouch2(TouchGesture2.current?.clientX);
     }, [TouchGesture1.current?.clientX, TouchGesture2.current?.clientX]);
 
-    // useEffect(() => {
-    //     if (!pixiData) return;
-
-    //     setOhlcDatas([]);
-    //     pixiData.setTimeframe(timeframe);
-    //     pixiData.loadMoreData();
-    // }, [timeframe]);
-
     useEffect(() => {
         API.getFrontMonthSymbols()
             .then((d) => {
                 if (!d.length) {
-                    alert("Missing full symbols");
+                    // alert("Missing full symbols");
                 }
                 setFullSymbols([...d]);
                 const baseSymbol = d.find((d) => d.baseSymbol === symbolInput.value);
@@ -649,9 +611,15 @@ export default function PixiChart({ Socket }) {
             })
             .catch((e) => {
                 console.error(e);
-                alert("Missing full symbols");
+                // alert("Missing full symbols");
             });
     }, []);
+
+    async function getOrders() {
+        const order = await API.getOrders();
+        setOrders(order);
+        pixiData.setOrders(order);
+    }
 
     const clearLongPress = () => {
         clearInterval(longPressTimer);
@@ -685,27 +653,8 @@ export default function PixiChart({ Socket }) {
         [plantStatus]
     );
 
-    const TimeFrameBtnsMemo = useMemo(
-        () => (
-            <TimeFrameBtns
-                backgroundDataFetch={backgroundDataFetch}
-                setBackgroundDataFetch={setBackgroundDataFetch}
-                setStartTime={setStartTime}
-                setEndTime={setEndTime}
-                startTime={startTime}
-                endTime={endTime}
-                setBarType={setBarTypeInput}
-                setBarTypePeriod={setBarTypePeriodInput}
-                barType={barType}
-                barTypePeriod={barTypePeriod}
-            />
-        ),
-        [barType, barTypePeriod]
-    );
-    const SymbolBtnsMemo = useMemo(
-        () => <SymbolBtns symbolOptions={symbolOptions} symbol={symbolInput} setSymbol={setSymbolInput} />,
-        [barType, barTypePeriod, symbolInput]
-    );
+    const TimeFrameBtnsMemo = useMemo(() => <TimeFrameBtns backgroundDataFetch={backgroundDataFetch} setBackgroundDataFetch={setBackgroundDataFetch} setStartTime={setStartTime} setEndTime={setEndTime} startTime={startTime} endTime={endTime} setBarType={setBarTypeInput} setBarTypePeriod={setBarTypePeriodInput} barType={barType} barTypePeriod={barTypePeriod} />, [barType, barTypePeriod]);
+    const SymbolBtnsMemo = useMemo(() => <SymbolBtns symbolOptions={symbolOptions} symbol={symbolInput} setSymbol={setSymbolInput} />, [barType, barTypePeriod, symbolInput]);
 
     console.log("das render");
     return (
@@ -729,18 +678,7 @@ export default function PixiChart({ Socket }) {
                 </div> */}
                 <div className="row d-flex border">
                     <div className="col-auto">
-                        <IndicatorsBtns
-                            setDrawZigZag={setDrawZigZag}
-                            setDrawMarketProfile={setDrawMarketProfile}
-                            setDrawOrderBook={setDrawOrderBook}
-                            togglePivotLines={togglePivotLines}
-                            setDrawPivotLines={setDrawPivotLines}
-                            toggleZigZag={toggleZigZag}
-                            toggleMarketProfile={toggleMarketProfile}
-                            toggleOrderbook={toggleOrderbook}
-                            setDrawOrders={setDrawOrders}
-                            toggleOrders={toggleOrders}
-                        />
+                        <IndicatorsBtns setDrawZigZag={setDrawZigZag} setDrawMarketProfile={setDrawMarketProfile} setDrawOrderBook={setDrawOrderBook} togglePivotLines={togglePivotLines} setDrawPivotLines={setDrawPivotLines} toggleZigZag={toggleZigZag} toggleMarketProfile={toggleMarketProfile} toggleOrderbook={toggleOrderbook} setDrawOrders={setDrawOrders} toggleOrders={toggleOrders} />
                     </div>
 
                     <div className="col-auto">
@@ -826,6 +764,13 @@ export default function PixiChart({ Socket }) {
                 }}
             />
             {/* <OrdersList orders={orders} /> */}
+            <button
+                onClick={async () => {
+                    await getOrders();
+                }}
+            >
+                Get Orders
+            </button>
             <div>{OrdersListMemo}</div>
         </>
     );

@@ -39,27 +39,13 @@ export default function StockRow(props) {
         <div ref={targetRef} className="row">
             <div className="col-6">
                 <StyledRow index={index}>
-                    <StyledSymbol>{`${index + 1} - ${
-                        stock.symbol
-                    }`}</StyledSymbol>
+                    <StyledSymbol>{`${index + 1} - ${stock.symbol}`}</StyledSymbol>
                     <StyledDescription>{stock.description}</StyledDescription>
-                    <StyledValue>
-                        {" "}
-                        {`currentRatio: ${stock.currentRatio}`}
-                    </StyledValue>
-                    <StyledValue>
-                        {`totalDebtToEquity: ${stock.totalDebtToEquity}`}
-                    </StyledValue>
-                    <StyledValue>
-                        {" "}
-                        {`ltDebtToEquity: ${stock.ltDebtToEquity}`}
-                    </StyledValue>
-                    <StyledValue>
-                        {`totalDebtToCapital: ${stock.totalDebtToCapital}`}
-                    </StyledValue>{" "}
-                    <StyledValue>{`Last Price: ${as$(
-                        ticker.lastPrice
-                    )}`}</StyledValue>
+                    <StyledValue> {`currentRatio: ${stock.currentRatio}`}</StyledValue>
+                    <StyledValue>{`totalDebtToEquity: ${stock.totalDebtToEquity}`}</StyledValue>
+                    <StyledValue> {`ltDebtToEquity: ${stock.ltDebtToEquity}`}</StyledValue>
+                    <StyledValue>{`totalDebtToCapital: ${stock.totalDebtToCapital}`}</StyledValue>
+                    {ticker && <StyledValue>{`Last Price: ${as$(ticker?.lastPrice)}`}</StyledValue>}
                 </StyledRow>
             </div>
             <div className="col-6">
