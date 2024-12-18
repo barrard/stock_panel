@@ -9,7 +9,7 @@ const MarketOverview = ({ lastTradesRef, fullSymbols, Socket }) => {
 
     const [instrumentPnLPositionUpdate, setInstrumentPnLPositionUpdate] = useState({});
 
-    const sortedEntries = Object.entries(lastTradesRef.current).sort(([, tradeA], [, tradeB]) => tradeB.nearPriceBidSizeToAskSizeRatio - tradeA.nearPriceBidSizeToAskSizeRatio);
+    const sortedEntries = Object.entries(lastTradesRef.current); //.sort(([, tradeA], [, tradeB]) => tradeB.nearPriceBidSizeToAskSizeRatio - tradeA.nearPriceBidSizeToAskSizeRatio);
 
     useEffect(() => {
         Socket.on("positionPnL", (message) => {
@@ -33,43 +33,42 @@ const MarketOverview = ({ lastTradesRef, fullSymbols, Socket }) => {
     }, [Socket]);
 
     return (
-        <div className="row">
+        <div className="row g-0">
             <div className="col-auto">
                 <table className="w-full border-collapse ">
                     <thead>
                         <tr className="bg-gray-100">
-                            <TD w={50} className="border ">
+                            <StyledTh w={50} className="border ">
                                 Sym.
-                            </TD>
-                            <TD w={50} className="border ">
+                            </StyledTh>
+                            <StyledTh w={50} className="border ">
                                 Trade Price
-                            </TD>
-                            <TD w={50} className="border  small">
+                            </StyledTh>
+                            <StyledTh w={50} className="border  small">
                                 Bid/Ask Ratio/MA
-                            </TD>
-                            {/* <TD w={50} className="border  small">Near Price Bid/Ask Ratio/MA</TD> */}
+                            </StyledTh>
 
-                            <TD w={50} className="border ">
+                            <StyledTh w={50} className="border ">
                                 Delta
-                            </TD>
-                            <TD w={50} className="border ">
+                            </StyledTh>
+                            <StyledTh w={50} className="border ">
                                 PnL
-                            </TD>
-                            <TD w={50} className="border ">
+                            </StyledTh>
+                            <StyledTh w={50} className="border ">
                                 Position
-                            </TD>
-                            <TD w={50} className="border ">
+                            </StyledTh>
+                            <StyledTh w={50} className="border ">
                                 Orders b/s
-                            </TD>
-                            <TD w={50} className="border ">
+                            </StyledTh>
+                            <StyledTh w={50} className="border ">
                                 Filled b/s
-                            </TD>
-                            <TD w={50} className="border ">
+                            </StyledTh>
+                            <StyledTh w={50} className="border ">
                                 Avg
-                            </TD>
-                            <TD w={50} className="border ">
+                            </StyledTh>
+                            <StyledTh w={50} className="border ">
                                 Day
-                            </TD>
+                            </StyledTh>
                         </tr>
                     </thead>
                     <tbody>
@@ -179,7 +178,7 @@ function MarketItem(props) {
             <TR>{/* <td colSpan="6">{SeismographChartMemo}</td> */}</TR>
             {expandedRow && (
                 <TR color={symbolsColors[symbol]}>
-                    <td colSpan="6">
+                    <td colSpan="12">
                         <TradeControls symbolData={symbolData} symbol={symbol} lastTrade={lastTrade} />
                     </td>
                 </TR>
@@ -207,6 +206,22 @@ const TD = styled.td`
     width: ${({ w }) => w + "px"};
 `;
 
+const StyledTh = styled.th`
+    background-color: #111;
+    border: 1px solid #ddd;
+    padding: 6px;
+    font-weight: bold;
+    user-select: none;
+
+
+    
+
+    text-align: center;
+    max-width ${({ w }) => w + "px"};
+    min-width ${({ w }) => w + "px"};
+    width: ${({ w }) => w + "px"};
+`;
+
 const TR = styled.tr`
     cursor: pointer;
     /* on hover */
@@ -215,6 +230,7 @@ const TR = styled.tr`
     }
     transition: all 0.2s ease-in-out;
     box-shadow: inset 0 0 0 4px ${({ color }) => color};
+    user-select: none;
 
     padding: 20px;
 `;

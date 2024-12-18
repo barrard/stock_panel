@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
-import { IconButton } from "../../../StratBuilder/components";
+import { ButtonWithLongPress } from "../../../StratBuilder/components";
 
 import { AiOutlinePlus, AiOutlineMinus } from "react-icons/ai";
 
@@ -12,7 +12,12 @@ const ticks = TICKS();
 export default function TradeControls(props = {}) {
     const { symbolData, symbol, lastTrade } = props;
     const [priceType, setPriceType] = useState(2);
+    const [isBracket, setIsBracket] = useState(false);
     const [limitPrice, setLimitPrice] = useState(props.lastTrade.tradePrice);
+    const [tickTarget, setTickTarget] = useState(5);
+    const [targetPrice, setTargetPrice] = useState(null);
+    const [tickLoss, setTickLoss] = useState(5);
+    const [lossPrice, setLossPrice] = useState(null);
     // const symbolData = fullSymbols.find((s) => s.baseSymbol == symbol.value);
 
     useEffect(() => {
@@ -44,69 +49,189 @@ export default function TradeControls(props = {}) {
     ];
 
     return (
-        <div className="row g-0  flex-column">
-            {/* <div className="col"></div> */}
+        <div className="row g-0   border">
+            <div className="col-7 border">
+                <div className="row g-0 justify-content-center border-green py-2 ">
+                    {orderTypes.map((type) => (
+                        <div key={type.value} className="col-auto">
+                            <OrderTypeButton key={type.value} selected={priceType === type.value} onClick={() => setPriceType(type.value)} variant={priceType === type.value ? "default" : "outline"}>
+                                {type.name}
+                            </OrderTypeButton>
+                        </div>
+                    ))}
+                </div>
+                {/* value Input and increment/decrement  */}
+                <div className="row g-0 justify-content-center align-items-center border py-2">
+                    {/* Value input */}
+                    <div className="col-5">
+                        <h4>{symbolData?.fullSymbol}</h4>
 
-            <div className="row g-0 justify-content-center">
-                {symbolData?.fullSymbol}
-
-                {orderTypes.map((type) => (
-                    <div key={type.value} className="col-auto">
-                        <OrderTypeButton
-                            key={type.value}
-                            selected={priceType === type.value}
-                            onClick={() => setPriceType(type.value)}
-                            variant={priceType === type.value ? "default" : "outline"}
-                        >
-                            {type.name}
-                        </OrderTypeButton>
+                        <Input step={ticks[symbolData?.baseSymbol]} type="number" setValue={setLimitPrice} value={limitPrice} />
+                        <div className="col-12 justify-content-center text-center">
+                            <ColorVal color={parseFloat((limitPrice - props.lastTrade.tradePrice).toFixed(2))}>{(limitPrice - props.lastTrade.tradePrice).toFixed(2)}</ColorVal> {" | "}
+                            <span onClick={() => setLimitPrice(props.lastTrade.tradePrice)}>{props.lastTrade.tradePrice}</span>
+                        </div>
                     </div>
-                ))}
-            </div>
-            <div className="row g-0 justify-content-center align-items-center">
-                <div className="col-auto">
-                    <Input step={ticks[symbolData?.baseSymbol]} type="number" setValue={setLimitPrice} value={limitPrice} />
+                    {/* Increment and decrement buttons */}
+                    <div className="col-3">
+                        <div className="row">
+                            <ButtonWithLongPress
+                                borderColor={"green"}
+                                title="up"
+                                onClick={() =>
+                                    setLimitPrice((limit) => {
+                                        const newPrice = (parseFloat(limit) + ticks[symbolData?.baseSymbol]).toFixed(2);
+                                        return newPrice;
+                                    })
+                                }
+                                rIcon={<AiOutlinePlus />}
+                            />
+                            <ButtonWithLongPress
+                                borderColor={"red"}
+                                title="down"
+                                onClick={() => {
+                                    setLimitPrice((limit) => {
+                                        const newPrice = (parseFloat(limit) - ticks[symbolData?.baseSymbol]).toFixed(2);
+                                        return newPrice;
+                                    });
+                                }}
+                                rIcon={<AiOutlineMinus />}
+                            />
+                        </div>
+                    </div>
                 </div>
-                <div className="col-auto">
-                    <IconButton
-                        borderColor={"green"}
-                        title="up"
-                        onClick={() =>
-                            setLimitPrice((limit) => {
-                                const newPrice = (parseFloat(limit) + ticks[symbolData?.baseSymbol]).toFixed(2);
-                                return newPrice;
-                            })
-                        }
-                        rIcon={<AiOutlinePlus />}
-                    />
-                    <IconButton
-                        borderColor={"red"}
-                        title="down"
-                        onClick={() => {
-                            setLimitPrice((limit) => {
-                                const newPrice = (parseFloat(limit) - ticks[symbolData?.baseSymbol]).toFixed(2);
-                                return newPrice;
-                            });
-                        }}
-                        rIcon={<AiOutlineMinus />}
-                    />
-                </div>
-            </div>
 
-            <div className="row g-0 justify-content-center align-items-center">
-                <div className="col-auto d-flex align-items-center ">
-                    <BuySellButton color="green" onClick={() => sendOrder({ transactionType: 1 })}>
-                        Buy
-                    </BuySellButton>
+                {/* Buy Sell buttons */}
+                <div className="row g-0 justify-content-around align-items-center">
+                    <div className="col-12 d-flex justify-content-center ">
+                        {(props.lastTrade.tradePrice >= limitPrice && priceType == 1) || (props.lastTrade.tradePrice <= limitPrice && (priceType == 3 || priceType == 4)) || priceType == 2 ? (
+                            <BuySellButton color="green" onClick={() => sendOrder({ transactionType: 1 })}>
+                                Buy - type:{priceType}
+                            </BuySellButton>
+                        ) : (
+                            <></>
+                        )}
 
-                    <BuySellButton color="red" onClick={() => sendOrder({ transactionType: 2 })}>
-                        Sell
-                    </BuySellButton>
+                        {(props.lastTrade.tradePrice <= limitPrice && priceType == 1) || (props.lastTrade.tradePrice >= limitPrice && (priceType == 3 || priceType == 4)) || priceType == 2 ? (
+                            <BuySellButton color="red" onClick={() => sendOrder({ transactionType: 2 })}>
+                                Sell - type:{priceType}
+                            </BuySellButton>
+                        ) : (
+                            <></>
+                        )}
+                    </div>
                 </div>
+            </div>
+            <div className="col-5 border-blue">
+                <OrderTypeButton selected={isBracket} onClick={() => setIsBracket(!isBracket)}>
+                    BRACKET
+                </OrderTypeButton>
+                {isBracket && (
+                    <>
+                        <div className="row justify-content-center align-items-center  py-2">
+                            <div className="row g-0">
+                                <div className="col-6 d-flex justify-content-center">
+                                    <p>Tick Target</p>
+                                </div>
+                                <div className="col-6 d-flex justify-content-center">
+                                    <ColorVal color={1}>{targetPrice}</ColorVal>
+                                </div>
+                            </div>
+                            {/* Increment and decrement TICK TARGET buttons */}
+                            <div className="col-auto ">
+                                <ButtonWithLongPress
+                                    borderColor={"green"}
+                                    title="up"
+                                    onClick={() =>
+                                        setTickTarget((tickCount) => {
+                                            tickCount = tickCount + 1;
+                                            const targetPrice = (tickCount * ticks[symbolData?.baseSymbol]).toFixed(2);
+                                            setTargetPrice(targetPrice);
+
+                                            return tickCount;
+                                        })
+                                    }
+                                    rIcon={<AiOutlinePlus />}
+                                />
+                            </div>
+                            {/* Value input TICK TARGET*/}
+                            <div className="col-5 ">
+                                <Input step={1} type="number" min={1} max={10} setValue={setTickTarget} value={tickTarget} />
+                            </div>
+                            <div className="col-auto">
+                                <ButtonWithLongPress
+                                    borderColor={"red"}
+                                    title="down"
+                                    onClick={() => {
+                                        setTickTarget((tickCount) => {
+                                            tickCount = tickCount - 1;
+                                            if (tickCount <= 0) tickCount = 1;
+                                            const newPrice = (tickCount * ticks[symbolData?.baseSymbol]).toFixed(2);
+                                            setTargetPrice(newPrice);
+                                            return tickCount;
+                                        });
+                                    }}
+                                    rIcon={<AiOutlineMinus />}
+                                />
+                            </div>
+                        </div>
+                        <div className="row justify-content-center align-items-center  py-2">
+                            <div className="row g-0">
+                                <div className="col-6 d-flex justify-content-center">
+                                    <p>Tick Loss</p>
+                                </div>
+                                <div className="col-6 d-flex justify-content-center">
+                                    <ColorVal color={-1}>{lossPrice}</ColorVal>
+                                </div>
+                            </div>
+                            {/* Increment and decrement TICK LOSS buttons */}
+                            <div className="col-auto ">
+                                <ButtonWithLongPress
+                                    borderColor={"green"}
+                                    title="up"
+                                    onClick={() =>
+                                        setTickLoss((tickCount) => {
+                                            const lossPrice = (tickCount * ticks[symbolData?.baseSymbol] * -1).toFixed(2);
+                                            setLossPrice(lossPrice);
+
+                                            return tickCount + 1;
+                                        })
+                                    }
+                                    rIcon={<AiOutlinePlus />}
+                                />
+                            </div>
+                            {/* Value input TICK LOSS */}
+                            <div className="col-5 ">
+                                <Input step={1} type="number" min={0} setValue={setTickLoss} value={tickLoss} />
+                            </div>
+                            <div className="col-auto">
+                                <ButtonWithLongPress
+                                    borderColor={"red"}
+                                    title="down"
+                                    onClick={() => {
+                                        setTickLoss((tickCount) => {
+                                            tickCount = tickCount - 1;
+                                            if (tickCount <= 0) tickCount = 1;
+
+                                            const newPrice = (tickCount * ticks[symbolData?.baseSymbol] * -1).toFixed(2);
+                                            setLossPrice(newPrice);
+                                            return tickCount;
+                                        });
+                                    }}
+                                    rIcon={<AiOutlineMinus />}
+                                />
+                            </div>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );
 }
+
+const ColorVal = styled.span`
+    color: ${({ color }) => (color > 0 ? "green" : "tomato")};
+`;
 
 const BuySellButton = styled.div`
     border-radius: 5px;
@@ -116,6 +241,10 @@ const BuySellButton = styled.div`
     transition: all 0.2s ease-in-out;
     background: ${({ color }) => color};
     user-select: none;
+    height: 4em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 `;
 
 const OrderTypeButton = styled.div`
@@ -126,4 +255,8 @@ const OrderTypeButton = styled.div`
     transition: all 0.2s ease-in-out;
     background: ${({ selected }) => (selected ? "steelblue" : "grey")};
     user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 2em;
 `;

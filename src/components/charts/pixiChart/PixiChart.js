@@ -23,7 +23,7 @@ import TimeFrameBtns from "./components/TimeFrameBtns";
 import IndicatorsBtns from "./components/IndicatorsBtns";
 import MarketOverview from "./components/MarketOverview";
 // import StartEndTimes from "./components/StartEndTimes";
-import PnL_AndOrderFlowStats from "./components/PnL_AndOrderFlowStats";
+// import PnL_AndOrderFlowStats from "./components/PnL_AndOrderFlowStats";
 import AccountInfoTable from "./components/AccountInfoTable";
 import { parseBarTypeTimeFrame, symbolOptions } from "./components/utils";
 import onLastTrade from "./handlers/onLastTrade";
@@ -659,7 +659,7 @@ export default function PixiChart({ Socket }) {
     console.log("das render");
     return (
         <>
-            <div className="row relative">
+            <div className="row g-0 relative">
                 <div className="absolute ">{PlantStatusesMemo}</div>
                 <div className="col-6 ">{/* <TradeControls fullSymbols={fullSymbols} symbol={symbolInput} lastTrade={lastTrade} /> */}</div>
 
