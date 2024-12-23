@@ -13,7 +13,7 @@ const MarketOverview = ({ lastTradesRef, fullSymbols, Socket }) => {
 
     useEffect(() => {
         Socket.on("positionPnL", (message) => {
-            console.log(message);
+            // console.log(message);
             setInstrumentPnLPositionUpdate(message);
         });
 

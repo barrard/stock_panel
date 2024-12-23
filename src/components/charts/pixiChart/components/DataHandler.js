@@ -756,6 +756,101 @@ export default class PixiData {
     }
 
     setOrders(orders) {
+        //SORT THSE????
+        let compiledOrders = orders.reduce((acc, order) => {
+            const { completionReason, basketId, totalUnfilledSize, totalFillSize, bracketType, priceType, quantity, notifyType, triggerPrice, cancelledSize, transactionType } = order;
+            if (!acc[basketId]) {
+                acc[basketId] = {};
+            }
+            acc[basketId].basketId = basketId;
+            acc[basketId].bracketType = bracketType;
+            acc[basketId].notifyType = notifyType;
+            acc[basketId].priceType = priceType;
+            acc[basketId].transactionType = transactionType;
+
+            if (order.status === "complete") {
+                //notify type == 15
+                acc[basketId].completionReason = completionReason;
+                acc[basketId].endTime = order.ssboe; //also has datetime
+                acc[basketId].totalFillSize = order.totalFillSize;
+                acc[basketId].quantity = order.quantity;
+                acc[basketId].triggerPrice = order.triggerPrice;
+                acc[basketId].price = order.price;
+                acc[basketId].isComplete = true;
+            } else if (orders.reportType === "cancel") {
+                //notify type == 15
+                acc[basketId].endTime = order.ssboe; //also has datetime
+                acc[basketId].totalFillSize = order.totalFillSize;
+                acc[basketId].cancelledSize = order.cancelledSize;
+                acc[basketId].totalUnfilledSize = order.totalUnfilledSize;
+                acc[basketId].triggerPrice = order.triggerPrice;
+                acc[basketId].isCancel = true;
+            } else if (order.status === "cancel sent to exch") {
+                acc[basketId].cancelSentToExchTime = order.ssboe;
+            } else if (order.status === "cancel received by exch gateway") {
+                acc[basketId].cancelReceivedByExchGatewayTime = order.ssboe;
+            } else if (order.status === "Order received from client") {
+                acc[basketId].orderReceivedFromClientTime = order.ssboe;
+                acc[basketId].triggerPrice = order.triggerPrice;
+                acc[basketId].price = order.price;
+            } else if (order.status === "cancel pending") {
+                acc[basketId].cancelPendingTime = order.ssboe;
+                acc[basketId].isCancelled = true;
+            } else if (order.status === "fill") {
+                debugger;
+                acc[basketId].fillTime = order.ssboe;
+                acc[basketId].fillSize = order.totalFillSize;
+                acc[basketId].totalFillSize = order.totalFillSize;
+                acc[basketId].totalUnfilledSize = order.totalUnfilledSize;
+                acc[basketId].price = order.price;
+                acc[basketId].fillPrice = order.fillPrice;
+                acc[basketId].fillTime = order.fillTime;
+                acc[basketId].avgFillPrice = order.avgFillPrice;
+            } else if (order.reportType === "fill") {
+                acc[basketId].fillTime = order.ssboe;
+                acc[basketId].fillSize = order.totalFillSize;
+                acc[basketId].totalFillSize = order.totalFillSize;
+                acc[basketId].totalUnfilledSize = order.totalUnfilledSize;
+                acc[basketId].price = order.price;
+                acc[basketId].fillPrice = order.fillPrice;
+                acc[basketId].fillTime = order.fillTime;
+                acc[basketId].avgFillPrice = order.avgFillPrice;
+            } else if (order.status === "open") {
+                acc[basketId].openTime = order;
+                acc[basketId].triggerPrice = order.triggerPrice;
+                acc[basketId].price = order.price;
+                acc[basketId].origPriceType = order.origPriceType;
+            } else if (order.status === "open pending") {
+                acc[basketId].openPendingTime = order;
+                acc[basketId].triggerPrice = order.triggerPrice;
+                acc[basketId].price = order.price;
+                acc[basketId].origPriceType = order.origPriceType;
+            } else if (orders.reportType === "trigger") {
+                acc[basketId].triggerTime = order.ssboe;
+                acc[basketId].triggerPrice = order.triggerPrice;
+                acc[basketId].origPriceType = order.origPriceType;
+            } else if (order.reportType === "status") {
+                acc[basketId].statusTime = order.ssboe;
+                acc[basketId].triggerPrice = order.triggerPrice;
+                acc[basketId].price = order.price;
+            } else if (order.status === "trigger pending") {
+                acc[basketId].triggerPendingTime = order.ssboe;
+                acc[basketId].triggerPrice = order.triggerPrice;
+            } else if (order.status === "order sent to exch") {
+                acc[basketId].orderSentToExchTime = order.ssboe;
+                acc[basketId].triggerPrice = order.triggerPrice;
+                acc[basketId].price = order.price;
+            } else if (order.status === "order received by exch gateway") {
+                acc[basketId].orderReceivedByExchGatewayTime = order.ssboe;
+                acc[basketId].triggerPrice = order.triggerPrice;
+                acc[basketId].price = order.price;
+            } else {
+                debugger;
+            }
+
+            return acc;
+        }, {});
+        console.log({ compiledOrders });
         this.orders = orders;
     }
 

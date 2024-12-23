@@ -27,7 +27,7 @@ export default function TradeControls(props = {}) {
         }
     }, [props.lastTrade.tradePrice]);
 
-    const sendOrder = async (transactionInfo) => {
+    const sendOrder = async ({ transactionType }) => {
         debugger;
         // alert(`${priceType} Sell ${limitPrice}`);
         let resp = await API.rapi_submitOrder({
@@ -35,7 +35,10 @@ export default function TradeControls(props = {}) {
             exchange: symbolData.exchange,
             priceType,
             limitPrice,
-            ...transactionInfo,
+            transactionType,
+            ...(isBracket && { bracketType: 6 }),
+            ...(tickTarget && { targetTicks: tickTarget }),
+            ...(tickLoss && { stopTicks: tickLoss }),
         });
 
         console.log(resp);
@@ -191,10 +194,12 @@ export default function TradeControls(props = {}) {
                                     title="up"
                                     onClick={() =>
                                         setTickLoss((tickCount) => {
+                                            tickCount = tickCount + 1;
+                                            if (tickCount <= 0) tickCount = 1;
                                             const lossPrice = (tickCount * ticks[symbolData?.baseSymbol] * -1).toFixed(2);
                                             setLossPrice(lossPrice);
 
-                                            return tickCount + 1;
+                                            return tickCount;
                                         })
                                     }
                                     rIcon={<AiOutlinePlus />}

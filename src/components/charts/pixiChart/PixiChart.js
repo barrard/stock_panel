@@ -491,13 +491,14 @@ export default function PixiChart({ Socket }) {
         });
         Socket.on("ordersShown", (data) => {
             debugger;
-            Object.keys(data).forEach((basketId) => {
-                const currentOrder = orders[basketId] || {};
-                debugger;
-                orders[basketId] = { ...currentOrder, ...data[basketId] };
-            });
+            // Object.keys(data).forEach((basketId) => {
+            //     const currentOrder = orders[basketId] || {};
+            //     debugger;
+            //     orders[basketId] = { ...currentOrder, ...data[basketId] };
+            // });
 
-            setOrders({ ...orders });
+            // setOrders({ ...orders });
+            setOrders([...orders, data]);
         });
 
         Socket.on("PlantStatus", (d) => {
@@ -606,7 +607,7 @@ export default function PixiChart({ Socket }) {
                 }
                 setFullSymbols([...d]);
                 const baseSymbol = d.find((d) => d.baseSymbol === symbolInput.value);
-                debugger;
+
                 fullSymbolRef.current = baseSymbol;
             })
             .catch((e) => {
@@ -656,7 +657,7 @@ export default function PixiChart({ Socket }) {
     const TimeFrameBtnsMemo = useMemo(() => <TimeFrameBtns backgroundDataFetch={backgroundDataFetch} setBackgroundDataFetch={setBackgroundDataFetch} setStartTime={setStartTime} setEndTime={setEndTime} startTime={startTime} endTime={endTime} setBarType={setBarTypeInput} setBarTypePeriod={setBarTypePeriodInput} barType={barType} barTypePeriod={barTypePeriod} />, [barType, barTypePeriod]);
     const SymbolBtnsMemo = useMemo(() => <SymbolBtns symbolOptions={symbolOptions} symbol={symbolInput} setSymbol={setSymbolInput} />, [barType, barTypePeriod, symbolInput]);
 
-    console.log("das render");
+    // console.log("das render");
     return (
         <>
             <div className="row g-0 relative">

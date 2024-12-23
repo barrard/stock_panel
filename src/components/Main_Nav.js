@@ -265,9 +265,7 @@ class Main_Nav extends React.Component {
                 {/* <div className="collapse navbar-collapse" id="navbarSupportedContent"> */}
                 <ul className="nav-bar-links">
                     {!isLoggedIn && <Register_Login_Links pathname={pathname} />}
-                    {isLoggedIn && (
-                        <Logout_Link username={this.props.user.user.primary_email.split("@")[0]} pathname={pathname} handleLogout={this.handleLogout} />
-                    )}
+                    {isLoggedIn && <Logout_Link username={this.props.user.user.primary_email.split("@")[0]} pathname={pathname} handleLogout={this.handleLogout} />}
 
                     {/* {isLoggedIn && <TradesLink />} */}
                 </ul>
@@ -308,16 +306,7 @@ const Navbar_Search = ({ handle_search_input, handle_search, arrowKeyListSelect,
         <label className="white" htmlFor="symbol search">
             Symbol Search
         </label>
-        <input
-            onKeyDown={arrowKeyListSelect}
-            onBlur={handle_search_input_blur}
-            onChange={(e) => handle_search_input(e)}
-            className="form-control mr-sm-2"
-            type="search"
-            placeholder='use "/" for futures i.e. /ES'
-            aria-label="Search"
-            value={search_symbol}
-        />
+        <input onKeyDown={arrowKeyListSelect} onBlur={handle_search_input_blur} onChange={(e) => handle_search_input(e)} className="form-control mr-sm-2" type="search" placeholder='use "/" for futures i.e. /ES' aria-label="Search" value={search_symbol} />
     </div>
 );
 

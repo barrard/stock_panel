@@ -1,6 +1,7 @@
 import React from "react";
 import styled from "styled-components";
 import API from "../../../../components/API";
+import moment from "moment";
 
 export default function OrdersList(props) {
     let { orders = {} } = props;
@@ -38,28 +39,59 @@ export default function OrdersList(props) {
         </div>
     );
 }
+function formatTimeDiff(diffInMilliseconds) {
+    const absValue = Math.abs(diffInMilliseconds);
+
+    if (absValue >= 60000) {
+        // If 60 seconds or more, show in minutes
+        return `${(diffInMilliseconds / 60000).toFixed(2)} min`;
+    } else if (absValue >= 1000) {
+        // If 1 second or more, show in seconds
+        return `${(diffInMilliseconds / 1000).toFixed(2)} s`;
+    } else if (absValue >= 1) {
+        // If 1 millisecond or more, show in milliseconds
+        return `${diffInMilliseconds.toFixed(2)} ms`;
+    } else {
+        // Convert to microseconds
+        const microseconds = diffInMilliseconds * 1000;
+        return `${microseconds.toFixed(1)} μs`;
+    }
+}
 
 function formatTime({ ssboe, usecs }) {
-    const milliseconds = ssboe * 1000 + Math.floor(usecs / 1000);
-    const date = new Date(milliseconds);
+    const totalMilliseconds = combineTimestamps({ ssboe, usecs });
+    const date = new Date(totalMilliseconds);
 
-    // Using built-in toLocaleTimeString
-    return date.toLocaleTimeString("en-US", {
+    // Get hours, minutes, seconds
+    const timeStr = date.toLocaleTimeString("en-US", {
         hour12: true,
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
-        fractionalSecondDigits: 3,
     });
+
+    // Ensure usecs is padded to 6 digits
+    const usecStr = String(usecs).padStart(6, "0");
+
+    // Split the time string to insert microseconds in the correct place
+    const [time, ampm] = timeStr.split(" ");
+
+    // Format as HH:MM:SS.microseconds AM/PM
+    return `${time}.${usecStr} ${ampm}`;
 }
 
 function combineTimestamps({ ssboe, usecs }) {
-    // Convert usecs to milliseconds
-    const usecStr = String(usecs).padStart(6, "0"); // Pad to 6 digits
-    const milliseconds = parseInt(usecStr.substring(0, 3)); // Take first 3 digits for milliseconds
+    // Convert ssboe to milliseconds
+    const milliseconds = ssboe * 1000;
 
-    // Convert ssboe to milliseconds and add the usec milliseconds
-    const totalMilliseconds = ssboe * 1000 + milliseconds;
+    // Ensure usecs is padded to 6 digits
+    const usecStr = String(usecs).padStart(6, "0");
+
+    // Convert microseconds to milliseconds (keeping fractional part)
+    const microsToMillis = parseInt(usecStr) / 1000;
+
+    // Combine them
+    const totalMilliseconds = milliseconds + microsToMillis;
 
     return totalMilliseconds;
 }
@@ -72,19 +104,31 @@ function OrderItem(props) {
 
     const order = orders?.[0];
     // const order = orders?.slice(-1)[0];
-    console.log(order.basketId);
+
     const reportTexts = [];
 
     // if (order.quantity == undefined) {
     //     console.log(order.quantity);
-    //     debugger;
+
     // }
     let isBracket = false;
 
-    orders.forEach((order) => {
+    orders.forEach((order, index) => {
         if (order.bracketType) isBracket = true;
-        console.log(formatTime(order));
-        if (order.reportText || order.status || order.reportText) reportTexts.push({ text: order.reportText || order.status || order.reportText, time: formatTime(order) });
+        let timeDiff;
+        if (index < orders.length - 1) {
+            const nextOrder = orders[index + 1];
+            timeDiff = order.datetime - nextOrder.datetime;
+            /**
+             * This could be like
+             *
+             *     order.datetime - nextOrder.datetime //0.0078125 miliseconds
+             *      //i want to show this number in a mor readable way, like 7.8 micro seconds
+             *    but if it's more than 1 second, it needs to adjust to seconds
+             * I have moment
+             */
+        }
+        if (order.reportText || order.status || order.reportText) reportTexts.push({ timeDiff, templateId: order.templateId, notifyType: order.notifyType, text: order.reportText || order.status || order.reportText, time: formatTime(order) });
     });
     return (
         <OrderContainer order={order}>
@@ -108,14 +152,20 @@ function OrderItem(props) {
                 {/* {order.reportType !== "status" && ( */}
                 <div className="col">
                     {reportTexts.map((order) => {
-                        const { text, time } = order;
+                        const { text, time, notifyType, templateId, timeDiff } = order;
 
                         return (
                             <ReportType text={text}>
                                 {text ? (
                                     <>
+                                        <p>
+                                            {notifyType} {templateId}
+                                        </p>
                                         <p>{text}</p>
+
                                         <small>{time}</small>
+                                        <br />
+                                        {timeDiff && <small>{formatTimeDiff(timeDiff)}</small>}
                                     </>
                                 ) : (
                                     `${"order.reportText"} `
@@ -196,7 +246,6 @@ function transactionTypeColor(props) {
             return "GREEN";
 
         default:
-            debugger;
             return "black";
     }
 }
@@ -242,7 +291,6 @@ function reportTypeColor(props) {
             return "red";
 
         default:
-            debugger;
             return "pink";
         // }
     }
@@ -270,11 +318,9 @@ function tradeTypeColor(props) {
             return "red";
         case "LIMIT_IF_TOUCHED":
         case 6: //
-            debugger;
             return "yellow";
 
         default:
-            debugger;
             console.log(order.priceType);
             return "black";
     }
@@ -297,7 +343,6 @@ function orderStatusColor(props) {
         case "cancel received by exch gateway":
             return "#FF6B6B"; // Lighter coral red
         default:
-            debugger;
             return "grey";
     }
 }

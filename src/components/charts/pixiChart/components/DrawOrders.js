@@ -32,7 +32,7 @@ export default class DrawOrders {
         }
 
         this.ordersGfx.clear();
-
+        // debugger;
         Object.keys(this.orders).forEach((basketId) => {
             const order = this.orders[basketId];
             if (order.status === "open") {
@@ -40,12 +40,14 @@ export default class DrawOrders {
             } else if (order.status === "complete") {
                 this.drawMarker(order);
             } else if (order.status === "trigger pending") {
+                // debugger;
                 this.drawStop(order);
             } else if (order.status === "Cancellation Failed") {
                 // this.drawStop(order);
                 console.log("Cancellation Failed and we dont care");
             } else {
-                console.log(order);
+                // debugger;
+                // console.log(order);
             }
         });
     }
