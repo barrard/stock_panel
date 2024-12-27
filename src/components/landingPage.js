@@ -7,10 +7,7 @@ import List_Stock_Data from "./landingPageComponents/List_Stock_Data.js";
 import Socket from "./Socket.js";
 
 import API from "../components/API.js";
-import {
-    updateActives,
-    updateLastPrices,
-} from "../redux/actions/actives_actions";
+import { updateActives, updateLastPrices } from "../redux/actions/actives_actions";
 class Landing_Page extends React.Component {
     constructor(props) {
         super(props);
@@ -31,9 +28,8 @@ class Landing_Page extends React.Component {
         //     console.log(movers);
         //     this.props.dispatch(set_movers(movers));
         // }
-        Socket.on("ACTIVES", (data) => {
-            // console.log(data);
-            return dispatch(updateActives(data));
+        Socket.on("movers", (data) => {
+            return dispatch(set_movers(data));
         });
         Socket.on("activesQuoteData", (data) => {
             // console.log(data);
@@ -41,56 +37,37 @@ class Landing_Page extends React.Component {
         });
     }
 
+    componentWillUnmount() {
+        Socket.off("movers");
+        Socket.off("activesQuoteData");
+    }
+
     render() {
-        // console.log(this.props)
         let { movers } = this.props.stock_data;
-        let { actives, lastPrices } = this.props.actives_reducer;
-        console.log(actives, lastPrices);
-        // console.log({movers})
+
         return (
             <div className="row flex_center">
                 <div className="col-sm-8">
-                    <div className="row">
+                    {/* <div className="row">
                         <LastPriceQuotes lastPrices={lastPrices} />
-                    </div>
+                    </div> */}
                     <div className="row ">
-                        {!Object.keys(actives).length && <div>No Data</div>}
-                        {Object.keys(actives).map((marketDuration, index) => {
+                        {!Object.keys(movers).length && <div>No Data</div>}
+                        {Object.keys(movers).map((marketIndex, index) => {
                             // let { down, up } = movers[market];
                             // console.log({down, up})
-                            const activesData = actives[marketDuration];
-                            const {
-                                sampleDuration,
-                                startTime,
-                                displayTime,
-                                ACTIVES,
-                            } = activesData;
-                            if (!ACTIVES) {
-                                return (
-                                    <React.Fragment
-                                        key={marketDuration}
-                                    ></React.Fragment>
-                                );
+                            const activesData = movers[marketIndex];
+                            const { PERCENT_CHANGE_DOWN, PERCENT_CHANGE_UP, TRADES, VOLUME } = activesData;
+                            if (!PERCENT_CHANGE_DOWN) {
+                                return <React.Fragment key={marketIndex}></React.Fragment>;
                             }
 
                             return (
                                 <div className="full-width" key={index}>
-                                    {ACTIVES.mostShares && (
-                                        <List_Stock_Data
-                                            title={`${marketDuration} mostShares`}
-                                            data={ACTIVES.mostShares}
-                                            prices={lastPrices}
-                                            props={this.props}
-                                        />
-                                    )}
-                                    {ACTIVES.mostTrades && (
-                                        <List_Stock_Data
-                                            title={`${marketDuration} mostTrades`}
-                                            data={ACTIVES.mostTrades}
-                                            prices={lastPrices}
-                                            props={this.props}
-                                        />
-                                    )}
+                                    {PERCENT_CHANGE_DOWN && <List_Stock_Data title={`${marketIndex} PERCENT_CHANGE_DOWN`} data={PERCENT_CHANGE_DOWN} props={this.props} />}
+                                    {PERCENT_CHANGE_UP && <List_Stock_Data title={`${marketIndex} PERCENT_CHANGE_UP`} data={PERCENT_CHANGE_UP} props={this.props} />}
+                                    {TRADES && <List_Stock_Data title={`${marketIndex} TRADES`} data={TRADES} props={this.props} />}
+                                    {VOLUME && <List_Stock_Data title={`${marketIndex} VOLUME`} data={VOLUME} props={this.props} />}
                                 </div>
                             );
                         })}
@@ -122,9 +99,7 @@ function LastPriceQuotes({ lastPrices = {} }) {
         data = data.sort((symbol_a, symbol_b) => {
             // console.log(lastPrices[symbol_a][sortBy]);
             // console.log(lastPrices[symbol_b][sortBy]);
-            return sortOrder
-                ? lastPrices[symbol_a][sortBy] - lastPrices[symbol_b][sortBy]
-                : lastPrices[symbol_b][sortBy] - lastPrices[symbol_a][sortBy];
+            return sortOrder ? lastPrices[symbol_a][sortBy] - lastPrices[symbol_b][sortBy] : lastPrices[symbol_b][sortBy] - lastPrices[symbol_a][sortBy];
         });
         console.log(data);
 

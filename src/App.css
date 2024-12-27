@@ -491,6 +491,7 @@ canvas {
     width: 50%;
     border: 3px solid black;
     box-shadow: -11px 11px 28px 11px rgba(0, 0, 0, 0.6);
+    color: black;
 }
 .margin_right_4em {
     margin-right: 4em;
@@ -785,8 +786,7 @@ canvas {
 }
 
 .sc--shine {
-    box-shadow: inset rgba(0, 0, 0, 0.1) 0px -0.15em 0px, inset rgba(255, 255, 255, 0.1) 0px 0.15em 0px, rgba(0, 0, 0, 0.3) 0px 0.1em 0.3em,
-        inset rgba(255, 255, 255, 0.15) 0px 2.5em 0px -1em;
+    box-shadow: inset rgba(0, 0, 0, 0.1) 0px -0.15em 0px, inset rgba(255, 255, 255, 0.1) 0px 0.15em 0px, rgba(0, 0, 0, 0.3) 0px 0.1em 0.3em, inset rgba(255, 255, 255, 0.15) 0px 2.5em 0px -1em;
 }
 .sc--shine:active {
     box-shadow: rgba(255, 255, 255, 0.2) 0 0.1em 0, inset rgba(0, 0, 0, 0.3) 0px 0.25em 1em, inset rgba(255, 255, 255, 0.1) 0px 2.5em 0px -1em;

@@ -255,6 +255,10 @@ export default function PixiChart({ Socket }) {
         // if (openTradeWindow) {
         pixiData.showTradeWindow(openTradeWindow);
         // }
+
+        if (!Object.keys(pixiData.orders).length) {
+            getOrders();
+        }
     }, [openTradeWindow, pixiData]);
 
     useEffect(() => {
@@ -315,34 +319,52 @@ export default function PixiChart({ Socket }) {
         // }
     }, [currentTimeBar]);
 
-    useEffect(() => {
-        // console.log({ orders });
-        pixiData?.setOrders(orders);
-    }, [orders]);
+    // useEffect(() => {
+    //     // console.log({ orders });
+    //     if (!orders.length) return;
+    //     // pixiData?.setOrders(orders);
+    //     // debugger;
+    // }, [orders, pixiData]);
 
     useEffect(() => {
+        // debugger;
         if (!pixiData?.disableIndicator) return;
         pixiData?.disableIndicator("orders", toggleOrders);
+        return () => {
+            pixiData?.disableIndicator("orders", false);
+        };
     }, [toggleOrders, pixiData]);
 
     useEffect(() => {
         if (!pixiData?.disableIndicator) return;
         pixiData?.disableIndicator("zigZag", toggleZigZag);
+        return () => {
+            pixiData?.disableIndicator("zigZag", false);
+        };
     }, [toggleZigZag, pixiData]);
 
     useEffect(() => {
         if (!pixiData?.disableIndicator) return;
         pixiData?.disableIndicator("pivotLines", togglePivotLines);
+        return () => {
+            pixiData?.disableIndicator("pivotLines", false);
+        };
     }, [togglePivotLines, pixiData]);
 
     useEffect(() => {
         if (!pixiData?.disableIndicator) return;
         pixiData?.disableIndicator("marketProfile", toggleMarketProfile);
+        return () => {
+            pixiData?.disableIndicator("marketProfile", false);
+        };
     }, [toggleMarketProfile, pixiData]);
 
     useEffect(() => {
         if (!pixiData?.disableIndicator) return;
         pixiData?.disableIndicator("orderBook", toggleOrderbook);
+        return () => {
+            pixiData?.disableIndicator("orderBook", false);
+        };
     }, [toggleOrderbook, pixiData]);
 
     useEffect(() => {
@@ -477,28 +499,10 @@ export default function PixiChart({ Socket }) {
         console.log("Emitting getCompileHistoryTracker");
         Socket.emit("getCompileHistoryTracker");
 
-        if (!Object.keys(orders).length) {
-            getOrders();
-
-            //somewhat deprecating this with a new server endpoint
-            // Socket.emit("getOrders", { ok: "?" });
-        }
-
         Socket.on("orderCancelled", (data) => {
             console.log("orderCancelled");
 
             console.log(data);
-        });
-        Socket.on("ordersShown", (data) => {
-            debugger;
-            // Object.keys(data).forEach((basketId) => {
-            //     const currentOrder = orders[basketId] || {};
-            //     debugger;
-            //     orders[basketId] = { ...currentOrder, ...data[basketId] };
-            // });
-
-            // setOrders({ ...orders });
-            setOrders([...orders, data]);
         });
 
         Socket.on("PlantStatus", (d) => {
@@ -506,6 +510,16 @@ export default function PixiChart({ Socket }) {
                 ...plantStatus,
                 [d.name]: true,
             }));
+        });
+
+        Socket.on("ordersShown", (data) => {
+            Object.keys(data).forEach((basketId) => {
+                // setOrders((orders) => [...orders, data[basketId]]);
+                if (!orders[basketId]) orders[basketId] = [];
+                orders[basketId].push(data[basketId]);
+                pixiData?.addOrder([data[basketId]]);
+            });
+            setOrders({ ...orders });
         });
 
         Socket.on("timeBarUpdate", (data) => {
@@ -540,6 +554,12 @@ export default function PixiChart({ Socket }) {
             Socket.off("timeBarUpdate");
             //BACK TESTER
             Socket.off("backtester-bars");
+
+            setDrawMarketProfile(false);
+            setDrawOrderBook(false);
+            setDrawOrders(false);
+            setDrawPivotLines(false);
+            setDrawZigZag(false);
         };
     }, [symbol]);
     // }, [symbol, barType, barTypePeriod]);
@@ -617,9 +637,19 @@ export default function PixiChart({ Socket }) {
     }, []);
 
     async function getOrders() {
-        const order = await API.getOrders();
-        setOrders(order);
-        pixiData.setOrders(order);
+        const orders = await API.getOrders();
+
+        function reduceByBasketId(acc, order) {
+            if (!order.basketId) return acc;
+            if (!acc[order.basketId]) {
+                acc[order.basketId] = [];
+            }
+            acc[order.basketId].push(order);
+            return acc;
+        }
+        const compiledOrders = Object.values(orders).reduce(reduceByBasketId, {});
+        setOrders(compiledOrders);
+        pixiData?.setOrders(orders);
     }
 
     const clearLongPress = () => {

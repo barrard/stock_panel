@@ -5,15 +5,6 @@ import moment from "moment";
 
 export default function OrdersList(props) {
     let { orders = {} } = props;
-    function reduceByBasketId(acc, order) {
-        if (!order.basketId) return acc;
-        if (!acc[order.basketId]) {
-            acc[order.basketId] = [];
-        }
-        acc[order.basketId].push(order);
-        return acc;
-    }
-    orders = Object.values(orders).reduce(reduceByBasketId, {});
 
     return (
         <div>
@@ -34,6 +25,8 @@ export default function OrdersList(props) {
                 .map((basketId) => {
                     // console.log(orders[basketId]);
                     let orderStates = orders[basketId];
+                    if (!basketId) {
+                    }
                     return <OrderItem key={basketId} orders={orderStates} />;
                 })}
         </div>
@@ -80,7 +73,7 @@ function formatTime({ ssboe, usecs }) {
     return `${time}.${usecStr} ${ampm}`;
 }
 
-function combineTimestamps({ ssboe, usecs }) {
+function combineTimestamps({ ssboe, usecs = "" }) {
     // Convert ssboe to milliseconds
     const milliseconds = ssboe * 1000;
 
@@ -155,7 +148,7 @@ function OrderItem(props) {
                         const { text, time, notifyType, templateId, timeDiff } = order;
 
                         return (
-                            <ReportType text={text}>
+                            <ReportType key={`${time}-${notifyType}-${templateId}`} text={text}>
                                 {text ? (
                                     <>
                                         <p>

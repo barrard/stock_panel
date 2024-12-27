@@ -29,8 +29,10 @@ export default function TradeControls(props = {}) {
 
     const sendOrder = async ({ transactionType }) => {
         debugger;
+        const datetime = new Date().getTime();
         // alert(`${priceType} Sell ${limitPrice}`);
         let resp = await API.rapi_submitOrder({
+            datetime,
             symbol: symbolData.fullSymbol,
             exchange: symbolData.exchange,
             priceType,

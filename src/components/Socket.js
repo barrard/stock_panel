@@ -6,7 +6,10 @@ const Socket = {
     socket: null,
     connect() {
         if (this.socket) return;
-        this.socket = io(process.env.REACT_APP_STOCK_DATA_URL);
+        this.socket = io(process.env.REACT_APP_STOCK_DATA_URL, {
+            transports: ["websocket"],
+            upgrade: false, // Prevents falling back to polling
+        });
     },
     connected: false,
     emit: function (event, data) {

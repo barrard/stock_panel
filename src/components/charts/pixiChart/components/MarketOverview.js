@@ -132,7 +132,7 @@ function MarketItem(props) {
             <div className="row">
                 <div className="col-12">
                     <ValChange num={lastTrade?.nearPriceBidSizeToAskSizeRatio?.toFixed(2) - lastTrade?.nearPriceBidSizeToAskSizeRatioMA?.toFixed(2)}>
-                        {lastTrade?.nearPriceBidSizeToAskSizeRatio?.toFixed(2)} / {lastTrade?.nearPriceBidSizeToAskSizeRatioMA.toFixed(2)}
+                        {lastTrade?.nearPriceBidSizeToAskSizeRatio?.toFixed(2)} / {lastTrade?.nearPriceBidSizeToAskSizeRatioMA?.toFixed(2)}
                     </ValChange>
                 </div>
                 <Small className="col-12">

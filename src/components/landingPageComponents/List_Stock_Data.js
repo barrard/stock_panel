@@ -9,23 +9,18 @@ import TotalVolume from "../QuoteComponents/TotalVolume.js";
 class List_Stock_Data extends React.Component {
     constructor(props) {
         super(props);
-        console.log(props);
-        let { title, data, prices } = props;
+
+        let { title, data } = props;
         debugger;
-        data.forEach((d) => {
-            d.price = prices[d.name];
-        });
 
         this.state = {
             sorted_prop: "totalVolume",
             sort_state: false, //0 = low->high 1 = high->low
             number_rows: 30, //starting default
             all_data: data,
-            data: data
-                .sort((a, b) => this.high_to_low(a, b, "totalVolume"))
-                .slice(0, 30),
+            data: data.sort((a, b) => this.high_to_low(a, b, "totalVolume")).slice(0, 30),
         };
-        console.log(this.state);
+
         // this.load_more_data = this.load_more_data.bind(this);
     }
 
@@ -53,28 +48,19 @@ class List_Stock_Data extends React.Component {
         if (sort_state) {
             this.setState({ sort_state: false });
             this.setState({
-                data: this.state.all_data.sort((a, b) =>
-                    this.high_to_low(a, b, prop)
-                ),
+                data: this.state.all_data.sort((a, b) => this.high_to_low(a, b, prop)),
             });
         } else {
             this.setState({ sort_state: true });
             this.setState({
-                data: this.state.all_data.sort((a, b) =>
-                    this.low_to_high(a, b, prop)
-                ),
+                data: this.state.all_data.sort((a, b) => this.low_to_high(a, b, prop)),
             });
         }
         this.setState({ sort_state });
     }
 
     render() {
-        let { title, data, prices } = this.props;
-        if (prices) {
-            data.forEach((d) => {
-                d.quote = prices[d.name];
-            });
-        }
+        let { title, data } = this.props;
 
         return (
             <>
@@ -92,14 +78,10 @@ class List_Stock_Data extends React.Component {
                         />
 
                         <div className="row_container">
-                            {data.map((stock_data, index) => (
-                                <Display_Stock_Row
-                                    key={index}
-                                    index={index}
-                                    stock_data={stock_data}
-                                    props={this.props.props}
-                                />
-                            ))}
+                            {data.map((stock_data, index) => {
+                                stock_data.volTradeRatio = stock_data.volume / stock_data.trades;
+                                return <Display_Stock_Row key={index} index={index} stock_data={stock_data} props={this.props.props} />;
+                            })}
                         </div>
                     </div>
                 )}
@@ -111,42 +93,29 @@ class List_Stock_Data extends React.Component {
 export default withRouter(List_Stock_Data);
 
 function Display_Stock_Row({ stock_data, index, props }) {
-    // console.log({stock_data})
-    let {
-        name: symbol,
-        quote = {},
-        change,
-        volTradeRatio,
-        vol: totalVolume,
-        nameDesc,
-        direction,
-    } = stock_data;
-    let { lastPrice, totalVol, percentChange, netChange } = quote;
-    if (!symbol) {
-        symbol = stock_data.symbol;
-        totalVol = stock_data.totalVol;
-        percentChange = stock_data.percentChange;
-        lastPrice = stock_data.lastPrice;
-        netChange = stock_data.netChange;
-    }
+    let { description, lastPrice, marketShare, netChange, netPercentChange, symbol, totalVolume, trades, volume, volTradeRatio } = stock_data;
+
     let class_name = index % 2 == 0 ? "ticker_row_light" : "ticker_row_dark";
     let timeframe = "day";
     let end = new Date().getTime();
     return (
         <div
             className={`row clickable ${class_name}`}
-            onClick={
-                () => console.log("click")
-                // props.history.push(`/chart/${symbol}`)
-                // view_selected_stock({ timeframe, end, symbol, props })
-            }
+            onClick={() => {
+                console.log("click");
+                props.history.push(`/chart/${symbol}`);
+                view_selected_stock({ timeframe, end, symbol, props });
+            }}
         >
             <div className="col-2 flex">
-                <Symbol symbol={nameDesc || symbol} />
+                <Symbol symbol={description} />
+            </div>
+            <div className="col-1 flex">
+                <Symbol symbol={symbol} />
             </div>
 
-            <div className="col-2 flex_end">
-                <Percent_Change percent_change={percentChange} />
+            <div className="col-1 flex_end">
+                <Percent_Change percent_change={netPercentChange} />
             </div>
             <div className="col-2 flex_end">
                 <Price price={lastPrice} />
@@ -156,11 +125,14 @@ function Display_Stock_Row({ stock_data, index, props }) {
             </div>
 
             <div className="col-2 flex_end">
-                <Volume vol={totalVol} />
+                <Volume vol={volume} />
             </div>
             <div className="col-2 flex_end">
                 <Volume vol={volTradeRatio} />
             </div>
+            {/* <div className="col-2 flex_end">
+                <Volume vol={marketShare} />
+            </div> */}
         </div>
     );
 }
@@ -170,65 +142,51 @@ const Stock_List_Header = ({ sort_by, sort_state, sorted_prop }) => {
         <div className="row white">
             <div className="align_items_center col-2 flex">
                 <h6 onClick={() => sort_by("symbol")}>Sym.</h6>
-                {sort_state && sorted_prop == "symbol" && (
-                    <div className="arrow-up" />
-                )}
+                {sort_state && sorted_prop == "symbol" && <div className="arrow-up" />}
 
-                {!sort_state && sorted_prop == "symbol" && (
-                    <div className="arrow-down" />
-                )}
+                {!sort_state && sorted_prop == "symbol" && <div className="arrow-down" />}
+            </div>
+            <div className="align_items_center col-1 flex">
+                <h6 onClick={() => sort_by("symbol")}>Sym.</h6>
+                {sort_state && sorted_prop == "symbol" && <div className="arrow-up" />}
+
+                {!sort_state && sorted_prop == "symbol" && <div className="arrow-down" />}
+            </div>
+            <div className="align_items_center col-1 flex_end">
+                <h6 onClick={() => sort_by("netPercentChange")}>Perc.</h6>
+                {sort_state && sorted_prop == "netPercentChange" && <div className="arrow-up" />}
+                {!sort_state && sorted_prop == "netPercentChange" && <div className="arrow-down" />}{" "}
             </div>
             <div className="align_items_center col-2 flex_end">
-                <h6 onClick={() => sort_by("change")}>Perc.</h6>
-                {sort_state && sorted_prop == "change" && (
-                    <div className="arrow-up" />
-                )}
-                {!sort_state && sorted_prop == "change" && (
-                    <div className="arrow-down" />
-                )}{" "}
-            </div>
-            <div className="align_items_center col-2 flex_end">
-                <h6 onClick={() => sort_by("last")}>Price</h6>
-                {sort_state && sorted_prop == "last" && (
-                    <div className="arrow-up" />
-                )}
+                <h6 onClick={() => sort_by("lastPrice")}>Price</h6>
+                {sort_state && sorted_prop == "lastPrice" && <div className="arrow-up" />}
 
-                {!sort_state && sorted_prop == "last" && (
-                    <div className="arrow-down" />
-                )}
+                {!sort_state && sorted_prop == "lastPrice" && <div className="arrow-down" />}
             </div>
             <div className="align_items_center col-2 flex_end">
                 <h6 onClick={() => sort_by("netChange")}>+/-</h6>
-                {sort_state && sorted_prop == "netChange" && (
-                    <div className="arrow-up" />
-                )}
+                {sort_state && sorted_prop == "netChange" && <div className="arrow-up" />}
 
-                {!sort_state && sorted_prop == "netChange" && (
-                    <div className="arrow-down" />
-                )}
+                {!sort_state && sorted_prop == "netChange" && <div className="arrow-down" />}
             </div>
             <div className="align_items_center col-2 flex_end">
-                <h6 onClick={() => sort_by("totalVol")}>Vol.</h6>
-                {sort_state && sorted_prop == "totalVol" && (
-                    <div className="arrow-up" />
-                )}
+                <h6 onClick={() => sort_by("volume")}>Vol.</h6>
+                {sort_state && sorted_prop == "volume" && <div className="arrow-up" />}
 
-                {!sort_state && sorted_prop == "totalVol" && (
-                    <div className="arrow-down" />
-                )}
+                {!sort_state && sorted_prop == "volume" && <div className="arrow-down" />}
             </div>
             <div className="align_items_center col-2 flex_end">
-                <h6 onClick={() => sort_by("volTradeRatio")}>
-                    Vol Perc ratio.
-                </h6>
-                {sort_state && sorted_prop == "volTradeRatio" && (
-                    <div className="arrow-up" />
-                )}
+                <h6 onClick={() => sort_by("volTradeRatio")}>Vol Pre Trade ratio.</h6>
+                {sort_state && sorted_prop == "volTradeRatio" && <div className="arrow-up" />}
 
-                {!sort_state && sorted_prop == "volTradeRatio" && (
-                    <div className="arrow-down" />
-                )}
+                {!sort_state && sorted_prop == "volTradeRatio" && <div className="arrow-down" />}
             </div>
+            {/* <div className="align_items_center col-2 flex_end">
+                <h6 onClick={() => sort_by("marketShare")}>marketShare.</h6>
+                {sort_state && sorted_prop == "marketShare" && <div className="arrow-up" />}
+
+                {!sort_state && sorted_prop == "marketShare" && <div className="arrow-down" />}
+            </div> */}
         </div>
     );
 };
@@ -237,24 +195,14 @@ const Volume = ({ vol }) => {
     return <span className="ticker_vol">{vol.toLocaleString("en-US")}</span>;
 };
 
-const Price = ({ price }) => (
-    <span className="ticker_price">
-        ${parseFloat(price).toFixed(2).toLocaleString("en-US")}
-    </span>
-);
+const Price = ({ price }) => <span className="ticker_price">${parseFloat(price).toFixed(2).toLocaleString("en-US")}</span>;
 
 const Percent_Change = ({ percent_change }) => {
     let class_name;
     if (percent_change > 0) class_name = "percentage_up";
     if (percent_change < 0) class_name = "percentage_down";
     if (percent_change == 0) class_name = "percentage_neutral";
-    return (
-        <span className={class_name}>
-            {`${parseFloat(
-                (percent_change * 100).toLocaleString("en-US")
-            ).toFixed(2)}%`}
-        </span>
-    );
+    return <span className={class_name}>{`${parseFloat((percent_change * 100).toLocaleString("en-US")).toFixed(2)}%`}</span>;
 };
 
 const Symbol = ({ symbol }) => <span className="ticker_symbol">{symbol}</span>;

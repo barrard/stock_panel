@@ -23,7 +23,6 @@ export function logout_user(props) {
 }
 
 export function set_user_is_logged_in(user) {
-    debugger;
     toastr.success(`Welcome back ${user.primary_email}`);
 
     return {
@@ -34,6 +33,5 @@ export function set_user_is_logged_in(user) {
 }
 
 export function login_success(user) {
-    debugger;
     return set_user_is_logged_in(user);
 }

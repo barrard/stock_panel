@@ -35,20 +35,29 @@ export default class DrawOrders {
         // debugger;
         Object.keys(this.orders).forEach((basketId) => {
             const order = this.orders[basketId];
-            if (order.status === "open") {
+            if (order.completionReason == "F") {
+                this.drawFilledMarker(order);
+            } else if ((order.statusTime && order.priceType !== "MARKET") || order.triggerTime) {
                 this.drawOpenMarker(order);
-            } else if (order.status === "complete") {
-                this.drawMarker(order);
-            } else if (order.status === "trigger pending") {
-                // debugger;
-                this.drawStop(order);
-            } else if (order.status === "Cancellation Failed") {
-                // this.drawStop(order);
-                console.log("Cancellation Failed and we dont care");
+            } else if (order.priceType == "MARKET" && order.fillTime) {
+                this.drawFilledMarker(order);
             } else {
-                // debugger;
-                // console.log(order);
+                console.log(order);
+                debugger;
             }
+            // else if (order.status === "complete") {
+            //     this.drawMarker(order);
+            // } else if (order.status === "trigger pending") {
+            //     // debugger;
+            //     this.drawStop(order);
+            // } else if (order.status === "Cancellation Failed") {
+            //     // this.drawStop(order);
+            //     console.log("Cancellation Failed and we dont care");
+            // }
+            // else {
+            //     // debugger;
+            //     // console.log(order);
+            // }
         });
     }
 
@@ -59,13 +68,13 @@ export default class DrawOrders {
         let endIndex = this.data.slicedData.findIndex((d) => d.timestamp > time);
 
         if (endIndex < 0) {
-            return;
-            endIndex = this.data.slicedData.length - 1;
+            return; //TODO don't just hide it,....
+            // endIndex = this.data.slicedData.length - 1;
         }
 
         const x = this.data.xScale(endIndex);
-
-        const y = this.data.priceScale(order.triggerPrice);
+        debugger;
+        const y = this.data.priceScale(order.triggerPrice || order.price || order.fillPrice);
         const radius = 6; //this.data.priceScale(0) - this.data.priceScale(1);
         // console.log({ radius });
         const color = order.transactionType === "BUY" ? 0x00ff00 : 0xff0000;
@@ -106,28 +115,115 @@ export default class DrawOrders {
             this.ordersGfx.drawCircle(x, y, radius);
         }
     }
+    drawFilledMarker(order) {
+        if (!this.ordersGfx?._geometry || !this.data.slicedData.length) return;
+
+        const statusTime = Math.floor(order.statusTime * 1000);
+        debugger;
+        let startIndex = this.data.slicedData.findIndex((d) => d.timestamp >= statusTime);
+        if (startIndex < 0) return;
+
+        const startX = this.data.xScale(startIndex);
+        const y = this.data.priceScale(order.fillPrice);
+        if (y === undefined) return;
+
+        const radius = 5;
+        const color = order.transactionType === "BUY" || order.transactionType === 1 ? 0x00ff00 : 0xff0000;
+
+        // Draw start marker
+        this.ordersGfx.lineStyle(2, color, 0.9);
+        this.ordersGfx.beginFill(color, 0.1);
+        this.ordersGfx.drawCircle(startX, y, radius);
+
+        if (order.fillTime) {
+            const endTime = Math.floor(order.fillTime * 1000);
+            let endIndex = this.data.slicedData.findIndex((d) => d.timestamp >= endTime);
+            if (endIndex < 0) return;
+
+            const endX = this.data.xScale(endIndex);
+
+            // Draw connecting line
+            this.ordersGfx.lineStyle(3, color, 0.5);
+            this.ordersGfx.moveTo(startX, y);
+            this.ordersGfx.lineTo(endX, y);
+
+            if (order.isCancelled) {
+                // Draw X
+                const size = radius * 0.7;
+                this.ordersGfx.lineStyle(2, color, 0.9);
+                this.ordersGfx.moveTo(endX - size, y - size);
+                this.ordersGfx.lineTo(endX + size, y + size);
+                this.ordersGfx.moveTo(endX - size, y + size);
+                this.ordersGfx.lineTo(endX + size, y - size);
+            } else if (order.isComplete) {
+                // Draw filled circle
+                this.ordersGfx.beginFill(color, 0.5);
+                this.ordersGfx.lineStyle(2, color, 0.9);
+                this.ordersGfx.drawCircle(endX, y, radius);
+            }
+        }
+    }
 
     drawOpenMarker(order) {
         if (!this.ordersGfx?._geometry || !this.data.slicedData.length) return;
 
-        const time = Math.floor(order.ssboe * 1000);
-        let endIndex = this.data.slicedData.findIndex((d) => d.timestamp >= time);
+        const startTime = Math.floor(order.statusTime * 1000);
+        let startIndex = this.data.slicedData.findIndex((d) => d.timestamp >= startTime);
+        if (startIndex < 0) return;
 
-        if (endIndex < 0) {
-            return;
-            endIndex = this.data.slicedData.length - 1;
-        }
+        const startX = this.data.xScale(startIndex);
+        debugger;
+        const y = this.data.priceScale(order.fillPrice || order.avgFillPrice || order.triggerPrice || order.price);
+        if (y === undefined) return;
 
-        const x = this.data.xScale(endIndex);
+        const radius = 10;
+        const color = order.transactionType === "BUY" || order.transactionType === 1 ? 0x00ff00 : 0xff0000;
 
-        const y = this.data.priceScale(order.price);
-        const radius = 10; //this.data.priceScale(0) - this.data.priceScale(1);
-        // console.log({ radius });
-        const color = order.transactionType === "BUY" ? 0x00ff00 : 0xff0000;
-        // this.ordersGfx.beginFill(color, 0.5);
+        // Draw start marker
         this.ordersGfx.lineStyle(2, color, 0.9);
         this.ordersGfx.beginFill(color, 0.1);
+        this.ordersGfx.drawCircle(startX, y, radius);
 
-        this.ordersGfx.drawCircle(x, y, radius);
+        if (order.endTime) {
+            const endTime = Math.floor(order.endTime * 1000);
+            let endIndex = this.data.slicedData.findIndex((d) => d.timestamp >= endTime);
+            if (endIndex < 0) return;
+
+            const endX = this.data.xScale(endIndex);
+
+            // Draw connecting line
+            this.ordersGfx.lineStyle(3, color, 0.5);
+            this.ordersGfx.moveTo(startX, y);
+            this.ordersGfx.lineTo(endX, y);
+
+            if (order.isCancelled) {
+                // Draw X
+                const size = radius * 0.7;
+                this.ordersGfx.lineStyle(2, color, 0.9);
+                this.ordersGfx.moveTo(endX - size, y - size);
+                this.ordersGfx.lineTo(endX + size, y + size);
+                this.ordersGfx.moveTo(endX - size, y + size);
+                this.ordersGfx.lineTo(endX + size, y - size);
+            } else if (order.isComplete) {
+                // Draw filled circle
+                this.ordersGfx.beginFill(color, 0.5);
+                this.ordersGfx.lineStyle(2, color, 0.9);
+                this.ordersGfx.drawCircle(endX, y, radius);
+            }
+        } else {
+            // Draw connecting line to the end of the chart
+            const endX = this.data.xScale(this.data.slicedData.length - 1); // Get the x-coordinate of the last data point
+            this.ordersGfx.lineStyle(3, color, 0.5);
+            this.ordersGfx.moveTo(startX, y);
+            this.ordersGfx.lineTo(endX, y);
+
+            // Optionally, you might want to add a marker to indicate it's an ongoing order
+            // For example, an arrow or a dashed line extension
+            this.ordersGfx.lineStyle(2, color, 0.3);
+            const arrowSize = radius * 0.7;
+            this.ordersGfx.moveTo(endX - arrowSize, y - arrowSize);
+            this.ordersGfx.lineTo(endX, y);
+            this.ordersGfx.lineTo(endX - arrowSize, y + arrowSize);
+        }
     }
 }

@@ -8,16 +8,13 @@ export default (state = initial_state, action) => {
         case "ACTIVES": {
             let { data } = action;
 
-            console.log(data);
-            const { key, sampleDuration, startTime, displayTime, ACTIVES } =
-                data;
-            state.actives[key] = {
-                sampleDuration,
-                startTime,
-                displayTime,
-                ACTIVES,
-            };
-
+            const { key, sampleDuration, startTime, displayTime, ACTIVES } = data;
+            for (let key in data) {
+                state.actives[key] = {};
+                for (let type in data[key]) {
+                    state.actives[key][type] = data[key][type];
+                }
+            }
             return {
                 ...state,
             };
