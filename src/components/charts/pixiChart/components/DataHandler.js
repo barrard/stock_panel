@@ -23,7 +23,7 @@ export default class PixiData {
         pixiApp,
         width,
         // height,
-        indicatorHeight = 150,
+        indicatorHeight = 50,
         loadData,
         margin,
         // tickSize,
@@ -576,8 +576,9 @@ export default class PixiData {
         let [lowest] = extent(this.lows);
         let [_, highest] = extent(this.highs);
         let priceScalePadding = 0.001;
-        lowest = roundTick(lowest - priceScalePadding * lowest, this.tickSize);
-        highest = roundTick(highest + priceScalePadding * highest, this.tickSize);
+        debugger;
+        lowest = roundTick(lowest - this.tickSize * 5 * lowest, this.tickSize);
+        highest = roundTick(highest + this.tickSize * 5 * highest, this.tickSize);
         this.priceScale.domain([lowest, highest]);
 
         //find the price ticks
