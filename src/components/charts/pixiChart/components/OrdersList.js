@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState, useEffect, memo } from "react";
 import styled from "styled-components";
 import API from "../../../../components/API";
 import moment from "moment";
+import { compileOrders } from "./utils";
 
 export default function OrdersList(props) {
     let { orders = {} } = props;
@@ -9,29 +10,16 @@ export default function OrdersList(props) {
     return (
         <div>
             {Object.keys(orders)
-                // .reverse()
-                // .filter((o) => o.rpCode?.[1] !== "reference data not available")
-                // .filter((o) => o.reportText !== "Order not found")
-                // .filter((o) => o.basketId !== undefined)
-                // .sort((a, b) => {
-                //     const aPrice = a.price || a.triggerPrice;
-                //     const bPrice = b.price || b.triggerPrice;
-                //     return aPrice - bPrice;
-                // })
-                // .sort((a, b) => {
-                //     return a.status == "complete" ? 1 : -1;
-                // })
                 .sort((a, b) => b - a)
                 .map((basketId) => {
-                    // console.log(orders[basketId]);
                     let orderStates = orders[basketId];
-                    if (!basketId) {
-                    }
+                    if (!basketId) return null;
                     return <OrderItem key={basketId} orders={orderStates} />;
                 })}
         </div>
     );
 }
+
 function formatTimeDiff(diffInMilliseconds) {
     const absValue = Math.abs(diffInMilliseconds);
 
@@ -89,107 +77,109 @@ function combineTimestamps({ ssboe, usecs = "" }) {
     return totalMilliseconds;
 }
 
-function OrderItem(props) {
-    if (!props.orders) return <></>;
-    let { orders } = props;
-    orders.forEach((o) => (o.datetime = combineTimestamps(o)));
-    orders.sort((a, b) => b.datetime - a.datetime);
+const OrderItem = memo(
+    function OrderItem(props) {
+        const [toggleShowOrderEvents, setToggleShowOrderEvents] = useState(false);
+        if (!props.orders) return <></>;
+        let { orders } = props;
+        orders.forEach((o) => (o.datetime = combineTimestamps(o)));
+        orders.sort((a, b) => b.datetime - a.datetime);
 
-    const order = orders?.[0];
-    // const order = orders?.slice(-1)[0];
+        const order = orders?.[0];
+        const compiledOrder = compileOrders(orders)[order.basketId];
+        debugger;
+        // const order = orders?.slice(-1)[0];
 
-    const reportTexts = [];
+        const reportTexts = [];
 
-    // if (order.quantity == undefined) {
-    //     console.log(order.quantity);
+        // if (order.quantity == undefined) {
+        //     console.log(order.quantity);
 
-    // }
-    let isBracket = false;
+        // }
+        let isBracket = false;
 
-    orders.forEach((order, index) => {
-        if (order.bracketType) isBracket = true;
-        let timeDiff;
-        if (index < orders.length - 1) {
-            const nextOrder = orders[index + 1];
-            timeDiff = order.datetime - nextOrder.datetime;
-            /**
-             * This could be like
-             *
-             *     order.datetime - nextOrder.datetime //0.0078125 miliseconds
-             *      //i want to show this number in a mor readable way, like 7.8 micro seconds
-             *    but if it's more than 1 second, it needs to adjust to seconds
-             * I have moment
-             */
-        }
-        if (order.reportText || order.status || order.reportText) reportTexts.push({ timeDiff, templateId: order.templateId, notifyType: order.notifyType, text: order.reportText || order.status || order.reportText, time: formatTime(order) });
-    });
-    return (
-        <OrderContainer order={order}>
-            <div className="row">
-                <div className="col">
-                    <div>{isBracket && "Is BRACKET"}</div>
-                    <div>
-                        {order.notifyType} - {order.status ? order.status : "No status"}
+        orders.forEach((order, index) => {
+            if (order.bracketType) isBracket = true;
+            let timeDiff;
+            if (index < orders.length - 1) {
+                const nextOrder = orders[index + 1];
+                timeDiff = order.datetime - nextOrder.datetime;
+            }
+            if (order.reportText || order.status || order.reportText) reportTexts.push({ timeDiff, templateId: order.templateId, notifyType: order.notifyType, text: order.reportText || order.status || order.reportText, time: formatTime(order) });
+        });
+        return (
+            <OrderContainer order={compiledOrder}>
+                <div className="row">
+                    <div className="col">
+                        <div>{isBracket && "Is BRACKET"}</div>
+                        <div>netQuantity {compiledOrder.netQuantity}</div>
+                        <div>
+                            {compiledOrder.basketId} {compiledOrder.templateId}
+                        </div>
+                        <div>{`${compiledOrder.transactionType == 1 ? "BUY" : "SELL"} ${compiledOrder.quantity} of ${compiledOrder.symbol} at ${priceType(compiledOrder.priceType)}`}</div>
+
+                        <div>
+                            {compiledOrder.symbol} {compiledOrder.totalFillSize == compiledOrder.quantity ? "filled" : `partially filled ${compiledOrder.totalFillSize} of ${compiledOrder.quantity}:${compiledOrder.totalUnfilledSize} to fill`}
+                        </div>
                     </div>
-                    <div>{order.basketId}</div>
-                    <div>{`${order.transactionType == 1 ? "BUY" : "SELL"} ${order.quantity} of ${order.symbol} at ${priceType(order.priceType)}`}</div>
 
-                    <div>
-                        {order.symbol} {order.totalFillSize == order.quantity ? "filled" : `partially filled ${order.totalFillSize} of ${order.quantity}:${order.totalUnfilledSize} to fill`}
-                    </div>
-                </div>
+                    <TradeType order={order} className="col">
+                        {priceType(compiledOrder.priceType)} -<TransactionType order={order}>{orderTransactionType(compiledOrder.transactionType)}</TransactionType>- ${compiledOrder.price ? compiledOrder.price : compiledOrder.avgFillPrice ? compiledOrder.avgFillPrice : compiledOrder.triggerPrice ? compiledOrder.triggerPrice : "No price"}
+                    </TradeType>
 
-                <TradeType order={order} className="col">
-                    {priceType(order.priceType)} -<TransactionType order={order}>{orderTransactionType(order.transactionType)}</TransactionType>- ${order.price ? order.price : order.avgFillPrice ? order.avgFillPrice : order.triggerPrice ? order.triggerPrice : "No price"}
-                </TradeType>
-                {/* {order.reportType !== "status" && ( */}
-                <div className="col">
-                    {reportTexts.map((order) => {
-                        const { text, time, notifyType, templateId, timeDiff } = order;
+                    {toggleShowOrderEvents && (
+                        <div className="col">
+                            {reportTexts.map((order) => {
+                                const { text, time, notifyType, templateId, timeDiff } = order;
 
-                        return (
-                            <ReportType key={`${time}-${notifyType}-${templateId}`} text={text}>
-                                {text ? (
-                                    <>
-                                        <p>
-                                            {notifyType} {templateId}
-                                        </p>
-                                        <p>{text}</p>
+                                return (
+                                    <ReportType key={`${time}-${notifyType}-${templateId}`} text={text}>
+                                        {text ? (
+                                            <>
+                                                <p>
+                                                    {notifyType} {templateId}
+                                                </p>
+                                                <p>{text}</p>
 
-                                        <small>{time}</small>
-                                        <br />
-                                        {timeDiff && <small>{formatTimeDiff(timeDiff)}</small>}
-                                    </>
-                                ) : (
-                                    `${"order.reportText"} `
-                                )}
-                                <hr />
-                            </ReportType>
-                        );
-                    })}
-                </div>
-                {/* )} */}
-                <div className="col">{new Date(order.ssboe * 1000).toLocaleString()}</div>
-                <div className="col">{order.avgFillPrice}</div>
-                <div className="col">
-                    {(order.status == "open" || order.status == "trigger pending") && (
-                        <button
-                            onClick={async () => {
-                                await API.rapi_cancelOrder({
-                                    basketId: order.basketId,
-                                });
-                            }}
-                            className="btn btn-warning"
-                        >
-                            X
-                        </button>
+                                                <small>{time}</small>
+                                                <br />
+                                                {timeDiff && <small>{formatTimeDiff(timeDiff)}</small>}
+                                            </>
+                                        ) : (
+                                            `${"compiledOrder.reportText"} `
+                                        )}
+                                        <hr />
+                                    </ReportType>
+                                );
+                            })}
+                        </div>
                     )}
+
+                    <div className="col">{new Date(compiledOrder.ssboe * 1000).toLocaleString()}</div>
+                    <div className="col">{compiledOrder.avgFillPrice}</div>
+                    <div className="col">
+                        {(compiledOrder.status == "open" || compiledOrder.status == "trigger pending") && (
+                            <button
+                                onClick={async () => {
+                                    await API.rapi_cancelOrder({
+                                        basketId: compiledOrder.basketId,
+                                    });
+                                }}
+                                className="btn btn-warning"
+                            >
+                                X
+                            </button>
+                        )}
+                    </div>
                 </div>
-            </div>
-            {/* <hr /> */}
-        </OrderContainer>
-    );
-}
+                {/* <hr /> */}
+            </OrderContainer>
+        );
+    },
+    (prevProps, nextProps) => {
+        return JSON.stringify(prevProps.orders) === JSON.stringify(nextProps.orders);
+    }
+);
 
 function orderTransactionType(type) {
     switch (type) {
@@ -321,12 +311,12 @@ function tradeTypeColor(props) {
 
 function orderStatusColor(props) {
     const { order } = props;
-    if (!order?.status) return "red";
+    if (!order?.status) return "grey";
     switch (order.status) {
         case "open":
             return "green";
         case "cancel":
-            return "grey";
+            return "red";
 
         case "complete":
             return "black";

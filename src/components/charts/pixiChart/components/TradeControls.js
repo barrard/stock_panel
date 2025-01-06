@@ -18,6 +18,7 @@ export default function TradeControls(props = {}) {
     const [targetPrice, setTargetPrice] = useState(null);
     const [tickLoss, setTickLoss] = useState(5);
     const [lossPrice, setLossPrice] = useState(null);
+    const [isTrailingStop, setIsTrailingStop] = useState(true);
     // const symbolData = fullSymbols.find((s) => s.baseSymbol == symbol.value);
 
     useEffect(() => {
@@ -27,8 +28,15 @@ export default function TradeControls(props = {}) {
         }
     }, [props.lastTrade.tradePrice]);
 
+    useEffect(() => {
+        const targetPrice = (tickTarget * ticks[symbolData?.baseSymbol]).toFixed(2);
+        const lossPrice = (tickLoss * ticks[symbolData?.baseSymbol] * -1).toFixed(2);
+
+        setTargetPrice(targetPrice);
+        setLossPrice(lossPrice);
+    }, [isBracket]);
+
     const sendOrder = async ({ transactionType }) => {
-        debugger;
         const datetime = new Date().getTime();
         // alert(`${priceType} Sell ${limitPrice}`);
         let resp = await API.rapi_submitOrder({
@@ -41,6 +49,7 @@ export default function TradeControls(props = {}) {
             ...(isBracket && { bracketType: 6 }),
             ...(tickTarget && { targetTicks: tickTarget }),
             ...(tickLoss && { stopTicks: tickLoss }),
+            ...(isTrailingStop && { trailingStopTicks: tickLoss }),
         });
 
         console.log(resp);
@@ -181,9 +190,17 @@ export default function TradeControls(props = {}) {
                             </div>
                         </div>
                         <div className="row justify-content-center align-items-center  py-2">
-                            <div className="row g-0">
-                                <div className="col-6 d-flex justify-content-center">
-                                    <p>Tick Loss</p>
+                            <div className="row g-">
+                                <div className="col-6 d-fle justify-content-center align-items-center">
+                                    <div className="col ">
+                                        <p className="mb-0">Tick Loss</p>
+                                        <input className="d-inline-flex" type="checkbox" onChange={() => setIsTrailingStop(!isTrailingStop)} checked={isTrailingStop} name="isTrailingStop" id="" />
+                                    </div>
+                                    <div className="col">
+                                        <label htmlFor="isTrailingStop">
+                                            <small className={` ${!isTrailingStop && "text-muted"} d-inline-flex`}>isTrailingStop</small>
+                                        </label>
+                                    </div>
                                 </div>
                                 <div className="col-6 d-flex justify-content-center">
                                     <ColorVal color={-1}>{lossPrice}</ColorVal>

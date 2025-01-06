@@ -37,13 +37,18 @@ export default class DrawOrders {
             const order = this.orders[basketId];
             if (order.completionReason == "F") {
                 this.drawFilledMarker(order);
-            } else if ((order.statusTime && order.priceType !== "MARKET") || order.triggerTime) {
+            } else if ((order.statusTime && order.priceType !== "MARKET" && !order.isComplete) || (order.triggerTime && !order.isComplete && !order.isCancelled)) {
+                // debugger;
                 this.drawOpenMarker(order);
-            } else if (order.priceType == "MARKET" && order.fillTime) {
+            } else if (order.fillTime) {
+                this.drawFilledMarker(order);
+            } else if (order.notifyType === "CANCEL" || order.completionReason === "C" || order.isCancelled) {
+                // console.log(order);
+                // this.drawCancelledMarker(order);
                 this.drawFilledMarker(order);
             } else {
                 console.log(order);
-                debugger;
+                // debugger;
             }
             // else if (order.status === "complete") {
             //     this.drawMarker(order);
@@ -118,13 +123,13 @@ export default class DrawOrders {
     drawFilledMarker(order) {
         if (!this.ordersGfx?._geometry || !this.data.slicedData.length) return;
 
-        const statusTime = Math.floor(order.statusTime * 1000);
-        debugger;
+        const statusTime = Math.floor((order.statusTime || order.openTime) * 1000);
+
         let startIndex = this.data.slicedData.findIndex((d) => d.timestamp >= statusTime);
         if (startIndex < 0) return;
 
         const startX = this.data.xScale(startIndex);
-        const y = this.data.priceScale(order.fillPrice);
+        const y = this.data.priceScale(order.fillPrice || order.avgFillPrice || order.triggerPrice || order.price);
         if (y === undefined) return;
 
         const radius = 5;
@@ -135,8 +140,8 @@ export default class DrawOrders {
         this.ordersGfx.beginFill(color, 0.1);
         this.ordersGfx.drawCircle(startX, y, radius);
 
-        if (order.fillTime) {
-            const endTime = Math.floor(order.fillTime * 1000);
+        if (order.fillTime || order.endTime) {
+            const endTime = Math.floor((order.fillTime || order.endTime) * 1000);
             let endIndex = this.data.slicedData.findIndex((d) => d.timestamp >= endTime);
             if (endIndex < 0) return;
 
@@ -164,6 +169,41 @@ export default class DrawOrders {
         }
     }
 
+    // drawCancelledMarker(order) {
+    //     if (!this.ordersGfx?._geometry || !this.data.slicedData.length) return;
+
+    //     const endTime = Math.floor(order.endTime * 1000);
+
+    //     let endIndex = this.data.slicedData.findIndex((d) => d.timestamp >= endTime);
+    //     if (endIndex < 0) return;
+
+    //     const endX = this.data.xScale(endIndex);
+    //     const y = this.data.priceScale(order.price);
+    //     if (y === undefined) return;
+    //     const radius = 10;
+    //     const color = order.transactionType === "BUY" || order.transactionType === 1 ? 0x00ff00 : 0xff0000;
+
+    //     // Draw X
+    //     const size = radius * 0.7;
+    //     this.ordersGfx.lineStyle(2, color, 0.9);
+    //     this.ordersGfx.moveTo(endX - size, y - size);
+    //     this.ordersGfx.lineTo(endX + size, y + size);
+    //     this.ordersGfx.moveTo(endX - size, y + size);
+    //     this.ordersGfx.lineTo(endX + size, y - size);
+
+    //     if (order.openTime) {
+    //         const openTime = Math.floor(order.openTime * 1000);
+    //         let openIndex = this.data.slicedData.findIndex((d) => d.timestamp >= openTime);
+
+    //         const startX = this.data.xScale(openIndex);
+
+    //         // Draw connecting line
+    //         this.ordersGfx.lineStyle(3, color, 0.5);
+    //         this.ordersGfx.moveTo(startX, y);
+    //         this.ordersGfx.lineTo(endX, y);
+    //     }
+    // }
+
     drawOpenMarker(order) {
         if (!this.ordersGfx?._geometry || !this.data.slicedData.length) return;
 
@@ -172,7 +212,7 @@ export default class DrawOrders {
         if (startIndex < 0) return;
 
         const startX = this.data.xScale(startIndex);
-        debugger;
+        // debugger;
         const y = this.data.priceScale(order.fillPrice || order.avgFillPrice || order.triggerPrice || order.price);
         if (y === undefined) return;
 

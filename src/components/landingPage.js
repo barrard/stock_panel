@@ -2,7 +2,7 @@ import React from "react";
 import { connect } from "react-redux";
 // import { toastr } from "react-redux-toastr";
 
-import { set_movers } from "../redux/actions/stock_actions.js";
+import { set_movers, setScanMovers } from "../redux/actions/stock_actions.js";
 import List_Stock_Data from "./landingPageComponents/List_Stock_Data.js";
 import Socket from "./Socket.js";
 
@@ -31,6 +31,10 @@ class Landing_Page extends React.Component {
         Socket.on("movers", (data) => {
             return dispatch(set_movers(data));
         });
+        Socket.on("scannerMovers", (data) => {
+            console.log(data);
+            return dispatch(setScanMovers(data));
+        });
         Socket.on("activesQuoteData", (data) => {
             // console.log(data);
             return dispatch(updateLastPrices(data));
@@ -40,10 +44,11 @@ class Landing_Page extends React.Component {
     componentWillUnmount() {
         Socket.off("movers");
         Socket.off("activesQuoteData");
+        Socket.off("scannerMovers");
     }
 
     render() {
-        let { movers } = this.props.stock_data;
+        let { movers, scan_movers } = this.props.stock_data;
 
         return (
             <div className="row flex_center">
@@ -51,6 +56,22 @@ class Landing_Page extends React.Component {
                     {/* <div className="row">
                         <LastPriceQuotes lastPrices={lastPrices} />
                     </div> */}
+
+                    <div className="row ">
+                        {!Object.keys(scan_movers).length && <div>No Data</div>}
+                        {Object.keys(scan_movers).map((type, index) => {
+                            // let { down, up } = scan_movers[market];
+                            // console.log({down, up})
+                            const activesData = scan_movers[type];
+
+                            return (
+                                <div className="full-width" key={index}>
+                                    <List_Stock_Data title={`${type}`} data={activesData} props={this.props} />
+                                </div>
+                            );
+                        })}
+                    </div>
+
                     <div className="row ">
                         {!Object.keys(movers).length && <div>No Data</div>}
                         {Object.keys(movers).map((marketIndex, index) => {
@@ -64,10 +85,10 @@ class Landing_Page extends React.Component {
 
                             return (
                                 <div className="full-width" key={index}>
-                                    {PERCENT_CHANGE_DOWN && <List_Stock_Data title={`${marketIndex} PERCENT_CHANGE_DOWN`} data={PERCENT_CHANGE_DOWN} props={this.props} />}
+                                    {/* {PERCENT_CHANGE_DOWN && <List_Stock_Data title={`${marketIndex} PERCENT_CHANGE_DOWN`} data={PERCENT_CHANGE_DOWN} props={this.props} />}
                                     {PERCENT_CHANGE_UP && <List_Stock_Data title={`${marketIndex} PERCENT_CHANGE_UP`} data={PERCENT_CHANGE_UP} props={this.props} />}
                                     {TRADES && <List_Stock_Data title={`${marketIndex} TRADES`} data={TRADES} props={this.props} />}
-                                    {VOLUME && <List_Stock_Data title={`${marketIndex} VOLUME`} data={VOLUME} props={this.props} />}
+                                    {VOLUME && <List_Stock_Data title={`${marketIndex} VOLUME`} data={VOLUME} props={this.props} />} */}
                                 </div>
                             );
                         })}

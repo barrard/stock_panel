@@ -1,9 +1,6 @@
 import { createAllVWAP_data, addNewVWAP } from "../../indicators/VWAP.js";
 const { makeSuperTrendData } = require("../../indicators/superTrend.js");
-const {
-    addBollingerBands,
-    addNewBollingerBands,
-} = require("../../indicators/BollingerBands.js");
+const { addBollingerBands, addNewBollingerBands } = require("../../indicators/BollingerBands.js");
 const { ATR_indicatorVals } = require("../../indicators/ATR.js");
 const { addStochastics } = require("../../indicators/stochastics.js");
 const { momentumAnalysis } = require("../../indicators/momentum.js");
@@ -17,6 +14,7 @@ const initial_state = {
     search_symbol: "",
     sector_data: {},
     movers: {},
+    scan_movers: {},
     commodity_data: {},
     rawCommodityCharts: {},
     commodityRegressionData: {},
@@ -80,36 +78,23 @@ export default (state = initial_state, action) => {
                 // console.log(`stock bot making trades`);
 
                 // console.log("is this new?? or what?");
-                if (
-                    !commodityTrades[symbol] ||
-                    !commodityTrades[symbol].length
-                ) {
+                if (!commodityTrades[symbol] || !commodityTrades[symbol].length) {
                     // console.log('totally new')
                     commodityTrades[symbol] = [trade];
                 } else {
-                    let commodityTradeIndex = commodityTrades[symbol].findIndex(
-                        (t) => t._id === trade._id
-                    );
+                    let commodityTradeIndex = commodityTrades[symbol].findIndex((t) => t._id === trade._id);
                     if (commodityTradeIndex < 0) {
                         // console.log('yes new trade')
-                        commodityTrades[symbol] = [
-                            ...commodityTrades[symbol],
-                            trade,
-                        ];
+                        commodityTrades[symbol] = [...commodityTrades[symbol], trade];
                     } else {
                         // console.log('no, this is just update to  trade')
                         commodityTrades[symbol][commodityTradeIndex] = trade;
                     }
                 }
-            } else if (
-                !commodityTrades[symbol] ||
-                !commodityTrades[symbol].length
-            ) {
+            } else if (!commodityTrades[symbol] || !commodityTrades[symbol].length) {
                 commodityTrades[symbol] = [trade];
             } else {
-                let commodityTradeIndex = commodityTrades[symbol].findIndex(
-                    (t) => t._id === trade._id
-                );
+                let commodityTradeIndex = commodityTrades[symbol].findIndex((t) => t._id === trade._id);
                 if (commodityTradeIndex < 0) {
                     console.error("WE HAVE A PROBLEM");
                 } else {
@@ -130,9 +115,7 @@ export default (state = initial_state, action) => {
             if (!stockTrades[symbol] || !stockTrades[symbol].length) {
                 stockTrades[symbol] = [trade];
             } else {
-                let stockTradeIndex = stockTrades[symbol].findIndex(
-                    (t) => t._id === trade._id
-                );
+                let stockTradeIndex = stockTrades[symbol].findIndex((t) => t._id === trade._id);
                 if (stockTradeIndex < 0) {
                     console.error("WE HAVE A PROBLEM");
                 } else {
@@ -178,9 +161,7 @@ export default (state = initial_state, action) => {
                 ...state.commodityRegressionData,
             };
             console.log(commodityRegressionData);
-            commodityRegressionData[symbol] = commodityRegressionData[
-                symbol
-            ].filter((d) => d._id !== id);
+            commodityRegressionData[symbol] = commodityRegressionData[symbol].filter((d) => d._id !== id);
             console.log(commodityRegressionData);
             commodityRegressionData = {
                 ...state.commodityRegressionData,
@@ -194,8 +175,7 @@ export default (state = initial_state, action) => {
 
         case "ADD_COMMODITY_CHART_DATA": {
             console.log(action);
-            let { chart_data, symbol, timeframe, rawCommodityChartData } =
-                action;
+            let { chart_data, symbol, timeframe, rawCommodityChartData } = action;
             console.log({ rawCommodityChartData, chart_data });
             let commodity_data = {
                 ...state.commodity_data,
@@ -209,9 +189,7 @@ export default (state = initial_state, action) => {
             //this code prevents requesting and storing duplicate data
             let lastCurrentDay = currentData[0];
             if (lastCurrentDay) {
-                let newChartDataIndex = chart_data.findIndex(
-                    (d) => d.timestamp === lastCurrentDay.timestamp
-                );
+                let newChartDataIndex = chart_data.findIndex((d) => d.timestamp === lastCurrentDay.timestamp);
                 if (newChartDataIndex >= 0) {
                     chart_data = chart_data.slice(0, newChartDataIndex);
                 }
@@ -222,20 +200,12 @@ export default (state = initial_state, action) => {
             //this code prevents requesting and storing duplicate data
             let lastRawCurrentData = currentRawData[0];
             if (lastRawCurrentData) {
-                let newRawChartDataIndex = rawCommodityChartData.findIndex(
-                    (d) => d.timestamp === lastRawCurrentData.timestamp
-                );
+                let newRawChartDataIndex = rawCommodityChartData.findIndex((d) => d.timestamp === lastRawCurrentData.timestamp);
                 if (newRawChartDataIndex >= 0) {
-                    rawCommodityChartData = rawCommodityChartData.slice(
-                        0,
-                        newRawChartDataIndex
-                    );
+                    rawCommodityChartData = rawCommodityChartData.slice(0, newRawChartDataIndex);
                 }
             }
-            rawCommodityChartData = [
-                ...rawCommodityChartData,
-                ...currentRawData,
-            ];
+            rawCommodityChartData = [...rawCommodityChartData, ...currentRawData];
 
             //run indicator functions here, since it should only run once
             //VWAP
@@ -267,14 +237,10 @@ export default (state = initial_state, action) => {
             let commodity_data = { ...state.commodity_data };
 
             for (let symbol in state.commodity_data) {
-                new_minute_data[symbol].timestamp = new Date(
-                    new_minute_data[symbol].start_timestamp
-                ).getTime();
+                new_minute_data[symbol].timestamp = new Date(new_minute_data[symbol].start_timestamp).getTime();
                 if (!commodity_data[symbol]["1Min"]) {
                     //This should NEvEr ruN
-                    console.log(
-                        "-----------    This should NEvEr ruN  ============"
-                    );
+                    console.log("-----------    This should NEvEr ruN  ============");
                     // commodity_data[symbol] = {};
                     commodity_data[symbol]["1Min"] = [];
                 }
@@ -320,8 +286,7 @@ export default (state = initial_state, action) => {
             let { new_tick_data } = action;
             let currentStockTickData = { ...state.currentStockTickData };
             for (let symbol in new_tick_data) {
-                if (!currentStockTickData[symbol])
-                    currentStockTickData[symbol] = {};
+                if (!currentStockTickData[symbol]) currentStockTickData[symbol] = {};
                 currentStockTickData[symbol] = new_tick_data[symbol];
             }
             return {
@@ -355,15 +320,10 @@ export default (state = initial_state, action) => {
             // console.log({stockRegressionData, symbol})
             let currentData = state.stockRegressionData;
             if (!currentData[symbol]) currentData[symbol] = [];
-            let index = currentData[symbol].findIndex(
-                (d) => d._id === stockRegressionData[0]._id
-            );
+            let index = currentData[symbol].findIndex((d) => d._id === stockRegressionData[0]._id);
             console.log(index);
             if (index !== -1) return state;
-            currentData[symbol] = [
-                ...currentData[symbol],
-                ...stockRegressionData,
-            ];
+            currentData[symbol] = [...currentData[symbol], ...stockRegressionData];
 
             return { ...state, stockRegressionData: { ...currentData } };
         }
@@ -371,6 +331,10 @@ export default (state = initial_state, action) => {
         case "SET_MOVERS": {
             let { movers } = action;
             return { ...state, movers };
+        }
+        case "SET_SCAN_MOVERS": {
+            let { movers } = action;
+            return { ...state, scan_movers: movers };
         }
         case "ADD_MA_DATA": {
             let { symbol, MA_data } = action;
@@ -422,9 +386,7 @@ export default (state = initial_state, action) => {
             //this code prevents requesting and storing duplicate data
             let lastCurrentDay = currentData[0];
             if (lastCurrentDay) {
-                let newChartDataIndex = chartData.findIndex(
-                    (d) => d.timestamp === lastCurrentDay.timestamp
-                );
+                let newChartDataIndex = chartData.findIndex((d) => d.timestamp === lastCurrentDay.timestamp);
                 if (newChartDataIndex >= 0) {
                     chartData = chartData.slice(0, newChartDataIndex);
                 }
@@ -435,9 +397,7 @@ export default (state = initial_state, action) => {
             //this code prevents requesting and storing duplicate data
             let lastRawCurrentData = currentRawData.slice(-1)[0];
             if (lastRawCurrentData) {
-                let newRawChartDataIndex = rawChartData.findIndex(
-                    (d) => d.timestamp === lastRawCurrentData.timestamp
-                );
+                let newRawChartDataIndex = rawChartData.findIndex((d) => d.timestamp === lastRawCurrentData.timestamp);
                 if (newRawChartDataIndex >= 0) {
                     rawChartData = rawChartData.slice(0, newRawChartDataIndex);
                 }
@@ -475,14 +435,10 @@ export default (state = initial_state, action) => {
             let commodity_data = { ...state.commodity_data };
 
             for (let symbol in state.commodity_data) {
-                new_minute_data[symbol].timestamp = new Date(
-                    new_minute_data[symbol].start_timestamp
-                ).getTime();
+                new_minute_data[symbol].timestamp = new Date(new_minute_data[symbol].start_timestamp).getTime();
                 if (!commodity_data[symbol]["1Min"]) {
                     //This should NEvEr ruN
-                    console.log(
-                        "-----------    This should NEvEr ruN  ============"
-                    );
+                    console.log("-----------    This should NEvEr ruN  ============");
                     // commodity_data[symbol] = {};
                     commodity_data[symbol]["1Min"] = [];
                 }
@@ -528,9 +484,7 @@ export default (state = initial_state, action) => {
             // console.log({action})
             let { stock_symbols_data, commodity_symbols_data } = action;
             // console.log(stock_symbols_data)
-            commodity_symbols_data = formatCommoditySymbolsData(
-                commodity_symbols_data
-            );
+            commodity_symbols_data = formatCommoditySymbolsData(commodity_symbols_data);
             return {
                 ...state,
                 stock_symbols_data,
