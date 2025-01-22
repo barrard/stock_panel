@@ -139,6 +139,25 @@ export function timeScaleValues({ highest, lowest, values }) {
     return timeValues;
 }
 
+export function priceType(type) {
+    switch (type) {
+        case 1:
+            return "LIMIT";
+        case 2:
+            return "MARKET";
+        case 3:
+            return "STOP_LIMIT";
+        case 4:
+            return "STOP_MARKET";
+        case 5:
+            return "MARKET_IF_TOUCHED";
+        case 6:
+            return "LIMIT_IF_TOUCHED";
+        default:
+            return type;
+    }
+}
+
 export const symbolOptions = [
     //Index Futures
     { value: "ES", name: "S&P 500 Index (E-mini) (ES)", exchange: "CME" },
@@ -196,14 +215,18 @@ export function parseBarTypeTimeFrame({ barType, barTypePeriod }) {
 }
 
 export function compileOrders(orders, accumulator = {}) {
+    const _priceType = priceType;
     let compiledOrders = orders.reduce((acc, order) => {
         if (order.data) {
             order = order.data;
         }
-        const { templateId, completionReason, basketId, totalUnfilledSize, totalFillSize, bracketType, priceType, quantity, notifyType, triggerPrice, cancelledSize, transactionType } = order;
+        order.priceType = _priceType(order.priceType);
+        debugger;
+        let { templateId, completionReason, basketId, totalUnfilledSize, totalFillSize, bracketType, priceType, quantity, notifyType, triggerPrice, cancelledSize, transactionType } = order;
         if (!acc[basketId]) {
             acc[basketId] = {};
         }
+
         acc[basketId].basketId = basketId;
         acc[basketId].bracketType = bracketType ? bracketType : acc[basketId].bracketType ? acc[basketId].bracketType : null;
         acc[basketId].notifyType = notifyType;

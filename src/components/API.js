@@ -105,21 +105,37 @@ async function getBacktestDay({ date, symbol, exchange }) {
     return GET(`/API/rapi/backtest-day/${symbol}/${exchange}/${date}`);
 }
 
-async function getCustomTicks() {
-    return GET(`/API/custom-ticks`);
+async function getCustomTicks(options = {}) {
+    const params = new URLSearchParams();
+
+    if (options.symbol) params.append("symbol", options.symbol);
+    if (options.start) params.append("start", options.start);
+    if (options.finish) params.append("finish", options.finish);
+    if (options.limit !== undefined) params.append("limit", options.limit);
+    if (options.join !== undefined) params.append("join", options.join);
+    if (options.skip !== undefined) params.append("skip", options.skip);
+    debugger;
+    const queryString = params.toString();
+    const url = `/API/custom-ticks${queryString ? `?${queryString}` : ""}`;
+
+    return GET(url);
 }
+
 async function getTicks() {
     return GET(`/API/ticks`);
 }
-async function getOrderFlow({ start, end }) {
-    return GET(`/API/getOrderFlow/${start}/${end}/`);
+
+async function getOrderFlow({ start, end, symbol = "ES" }) {
+    return GET(`/API/getOrderFlow/${start}/${end}/${symbol}`);
 }
+
 async function GET(url) {
     let data = await fetch(`${REACT_APP_API_SERVER}${url}`, {
         method: "GET",
     });
     return await data.json();
 }
+
 //TODO this maybe broken
 async function getFromRedis({ symbol, exchange, start, finish, type, period }) {
     const data = await GET(`/API/redis/RequestTimeBarReplay/${symbol}/${exchange}/${type}/${period}/${start}/${finish}/`);

@@ -77,7 +77,7 @@ export default function BidAskStats() {
             const type = 1;
             const period = 1;
 
-            const data = await API.getFromRedis({
+            let data = await API.getFromRedis({
                 symbol,
                 exchange,
                 start,
@@ -85,8 +85,10 @@ export default function BidAskStats() {
                 type,
                 period,
             });
+            debugger;
 
             await addOrderFlowDataToTicks({ ticks: data, start, finish });
+            data = data.filter((d) => d.orderFlowData);
 
             if (data?.length) {
                 const compiled = processData(data);
@@ -102,7 +104,8 @@ export default function BidAskStats() {
 
     function processData(data) {
         //partition into 15 min
-        const startTime = moment(data[0].datetime);
+        const startTime = moment(data[0].datetime || data[0].dt * 1000);
+        debugger;
         const nextTime = timePeriods.reduce((acc, time, i) => {
             acc[time] = startTime.clone().add(time, "minutes");
             return acc;
@@ -124,8 +127,11 @@ export default function BidAskStats() {
 
         function reduceData(secondData, time) {
             //compilie this
+            if (!startPrice[time]) {
+                startPrice[time] = secondData.open || secondData.o;
+            }
 
-            const returns = secondData.close - startPrice[time];
+            const returns = (secondData.close || secondData.c) - startPrice[time];
             const bidSizeOrderRatio = compiled[time][compileIndex[time]].reduce((acc, v) => acc + v.bidSizeOrderRatio, 0) / compiled[time][compileIndex[time]].length;
             const askSizeOrderRatio = compiled[time][compileIndex[time]].reduce((acc, v) => acc + v.askSizeOrderRatio, 0) / compiled[time][compileIndex[time]].length;
             const bidSizeToAskSizeRatio = compiled[time][compileIndex[time]].reduce((acc, v) => acc + v.bidSizeToAskSizeRatio, 0) / compiled[time][compileIndex[time]].length;
@@ -157,15 +163,15 @@ export default function BidAskStats() {
                 };
             }
             nextTime[time] = nextTime[time].add(time, "minutes");
-            startPrice[time] = secondData.open;
+            startPrice[time] = secondData.open || secondData.o;
             compileIndex[time]++;
         }
         for (let x = 0; x < data.length; x++) {
             secondData = data[x];
-            const datetime = secondData.datetime;
+            const datetime = secondData.datetime || secondData.dt * 1000;
             if (!startPrice[timePeriods[0]]) {
                 timePeriods.reduce((acc, time, i) => {
-                    acc[time] = secondData.open;
+                    acc[time] = secondData.open || secondData.o;
                     return acc;
                 }, startPrice);
             }
@@ -173,6 +179,8 @@ export default function BidAskStats() {
             const { bidSizeOrderRatio, askSizeOrderRatio, bidSizeToAskSizeRatio, nearPriceBidSizeToAskSizeRatio, bidOrderToAskOrderRatio, bidSizeToAskSizeRatioMA, nearPriceBidSizeToAskSizeRatioMA, tick, trin, avgTICK, avgTRIN } = secondData.orderFlowData;
             // if (bidSizeToAskSizeRatio === undefined) continue;
             Object.keys(nextTime).forEach((time) => {
+                console.log(moment(datetime).isAfter(nextTime[time]));
+                console.log(moment(new Date()).isAfter(nextTime[time]));
                 if (moment(datetime).isAfter(nextTime[time])) {
                     reduceData(secondData, time);
                 }
@@ -216,7 +224,8 @@ export default function BidAskStats() {
 
         function findTick({ tickIndex, ticks, liquidityDataTime, x }) {
             for (let t = tickIndex; t < ticks.length; t++) {
-                const tickDataTime = new Date(ticks[t].datetime).getTime();
+                const dt = ticks[t].datetime || ticks[t].dt * 1000;
+                const tickDataTime = new Date(dt).getTime();
                 if (tickDataTime >= liquidityDataTime) {
                     ticks[t].orderFlowData = liquidityOrderFlow[x];
                     tickIndex = t;

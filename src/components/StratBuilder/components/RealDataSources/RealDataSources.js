@@ -1,15 +1,6 @@
 import React, { useState } from "react";
 import styled from "styled-components";
-import {
-    faEye,
-    faPlusSquare,
-    faTrashAlt,
-    faPencilAlt,
-    faEyeSlash,
-    faBell,
-    faWindowClose,
-    faTimes,
-} from "@fortawesome/free-solid-svg-icons";
+import { faEye, faPlusSquare, faTrashAlt, faPencilAlt, faEyeSlash, faBell, faWindowClose, faTimes } from "@fortawesome/free-solid-svg-icons";
 
 import RealDataContext from "./context";
 import { MainTitle, SubTitle, IsSelectable, Scrollable } from "../styled";
@@ -18,8 +9,7 @@ import StratContext from "../../StratContext";
 import { ShowDataTail, ListIndicators, ConditionalsSetup } from "./components";
 import { IconButton } from "../components";
 export default function RealDataSources() {
-    let { selectedStrat, charts, indicatorResults, priceDatas } =
-        React.useContext(StratContext);
+    let { selectedStrat, charts, indicatorResults, priceDatas } = React.useContext(StratContext);
 
     const [isNewAlert, setIsNewAlert] = useState(false);
     const [selectingTargetInput, setSelectingTargetInput] = useState(false);
@@ -55,6 +45,7 @@ export default function RealDataSources() {
     });
 
     function selectTarget(target, type, name) {
+        debugger;
         console.log(selectingTargetInput);
         if (selectingTargetInput) {
             console.log(target, type, selectingTargetInput);
@@ -92,37 +83,22 @@ export default function RealDataSources() {
                 targetData.resultLine = target.resultLine;
                 result = result.result.result;
 
-                let { name, symbol, timeframe } = setName(
-                    indicator,
-                    targetData
-                );
+                let { name, symbol, timeframe } = setName(indicator, targetData);
                 targetData.name = name;
                 targetData.type = type;
 
                 targetData.symbol = symbol;
                 targetData.timeframe = timeframe;
                 targetData.inputType = "series";
-                if (
-                    target.inputType === "series" &&
-                    targetData.inputOrRangeValue < 0
-                ) {
+                if (target.inputType === "series" && targetData.inputOrRangeValue < 0) {
                     targetData.inputOrRangeValue = 0;
                 }
 
                 let resultLines = [];
                 Object.keys(result).forEach((line) => resultLines.push(line));
 
-                if (
-                    resultLines.length &&
-                    !resultLines.find(
-                        (lineOpt) => lineOpt == targetData.resultLine
-                    )
-                ) {
-                    console.log(
-                        resultLines.find(
-                            (lineOpt) => lineOpt == targetData.resultLine
-                        )
-                    );
+                if (resultLines.length && !resultLines.find((lineOpt) => lineOpt == targetData.resultLine)) {
+                    console.log(resultLines.find((lineOpt) => lineOpt == targetData.resultLine));
 
                     targetData.resultLine = resultLines[0];
                 }
@@ -139,9 +115,7 @@ export default function RealDataSources() {
         function setName(indicator, targetData) {
             let { fullName, optInputs, priceData } = indicator;
 
-            let { timeframe, symbol } = priceDatas.find(
-                ({ _id }) => _id === priceData
-            );
+            let { timeframe, symbol } = priceDatas.find(({ _id }) => _id === priceData);
 
             let name = "";
             // if (priceData) {
@@ -150,19 +124,14 @@ export default function RealDataSources() {
             name += `${fullName} - \n`;
 
             if (optInputs) {
-                Object.keys(optInputs).forEach(
-                    (optInput) =>
-                        (name += ` ${optInput} ${optInputs[optInput].defaultValue}\n`)
-                );
+                Object.keys(optInputs).forEach((optInput) => (name += ` ${optInput} ${optInputs[optInput].defaultValue}\n`));
             }
             // name += `${targetData.resultLine}`
             return { name, timeframe, symbol };
         }
     }
 
-    var selectSeries =
-        selectingTargetInput &&
-        targetsData[selectingTargetInput].inputType !== "value";
+    var selectSeries = selectingTargetInput && targetsData[selectingTargetInput].inputType !== "value";
 
     console.log({ targetsData });
     return (
@@ -203,64 +172,23 @@ export default function RealDataSources() {
                         <React.Fragment key={symbol}>
                             {Object.keys(charts[symbol]).map((timeframe) => {
                                 let { data } = charts[symbol][timeframe];
-                                let datas = [
-                                    "timestamp",
-                                    "open",
-                                    "high",
-                                    "low",
-                                    "close",
-                                    "volume",
-                                ];
-                                let indicators =
-                                    indicatorResults[symbol][timeframe];
+                                let datas = ["timestamp", "open", "high", "low", "close", "volume"];
+                                let indicators = indicatorResults[symbol][timeframe];
                                 return (
-                                    <Scrollable
-                                        key={`${symbol}-${timeframe}`}
-                                        height={"500px"}
-                                    >
+                                    <Scrollable key={`${symbol}-${timeframe}`} height={"500px"}>
                                         <SubTitle>{` ${symbol} ${timeframe}`}</SubTitle>
                                         <PriceContainer>
                                             {datas
-                                                .sort(
-                                                    (a, b) =>
-                                                        a.timestamp -
-                                                        b.timestamp
-                                                )
+                                                .sort((a, b) => a.timestamp - b.timestamp)
                                                 .map((name) => (
-                                                    <IsSelectable
-                                                        key={`${symbol}-${timeframe}-${name}`}
-                                                        disabled={
-                                                            !selectingTargetInput
-                                                        }
-                                                        onClick={() =>
-                                                            selectTarget(
-                                                                { ohlc: data },
-                                                                "OHLC",
-                                                                name
-                                                            )
-                                                        }
-                                                        isSelecting={
-                                                            selectSeries
-                                                        }
-                                                        isSelected={
-                                                            name ===
-                                                            targetsData[
-                                                                selectingTargetInput
-                                                            ]?.name
-                                                        }
-                                                    >
-                                                        <ShowDataTail
-                                                            data={data}
-                                                            type={name}
-                                                        />
+                                                    <IsSelectable key={`${symbol}-${timeframe}-${name}`} disabled={!selectingTargetInput} onClick={() => selectTarget({ ohlc: data }, "OHLC", name)} isSelecting={selectSeries} isSelected={name === targetsData[selectingTargetInput]?.name}>
+                                                        <ShowDataTail data={data} type={name} />
                                                         <button />
                                                     </IsSelectable>
                                                 ))}
                                         </PriceContainer>
                                         <IndicatorListContainer>
-                                            <ListIndicators
-                                                indicators={indicators}
-                                            />
+                                            <ListIndicators indicators={indicators} />
                                         </IndicatorListContainer>
                                     </Scrollable>
                                 );

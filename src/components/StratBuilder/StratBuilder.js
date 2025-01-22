@@ -5,17 +5,7 @@ import Socket from "../Socket";
 import StratContext from "./StratContext";
 import API from "../API";
 
-import {
-    AddStratModal,
-    StrategiesList,
-    AddThingBtn,
-    StratListContainer,
-    StrategyWindow,
-    Title,
-    Container,
-    Chart,
-    RealDataSources,
-} from "./components";
+import { AddStratModal, StrategiesList, AddThingBtn, StratListContainer, StrategyWindow, Title, Container, Chart, RealDataSources } from "./components";
 
 import { updateConditionalsResults } from "./components/Conditionals/components/utils";
 import { checkSymbol } from "./components/utilFuncs";
@@ -111,14 +101,17 @@ export default function StratBuilder() {
         if (checkSymbol(symbol).isStock) {
             let data = await API.getTheStockData({ symbol, frame: timeframe });
 
-            if (!data.length)
+            if (!data.length) {
                 return toastr.error(`No data found for ${timeframe} ${symbol}`);
+            }
             const tf = timeframe;
+            data[0].timeframe = tf;
+            data[0].symbol = symbol;
+            debugger;
 
             indicatorResults[symbol][tf] = {};
             charts[symbol][tf] = {};
-            charts[symbol][tf].data =
-                data.map((d) => ({ ...d, timestamp: d.datetime })) || [];
+            charts[symbol][tf].data = data.map((d) => ({ ...d, timestamp: d.datetime })) || [];
             charts[symbol][tf].id = _id;
             charts[symbol][tf].conditionals = {};
             // charts[symbol][tf].stats = data[`${tf}Stats`];
@@ -158,12 +151,7 @@ export default function StratBuilder() {
                 // }
                 let { data } = charts[s][t];
                 //finally now can we calc it?
-                let newConditionalsResults = updateConditionalsResults(
-                    c,
-                    data,
-                    indicatorResults,
-                    charts
-                );
+                let newConditionalsResults = updateConditionalsResults(c, data, indicatorResults, charts);
                 charts[s][t].conditionals[c._id] = newConditionalsResults;
                 console.log({ newConditionalsResults });
                 console.log(charts);
@@ -186,18 +174,11 @@ export default function StratBuilder() {
         delete indicatorResults[symbol][timeframe][indicator._id];
         setIndicatorResults({ ...indicatorResults });
     };
-    const updateIndicatorResults = ({
-        indicator,
-        result,
-        symbol,
-        timeframe,
-    }) => {
+    const updateIndicatorResults = ({ indicator, result, symbol, timeframe }) => {
         try {
-            if (!indicator || !indicator._id)
-                return console.log("you done fucked up");
+            if (!indicator || !indicator._id) return console.log("you done fucked up");
             if (!indicatorResults[symbol]) indicatorResults[symbol] = {};
-            if (!indicatorResults[symbol][timeframe])
-                indicatorResults[symbol][timeframe] = {};
+            if (!indicatorResults[symbol][timeframe]) indicatorResults[symbol][timeframe] = {};
             indicatorResults[symbol][timeframe][indicator._id] = {
                 indicator,
                 result,
@@ -256,15 +237,9 @@ export default function StratBuilder() {
                 {/* List of Strategies on the side */}
                 <StratListContainer>
                     {/* Button to add Strategy */}
-                    <AddThingBtn
-                        name={showModal ? "Cancel" : "Create New Strategy"}
-                        onClick={() => setShowModal(!showModal)}
-                    />
+                    <AddThingBtn name={showModal ? "Cancel" : "Create New Strategy"} onClick={() => setShowModal(!showModal)} />
                     {showModal && <AddStratModal />}
-                    <StrategiesList
-                        strategies={strategies}
-                        selectStrat={setSelectedStrat}
-                    />
+                    <StrategiesList strategies={strategies} selectStrat={setSelectedStrat} />
                 </StratListContainer>
                 {selectedStrat && <StrategyWindow />}
                 <div style={{ display: "flex" }}>
@@ -273,23 +248,14 @@ export default function StratBuilder() {
                             Object.keys(charts).map((symbol) =>
                                 Object.keys(charts[symbol])
                                     .map((timeframe) => (
-                                        <ChartsContainer
-                                            key={`${symbol}${timeframe}`}
-                                        >
-                                            <Chart
-                                                symbol={symbol}
-                                                timeframe={timeframe}
-                                            />
+                                        <ChartsContainer key={`${symbol}${timeframe}`}>
+                                            <Chart symbol={symbol} timeframe={timeframe} />
                                         </ChartsContainer>
                                     ))
                                     .flat()
                             )}
                     </div>
-                    <div>
-                        {selectedStrat && Object.keys(charts).length > 0 && (
-                            <RealDataSources />
-                        )}
-                    </div>
+                    <div>{selectedStrat && Object.keys(charts).length > 0 && <RealDataSources />}</div>
                 </div>
             </Container>
         </StratContext.Provider>

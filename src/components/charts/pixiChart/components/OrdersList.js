@@ -2,7 +2,7 @@ import React, { useState, useEffect, memo } from "react";
 import styled from "styled-components";
 import API from "../../../../components/API";
 import moment from "moment";
-import { compileOrders } from "./utils";
+import { compileOrders, priceType } from "./utils";
 
 export default function OrdersList(props) {
     let { orders = {} } = props;
@@ -194,25 +194,6 @@ function orderTransactionType(type) {
 
         default:
             return type;
-    }
-}
-
-function priceType(type) {
-    switch (type) {
-        case 1:
-            return "LIMIT";
-        case 2:
-            return "MARKET";
-        case 3:
-            return "STOP_LIMIT";
-        case 4:
-            return "STOP_MARKET";
-        case 5:
-            return "MARKET_IF_TOUCHED";
-        case 6:
-            return "LIMIT_IF_TOUCHED";
-        default:
-            return "Unknown";
     }
 }
 

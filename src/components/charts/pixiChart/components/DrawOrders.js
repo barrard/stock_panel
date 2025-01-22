@@ -13,6 +13,7 @@ import { extent, max, min } from "d3-array";
 import { scaleLinear } from "d3";
 
 import { eastCoastTime, isRTH } from "../../../../indicators/indicatorHelpers/IsMarketOpen";
+import { priceType } from "./utils";
 
 export default class DrawOrders {
     constructor(dataHandler) {
@@ -35,18 +36,25 @@ export default class DrawOrders {
         // debugger;
         Object.keys(this.orders).forEach((basketId) => {
             const order = this.orders[basketId];
+            const IS_MARKET_ORDER = priceType(order.priceType) === "MARKET" || order.priceType === "MARKET";
+            const IS_LIMIT_ORDER = priceType(order.priceType) === "LIMIT" || order.priceType === "LIMIT";
+            const IS_STOP_MARKET_ORDER = priceType(order.priceType) === "STOP_MARKET" || order.priceType === "STOP_MARKET";
             if (order.completionReason == "F") {
                 this.drawFilledMarker(order);
-            } else if ((order.statusTime && order.priceType !== "MARKET" && !order.isComplete) || (order.triggerTime && !order.isComplete && !order.isCancelled)) {
+            } else if ((order.statusTime && IS_MARKET_ORDER && !order.isComplete) || (order.triggerTime && !order.isComplete && !order.isCancelled)) {
                 // debugger;
                 this.drawOpenMarker(order);
             } else if (order.fillTime) {
                 this.drawFilledMarker(order);
             } else if (order.notifyType === "CANCEL" || order.completionReason === "C" || order.isCancelled) {
                 // console.log(order);
-                // this.drawCancelledMarker(order);
-                this.drawFilledMarker(order);
+                this.drawCancelledMarker(order);
+            } else if (IS_LIMIT_ORDER) {
+                this.drawOpenMarker(order);
+            } else if (IS_STOP_MARKET_ORDER) {
+                this.drawOpenMarker(order);
             } else {
+                debugger;
                 console.log(order);
                 // debugger;
             }
@@ -169,40 +177,40 @@ export default class DrawOrders {
         }
     }
 
-    // drawCancelledMarker(order) {
-    //     if (!this.ordersGfx?._geometry || !this.data.slicedData.length) return;
+    drawCancelledMarker(order) {
+        if (!this.ordersGfx?._geometry || !this.data.slicedData.length) return;
 
-    //     const endTime = Math.floor(order.endTime * 1000);
+        const endTime = Math.floor(order.endTime * 1000);
 
-    //     let endIndex = this.data.slicedData.findIndex((d) => d.timestamp >= endTime);
-    //     if (endIndex < 0) return;
+        let endIndex = this.data.slicedData.findIndex((d) => d.timestamp >= endTime);
+        if (endIndex < 0) return;
 
-    //     const endX = this.data.xScale(endIndex);
-    //     const y = this.data.priceScale(order.price);
-    //     if (y === undefined) return;
-    //     const radius = 10;
-    //     const color = order.transactionType === "BUY" || order.transactionType === 1 ? 0x00ff00 : 0xff0000;
+        const endX = this.data.xScale(endIndex);
+        const y = this.data.priceScale(order.price);
+        if (y === undefined) return;
+        const radius = 10;
+        const color = order.transactionType === "BUY" || order.transactionType === 1 ? 0x00ff00 : 0xff0000;
 
-    //     // Draw X
-    //     const size = radius * 0.7;
-    //     this.ordersGfx.lineStyle(2, color, 0.9);
-    //     this.ordersGfx.moveTo(endX - size, y - size);
-    //     this.ordersGfx.lineTo(endX + size, y + size);
-    //     this.ordersGfx.moveTo(endX - size, y + size);
-    //     this.ordersGfx.lineTo(endX + size, y - size);
+        // Draw X
+        const size = radius * 0.7;
+        this.ordersGfx.lineStyle(2, color, 0.9);
+        this.ordersGfx.moveTo(endX - size, y - size);
+        this.ordersGfx.lineTo(endX + size, y + size);
+        this.ordersGfx.moveTo(endX - size, y + size);
+        this.ordersGfx.lineTo(endX + size, y - size);
 
-    //     if (order.openTime) {
-    //         const openTime = Math.floor(order.openTime * 1000);
-    //         let openIndex = this.data.slicedData.findIndex((d) => d.timestamp >= openTime);
+        if (order.openTime) {
+            const openTime = Math.floor(order.openTime * 1000);
+            let openIndex = this.data.slicedData.findIndex((d) => d.timestamp >= openTime);
 
-    //         const startX = this.data.xScale(openIndex);
+            const startX = this.data.xScale(openIndex);
 
-    //         // Draw connecting line
-    //         this.ordersGfx.lineStyle(3, color, 0.5);
-    //         this.ordersGfx.moveTo(startX, y);
-    //         this.ordersGfx.lineTo(endX, y);
-    //     }
-    // }
+            // Draw connecting line
+            this.ordersGfx.lineStyle(3, color, 0.5);
+            this.ordersGfx.moveTo(startX, y);
+            this.ordersGfx.lineTo(endX, y);
+        }
+    }
 
     drawOpenMarker(order) {
         if (!this.ordersGfx?._geometry || !this.data.slicedData.length) return;

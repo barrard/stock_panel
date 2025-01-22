@@ -18,12 +18,10 @@ class CandleStickStockScaleChartWithVolumeBarV3 extends React.Component {
     render() {
         const changeCalculator = change();
 
-        debugger;
         const emaVol20 = ema()
             .id(2)
             .options({ windowSize: 20 })
             .merge((d, c, e, f) => {
-                debugger;
                 d.emaVol20 = c;
             })
             .accessor((d) => d.emaVol20);
@@ -64,11 +62,11 @@ class CandleStickStockScaleChartWithVolumeBarV3 extends React.Component {
             .accessor((d) => d.macd);
 
         const elderImpulseCalculator = elderImpulse().macdSource(macdCalculator.accessor()).emaSource(ema20.accessor());
-        debugger;
+
         const { type, data: initialData, width, ratio } = this.props;
 
         const calculatedData = emaVol20(elderImpulseCalculator(macdCalculator(ema20(ema50(ema200(changeCalculator(initialData)))))));
-        debugger;
+
         const xScaleProvider = discontinuousTimeScaleProvider.inputDateAccessor((d) => d.date);
         const { data, xScale, xAccessor, displayXAccessor } = xScaleProvider(initialData);
 
@@ -83,7 +81,7 @@ class CandleStickStockScaleChartWithVolumeBarV3 extends React.Component {
                 width={width}
                 margin={{ left: 50, right: 50, top: 10, bottom: 30 }}
                 type={type}
-                seriesName="MSFT"
+                symbol={this.props.symbol} // Use symbol from props
                 data={data}
                 xScale={xScale}
                 xAccessor={xAccessor}
@@ -100,63 +98,16 @@ class CandleStickStockScaleChartWithVolumeBarV3 extends React.Component {
                     <LineSeries yAccessor={ema200.accessor()} stroke={"blue"} />
 
                     {/* <CandlestickSeries /> */}
-                    <OHLCSeries
-                        stroke={(d) =>
-                            d.volumePro
-                                ? "orange"
-                                : d.volumeAm
-                                ? "yellow"
-                                : d.volumeClimaxChurnBar
-                                ? "magenta"
-                                : d.lowVolumeChurnBar
-                                ? "blue"
-                                : d.lowVolumeBar
-                                ? "white"
-                                : d.highVolumeChurnBar
-                                ? "black"
-                                : d.volumeClimaxDownBar
-                                ? "red"
-                                : d.volumeClimaxUpBar
-                                ? "green"
-                                : "grey"
-                        }
-                    />
+                    <OHLCSeries stroke={(d) => (d.volumePro ? "orange" : d.volumeAm ? "yellow" : d.volumeClimaxChurnBar ? "magenta" : d.lowVolumeChurnBar ? "blue" : d.lowVolumeBar ? "white" : d.highVolumeChurnBar ? "black" : d.volumeClimaxDownBar ? "red" : d.volumeClimaxUpBar ? "green" : "grey")} />
                     <OHLCTooltip textFill="white" origin={[0, 10]} />
 
-                    <EdgeIndicator
-                        itemType="last"
-                        orient="right"
-                        edgeAt="right"
-                        yAccessor={(d) => d.close}
-                        fill={(d) => (d.close > d.open ? "#yellow" : "#orange")}
-                    />
+                    <EdgeIndicator itemType="last" orient="right" edgeAt="right" yAccessor={(d) => d.close} fill={(d) => (d.close > d.open ? "#yellow" : "#orange")} />
                 </Chart>
                 <Chart id={2} origin={(w, h) => [0, h - 150]} height={150} yExtents={(d) => d.volume}>
                     <XAxis axisAt="bottom" orient="bottom" />
                     <YAxis axisAt="left" orient="left" ticks={5} tickFormat={format(".2s")} />
                     <LineSeries yAccessor={emaVol20.accessor()} stroke={"red"} />
-                    <BarSeries
-                        yAccessor={(d) => d.volume}
-                        fill={(d) =>
-                            d.volumePro
-                                ? "orange"
-                                : d.volumeAm
-                                ? "yellow"
-                                : d.volumeClimaxChurnBar
-                                ? "magenta"
-                                : d.lowVolumeChurnBar
-                                ? "blue"
-                                : d.lowVolumeBar
-                                ? "white"
-                                : d.highVolumeChurnBar
-                                ? "black"
-                                : d.volumeClimaxDownBar
-                                ? "red"
-                                : d.volumeClimaxUpBar
-                                ? "green"
-                                : "grey"
-                        }
-                    />
+                    <BarSeries yAccessor={(d) => d.volume} fill={(d) => (d.volumePro ? "orange" : d.volumeAm ? "yellow" : d.volumeClimaxChurnBar ? "magenta" : d.lowVolumeChurnBar ? "blue" : d.lowVolumeBar ? "white" : d.highVolumeChurnBar ? "black" : d.volumeClimaxDownBar ? "red" : d.volumeClimaxUpBar ? "green" : "grey")} />
 
                     <MouseCoordinateX at="bottom" orient="bottom" displayFormat={timeFormat("%I:%M:%S %p")} />
                     <MouseCoordinateY at="right" orient="right" displayFormat={format(".2f")} />

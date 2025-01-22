@@ -14,7 +14,7 @@ export default function SymbolBtns(props) {
     console.log("SymbolBtns");
     const { symbolOptions, symbol, setSymbol } = props;
 
-    let isEs, isNQ, isYm, isCL, isGC;
+    let isEs, isNQ, isYm, isCL, isGC, isRTY;
 
     if (symbol.value === "ES") {
         isEs = true;
@@ -26,6 +26,8 @@ export default function SymbolBtns(props) {
         isCL = true;
     } else if (symbol.value === "GC") {
         isGC = true;
+    } else if (symbol.value === "RTY") {
+        isRTY = true;
     }
     const findSymbolData = (symbol) => {
         return symbolOptions.find((s) => s.value === symbol);
@@ -51,6 +53,7 @@ export default function SymbolBtns(props) {
             <SymbolBtn isSymbol={isYm} symbol={"YM"} />
             <SymbolBtn isSymbol={isCL} symbol={"CL"} />
             <SymbolBtn isSymbol={isGC} symbol={"GC"} />
+            <SymbolBtn isSymbol={isRTY} symbol={"RTY"} />
         </div>
     );
 }
