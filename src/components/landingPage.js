@@ -53,15 +53,9 @@ class Landing_Page extends React.Component {
         return (
             <div className="row flex_center">
                 <div className="col-sm-8">
-                    {/* <div className="row">
-                        <LastPriceQuotes lastPrices={lastPrices} />
-                    </div> */}
-
                     <div className="row ">
                         {!Object.keys(scan_movers).length && <div>No Data</div>}
                         {Object.keys(scan_movers).map((type, index) => {
-                            // let { down, up } = scan_movers[market];
-                            // console.log({down, up})
                             const activesData = scan_movers[type];
 
                             return (
@@ -75,8 +69,6 @@ class Landing_Page extends React.Component {
                     <div className="row ">
                         {!Object.keys(movers).length && <div>No Data</div>}
                         {Object.keys(movers).map((marketIndex, index) => {
-                            // let { down, up } = movers[market];
-                            // console.log({down, up})
                             const activesData = movers[marketIndex];
                             const { PERCENT_CHANGE_DOWN, PERCENT_CHANGE_UP, TRADES, VOLUME } = activesData;
                             if (!PERCENT_CHANGE_DOWN) {

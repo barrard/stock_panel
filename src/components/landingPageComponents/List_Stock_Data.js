@@ -110,11 +110,16 @@ function Display_Stock_Row({ stock_data, index, props }) {
                 view_selected_stock({ timeframe, end, symbol, props });
             }}
         >
-            <div className="col-1 flex">
-                <Symbol symbol={symbol} />
+            <div className="col-2 flex ">
+                <div className="row">
+                    <div className="col-12 ">
+                        <Symbol symbol={symbol} />
+                    </div>
+                    <br />
+                    <div className="col-12   ">{netPercentChange ? <Percent_Change percent_change={netPercentChange} /> : <>{"no chg"}</>}</div>
+                </div>
             </div>
 
-            <div className="col-1 flex_end">{netPercentChange ? <Percent_Change percent_change={netPercentChange} /> : <>{"no chg"}</>}</div>
             <div className="col-2 flex_end">
                 <Price price={lastPrice} />
             </div>
@@ -138,22 +143,26 @@ function Display_Stock_Row({ stock_data, index, props }) {
 const Stock_List_Header = ({ sort_by, sort_state, sorted_prop }) => {
     return (
         <div className="row white">
+            {/* <div className="col-1"> */}
+            {/* <div className="row border g-0 w-100 justify-content-center align-items-center"> */}
             {/* 1 symbol */}
-            <div className="align_items_center col-1 flex">
-                <h6 onClick={() => sort_by("symbol")}>Sym.</h6>
-                {sort_state && sorted_prop == "symbol" && <div className="arrow-up" />}
+            {/* <div className=" col-12 "> */}
+            {/* <h6 onClick={() => sort_by("symbol")}>Sym.</h6> */}
+            {/* {sort_state && sorted_prop == "symbol" && <div className="arrow-up" />} */}
 
-                {!sort_state && sorted_prop == "symbol" && <div className="arrow-down" />}
-            </div>
-
+            {/* {!sort_state && sorted_prop == "symbol" && <div className="arrow-down" />} */}
+            {/* </div> */}
             {/* 1  netPercentChange*/}
-            <div className="align_items_center col-1 flex_end">
+            <div className=" col-2 align-items-center flex_end">
                 <h6 onClick={() => sort_by("netPercentChange")}>Perc.</h6>
                 {sort_state && sorted_prop == "netPercentChange" && <div className="arrow-up" />}
                 {!sort_state && sorted_prop == "netPercentChange" && <div className="arrow-down" />}{" "}
             </div>
+            {/* </div> */}
+            {/* </div> */}
+
             {/* 2 lastPrice*/}
-            <div className="align_items_center col-2 flex_end">
+            <div className="align-items-center col-2 flex_end">
                 <h6 onClick={() => sort_by("lastPrice")}>Price</h6>
                 {sort_state && sorted_prop == "lastPrice" && <div className="arrow-up" />}
 
@@ -161,7 +170,7 @@ const Stock_List_Header = ({ sort_by, sort_state, sorted_prop }) => {
             </div>
 
             {/* 2 _52weekLow*/}
-            <div className="align_items_center col-2 flex_end">
+            <div className="align-items-center col-2 flex_end">
                 <h6 onClick={() => sort_by("_52weekLow")}>52 Wk Low</h6>
                 {sort_state && sorted_prop == "_52weekLow" && <div className="arrow-up" />}
 
@@ -169,28 +178,28 @@ const Stock_List_Header = ({ sort_by, sort_state, sorted_prop }) => {
             </div>
 
             {/* 2 _52weekHigh*/}
-            <div className="align_items_center col-2 flex_end">
+            <div className="align-items-center col-2 flex_end">
                 <h6 onClick={() => sort_by("_52weekHigh")}>52 Wk High</h6>
                 {sort_state && sorted_prop == "_52weekHigh" && <div className="arrow-up" />}
 
                 {!sort_state && sorted_prop == "_52weekHigh" && <div className="arrow-down" />}
             </div>
             {/* 2 netChange */}
-            <div className="align_items_center col-2 flex_end">
+            <div className="align-items-center col-2 flex_end">
                 <h6 onClick={() => sort_by("netChange")}>+/-</h6>
                 {sort_state && sorted_prop == "netChange" && <div className="arrow-up" />}
 
                 {!sort_state && sorted_prop == "netChange" && <div className="arrow-down" />}
             </div>
             {/* 2 totalVol */}
-            <div className="align_items_center col-2 flex_end">
+            <div className="align-items-center col-2 flex_end">
                 <h6 onClick={() => sort_by("totalVol")}>Vol.</h6>
                 {sort_state && sorted_prop == "totalVol" && <div className="arrow-up" />}
 
                 {!sort_state && sorted_prop == "totalVol" && <div className="arrow-down" />}
             </div>
 
-            {/* <div className="align_items_center col-2 flex_end">
+            {/* <div className="align-items-center col-2 flex_end">
                 <h6 onClick={() => sort_by("marketShare")}>marketShare.</h6>
                 {sort_state && sorted_prop == "marketShare" && <div className="arrow-up" />}
 
@@ -211,7 +220,7 @@ const Percent_Change = ({ percent_change }) => {
     if (percent_change > 0) class_name = "percentage_up";
     if (percent_change < 0) class_name = "percentage_down";
     if (percent_change == 0) class_name = "percentage_neutral";
-    return <span className={class_name}>{`${percent_change.toFixed(2)}%`}</span>;
+    return <small className={`${class_name}`}>{`${percent_change.toFixed(2)}%`}</small>;
 };
 
 const Symbol = ({ symbol }) => <span className="ticker_symbol">{symbol}</span>;
