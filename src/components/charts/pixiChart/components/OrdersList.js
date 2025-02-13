@@ -2,7 +2,7 @@ import React, { useState, useEffect, memo } from "react";
 import styled from "styled-components";
 import API from "../../../../components/API";
 import moment from "moment";
-import { compileOrders, priceType } from "./utils";
+import { compileOrders, priceType, formatTimeWithMicroSeconds, combineTimestampsMicroSeconds, formatTimeDiffInMicroSeconds } from "./utils";
 
 export default function OrdersList(props) {
     let { orders = {} } = props;
@@ -20,74 +20,18 @@ export default function OrdersList(props) {
     );
 }
 
-function formatTimeDiff(diffInMilliseconds) {
-    const absValue = Math.abs(diffInMilliseconds);
-
-    if (absValue >= 60000) {
-        // If 60 seconds or more, show in minutes
-        return `${(diffInMilliseconds / 60000).toFixed(2)} min`;
-    } else if (absValue >= 1000) {
-        // If 1 second or more, show in seconds
-        return `${(diffInMilliseconds / 1000).toFixed(2)} s`;
-    } else if (absValue >= 1) {
-        // If 1 millisecond or more, show in milliseconds
-        return `${diffInMilliseconds.toFixed(2)} ms`;
-    } else {
-        // Convert to microseconds
-        const microseconds = diffInMilliseconds * 1000;
-        return `${microseconds.toFixed(1)} μs`;
-    }
-}
-
-function formatTime({ ssboe, usecs }) {
-    const totalMilliseconds = combineTimestamps({ ssboe, usecs });
-    const date = new Date(totalMilliseconds);
-
-    // Get hours, minutes, seconds
-    const timeStr = date.toLocaleTimeString("en-US", {
-        hour12: true,
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-    });
-
-    // Ensure usecs is padded to 6 digits
-    const usecStr = String(usecs).padStart(6, "0");
-
-    // Split the time string to insert microseconds in the correct place
-    const [time, ampm] = timeStr.split(" ");
-
-    // Format as HH:MM:SS.microseconds AM/PM
-    return `${time}.${usecStr} ${ampm}`;
-}
-
-function combineTimestamps({ ssboe, usecs = "" }) {
-    // Convert ssboe to milliseconds
-    const milliseconds = ssboe * 1000;
-
-    // Ensure usecs is padded to 6 digits
-    const usecStr = String(usecs).padStart(6, "0");
-
-    // Convert microseconds to milliseconds (keeping fractional part)
-    const microsToMillis = parseInt(usecStr) / 1000;
-
-    // Combine them
-    const totalMilliseconds = milliseconds + microsToMillis;
-
-    return totalMilliseconds;
-}
-
 const OrderItem = memo(
     function OrderItem(props) {
         const [toggleShowOrderEvents, setToggleShowOrderEvents] = useState(false);
         if (!props.orders) return <></>;
         let { orders } = props;
-        orders.forEach((o) => (o.datetime = combineTimestamps(o)));
+        orders.forEach((o) => (o.datetime = combineTimestampsMicroSeconds(o)));
         orders.sort((a, b) => b.datetime - a.datetime);
 
         const order = orders?.[0];
+        // debugger;
         const compiledOrder = compileOrders(orders)[order.basketId];
-        debugger;
+        // debugger;
         // const order = orders?.slice(-1)[0];
 
         const reportTexts = [];
@@ -105,17 +49,21 @@ const OrderItem = memo(
                 const nextOrder = orders[index + 1];
                 timeDiff = order.datetime - nextOrder.datetime;
             }
-            if (order.reportText || order.status || order.reportText) reportTexts.push({ timeDiff, templateId: order.templateId, notifyType: order.notifyType, text: order.reportText || order.status || order.reportText, time: formatTime(order) });
+            if (order.reportText || order.status || order.reportText) reportTexts.push({ timeDiff, templateId: order.templateId, notifyType: order.notifyType, text: order.reportText || order.status || order.reportText, time: formatTimeWithMicroSeconds(order) });
         });
+        if (!isBracket) {
+            debugger;
+        }
+        // debugger;
         return (
-            <OrderContainer order={compiledOrder}>
+            <OrderContainer onClick={() => setToggleShowOrderEvents(!toggleShowOrderEvents)} title={order.status} order={compiledOrder}>
                 <div className="row">
-                    <div className="col">
+                    <div title={order.status} className="col">
+                        <div>OrderStatus: {compiledOrder.status}</div>
                         <div>{isBracket && "Is BRACKET"}</div>
                         <div>netQuantity {compiledOrder.netQuantity}</div>
-                        <div>
-                            {compiledOrder.basketId} {compiledOrder.templateId}
-                        </div>
+                        <div>templateId {compiledOrder.templateId}</div>
+                        <div>basketId {compiledOrder.basketId.slice(-4)}</div>
                         <div>{`${compiledOrder.transactionType == 1 ? "BUY" : "SELL"} ${compiledOrder.quantity} of ${compiledOrder.symbol} at ${priceType(compiledOrder.priceType)}`}</div>
 
                         <div>
@@ -143,7 +91,7 @@ const OrderItem = memo(
 
                                                 <small>{time}</small>
                                                 <br />
-                                                {timeDiff && <small>{formatTimeDiff(timeDiff)}</small>}
+                                                {timeDiff && <small>{formatTimeDiffInMicroSeconds(timeDiff)}</small>}
                                             </>
                                         ) : (
                                             `${"compiledOrder.reportText"} `
@@ -259,6 +207,30 @@ function reportTypeColor(props) {
         // }
     }
 }
+const colors = {
+    // Direction colors
+    BUY: "#22c55e", // Green-500
+    SELL: "#ef4444", // Red-500
+
+    // Order types - using blues and purples for distinction
+    MARKET: "#3b82f6", // Blue-500
+    LIMIT: "#6366f1", // Indigo-500
+    STOP_LIMIT: "#8b5cf6", // Violet-500
+    STOP_MARKET: "#a855f7", // Purple-500
+
+    // Complex order types
+    OCO: "#0ea5e9", // Sky-500
+    BRACKET: "#06b6d4", // Cyan-500
+
+    // Status colors
+    OPEN: "#84cc16", // Lime-500 (active/running)
+    OPEN_PENDING: "#facc15", // Yellow-500 (waiting)
+    COMPLETE: "#10b981", // Emerald-500 (success)
+    CANCEL: "#f97316", // Orange-500 (cancelled)
+};
+function OrderColorScheme(type) {
+    return colors[type] || "black";
+}
 
 function tradeTypeColor(props) {
     const { order } = props;
@@ -266,23 +238,23 @@ function tradeTypeColor(props) {
     switch (order.priceType) {
         case "LIMIT":
         case 1:
-            return "blue";
+            return OrderColorScheme("LIMIT");
         case "MARKET":
         case 2:
-            return "green";
+            return OrderColorScheme("MARKET");
 
         case "STOP_LIMIT":
         case 3:
-            return "pink";
+            return OrderColorScheme("STOP_LIMIT");
         case "STOP_MARKET":
         case 4:
-            return "orange";
+            return OrderColorScheme("STOP_MARKET");
         case "MARKET_IF_TOUCHED":
         case 5: //
-            return "red";
+            return OrderColorScheme("MARKET_IF_TOUCHED");
         case "LIMIT_IF_TOUCHED":
         case 6: //
-            return "yellow";
+            return OrderColorScheme("LIMIT_IF_TOUCHED");
 
         default:
             console.log(order.priceType);
@@ -292,17 +264,18 @@ function tradeTypeColor(props) {
 
 function orderStatusColor(props) {
     const { order } = props;
-    if (!order?.status) return "grey";
+    if (!order?.status) return "red";
+    console.log(order.status);
     switch (order.status) {
         case "open":
-            return "green";
+            return OrderColorScheme("OPEN");
         case "cancel":
-            return "red";
+            return OrderColorScheme("CANCEL");
 
         case "complete":
-            return "black";
+            return OrderColorScheme("COMPLETE");
         case "open pending":
-            return "yellowgreen";
+            return OrderColorScheme("OPEN_PENDING");
         case "Cancel received from client":
         case "cancel received by exch gateway":
             return "#FF6B6B"; // Lighter coral red

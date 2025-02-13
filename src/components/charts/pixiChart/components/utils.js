@@ -213,23 +213,175 @@ export function parseBarTypeTimeFrame({ barType, barTypePeriod }) {
     }
     return timeBerBar * barTypePeriod * 500;
 }
+export function formatTimeWithMicroSeconds({ ssboe, usecs }) {
+    const totalMilliseconds = combineTimestampsMicroSeconds({ ssboe, usecs });
+    const date = new Date(totalMilliseconds);
+
+    // Get hours, minutes, seconds
+    const timeStr = date.toLocaleTimeString("en-US", {
+        hour12: true,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+    });
+
+    // Ensure usecs is padded to 6 digits
+    const usecStr = String(usecs).padStart(6, "0");
+
+    // Split the time string to insert microseconds in the correct place
+    const [time, ampm] = timeStr.split(" ");
+
+    // Format as HH:MM:SS.microseconds AM/PM
+    return `${time}.${usecStr} ${ampm}`;
+}
+
+export function formatTimeDiffInMicroSeconds(diffInMilliseconds) {
+    const absValue = Math.abs(diffInMilliseconds);
+
+    if (absValue >= 60000) {
+        // If 60 seconds or more, show in minutes
+        return `${(diffInMilliseconds / 60000).toFixed(2)} min`;
+    } else if (absValue >= 1000) {
+        // If 1 second or more, show in seconds
+        return `${(diffInMilliseconds / 1000).toFixed(2)} s`;
+    } else if (absValue >= 1) {
+        // If 1 millisecond or more, show in milliseconds
+        return `${diffInMilliseconds.toFixed(2)} ms`;
+    } else {
+        // Convert to microseconds
+        const microseconds = diffInMilliseconds * 1000;
+        return `${microseconds.toFixed(1)} μs`;
+    }
+}
+
+export function combineTimestampsMicroSeconds({ ssboe, usecs = "" }) {
+    // Convert ssboe to milliseconds
+    const milliseconds = ssboe * 1000;
+
+    // Ensure usecs is padded to 6 digits
+    const usecStr = String(usecs).padStart(6, "0");
+
+    // Convert microseconds to milliseconds (keeping fractional part)
+    const microsToMillis = parseInt(usecStr) / 1000;
+
+    // Combine them
+    const totalMilliseconds = milliseconds + microsToMillis;
+
+    return totalMilliseconds;
+}
 
 export function compileOrders(orders, accumulator = {}) {
     const _priceType = priceType;
     let compiledOrders = orders.reduce((acc, order) => {
-        if (order.data) {
-            order = order.data;
-        }
-        order.priceType = _priceType(order.priceType);
-        debugger;
-        let { templateId, completionReason, basketId, totalUnfilledSize, totalFillSize, bracketType, priceType, quantity, notifyType, triggerPrice, cancelledSize, transactionType } = order;
+        let { symbol, ssboe, usecs, templateId, completionReason, basketId, totalUnfilledSize, totalFillSize, bracketType, priceType, quantity, notifyType, triggerPrice, cancelledSize, transactionType } = order;
         if (!acc[basketId]) {
             acc[basketId] = {};
         }
-
+        order.priceType = _priceType(order.priceType);
+        console.log(order);
+        const isBracket = bracketType ? bracketType : acc[basketId].bracketType ? acc[basketId].bracketType : null;
+        const isMarket = order.priceType === "MARKET";
+        if (order.data) {
+            order = order.data;
+        }
+        if (isBracket) {
+            // acc[basketId].bracketType = isBracket;
+            acc[basketId].isBracketOrder = true;
+        }
         acc[basketId].basketId = basketId;
-        acc[basketId].bracketType = bracketType ? bracketType : acc[basketId].bracketType ? acc[basketId].bracketType : null;
-        acc[basketId].notifyType = notifyType;
+        //what time is this? the latest?
+        if (ssboe) {
+            if (!acc[basketId].ssboe) {
+                acc[basketId].ssboe = ssboe;
+            } else if (acc[basketId].ssboe < ssboe) {
+                acc[basketId].ssboe = ssboe;
+                if (notifyType) {
+                    acc[basketId].notifyType = notifyType;
+                }
+                if (templateId) {
+                    acc[basketId].templateId = templateId;
+                    if (templateId == 331) {
+                        //this is rithmics first reponse to the order
+                        acc[basketId].firstResponseTime = formatTimeWithMicroSeconds({ ssboe, usecs });
+                    }
+                    if (templateId == 353) {
+                        //I think this the next-first response
+                        if (order.targetTicks) {
+                            //basketId++
+                            acc[basketId].targetBasketId = parseInt(order.basketId) + 1;
+                            acc[basketId].targetQuantity = order.targetQuantity;
+                            acc[basketId].targetQuantityReleased = order.targetQuantityReleased;
+                            acc[basketId].targetTicks = order.targetTicks;
+                            acc[basketId].hasBracketTarget = true; //"2097020637"//this is still the parent order basketId!
+                            if (order.targetQuantity == order.targetQuantityReleased) {
+                                acc[basketId].targetOrderReleasedTime = formatTimeWithMicroSeconds({ ssboe, usecs });
+                            }
+                        } else if (order.stopTicks) {
+                            //basketId++
+                            acc[basketId].stopBasketId = parseInt(order.basketId) + 2;
+                            acc[basketId].stopQuantity = order.stopQuantity;
+                            acc[basketId].stopQuantityReleased = order.stopQuantityReleased;
+                            acc[basketId].stopTicks = order.stopTicks;
+                            acc[basketId].hasBracketStop = true; //"2097020637"//this is still the parent order basketId!
+                            if (order.stopQuantity == order.stopQuantityReleased) {
+                                acc[basketId].stopOrderReleasedTime = formatTimeWithMicroSeconds({ ssboe, usecs });
+                            }
+                        } else {
+                            acc[basketId].secondResponseTime = formatTimeWithMicroSeconds({ ssboe, usecs });
+                        }
+                    }
+                    if (templateId == 351) {
+                        //start of some status updates
+                        acc[basketId].lastStatusUpdateTime = formatTimeWithMicroSeconds({ ssboe, usecs });
+                        acc[basketId].status = order.status;
+                        acc[basketId].sequenceNumber = order.sequenceNumber;
+                        if (order.bracketType) {
+                            //check if its a target
+                            if (order.linkedBasketIds) {
+                                acc[basketId].linkedBasketIds = order.linkedBasketIds;
+                            }
+                            if (order.originalBasketId) {
+                                acc[basketId].originalBasketId = order.originalBasketId;
+                            }
+                        }
+                        //triggerPrice
+                        if (order.triggerPrice) {
+                            acc[basketId].triggerPrice = order.triggerPrice;
+                        }
+                    }
+                    if (templateId == 352) {
+                        //start of some status updates
+                        if (order.reportType == "status") {
+                            acc[basketId].orderActiveTime = formatTimeWithMicroSeconds({ ssboe, usecs });
+                            acc[basketId].confirmedTime = order.confirmedTime;
+                            acc[basketId].totalUnfilledSize = totalUnfilledSize;
+                            acc[basketId].totalFillSize = totalFillSize;
+                            acc[basketId].cancelledSize = cancelledSize;
+                            acc[basketId].confirmedSize = order.confirmedSize;
+                            acc[basketId].totalUnfilledSize = order.totalUnfilledSize;
+                        }
+
+                        //totalFillSize
+                        if (order.reportType) {
+                            acc[basketId].reportType = order.reportType;
+                        }
+                        if (order.reportType == "fill") {
+                            acc[basketId].fillPrice = order.fillPrice;
+                            acc[basketId].fillSize = order.fillSize;
+                            acc[basketId].fillTime = formatTimeWithMicroSeconds({ ssboe, usecs });
+                        }
+                        if (order.reportType == "complete") {
+                            acc[basketId].completeTime = formatTimeWithMicroSeconds({ ssboe, usecs });
+                            acc[basketId].isComplete = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (symbol) {
+            acc[basketId].symbol = symbol;
+        }
         if (priceType) {
             acc[basketId].priceType = priceType;
         }
@@ -242,14 +394,34 @@ export function compileOrders(orders, accumulator = {}) {
         if (order.netQuantity !== undefined) {
             acc[basketId].netQuantity = order.netQuantity;
         }
+        if (order.status == "complete" || order.status == "open" || order.status == "open pending" || order.status == "complete" || order.status == "cancel") {
+            if (order.status == "complete") {
+                acc[basketId].status = order.status;
+            } else if (order.status !== "complete" && acc[basketId].status !== "complete") {
+                if (order.status == "open") {
+                    acc[basketId].status = order.status;
+                } else if (order.status == "open pending" && !acc[basketId].status) {
+                    acc[basketId].status = order.status;
+                }
+                if (order.status == "cancel") {
+                    acc[basketId].status = order.status;
+                }
+            }
+        } else if (order.status) {
+            console.log(order.status);
+        }
 
         acc[basketId].templateId = templateId;
 
         let hasFillPrice = acc[basketId].fillPrice;
+        // const price = order.price;
+        if (order.price) {
+            acc[basketId].price = order.price;
+        }
 
         if (order.status === "complete") {
             //notify type == 15
-
+            // debugger;
             acc[basketId].endTime = order.ssboe; //also has datetime
             acc[basketId].totalFillSize = order.totalFillSize;
             acc[basketId].quantity = order.quantity;
@@ -257,19 +429,19 @@ export function compileOrders(orders, accumulator = {}) {
             acc[basketId].price = order.price;
             acc[basketId].isComplete = true;
         } else if (order.templateId == 353) {
-            debugger;
-            acc[basketId].firstAckWhatTime = order.ssboe;
-            acc[basketId].basketId = order.basketId;
-            acc[basketId].targetQuantityReleased = order.targetQuantityReleased;
-            acc[basketId].targetQuantity = order.targetQuantity;
-            acc[basketId].stopQuantityReleased = order.stopQuantityReleased;
-            acc[basketId].stopQuantity = order.stopQuantity;
-            acc[basketId].stopTicks = order.stopTicks;
-            acc[basketId].targetTicks = order.targetTicks;
+            // debugger;
+            // acc[basketId].firstAckWhatTime = order.ssboe;
+            // acc[basketId].basketId = order.basketId;
+            // acc[basketId].targetQuantityReleased = order.targetQuantityReleased;
+            // acc[basketId].targetQuantity = order.targetQuantity;
+            // acc[basketId].stopQuantityReleased = order.stopQuantityReleased;
+            // acc[basketId].stopQuantity = order.stopQuantity;
+            // acc[basketId].stopTicks = order.stopTicks;
+            // acc[basketId].targetTicks = order.targetTicks;
         } else if (order.targetQuantityReleased !== undefined || order.stopQuantityReleased !== undefined) {
-            debugger;
-            acc[basketId].targetQuantityReleased = order.targetQuantityReleased;
-            acc[basketId].stopQuantityReleased = order.stopQuantityReleased;
+            // debugger;
+            // acc[basketId].targetQuantityReleased = order.targetQuantityReleased;
+            // acc[basketId].stopQuantityReleased = order.stopQuantityReleased;
         } else if (order.reportText == "order Recived From Client") {
             //This is from the website, or bot sending to the api
             acc[basketId].originalOrderReceivedFromClientTime = order.ssboe;
@@ -296,7 +468,7 @@ export function compileOrders(orders, accumulator = {}) {
         } else if (order.status === "Order received from client") {
             acc[basketId].orderReceivedFromClientTime = order.ssboe;
             acc[basketId].triggerPrice = order.triggerPrice;
-            acc[basketId].price = order.price;
+            // acc[basketId].price = order.price;
         } else if (order.status === "cancel pending") {
             acc[basketId].cancelPendingTime = order.ssboe;
             acc[basketId].isCancelled = true;
@@ -305,18 +477,18 @@ export function compileOrders(orders, accumulator = {}) {
             acc[basketId].fillSize = order.totalFillSize;
             acc[basketId].totalFillSize = order.totalFillSize;
             acc[basketId].totalUnfilledSize = order.totalUnfilledSize;
-            acc[basketId].price = order.price;
+            // acc[basketId].price = order.price;
             acc[basketId].fillPrice = order.fillPrice;
             acc[basketId].avgFillPrice = order.avgFillPrice;
         } else if (order.status === "open") {
             acc[basketId].openTime = order.ssboe;
             acc[basketId].triggerPrice = order.triggerPrice;
-            acc[basketId].price = order.price;
+            // acc[basketId].price = order.price;
             acc[basketId].origPriceType = order.origPriceType;
         } else if (order.status === "open pending") {
             acc[basketId].openPendingTime = order.ssboe;
             acc[basketId].triggerPrice = order.triggerPrice;
-            acc[basketId].price = order.price;
+            // acc[basketId].price = order.price;
             acc[basketId].origPriceType = order.origPriceType;
         } else if (order.reportType === "trigger") {
             acc[basketId].triggerTime = order.ssboe;
@@ -334,11 +506,11 @@ export function compileOrders(orders, accumulator = {}) {
         } else if (order.status === "order sent to exch") {
             acc[basketId].orderSentToExchTime = order.ssboe;
             acc[basketId].triggerPrice = order.triggerPrice;
-            acc[basketId].price = order.price;
+            // acc[basketId].price = order.price;
         } else if (order.status === "order received by exch gateway") {
             acc[basketId].orderReceivedByExchGatewayTime = order.ssboe;
             acc[basketId].triggerPrice = order.triggerPrice;
-            acc[basketId].price = order.price;
+            // acc[basketId].price = order.price;
         } else if (order.templateId == 313) {
             //this is the first response from sending an order
             acc[basketId].firstAckTime = order.ssboe;
@@ -353,7 +525,7 @@ export function compileOrders(orders, accumulator = {}) {
             acc[basketId].totalFillSize = order.totalFillSize;
             acc[basketId].totalUnfilledSize = order.totalUnfilledSize;
             acc[basketId].triggerPrice = order.triggerPrice;
-            acc[basketId].price = order.price;
+            // acc[basketId].price = order.price;
             acc[basketId].fillPrice = order.fillPrice;
             acc[basketId].avgFillPrice = order.avgFillPrice;
         } else if (order.completionReason === "C" || order.isCancelled) {

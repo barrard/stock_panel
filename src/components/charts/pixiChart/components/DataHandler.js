@@ -1232,8 +1232,8 @@ export default class PixiData {
             function handleOutliers(data, key, method = "cap") {
                 const { q1, q2, q3 } = calculateQuartiles(data, key);
                 const iqr = q3 - q1;
-                const lowerBound = q1 - 3 * iqr;
-                const upperBound = q3 + 3 * iqr;
+                const lowerBound = q1 - 6 * iqr;
+                const upperBound = q3 + 6 * iqr;
 
                 return data
                     .map((item) => {
@@ -1291,19 +1291,7 @@ export default class PixiData {
             const percentiles = [0, 50, 75, 90, 100]; // Including 0 percentile for better interpolation
             // Calculate percentile data for 'size'
             const percentileData = calculatePercentiles(cleanedDataCapped, "size", percentiles);
-
-            // Add continuous percentile and index information to original data
-            const enrichedData = cleanedDataCapped.map((item) => {
-                const { percentile, index } = getPercentileInfo(item.size, percentileData);
-                return {
-                    ...item,
-                    sizePercentile: percentile,
-                    sizePercentileIndex: index,
-                };
-            });
-
             //NEW STYLE
-
             const colorFns = [];
             colors.forEach((color, i) => {
                 if (i === 0) return;
@@ -1314,6 +1302,17 @@ export default class PixiData {
                     return interpolateLab(colors[i - 1], colors[i])(colorScale(size));
                 });
             });
+            // Add continuous percentile and index information to original data
+            const enrichedData = cleanedDataCapped.map((item) => {
+                const { percentile, index } = getPercentileInfo(item.size, percentileData);
+                return {
+                    ...item,
+                    sizePercentile: percentile,
+                    sizePercentileIndex: index,
+                };
+            });
+            debugger;
+
             const height = this.priceScale(0) - this.priceScale(liquidityHeight);
             enrichedData.forEach((liquidity, i) => {
                 const x = 0;

@@ -77,7 +77,7 @@ export default {
 };
 
 async function getOrders(opts = {}) {
-    const { symbol, skip, limit = 20, bracketId } = opts;
+    const { symbol, skip, limit = 400, bracketId } = opts;
 
     let resp = await fetch(`${REACT_APP_API_SERVER}/API/get-orders`, {
         ...POST({

@@ -512,16 +512,6 @@ export default function PixiChart({ Socket }) {
             }));
         });
 
-        Socket.on("ordersShown", (data) => {
-            Object.keys(data).forEach((basketId) => {
-                // setOrders((orders) => [...orders, data[basketId]]);
-                if (!orders[basketId]) orders[basketId] = [];
-                orders[basketId].push(data[basketId]);
-                pixiData?.addOrder([data[basketId]]);
-            });
-            setOrders({ ...orders });
-        });
-
         Socket.on("timeBarUpdate", (data) => {
             if (data.symbol !== pixiData.symbol.value) return;
             setCurrentTimeBar(data);
@@ -549,7 +539,7 @@ export default function PixiChart({ Socket }) {
             Socket.off("PlantStatus");
 
             // Socket.off("orderTracker");
-            Socket.off("ordersShown");
+            // Socket.off("ordersShown");
             Socket.off("lastTwoDaysCompiled");
             Socket.off("timeBarUpdate");
             //BACK TESTER
@@ -563,6 +553,22 @@ export default function PixiChart({ Socket }) {
         };
     }, [symbol]);
     // }, [symbol, barType, barTypePeriod]);
+
+    useEffect(() => {
+        Socket.on("ordersShown", (data) => {
+            debugger;
+            Object.keys(data).forEach((basketId) => {
+                // setOrders((orders) => [...orders, data[basketId]]);
+                if (!orders[basketId]) orders[basketId] = [];
+                orders[basketId].push(data[basketId]);
+                pixiData?.addOrder([data[basketId]]);
+            });
+            setOrders({ ...orders });
+        });
+        return () => {
+            Socket.off("ordersShown");
+        };
+    }, [orders]);
 
     useEffect(() => {
         if (!pixiData || !pixiData.showCrosshair || !pixiData.hideCrosshair) return console.log("no pixidata?");
@@ -637,8 +643,8 @@ export default function PixiChart({ Socket }) {
     }, []);
 
     async function getOrders() {
-        const orders = await API.getOrders();
-
+        const _orders = await API.getOrders();
+        debugger;
         function reduceByBasketId(acc, order) {
             if (!order.basketId) return acc;
             if (!acc[order.basketId]) {
@@ -647,9 +653,10 @@ export default function PixiChart({ Socket }) {
             acc[order.basketId].push(order);
             return acc;
         }
-        const compiledOrders = Object.values(orders).reduce(reduceByBasketId, {});
-        setOrders(compiledOrders);
-        pixiData?.setOrders(orders);
+        const compiledOrders = Object.values(_orders).reduce(reduceByBasketId, orders);
+        debugger;
+        setOrders({ ...compiledOrders });
+        pixiData?.setOrders(_orders);
     }
 
     const clearLongPress = () => {

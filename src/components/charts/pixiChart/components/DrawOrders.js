@@ -39,6 +39,7 @@ export default class DrawOrders {
             const IS_MARKET_ORDER = priceType(order.priceType) === "MARKET" || order.priceType === "MARKET";
             const IS_LIMIT_ORDER = priceType(order.priceType) === "LIMIT" || order.priceType === "LIMIT";
             const IS_STOP_MARKET_ORDER = priceType(order.priceType) === "STOP_MARKET" || order.priceType === "STOP_MARKET";
+            const IS_STOP_LIMIT_ORDER = priceType(order.priceType) === "STOP_LIMIT" || order.priceType === "STOP_LIMIT";
             if (order.completionReason == "F") {
                 this.drawFilledMarker(order);
             } else if ((order.statusTime && IS_MARKET_ORDER && !order.isComplete) || (order.triggerTime && !order.isComplete && !order.isCancelled)) {
@@ -52,6 +53,8 @@ export default class DrawOrders {
             } else if (IS_LIMIT_ORDER) {
                 this.drawOpenMarker(order);
             } else if (IS_STOP_MARKET_ORDER) {
+                this.drawOpenMarker(order);
+            } else if (IS_STOP_LIMIT_ORDER) {
                 this.drawOpenMarker(order);
             } else {
                 debugger;
