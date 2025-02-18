@@ -74,7 +74,12 @@ export default {
     getEconEventInstances,
     getBacktestData,
     getOrders,
+    getPickLists,
 };
+
+async function getPickLists() {
+    return await GET(`/API/get-pick-lists`);
+}
 
 async function getOrders(opts = {}) {
     const { symbol, skip, limit = 400, bracketId } = opts;
@@ -91,18 +96,18 @@ async function getOrders(opts = {}) {
 }
 
 async function getBacktestData(symbol) {
-    return GET(`/API/getBacktestData/${symbol}`);
+    return await GET(`/API/getBacktestData/${symbol}`);
 }
 
 async function getEconEventInstances(eventType) {
     console.log(eventType);
-    return GET(`/API/getEconEventInstances/${eventType.value}`);
+    return await GET(`/API/getEconEventInstances/${eventType.value}`);
 }
 async function getEconEventTypes() {
-    return GET("/API/getEconEventTypes");
+    return await GET("/API/getEconEventTypes");
 }
 async function getBacktestDay({ date, symbol, exchange }) {
-    return GET(`/API/rapi/backtest-day/${symbol}/${exchange}/${date}`);
+    return await GET(`/API/rapi/backtest-day/${symbol}/${exchange}/${date}`);
 }
 
 async function getCustomTicks(options = {}) {
@@ -118,15 +123,15 @@ async function getCustomTicks(options = {}) {
     const queryString = params.toString();
     const url = `/API/custom-ticks${queryString ? `?${queryString}` : ""}`;
 
-    return GET(url);
+    return await GET(url);
 }
 
 async function getTicks() {
-    return GET(`/API/ticks`);
+    return await GET(`/API/ticks`);
 }
 
 async function getOrderFlow({ start, end, symbol = "ES" }) {
-    return GET(`/API/getOrderFlow/${start}/${end}/${symbol}`);
+    return await GET(`/API/getOrderFlow/${start}/${end}/${symbol}`);
 }
 
 async function GET(url) {

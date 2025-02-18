@@ -25,6 +25,8 @@ import GptChart from "./components/charts/GptChart";
 import BacktestChart from "./components/charts/BacktestChart";
 import BacktestResults from "./components/charts/BacktestResults";
 
+import PickList from "./components/PickList.js";
+
 import BidAskStats from "./components/charts/BidAskStats";
 import BetterTickChart from "./components/charts/BetterTickChart";
 import EconData from "./components/EconData";
@@ -119,6 +121,7 @@ class App extends React.Component {
                     <Route path="/gpt-chart" render={(props) => <GptChart {...props} Socket={Socket} />} />
                     <Route path="/pixi-backtest" render={(props) => <BacktestChart {...props} Socket={Socket} />} />
                     <Route path="/backtest-results" render={(props) => <BacktestResults {...props} Socket={Socket} />} />
+                    <Route path="/pick-list" render={(props) => <PickList {...props} Socket={Socket} />} />
 
                     <Route path="/bid-ask-stats" render={(props) => <BidAskStats {...props} Socket={Socket} />} />
                     <Route path="/better-tick" render={(props) => <BetterTickChart {...props} Socket={Socket} />} />
