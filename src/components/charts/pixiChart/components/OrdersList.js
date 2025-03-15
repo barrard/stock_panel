@@ -409,10 +409,10 @@ const OrderItem = memo(
         const [toggleShowOrderEvents, setToggleShowOrderEvents] = useState(false);
 
         if (!props.orders) return null;
-
+        debugger;
         let { orders } = props;
         orders.forEach((o) => (o.datetime = combineTimestampsMicroSeconds(o)));
-        orders.sort((a, b) => b.datetime - a.datetime);
+        orders.sort((a, b) => a.datetime - b.datetime);
 
         const order = orders[0];
         const compiledOrder = compileOrders(orders)[order.basketId];
@@ -421,10 +421,10 @@ const OrderItem = memo(
 
         orders.forEach((order, index) => {
             if (order.bracketType) isBracket = true;
-            let timeDiff;
-            if (index < orders.length - 1) {
-                const nextOrder = orders[index + 1];
-                timeDiff = order.datetime - nextOrder.datetime;
+            let timeDiff = 0;
+            if (index > 0) {
+                const prevOrder = orders[index - 1];
+                timeDiff = order.datetime - prevOrder.datetime;
             }
             if (order.reportText || order.status || order.reportText) {
                 reportTexts.push({

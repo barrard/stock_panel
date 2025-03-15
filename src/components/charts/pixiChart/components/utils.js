@@ -256,7 +256,7 @@ export function formatTimeDiffInMicroSeconds(diffInMilliseconds) {
 
 export function combineTimestampsMicroSeconds({ ssboe, usecs = "" }) {
     // Convert ssboe to milliseconds
-    const milliseconds = ssboe * 1000;
+    const milliseconds = ssboe;
 
     // Ensure usecs is padded to 6 digits
     const usecStr = String(usecs).padStart(6, "0");
@@ -265,7 +265,7 @@ export function combineTimestampsMicroSeconds({ ssboe, usecs = "" }) {
     const microsToMillis = parseInt(usecStr) / 1000;
 
     // Combine them
-    const totalMilliseconds = milliseconds + microsToMillis;
+    const totalMilliseconds = parseFloat(String(milliseconds) + String(microsToMillis));
 
     return totalMilliseconds;
 }
