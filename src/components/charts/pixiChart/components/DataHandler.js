@@ -114,7 +114,8 @@ export default class PixiData {
 
             const priceType = this.TW_BUY.text === "LIMIT" ? 1 : 4;
 
-            this.sendOrder({ transactionType: 1, limitPrice: this.TW_Price, priceType });
+            debugger;
+            this.sendOrder({ transactionType: 1, limitPrice: this.TW_Price, priceType, symbolData: this.fullSymbol?.current });
             // console.log(`Buy ${this.TW_BUY.text} Button clicked!`);
         };
         this.TW_BuyButtonGfx.on("click", this.BuyButtonClick);
@@ -128,9 +129,9 @@ export default class PixiData {
 
             console.log(this.TW_SELL.text);
             const priceType = this.TW_SELL.text === "LIMIT" ? 1 : 4;
-
+            debugger;
             // console.log(`Sell ${this.TW_SELL.text} Button clicked!`);
-            this.sendOrder({ transactionType: 2, limitPrice: this.TW_Price, priceType });
+            this.sendOrder({ transactionType: 2, limitPrice: this.TW_Price, priceType, symbolData: this.fullSymbol?.current });
         };
         this.TW_SellButtonGfx.on("click", this.SellButtonClick);
         this.tradeWindowContainer.addChild(this.tradeWindowGfx);
@@ -287,31 +288,39 @@ export default class PixiData {
         this.loadingMoreData = false;
     }
 
-    // setTimeframe(timeframe) {
-    //     this.timeframe = timeframe;
-    //     this.ohlcDatas.length = [];
-    // }
-
     /**
      *
      * @param {transactionType} obj 1 == buy 2 == sell
      * priceType  1 == Limit 4 == stop market
      * limitPrice the price
      */
-    async sendOrder({ transactionType, limitPrice, priceType }) {
+
+    async sendOrder({ transactionType, limitPrice, priceType, symbolData }) {
+        const datetime = new Date().getTime();
         // alert(`${priceType} Sell ${limitPrice}`);
-        debugger;
         let resp = await API.rapi_submitOrder({
+            datetime,
+            symbol: symbolData.fullSymbol,
+            exchange: symbolData.exchange,
             priceType,
             limitPrice,
             transactionType,
-            symbol: this.fullSymbol?.current?.fullSymbol,
-            exchange: this.symbol.exchange,
+            // ...(isBracket && { bracketType: 6 }),
+            // ...(tickTarget && { targetTicks: tickTarget }),
+            // ...(tickLoss && { stopTicks: tickLoss }),
+            // ...(isTrailingStop && { trailingStopTicks: tickLoss }),
+            // ...(isOco && {
+            // 	ocoData: {
+            // 		priceType: oco2PriceType,
+            // 		limitPrice: oco2LimitPrice,
+            // 		transactionType: isOcoBuy ? 1 : 2,
+            // 	},
+            // }),
         });
-
-        console.log(resp);
     }
-    showTradeWindow(openTradeWindow) {
+
+    showTradeWindow(openTradeWindow, tradeData) {
+        this.tradeData = tradeData;
         //draw a window that follows the mouse
         this.openTradeWindow = openTradeWindow;
         if (this.setTradeWindowPosition) return;
@@ -756,159 +765,6 @@ export default class PixiData {
             this.drawPivotPoints?.draw();
         }
     }
-
-    // compileOrders(orders) {
-    //     let compiledOrders = orders.reduce((acc, order) => {
-    //         if (order.data) {
-    //             order = order.data;
-    //         }
-    //         const { templateId, completionReason, basketId, totalUnfilledSize, totalFillSize, bracketType, priceType, quantity, notifyType, triggerPrice, cancelledSize, transactionType } = order;
-    //         if (!acc[basketId]) {
-    //             acc[basketId] = {};
-    //         }
-    //         acc[basketId].basketId = basketId;
-    //         acc[basketId].bracketType = bracketType ? bracketType : acc[basketId].bracketType ? acc[basketId].bracketType : null;
-    //         acc[basketId].notifyType = notifyType;
-    //         if (priceType) {
-    //             acc[basketId].priceType = priceType;
-    //         }
-    //         if (transactionType) {
-    //             acc[basketId].transactionType = transactionType;
-    //         }
-    //         if (completionReason) {
-    //             acc[basketId].completionReason = completionReason;
-    //         }
-
-    //         acc[basketId].templateId = templateId;
-
-    //         let hasFillPrice = acc[basketId].fillPrice;
-
-    //         if (order.status === "complete") {
-    //             //notify type == 15
-
-    //             acc[basketId].endTime = order.ssboe; //also has datetime
-    //             acc[basketId].totalFillSize = order.totalFillSize;
-    //             acc[basketId].quantity = order.quantity;
-    //             acc[basketId].triggerPrice = order.triggerPrice;
-    //             acc[basketId].price = order.price;
-    //             acc[basketId].isComplete = true;
-    //         } else if (order.templateId == 353) {
-    //             debugger;
-    //             acc[basketId].firstAckWhatTime = order.ssboe;
-    //             acc[basketId].basketId = order.basketId;
-    //             acc[basketId].targetQuantityReleased = order.targetQuantityReleased;
-    //             acc[basketId].targetQuantity = order.targetQuantity;
-    //             acc[basketId].stopQuantityReleased = order.stopQuantityReleased;
-    //             acc[basketId].stopQuantity = order.stopQuantity;
-    //             acc[basketId].stopTicks = order.stopTicks;
-    //             acc[basketId].targetTicks = order.targetTicks;
-    //         } else if (order.targetQuantityReleased !== undefined || order.stopQuantityReleased !== undefined) {
-    //             debugger;
-    //             acc[basketId].targetQuantityReleased = order.targetQuantityReleased;
-    //             acc[basketId].stopQuantityReleased = order.stopQuantityReleased;
-    //         } else if (order.reportText == "order Recived From Client") {
-    //             //This is from the website, or bot sending to the api
-    //             acc[basketId].originalOrderReceivedFromClientTime = order.ssboe;
-    //         } else if (order.reportText == "order Sent From Client") {
-    //             //This is from the website, or bot sending to the api
-    //             acc[basketId].originalOrderSendFromClientTime = order.ssboe;
-    //         } else if (order.reportText == "order Sent From API") {
-    //             //This is from the website, or bot sending to the api
-    //             acc[basketId].originalOrderSendFromAPITime = order.ssboe;
-    //         } else if (order.reportType === "cancel") {
-    //             //notify type == 15
-    //             acc[basketId].endTime = order.ssboe; //also has datetime
-    //             acc[basketId].totalFillSize = order.totalFillSize;
-    //             acc[basketId].cancelledSize = order.cancelledSize;
-    //             acc[basketId].totalUnfilledSize = order.totalUnfilledSize;
-    //             acc[basketId].triggerPrice = order.triggerPrice;
-    //             acc[basketId].isCancel = true;
-    //         } else if (order.status === "cancel sent to exch") {
-    //             acc[basketId].cancelSentToExchTime = order.ssboe;
-    //         } else if (order.status === "cancel received by exch gateway") {
-    //             acc[basketId].cancelReceivedByExchGatewayTime = order.ssboe;
-    //         } else if (order.status === "Cancel received from client") {
-    //             acc[basketId].cancelReceivedFromClientTime = order.ssboe;
-    //         } else if (order.status === "Order received from client") {
-    //             acc[basketId].orderReceivedFromClientTime = order.ssboe;
-    //             acc[basketId].triggerPrice = order.triggerPrice;
-    //             acc[basketId].price = order.price;
-    //         } else if (order.status === "cancel pending") {
-    //             acc[basketId].cancelPendingTime = order.ssboe;
-    //             acc[basketId].isCancelled = true;
-    //         } else if (order.reportType === "fill") {
-    //             acc[basketId].fillTime = order.ssboe;
-    //             acc[basketId].fillSize = order.totalFillSize;
-    //             acc[basketId].totalFillSize = order.totalFillSize;
-    //             acc[basketId].totalUnfilledSize = order.totalUnfilledSize;
-    //             acc[basketId].price = order.price;
-    //             acc[basketId].fillPrice = order.fillPrice;
-    //             acc[basketId].avgFillPrice = order.avgFillPrice;
-    //         } else if (order.status === "open") {
-    //             acc[basketId].openTime = order.ssboe;
-    //             acc[basketId].triggerPrice = order.triggerPrice;
-    //             acc[basketId].price = order.price;
-    //             acc[basketId].origPriceType = order.origPriceType;
-    //         } else if (order.status === "open pending") {
-    //             acc[basketId].openPendingTime = order.ssboe;
-    //             acc[basketId].triggerPrice = order.triggerPrice;
-    //             acc[basketId].price = order.price;
-    //             acc[basketId].origPriceType = order.origPriceType;
-    //         } else if (order.reportType === "trigger") {
-    //             acc[basketId].triggerTime = order.ssboe;
-    //             acc[basketId].triggerPrice = order.triggerPrice;
-    //             acc[basketId].origPriceType = order.origPriceType;
-    //         } else if (order.reportType === "status") {
-    //             // acc[basketId].avgFillPrice = order.avgFillPrice;
-
-    //             acc[basketId].statusTime = order.ssboe;
-    //             // acc[basketId].triggerPrice = order.triggerPrice;
-    //             // acc[basketId].price = order.price;
-    //         } else if (order.status === "trigger pending") {
-    //             acc[basketId].triggerPendingTime = order.ssboe;
-    //             acc[basketId].triggerPrice = order.triggerPrice;
-    //         } else if (order.status === "order sent to exch") {
-    //             acc[basketId].orderSentToExchTime = order.ssboe;
-    //             acc[basketId].triggerPrice = order.triggerPrice;
-    //             acc[basketId].price = order.price;
-    //         } else if (order.status === "order received by exch gateway") {
-    //             acc[basketId].orderReceivedByExchGatewayTime = order.ssboe;
-    //             acc[basketId].triggerPrice = order.triggerPrice;
-    //             acc[basketId].price = order.price;
-    //         } else if (order.templateId == 313) {
-    //             //this is the first response from sending an order
-    //             acc[basketId].firstAckTime = order.ssboe;
-    //             acc[basketId].basketId = order.basketId;
-    //         } else if (order.templateId == 331) {
-    //             acc[basketId].firstAckTime = order.ssboe;
-    //             acc[basketId].basketId = order.basketId;
-    //             acc[basketId].isBracketOrder = true;
-    //         } else if (order.reportType === "fill") {
-    //             acc[basketId].fillTime = order.ssboe;
-    //             acc[basketId].fillSize = order.totalFillSize;
-    //             acc[basketId].totalFillSize = order.totalFillSize;
-    //             acc[basketId].totalUnfilledSize = order.totalUnfilledSize;
-    //             acc[basketId].triggerPrice = order.triggerPrice;
-    //             acc[basketId].price = order.price;
-    //             acc[basketId].fillPrice = order.fillPrice;
-    //             acc[basketId].avgFillPrice = order.avgFillPrice;
-    //         } else if (order.completionReason === "C" || order.isCancelled) {
-    //             acc[basketId].cancelTime = order.ssboe;
-    //             debugger;
-    //         } else {
-    //             debugger;
-    //         }
-
-    //         let stillHasFillPrice = acc[basketId].fillPrice;
-    //         if (hasFillPrice && !stillHasFillPrice) {
-    //             console.log("lost it");
-    //             debugger;
-    //         }
-
-    //         return acc;
-    //     }, this.orders);
-    //     return compiledOrders;
-    // }
 
     setOrders(orders) {
         //SORT THSE????

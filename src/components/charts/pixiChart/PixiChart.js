@@ -252,14 +252,16 @@ export default function PixiChart({ Socket }) {
     useEffect(() => {
         if (!pixiData) return;
 
+        console.log(fullSymbolRef);
+        debugger;
         // if (openTradeWindow) {
-        pixiData.showTradeWindow(openTradeWindow);
+        pixiData.showTradeWindow(openTradeWindow, fullSymbolRef.current);
         // }
 
         if (!Object.keys(pixiData.orders).length) {
             getOrders();
         }
-    }, [openTradeWindow, pixiData]);
+    }, [openTradeWindow, pixiData, fullSymbolRef.current]);
 
     useEffect(() => {
         if (!pixiData) return;
