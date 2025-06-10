@@ -22,6 +22,7 @@ import SymbolBtns from "./components/SymbolBtns";
 import TimeFrameBtns from "./components/TimeFrameBtns";
 import IndicatorsBtns from "./components/IndicatorsBtns";
 import MarketOverview from "./components/MarketOverview";
+import SpyOptions from "./components/SpyOptions";
 // import StartEndTimes from "./components/StartEndTimes";
 // import PnL_AndOrderFlowStats from "./components/PnL_AndOrderFlowStats";
 import AccountInfoTable from "./components/AccountInfoTable";
@@ -716,6 +717,7 @@ export default function PixiChart({ Socket }) {
                         <div className="col-auto">BarTypePeriod {barTypePeriod}</div>
                     </div>
                 </div> */}
+                <SpyOptions Socket={Socket} />
                 <div className="row d-flex border">
                     <div className="col-auto">
                         <IndicatorsBtns setDrawZigZag={setDrawZigZag} setDrawMarketProfile={setDrawMarketProfile} setDrawOrderBook={setDrawOrderBook} togglePivotLines={togglePivotLines} setDrawPivotLines={setDrawPivotLines} toggleZigZag={toggleZigZag} toggleMarketProfile={toggleMarketProfile} toggleOrderbook={toggleOrderbook} setDrawOrders={setDrawOrders} toggleOrders={toggleOrders} />
@@ -804,13 +806,13 @@ export default function PixiChart({ Socket }) {
                 }}
             />
             {/* <OrdersList orders={orders} /> */}
-            <button
+            {/* <button
                 onClick={async () => {
                     await getOrders();
                 }}
             >
                 Get Orders
-            </button>
+            </button> */}
             <div>{OrdersListMemo}</div>
         </>
     );
