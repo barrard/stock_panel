@@ -72,11 +72,7 @@ function getMarketClose(_date) {
     const estTimezone = "America/New_York";
     const currentLocalTime = moment(_date);
     let marketClose = moment.tz(currentLocalTime, estTimezone);
-    marketClose = moment(marketClose)
-        .hour(16)
-        .minute(0)
-        .second(0)
-        .millisecond(0);
+    marketClose = moment(marketClose).hour(16).minute(0).second(0).millisecond(0);
     return marketClose;
 }
 
@@ -88,19 +84,27 @@ function getMarketOpen(_date) {
     return marketOpen;
 }
 
-function eastCoastTime(date) {
-    let utc;
-    date = date || new Date().getTime();
-    utc = new Date(date).getTime() + new Date().getTimezoneOffset() * 60000;
+function eastCoastTime(_date) {
+    const estTimezone = "America/New_York";
+    // const currentLocalTime = moment(_date);
+    let eastCoastTime = moment.tz(_date, estTimezone);
 
-    let eastCoastTime = new Date(utc + 3600000 * -5); //get East coast time
-    let day = new Date(eastCoastTime).getDay();
-    let hour = new Date(eastCoastTime).getHours();
-    let minute = new Date(eastCoastTime).getMinutes();
-    let second = new Date(eastCoastTime).getSeconds();
-    eastCoastTime = new Date(eastCoastTime);
+    // let utc;
+    // _date = _date || new Date().getTime();
+    // utc = new Date(_date).getTime() + new Date().getTimezoneOffset() * 60000;
 
-    return { day, hour, minute, second, eastCoastTime };
+    // let eastCoastTime = new Date(utc + 3600000 * -4); //SPRING TIME DST, SWITCH TO 5 when Fall Back
+    let date = eastCoastTime.get("date");
+    let day = eastCoastTime.get("day");
+    let hour = eastCoastTime.get("hour");
+    let minute = eastCoastTime.get("minute");
+    let second = eastCoastTime.get("second");
+    let dayStr = eastCoastTime.format("DD");
+    let month = eastCoastTime.format("MM");
+    let year = eastCoastTime.format("YYYY");
+    const eastCoastTimeString = moment(eastCoastTime).tz("America/New_York").format("LLLL z");
+
+    return { date, day, hour, minute, second, eastCoastTime, eastCoastTimeString, month, year, dayStr };
 }
 
 function isRTH(date) {
@@ -133,8 +137,7 @@ function isOpeningSession(date) {
     let { day, hour, minute } = eastCoastTime(date);
     // if(hour <= 18) return false
 
-    if ((hour === 10 && minute < 30) || (hour === 9 && minute >= 30))
-        return true;
+    if ((hour === 10 && minute < 30) || (hour === 9 && minute >= 30)) return true;
     else return false;
 }
 
@@ -288,26 +291,4 @@ function getExpStr(date) {
     return `${year}-${month}-${day}`;
 }
 
-export {
-    getExpStr,
-    isOptionsTime,
-    getTimestampForTodaysOpen,
-    getTimestampForPreviousSession,
-    getTimestampForLastSession,
-    timeAsEST,
-    checkBeginningNewDay,
-    forbiddenTimestamp,
-    checkEndOpeningSessionTime,
-    eastCoastTime,
-    futuresAreTrading,
-    stocksAreTrading,
-    checkForMaintenance,
-    isRTH,
-    isOpeningSession,
-    isAboutToOpen,
-    isAboutToClose,
-    checkOpenTime,
-    checkNewDay,
-    getMarketOpen,
-    getMarketClose,
-};
+export { getExpStr, isOptionsTime, getTimestampForTodaysOpen, getTimestampForPreviousSession, getTimestampForLastSession, timeAsEST, checkBeginningNewDay, forbiddenTimestamp, checkEndOpeningSessionTime, eastCoastTime, futuresAreTrading, stocksAreTrading, checkForMaintenance, isRTH, isOpeningSession, isAboutToOpen, isAboutToClose, checkOpenTime, checkNewDay, getMarketOpen, getMarketClose };

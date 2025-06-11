@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
+import { eastCoastTime } from "../../../../indicators/indicatorHelpers/IsMarketOpen";
+import SpyChart from "../../SpyChart";
 
 const Container = styled.div`
     max-width: 1400px;
@@ -225,6 +227,13 @@ const UnderlyingStat = styled.div`
     }
 `;
 
+const Lvl2Text = styled.div`
+    font-size: 10px;
+    color: #666;
+    margin-top: 2px;
+    line-height: 1.1;
+`;
+
 const PutCell = styled(TableCell)`
     text-align: right;
     background-color: #fef2f2;
@@ -270,33 +279,91 @@ const CallChangeCell = styled(ChangeCell)`
     }
 `;
 
+function UnderlyingElement({ underlyingData }) {
+    return (
+        <tr>
+            <td colSpan="17" style={{ padding: 0, position: "relative" }}>
+                <UnderlyingContainer>
+                    <UnderlyingStats>
+                        <UnderlyingStat>
+                            <div className="label">H</div>
+                            <div className="value">${underlyingData.highPrice}</div>
+                        </UnderlyingStat>
+                        <UnderlyingPrice>${underlyingData.last}</UnderlyingPrice>
+                        <UnderlyingStat>
+                            <div className="label">L</div>
+                            <div className="value">${underlyingData.lowPrice}</div>
+                        </UnderlyingStat>
+                        <UnderlyingStat>
+                            <div className="label">Δ</div>
+                            <div className="value">+{underlyingData.percentChange}%</div>
+                        </UnderlyingStat>
+                    </UnderlyingStats>
+                </UnderlyingContainer>
+            </td>
+        </tr>
+    );
+}
+
+// ADD THIS FUNCTION
+function cleanOptionBookData(levels) {
+    levels.forEach((level) => {
+        level["price"] = level["0"];
+        delete level["0"];
+        level["size"] = level["1"];
+        delete level["1"];
+        level["marketMakerCount"] = level["2"];
+        delete level["2"];
+        const marketMakers = level["3"] || [];
+        delete level["3"];
+        marketMakers.forEach((marketMaker) => {
+            marketMaker.marketMakerId = marketMaker[0];
+            delete marketMaker[0];
+            marketMaker.size = marketMaker[1];
+            delete marketMaker[1];
+            marketMaker.time = marketMaker[2];
+            delete marketMaker[2];
+        });
+        level["marketMakers"] = marketMakers;
+    });
+}
+
 export default function SpyOptions({ Socket }) {
     const [callsData, setCallsData] = useState(null);
     const [putsData, setPutsData] = useState(null);
     const [selectedExpiration, setSelectedExpiration] = useState(null);
     const [underlyingData, setUnderlyingData] = useState(null);
+    const [lvl2Data, setLvl2Data] = useState({});
+    const [candleData, setCandleData] = useState([]);
+    const [chartInstance, setChartInstance] = useState(null);
 
     useEffect(() => {
         Socket.on("spyOptionSnaps", (d) => {
             const calls = d?.callExpDateMap;
             const puts = d?.putExpDateMap;
             const underlying = d?.underlying;
-
+            const lvl2 = d?.lvl2Data;
+            // Clean and set lvl2 data
+            if (lvl2) {
+                const cleanedLvl2 = {};
+                Object.keys(lvl2).forEach((symbol) => {
+                    const data = { ...lvl2[symbol] };
+                    cleanOptionBookData(data.bidSideLevels || []);
+                    cleanOptionBookData(data.askSideLevels || []);
+                    cleanedLvl2[symbol] = data;
+                });
+                setLvl2Data(cleanedLvl2);
+            }
             setUnderlyingData(underlying);
 
             console.log(d);
             setCallsData(calls);
             setPutsData(puts);
-
-            // Set first expiration as default if not already set
-            if (!selectedExpiration && d && calls && puts) {
-                const firstExp = Object.keys(calls)[0];
-                setSelectedExpiration(firstExp);
-            }
         });
 
         Socket.on("spyCandles", (d) => {
             console.log("first spyCandles", d);
+            setCandleData(d);
         });
         Socket.emit("getSpyCandles");
 
@@ -305,6 +372,14 @@ export default function SpyOptions({ Socket }) {
             Socket.off("spyCandles");
         };
     }, []);
+
+    useEffect(() => {
+        // Set first expiration as default if not already set
+        if (!selectedExpiration && callsData && putsData) {
+            const firstExp = Object.keys(callsData)[0];
+            setSelectedExpiration(firstExp);
+        }
+    }, [selectedExpiration, callsData, putsData]);
 
     const getExpirationDates = () => {
         if (!callsData && !putsData) return [];
@@ -318,8 +393,10 @@ export default function SpyOptions({ Socket }) {
     const formatExpiration = (expKey) => {
         const [date, days] = expKey.split(":");
         const dateObj = new Date(date);
+        const estObj = eastCoastTime(date);
+
         const monthShort = dateObj.toLocaleDateString("en-US", { month: "short" });
-        const day = dateObj.getDate();
+        const day = estObj.date;
         return `${monthShort} ${day} (${days}d)`;
     };
 
@@ -366,10 +443,11 @@ export default function SpyOptions({ Socket }) {
     return (
         <Container>
             {/* Chart Placeholder */}
-            <ChartPlaceholder>
+            {/* <ChartPlaceholder>
                 <ChartTitle>SPY Chart Placeholder</ChartTitle>
                 <ChartSubtitle>Real-time price chart will go here</ChartSubtitle>
-            </ChartPlaceholder>
+            </ChartPlaceholder> */}
+            <SpyChart candleData={candleData.spy1MinData} height={500} />
 
             {/* Expiration Tabs */}
             <TabsContainer>
@@ -420,6 +498,9 @@ export default function SpyOptions({ Socket }) {
                                 const callOption = callData?.[0];
                                 const putOption = putData?.[0];
 
+                                const putLvl2 = putOption?.symbol ? lvl2Data[putOption.symbol] : null;
+                                const callLvl2 = callOption?.symbol ? lvl2Data[callOption.symbol] : null;
+
                                 // Check if we need to insert underlying here
                                 const shouldShowUnderlying = underlyingData && strike >= underlyingData.last && (index === getStrikePrices().length - 1 || getStrikePrices()[index + 1] < underlyingData.last);
 
@@ -432,17 +513,31 @@ export default function SpyOptions({ Socket }) {
                                             {/* <PutCell>{putOption?.volatility ? `${putOption.volatility.toFixed(1)}%` : "-"}</PutCell> */}
                                             <PutCell>{putOption ? formatVolume(putOption.openInterest) : "-"}</PutCell>
                                             <PutCell>{putOption ? formatVolume(putOption.totalVolume) : "-"}</PutCell>
-                                            <PutCell>{putOption ? formatPrice(putOption.ask) : "-"}</PutCell>
+                                            {/* UPDATED PUT ASK CELL */}
+                                            <PutCell>
+                                                {putOption ? formatPrice(putOption.ask) : "-"}
+                                                {putLvl2?.askSideLevels?.[0] && <Lvl2Text>@{putLvl2.askSideLevels[0].size}</Lvl2Text>}
+                                            </PutCell>{" "}
                                             <PutCell style={{ fontWeight: 500 }}>{putOption ? formatPrice(putOption.last) : "-"}</PutCell>
-                                            <PutCell>{putOption ? formatPrice(putOption.bid) : "-"}</PutCell>
-
+                                            {/* UPDATED PUT BID CELL */}
+                                            <PutCell>
+                                                {putOption ? formatPrice(putOption.bid) : "-"}
+                                                {putLvl2?.bidSideLevels?.[0] && <Lvl2Text>@{putLvl2.bidSideLevels[0].size}</Lvl2Text>}
+                                            </PutCell>
                                             {/* STRIKE (center) */}
                                             <StrikeCellCenter>{strike.toFixed(0)}</StrikeCellCenter>
-
                                             {/* CALL Data (left-aligned) */}
-                                            <CallCell>{callOption ? formatPrice(callOption.bid) : "-"}</CallCell>
+                                            {/* UPDATED CALL BID CELL */}
+                                            <CallCell>
+                                                {callOption ? formatPrice(callOption.bid) : "-"}
+                                                {callLvl2?.bidSideLevels?.[0] && <Lvl2Text>@{callLvl2.bidSideLevels[0].size}</Lvl2Text>}
+                                            </CallCell>{" "}
                                             <CallCell style={{ fontWeight: 500 }}>{callOption ? formatPrice(callOption.last) : "-"}</CallCell>
-                                            <CallCell>{callOption ? formatPrice(callOption.ask) : "-"}</CallCell>
+                                            {/* UPDATED CALL ASK CELL */}
+                                            <CallCell>
+                                                {callOption ? formatPrice(callOption.ask) : "-"}
+                                                {callLvl2?.askSideLevels?.[0] && <Lvl2Text>@{callLvl2.askSideLevels[0].size}</Lvl2Text>}
+                                            </CallCell>{" "}
                                             <CallCell>{callOption ? formatVolume(callOption.totalVolume) : "-"}</CallCell>
                                             <CallCell>{callOption ? formatVolume(callOption.openInterest) : "-"}</CallCell>
                                             {/* <CallCell>{callOption?.volatility ? `${callOption.volatility.toFixed(1)}%` : "-"}</CallCell> */}
@@ -451,29 +546,7 @@ export default function SpyOptions({ Socket }) {
                                         </TableRow>
 
                                         {/* Insert underlying after this row if needed */}
-                                        {shouldShowUnderlying && (
-                                            <tr>
-                                                <td colSpan="17" style={{ padding: 0, position: "relative" }}>
-                                                    <UnderlyingContainer>
-                                                        <UnderlyingStats>
-                                                            <UnderlyingStat>
-                                                                <div className="label">H</div>
-                                                                <div className="value">${underlyingData.highPrice}</div>
-                                                            </UnderlyingStat>
-                                                            <UnderlyingPrice>${underlyingData.last}</UnderlyingPrice>
-                                                            <UnderlyingStat>
-                                                                <div className="label">L</div>
-                                                                <div className="value">${underlyingData.lowPrice}</div>
-                                                            </UnderlyingStat>
-                                                            <UnderlyingStat>
-                                                                <div className="label">Δ</div>
-                                                                <div className="value">+{underlyingData.percentChange}%</div>
-                                                            </UnderlyingStat>
-                                                        </UnderlyingStats>
-                                                    </UnderlyingContainer>
-                                                </td>
-                                            </tr>
-                                        )}
+                                        {shouldShowUnderlying && <UnderlyingElement underlyingData={underlyingData} />}
                                     </React.Fragment>
                                 );
                             })}

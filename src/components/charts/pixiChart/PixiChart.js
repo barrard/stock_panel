@@ -706,6 +706,7 @@ export default function PixiChart({ Socket }) {
 
                 <AccountInfoTable Socket={Socket} />
 
+                <SpyOptions Socket={Socket} />
                 <MarketOverview Socket={Socket} lastTradesRef={lastTradesRef} fullSymbols={fullSymbols} />
                 {/* <div className="col-12">
                     <div className="row">
@@ -717,7 +718,6 @@ export default function PixiChart({ Socket }) {
                         <div className="col-auto">BarTypePeriod {barTypePeriod}</div>
                     </div>
                 </div> */}
-                <SpyOptions Socket={Socket} />
                 <div className="row d-flex border">
                     <div className="col-auto">
                         <IndicatorsBtns setDrawZigZag={setDrawZigZag} setDrawMarketProfile={setDrawMarketProfile} setDrawOrderBook={setDrawOrderBook} togglePivotLines={togglePivotLines} setDrawPivotLines={setDrawPivotLines} toggleZigZag={toggleZigZag} toggleMarketProfile={toggleMarketProfile} toggleOrderbook={toggleOrderbook} setDrawOrders={setDrawOrders} toggleOrders={toggleOrders} />
