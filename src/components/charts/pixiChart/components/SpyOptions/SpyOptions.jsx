@@ -29,7 +29,7 @@ import {
 
 function UnderlyingElement({ underlyingData }) {
     const { netPercentChange, netChange, highPrice, lowPrice, lastPrice, openPrice } = underlyingData;
-    const roundedNetPercentChange = netPercentChange.toFixed(2);
+    const roundedNetPercentChange = netPercentChange?.toFixed(2);
     return (
         <tr>
             <td colSpan="17" style={{ padding: 0, position: "relative" }}>
@@ -94,7 +94,7 @@ export default function SpyOptions({ Socket }) {
     const [underlyingData, setUnderlyingData] = useState(null);
     const [lvl2Data, setLvl2Data] = useState({});
     // const [chartInstance, setChartInstance] = useState(null);
-    const [spyLevelOne, setSpyLevelOne] = useState(null);
+    const [spyLevelOne, setSpyLevelOne] = useState({ lastPrice: 599.31 });
 
     useEffect(() => {
         Socket.on("spyOptionSnaps", (d) => {

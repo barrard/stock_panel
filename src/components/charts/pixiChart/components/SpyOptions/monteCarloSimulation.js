@@ -3,21 +3,43 @@ import { Graphics, Container, Rectangle, Text, TextMetrics, TextStyle, utils } f
 class MonteCarloCone {
     constructor(pixiDataRef) {
         this.pixiDataRef = pixiDataRef;
-        this.coneGfx = new Graphics();
-        this.pixiDataRef.current.mainChartContainer.addChild(this.coneGfx);
+        this.coneGfx = null;
 
         // Simulation parameters
         this.lookbackPeriods = 20; // Last 20 candles for returns
-        this.simulationSteps = 30; // Simulate 30 periods forward
-        this.numSimulations = 100; // Run 100 simulations
+        this.simulationSteps = 10; // Simulate 30 periods forward
+        this.numSimulations = 1000; // Run 100 simulations
         this.percentiles = [10, 25, 50, 75, 90]; // Probability bands
 
         // Cached simulation results
         this.simulationResults = null;
         this.lastSimulationHash = null;
+
+        this.initializeGraphics();
     }
 
-    // Calculate returns using close prices, but adjust volatility using high-low range
+    initializeGraphics() {
+        try {
+            if (this.pixiDataRef.current && this.pixiDataRef.current.mainChartContainer) {
+                this.coneGfx = new Graphics();
+                this.pixiDataRef.current.mainChartContainer.addChild(this.coneGfx);
+            }
+        } catch (error) {
+            console.error("Failed to initialize Monte Carlo graphics:", error);
+        }
+    }
+
+    // Calculate returns from price data
+    calculateReturns(prices) {
+        const returns = [];
+        for (let i = 1; i < prices.length; i++) {
+            const returnPct = (prices[i] - prices[i - 1]) / prices[i - 1];
+            returns.push(returnPct);
+        }
+        return returns;
+    }
+
+    // Calculate enhanced returns using OHLC data
     calculateEnhancedReturns(candles) {
         const closeReturns = [];
         const trueRanges = [];
@@ -45,6 +67,7 @@ class MonteCarloCone {
         return { closeReturns, trueRanges };
     }
 
+    // Get enhanced statistics from OHLC candles
     getEnhancedReturnStats(candles) {
         const { closeReturns, trueRanges } = this.calculateEnhancedReturns(candles);
 
@@ -61,25 +84,6 @@ class MonteCarloCone {
             mean: meanReturn,
             stdDev: enhancedVolatility,
         };
-    }
-
-    // Calculate returns from price data
-    calculateReturns(prices) {
-        const returns = [];
-        for (let i = 1; i < prices.length; i++) {
-            const returnPct = (prices[i] - prices[i - 1]) / prices[i - 1];
-            returns.push(returnPct);
-        }
-        return returns;
-    }
-
-    // Get statistics from historical returns
-    getReturnStats(returns) {
-        const mean = returns.reduce((sum, r) => sum + r, 0) / returns.length;
-        const variance = returns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / returns.length;
-        const stdDev = Math.sqrt(variance);
-
-        return { mean, stdDev };
     }
 
     // Generate random return using normal distribution (Box-Muller transform)
@@ -141,14 +145,16 @@ class MonteCarloCone {
     // Run all simulations and calculate percentiles (now private)
     runMonteCarloSimulation() {
         // Get the last N candles for historical returns
-        const recentCandles = this.pixiDataRef.current.ohlcDatas.slice(-this.lookbackPeriods);
+        const allData = this.pixiDataRef.current.ohlcDatas;
+        const slicedData = this.pixiDataRef.current.slicedData; // Current visible slice
+        const recentCandles = allData.slice(-this.lookbackPeriods);
 
         if (!recentCandles || recentCandles.length < this.lookbackPeriods) {
             console.warn("Not enough candle data for simulation");
             return null;
         }
 
-        // Calculate enhanced return statistics (using both close returns and true range)
+        // Calculate enhanced return statistics
         const returnStats = this.getEnhancedReturnStats(recentCandles);
 
         console.log(
@@ -157,9 +163,9 @@ class MonteCarloCone {
             ).toFixed(4)}%`
         );
 
-        // Starting price (last close)
+        // Starting price and index
         const startPrice = recentCandles[recentCandles.length - 1].close;
-        const startTime = recentCandles[recentCandles.length - 1].time;
+        const startIndex = slicedData.length - 1; // Last visible bar index
 
         // Run all simulations
         const allSimulations = [];
@@ -181,64 +187,172 @@ class MonteCarloCone {
             });
 
             percentileData.push({
-                time: startTime + step * 60000, // Assuming 1-minute candles
+                index: startIndex + step, // Use index instead of time
                 percentiles: percentileValues,
                 median: percentileValues[50],
             });
         }
-
+        debugger;
         return {
             percentileData,
             allSimulations,
             returnStats,
             startPrice,
-            startTime,
+            startIndex,
         };
     }
 
-    // Draw the probability cone (can be called independently)
-    drawProbabilityCone() {
-        if (!this.pixiDataRef.current || !this.pixiDataRef.current.ohlcDatas) {
-            console.log("No chart data available for drawing");
-            return;
-        }
+    // Updated drawVerticalProbabilityBand method with price labels and fixed percentile bands
+    drawVerticalProbabilityBand(xIndex, percentileData, alpha) {
+        const x = this.pixiDataRef.current.xScale(xIndex);
+        const candleWidth = this.pixiDataRef.current.candleWidth || 8;
 
-        // Update simulation if needed
-        const simulationResults = this.updateSimulation();
-        if (!simulationResults) {
-            console.log("No simulation results to draw");
-            return;
-        }
+        // Fixed bands array - now includes the bottom 10th percentile section
+        const bands = [
+            { top: 90, bottom: 75, color: 0xff0000, label: "75-90%" }, // Red: 75-90th percentile
+            { top: 75, bottom: 50, color: 0xffa500, label: "50-75%" }, // Orange: 50-75th percentile
+            { top: 50, bottom: 25, color: 0x00ff00, label: "25-50%" }, // Green: 25-50th percentile
+            { top: 25, bottom: 10, color: 0xffa500, label: "10-25%" }, // Orange: 10-25th percentile
+            { top: 10, bottom: 0, color: 0xff0000, label: "0-10%" }, // Red: 0-10th percentile (ADDED)
+        ];
 
-        this.coneGfx.clear();
+        // Get the minimum price for the bottom band (we'll use a reasonable floor)
+        const minPrice = Math.min(...Object.values(percentileData.percentiles)) * 0.8; // 20% below minimum percentile
 
-        const { percentileData } = simulationResults;
+        bands.forEach((band) => {
+            let topPrice, bottomPrice;
 
-        // Colors for different probability bands
-        const colors = {
-            10: 0xff0000, // Red for extreme (10th percentile)
-            25: 0xff8800, // Orange for 25th percentile
-            50: 0x00ff00, // Green for median
-            75: 0xff8800, // Orange for 75th percentile
-            90: 0xff0000, // Red for extreme (90th percentile)
-        };
+            if (band.bottom === 0) {
+                // Special case for bottom band - use calculated minimum
+                topPrice = percentileData.percentiles[band.top];
+                bottomPrice = minPrice;
+            } else {
+                topPrice = percentileData.percentiles[band.top];
+                bottomPrice = percentileData.percentiles[band.bottom];
+            }
 
-        const alphas = {
-            10: 0.1,
-            25: 0.15,
-            50: 0.3,
-            75: 0.15,
-            90: 0.1,
-        };
+            const topY = this.pixiDataRef.current.priceScale(topPrice);
+            const bottomY = this.pixiDataRef.current.priceScale(bottomPrice);
+            const height = bottomY - topY;
 
-        // Draw probability bands (from outside to inside)
-        this.drawProbabilityBand(percentileData, 10, 90, colors[10], alphas[10]);
-        this.drawProbabilityBand(percentileData, 25, 75, colors[25], alphas[25]);
+            // Draw the probability band
+            this.coneGfx.beginFill(band.color, alpha);
+            this.coneGfx.drawRect(x, topY, candleWidth, height);
+            this.coneGfx.endFill();
+        });
 
         // Draw median line
-        this.drawMedianLine(percentileData, colors[50], 0.8);
+        const medianY = this.pixiDataRef.current.priceScale(percentileData.median);
+        this.coneGfx.lineStyle(1, 0xffffff, alpha * 2);
+        this.coneGfx.moveTo(x, medianY);
+        this.coneGfx.lineTo(x + candleWidth, medianY);
+    }
 
-        console.log("Probability cone drawn with", percentileData.length, "data points");
+    // Add this new method to draw price labels on the rightmost heatmap column
+    drawPriceLabels() {
+        if (!this.pixiDataRef.current || !this.pixiDataRef.current.ohlcDatas) {
+            return;
+        }
+
+        const simulationResults = this.updateSimulation();
+        if (!simulationResults) return;
+
+        const { percentileData } = simulationResults;
+        const finalStep = percentileData[percentileData.length - 1];
+        const currentSliceLength = this.pixiDataRef.current.slicedData.length;
+        const lastVisibleIndex = currentSliceLength - 1;
+        const x = this.pixiDataRef.current.xScale(lastVisibleIndex);
+        const candleWidth = this.pixiDataRef.current.candleWidth || 8;
+
+        // Text style for price labels
+        const textStyle = new TextStyle({
+            fontFamily: "Arial",
+            fontSize: 10,
+            fill: 0xffffff,
+            stroke: 0x000000,
+            strokeThickness: 1,
+            align: "left",
+        });
+
+        // Draw labels for key percentiles
+        const labelPercentiles = [90, 75, 50, 25, 10];
+
+        labelPercentiles.forEach((percentile) => {
+            const price = finalStep.percentiles[percentile];
+            const y = this.pixiDataRef.current.priceScale(price);
+
+            // Format price to appropriate decimal places
+            const formattedPrice = price.toFixed(price < 1 ? 6 : 2);
+            const labelText = `${percentile}%: $${formattedPrice}`;
+
+            const label = new Text(labelText, textStyle);
+            label.x = x + candleWidth + 5; // Position to the right of the heatmap
+            label.y = y - 6; // Center vertically on the price level
+
+            this.coneGfx.addChild(label);
+        });
+
+        // Add median label with different styling
+        const medianStyle = new TextStyle({
+            fontFamily: "Arial",
+            fontSize: 11,
+            fill: 0x00ffff, // Cyan for median
+            stroke: 0x000000,
+            strokeThickness: 1,
+            fontWeight: "bold",
+            align: "left",
+        });
+
+        const medianPrice = finalStep.median;
+        const medianY = this.pixiDataRef.current.priceScale(medianPrice);
+        const medianFormattedPrice = medianPrice.toFixed(medianPrice < 1 ? 6 : 2);
+        const medianLabel = new Text(`Median: $${medianFormattedPrice}`, medianStyle);
+        medianLabel.x = x + candleWidth + 5;
+        medianLabel.y = medianY - 6;
+
+        this.coneGfx.addChild(medianLabel);
+    }
+
+    // Updated drawProbabilityHeatmap method to include price labels
+    drawProbabilityHeatmap() {
+        if (!this.pixiDataRef.current || !this.pixiDataRef.current.ohlcDatas) {
+            return;
+        }
+
+        if (!this.coneGfx) {
+            this.initializeGraphics();
+            if (!this.coneGfx) return;
+        }
+
+        const simulationResults = this.updateSimulation();
+        if (!simulationResults) return;
+
+        try {
+            this.coneGfx.clear();
+            this.coneGfx.removeChildren().forEach((child) => child.destroy());
+
+            const { percentileData } = simulationResults;
+            const finalStep = percentileData[percentileData.length - 1];
+            const currentSliceLength = this.pixiDataRef.current.slicedData.length;
+            const lastVisibleIndex = currentSliceLength - 1;
+
+            // Draw heatmap bands from index-5 to index
+            const heatmapWidth = 5;
+
+            for (let i = 0; i < heatmapWidth; i++) {
+                const xIndex = lastVisibleIndex - heatmapWidth + i;
+                const alpha = ((i + 1) / heatmapWidth) * 0.3;
+
+                this.drawVerticalProbabilityBand(xIndex, finalStep, alpha);
+            }
+
+            // Draw price labels on the rightmost column
+            this.drawPriceLabels();
+
+            console.log("Probability heatmap with price labels drawn");
+        } catch (error) {
+            console.error("Error drawing probability heatmap:", error);
+        }
     }
 
     // Draw a probability band between two percentiles
@@ -250,24 +364,32 @@ class MonteCarloCone {
         // Start the polygon
         const firstPoint = percentileData[0];
         const firstLowerY = this.pixiDataRef.current.priceScale(firstPoint.percentiles[lowerPercentile]);
-        const firstX = this.pixiDataRef.current.xScale(firstPoint.time);
+        const firstX = this.pixiDataRef.current.xScale(firstPoint.index);
 
         this.coneGfx.moveTo(firstX, firstLowerY);
 
         // Draw upper boundary (forward)
         for (let i = 0; i < percentileData.length; i++) {
             const point = percentileData[i];
-            const x = this.pixiDataRef.current.xScale(point.time);
+            const x = this.pixiDataRef.current.xScale(point.index);
             const upperY = this.pixiDataRef.current.priceScale(point.percentiles[upperPercentile]);
-            this.coneGfx.lineTo(x, upperY);
+
+            // Only draw if the index is within the extended domain
+            if (x >= 0 && x <= this.pixiDataRef.current.width) {
+                this.coneGfx.lineTo(x, upperY);
+            }
         }
 
         // Draw lower boundary (backward)
         for (let i = percentileData.length - 1; i >= 0; i--) {
             const point = percentileData[i];
-            const x = this.pixiDataRef.current.xScale(point.time);
+            const x = this.pixiDataRef.current.xScale(point.index);
             const lowerY = this.pixiDataRef.current.priceScale(point.percentiles[lowerPercentile]);
-            this.coneGfx.lineTo(x, lowerY);
+
+            // Only draw if the index is within the extended domain
+            if (x >= 0 && x <= this.pixiDataRef.current.width) {
+                this.coneGfx.lineTo(x, lowerY);
+            }
         }
 
         this.coneGfx.endFill();
@@ -292,9 +414,14 @@ class MonteCarloCone {
 
     // Clean up
     cleanup() {
-        if (this.coneGfx && this.pixiDataRef.current) {
-            this.pixiDataRef.current.mainChartContainer.removeChild(this.coneGfx);
-            this.coneGfx.destroy();
+        try {
+            if (this.coneGfx && this.pixiDataRef.current && this.pixiDataRef.current.mainChartContainer) {
+                this.pixiDataRef.current.mainChartContainer.removeChild(this.coneGfx);
+                this.coneGfx.destroy();
+                this.coneGfx = null;
+            }
+        } catch (error) {
+            console.error("Error during cleanup:", error);
         }
     }
 }

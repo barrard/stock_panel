@@ -28,7 +28,7 @@ const SpyChart = (props) => {
     const [timeframe, setTimeframe] = useState("spy1MinData");
 
     const [lastSpyLevelOne, setLastSpyLevelOne] = useState(null);
-    const [newSpyMinuteBar, setNewSpyMinuteBar] = useState(null);
+    const [newSpyMinuteBar, setNewSpyMinuteBar] = useState({ open: 600, close: 600, high: 600, low: 600 });
 
     useEffect(() => {
         if (!newSpyMinuteBar || !pixiDataRef.current) return;
@@ -37,13 +37,13 @@ const SpyChart = (props) => {
         if (candleData && pixiDataRef.current) {
             const monteCarlo = new MonteCarloCone(pixiDataRef, candleData);
             monteCarlo.updateSimulation();
-            monteCarlo.drawProbabilityCone();
+            monteCarlo.drawProbabilityHeatmap();
 
             // Register for redraws
-            pixiDataRef.current.registerDrawFn("drawProbabilityCone", monteCarlo.drawProbabilityCone.bind(monteCarlo));
+            pixiDataRef.current.registerDrawFn("drawProbabilityHeatmap", monteCarlo.drawProbabilityHeatmap.bind(monteCarlo));
 
             return () => {
-                pixiDataRef.current?.unregisterDrawFn("drawProbabilityCone");
+                pixiDataRef.current?.unregisterDrawFn("drawProbabilityHeatmap");
                 monteCarlo.cleanup();
             };
         }
@@ -59,6 +59,8 @@ const SpyChart = (props) => {
         Socket.emit("getSpyCandles");
         Socket.on("spyCandles", (d) => {
             console.log("first spyCandles", d);
+            // d[timeframe] = d[timeframe].slice(0, -418); // Drop last 400
+
             setCandleData(d);
         });
 
