@@ -644,7 +644,11 @@ export default class PixiData {
         }
         this.mouseX = this.mouseX - left;
         this.mouseY = this.mouseY - top;
-        if ((this.crosshair && (this.mouseX < 0 || this.mouseX > this.width - (right + left))) || this.mouseY < 0 || this.mouseY > this.height - (top + bottom)) {
+        if (
+            (this.crosshair && (this.mouseX < 0 || this.mouseX > this.width - (right + left))) ||
+            this.mouseY < 0 ||
+            this.mouseY > this.height - (top + bottom)
+        ) {
             this.hideCrosshair();
         } else if (!this.crosshair && this.mouseX > 0 && this.mouseX < this.width - (right + left)) {
             this.showCrosshair();
@@ -780,7 +784,13 @@ export default class PixiData {
     updateCurrentPriceLabel(price) {
         if (!price) return;
 
-        if (!this.currentPriceLabelAppendGfx || !this.currentPriceLabelAppendGfx?.transform || !this.currentPriceLabelAppendGfx?.position || !this.currentPriceTxtLabel) return;
+        if (
+            !this.currentPriceLabelAppendGfx ||
+            !this.currentPriceLabelAppendGfx?.transform ||
+            !this.currentPriceLabelAppendGfx?.position ||
+            !this.currentPriceTxtLabel
+        )
+            return;
         if (!this.lastPrice) {
             this.lastPrice = price;
         }
@@ -1129,7 +1139,13 @@ export default class PixiData {
 
                 for (let i = 0; i < percentileData.length - 1; i++) {
                     if (value >= percentileData[i].value && value <= percentileData[i + 1].value) {
-                        const interpolatedPercentile = interpolate(value, percentileData[i].value, percentileData[i].percentile, percentileData[i + 1].value, percentileData[i + 1].percentile);
+                        const interpolatedPercentile = interpolate(
+                            value,
+                            percentileData[i].value,
+                            percentileData[i].percentile,
+                            percentileData[i + 1].value,
+                            percentileData[i + 1].percentile
+                        );
                         return {
                             percentile: interpolatedPercentile,
                             index: i,
@@ -1284,7 +1300,12 @@ export default class PixiData {
             const height = Math.abs(open - close) || doubleStrokeWidth;
             const start = isUp ? close : open;
             // const end = isUp ? open : close;
-            this.candleStickGfx.drawRect(x + candleMargin - halfWidth, start + halfStrokeWidth, this.candleWidth - doubleMargin, height - strokeWidth);
+            this.candleStickGfx.drawRect(
+                x + candleMargin - halfWidth,
+                start + halfStrokeWidth,
+                this.candleWidth - doubleMargin,
+                height - strokeWidth
+            );
 
             this.candleStickWickGfx.moveTo(x, high);
             this.candleStickWickGfx.lineTo(x, low);

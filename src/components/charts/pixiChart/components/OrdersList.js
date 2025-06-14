@@ -9,7 +9,7 @@ import { compileOrders, priceType, formatTimeWithMicroSeconds, combineTimestamps
 
 export default function OrdersList(props) {
     let { orders = {} } = props;
-    debugger;
+    // debugger;
     return (
         <div>
             {Object.keys(orders)
@@ -405,11 +405,11 @@ const ExpandedSection = styled.div`
 
 const OrderItem = memo(
     function OrderItem(props) {
-        debugger;
+        // debugger;
         const [toggleShowOrderEvents, setToggleShowOrderEvents] = useState(false);
 
         if (!props.orders) return null;
-        debugger;
+        // debugger;
         let { orders } = props;
         orders.forEach((o) => (o.datetime = combineTimestampsMicroSeconds(o)));
         orders.sort((a, b) => a.datetime - b.datetime);
@@ -454,19 +454,32 @@ const OrderItem = memo(
                         </OrderInfo>
 
                         <div className="d-flex align-items-center gap-2 mt-2">
-                            {compiledOrder.transactionType === 1 ? <ArrowUpCircle size={20} color="#2563eb" /> : <ArrowDownCircle size={20} color="#dc2626" />}
-                            <span>{`${compiledOrder.transactionType === 1 ? "BUY" : "SELL"} ${compiledOrder.quantity} of ${compiledOrder.symbol} at ${priceType(compiledOrder.priceType)}`}</span>
+                            {compiledOrder.transactionType === 1 ? (
+                                <ArrowUpCircle size={20} color="#2563eb" />
+                            ) : (
+                                <ArrowDownCircle size={20} color="#dc2626" />
+                            )}
+                            <span>{`${compiledOrder.transactionType === 1 ? "BUY" : "SELL"} ${compiledOrder.quantity} of ${
+                                compiledOrder.symbol
+                            } at ${priceType(compiledOrder.priceType)}`}</span>
                         </div>
 
                         <div className="mt-2">
-                            {compiledOrder.symbol} {compiledOrder.totalFillSize === compiledOrder.quantity ? "filled" : `partially filled ${compiledOrder.totalFillSize} of ${compiledOrder.quantity}:${compiledOrder.totalUnfilledSize} to fill`}
+                            {compiledOrder.symbol}{" "}
+                            {compiledOrder.totalFillSize === compiledOrder.quantity
+                                ? "filled"
+                                : `partially filled ${compiledOrder.totalFillSize} of ${compiledOrder.quantity}:${compiledOrder.totalUnfilledSize} to fill`}
                         </div>
                     </div>
 
                     {/* Trade Type Info */}
                     <div className="col-3">
                         <TradeTypeContainer transactionType={order.transactionType}>
-                            {priceType(compiledOrder.priceType)} -<TransactionLabel transactionType={order.transactionType}>{orderTransactionType(compiledOrder.transactionType)}</TransactionLabel>- ${compiledOrder.price || compiledOrder.avgFillPrice || compiledOrder.triggerPrice || "No price"}
+                            {priceType(compiledOrder.priceType)} -
+                            <TransactionLabel transactionType={order.transactionType}>
+                                {orderTransactionType(compiledOrder.transactionType)}
+                            </TransactionLabel>
+                            - ${compiledOrder.price || compiledOrder.avgFillPrice || compiledOrder.triggerPrice || "No price"}
                         </TradeTypeContainer>
                     </div>
 
@@ -527,7 +540,7 @@ const OrderItem = memo(
         );
     },
     (prevProps, nextProps) => {
-        debugger;
+        // debugger;
         return JSON.stringify(prevProps.orders) === JSON.stringify(nextProps.orders);
     }
 );

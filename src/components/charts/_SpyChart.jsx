@@ -6,5 +6,5 @@ export default function SpyChart(props) {
     // Example: const { candleData, ...rest } = props;
     const symbolInput = "SPY"; // Default to SPY if not provided
     // props.symbolInput = symbolInput;
-    return <GenericPixiChart {...props} symbolInput={symbolInput} />;
+    return <GenericPixiChart {...props} symbolInput={symbolInput} chartName="spyChart" />;
 }

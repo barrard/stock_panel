@@ -253,8 +253,6 @@ export default function PixiChart({ Socket }) {
     useEffect(() => {
         if (!pixiData) return;
 
-        console.log(fullSymbolRef);
-        debugger;
         // if (openTradeWindow) {
         pixiData.showTradeWindow(openTradeWindow, fullSymbolRef.current);
         // }
@@ -281,7 +279,11 @@ export default function PixiChart({ Socket }) {
             data.volume = data.askVolume.low + data.bidVolume.low;
         }
 
-        if (parseInt(data.barType) !== parseInt(barType.value) || parseInt(data.barTypePeriod) !== parseInt(barTypePeriod) || data.symbol !== symbol.value) {
+        if (
+            parseInt(data.barType) !== parseInt(barType.value) ||
+            parseInt(data.barTypePeriod) !== parseInt(barTypePeriod) ||
+            data.symbol !== symbol.value
+        ) {
             return;
         }
 
@@ -647,7 +649,7 @@ export default function PixiChart({ Socket }) {
 
     async function getOrders() {
         const _orders = await API.getOrders();
-        debugger;
+        // debugger;
         function reduceByBasketId(acc, order) {
             if (!order.basketId) return acc;
             if (!acc[order.basketId]) {
@@ -657,7 +659,7 @@ export default function PixiChart({ Socket }) {
             return acc;
         }
         const compiledOrders = Object.values(_orders).reduce(reduceByBasketId, orders);
-        debugger;
+        // debugger;
         setOrders({ ...compiledOrders });
         pixiData?.setOrders(_orders);
     }
@@ -694,8 +696,27 @@ export default function PixiChart({ Socket }) {
         [plantStatus]
     );
 
-    const TimeFrameBtnsMemo = useMemo(() => <TimeFrameBtns backgroundDataFetch={backgroundDataFetch} setBackgroundDataFetch={setBackgroundDataFetch} setStartTime={setStartTime} setEndTime={setEndTime} startTime={startTime} endTime={endTime} setBarType={setBarTypeInput} setBarTypePeriod={setBarTypePeriodInput} barType={barType} barTypePeriod={barTypePeriod} />, [barType, barTypePeriod]);
-    const SymbolBtnsMemo = useMemo(() => <SymbolBtns symbolOptions={symbolOptions} symbol={symbolInput} setSymbol={setSymbolInput} />, [barType, barTypePeriod, symbolInput]);
+    const TimeFrameBtnsMemo = useMemo(
+        () => (
+            <TimeFrameBtns
+                backgroundDataFetch={backgroundDataFetch}
+                setBackgroundDataFetch={setBackgroundDataFetch}
+                setStartTime={setStartTime}
+                setEndTime={setEndTime}
+                startTime={startTime}
+                endTime={endTime}
+                setBarType={setBarTypeInput}
+                setBarTypePeriod={setBarTypePeriodInput}
+                barType={barType}
+                barTypePeriod={barTypePeriod}
+            />
+        ),
+        [barType, barTypePeriod]
+    );
+    const SymbolBtnsMemo = useMemo(
+        () => <SymbolBtns symbolOptions={symbolOptions} symbol={symbolInput} setSymbol={setSymbolInput} />,
+        [barType, barTypePeriod, symbolInput]
+    );
 
     // console.log("das render");
     return (
@@ -720,7 +741,18 @@ export default function PixiChart({ Socket }) {
                 </div> */}
                 <div className="row d-flex border">
                     <div className="col-auto">
-                        <IndicatorsBtns setDrawZigZag={setDrawZigZag} setDrawMarketProfile={setDrawMarketProfile} setDrawOrderBook={setDrawOrderBook} togglePivotLines={togglePivotLines} setDrawPivotLines={setDrawPivotLines} toggleZigZag={toggleZigZag} toggleMarketProfile={toggleMarketProfile} toggleOrderbook={toggleOrderbook} setDrawOrders={setDrawOrders} toggleOrders={toggleOrders} />
+                        <IndicatorsBtns
+                            setDrawZigZag={setDrawZigZag}
+                            setDrawMarketProfile={setDrawMarketProfile}
+                            setDrawOrderBook={setDrawOrderBook}
+                            togglePivotLines={togglePivotLines}
+                            setDrawPivotLines={setDrawPivotLines}
+                            toggleZigZag={toggleZigZag}
+                            toggleMarketProfile={toggleMarketProfile}
+                            toggleOrderbook={toggleOrderbook}
+                            setDrawOrders={setDrawOrders}
+                            toggleOrders={toggleOrders}
+                        />
                     </div>
 
                     <div className="col-auto">

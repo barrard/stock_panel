@@ -1,3 +1,11 @@
+export const currencyFormatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+
+    // These options are needed to round to whole numbers if that's what you want.
+    //minimumFractionDigits: 0, // (this suffices for whole numbers, but will print 2500.10 as $2,500.1)
+    //maximumFractionDigits: 0, // (causes 2500.99 to be printed as $2,501)
+});
 export function priceScaleValues({ highest, lowest, tickSize }) {
     const _highest = highest;
     const diff = highest - lowest;
@@ -9,6 +17,7 @@ export function priceScaleValues({ highest, lowest, tickSize }) {
 
     const twenty = five * 4;
 
+    const possibleTicks = parseFloat(diff) / parseFloat(tickSize);
     //find startingValue
     let tickSpread = diff / this.maxTicks;
 
@@ -273,12 +282,28 @@ export function combineTimestampsMicroSeconds({ ssboe, usecs = "" }) {
 export function compileOrders(orders, accumulator = {}) {
     const _priceType = priceType;
     let compiledOrders = orders.reduce((acc, order) => {
-        let { symbol, ssboe, usecs, templateId, completionReason, basketId, totalUnfilledSize, totalFillSize, bracketType, priceType, quantity, notifyType, triggerPrice, cancelledSize, transactionType } = order;
+        let {
+            symbol,
+            ssboe,
+            usecs,
+            templateId,
+            completionReason,
+            basketId,
+            totalUnfilledSize,
+            totalFillSize,
+            bracketType,
+            priceType,
+            quantity,
+            notifyType,
+            triggerPrice,
+            cancelledSize,
+            transactionType,
+        } = order;
         if (!acc[basketId]) {
             acc[basketId] = {};
         }
         order.priceType = _priceType(order.priceType);
-        console.log(order);
+        // console.log(order);
         const isBracket = bracketType ? bracketType : acc[basketId].bracketType ? acc[basketId].bracketType : null;
         const isMarket = order.priceType === "MARKET";
         if (order.data) {
@@ -394,7 +419,13 @@ export function compileOrders(orders, accumulator = {}) {
         if (order.netQuantity !== undefined) {
             acc[basketId].netQuantity = order.netQuantity;
         }
-        if (order.status == "complete" || order.status == "open" || order.status == "open pending" || order.status == "complete" || order.status == "cancel") {
+        if (
+            order.status == "complete" ||
+            order.status == "open" ||
+            order.status == "open pending" ||
+            order.status == "complete" ||
+            order.status == "cancel"
+        ) {
             if (order.status == "complete") {
                 acc[basketId].status = order.status;
             } else if (order.status !== "complete" && acc[basketId].status !== "complete") {
@@ -408,7 +439,7 @@ export function compileOrders(orders, accumulator = {}) {
                 }
             }
         } else if (order.status) {
-            console.log(order.status);
+            // console.log(order.status);
         }
 
         acc[basketId].templateId = templateId;
@@ -532,7 +563,8 @@ export function compileOrders(orders, accumulator = {}) {
             acc[basketId].cancelTime = order.ssboe;
             debugger;
         } else {
-            debugger;
+            console.log("order not handled", order);
+            // debugger;
         }
 
         let stillHasFillPrice = acc[basketId].fillPrice;
