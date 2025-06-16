@@ -674,7 +674,7 @@ class MonteCarloCone {
         // Draw labels
         this.drawHistogramLabels(histogramData, colorMap, this.pixiDataRef);
 
-        console.log("✅ Histogram heatmap visualization complete!");
+        // console.log("✅ Histogram heatmap visualization complete!");
     }
 
     // Draw vertical bands for each price range
