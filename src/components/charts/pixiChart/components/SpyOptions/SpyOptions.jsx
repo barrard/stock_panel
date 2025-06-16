@@ -94,7 +94,7 @@ export default function SpyOptions({ Socket }) {
     const [underlyingData, setUnderlyingData] = useState(null);
     const [lvl2Data, setLvl2Data] = useState({});
     // const [chartInstance, setChartInstance] = useState(null);
-    const [spyLevelOne, setSpyLevelOne] = useState({ lastPrice: 599.31 });
+    const [spyLevelOne, setSpyLevelOne] = useState({ lastPrice: 596.2 });
 
     useEffect(() => {
         Socket.on("spyOptionSnaps", (d) => {

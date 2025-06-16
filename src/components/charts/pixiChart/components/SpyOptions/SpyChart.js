@@ -28,22 +28,27 @@ const SpyChart = (props) => {
     const [timeframe, setTimeframe] = useState("spy1MinData");
 
     const [lastSpyLevelOne, setLastSpyLevelOne] = useState(null);
-    const [newSpyMinuteBar, setNewSpyMinuteBar] = useState({ open: 600, close: 600, high: 600, low: 600 });
+    const [newSpyMinuteBar, setNewSpyMinuteBar] = useState({ open: 596, close: 596, high: 596, low: 596 });
 
     useEffect(() => {
         if (!newSpyMinuteBar || !pixiDataRef.current) return;
         pixiDataRef.current.setNewBar(newSpyMinuteBar);
-        debugger;
+
         if (candleData && pixiDataRef.current) {
             const monteCarlo = new MonteCarloCone(pixiDataRef, candleData);
-            monteCarlo.updateSimulation();
-            monteCarlo.drawProbabilityHeatmap();
+            // setInterval(() => {
+            const results = monteCarlo.updateSimulation();
+            // const histogramData = results.returnAnalysis.sortedBins;
+            monteCarlo.drawHistogramHeatmap();
+            // }, 2000);
+            // monteCarlo.drawReturnsHistogram();
+            // monteCarlo.getHeatmapSummary();
 
             // Register for redraws
-            pixiDataRef.current.registerDrawFn("drawProbabilityHeatmap", monteCarlo.drawProbabilityHeatmap.bind(monteCarlo));
+            pixiDataRef.current.registerDrawFn("drawHistogramHeatmap", monteCarlo.drawHistogramHeatmap.bind(monteCarlo));
 
             return () => {
-                pixiDataRef.current?.unregisterDrawFn("drawProbabilityHeatmap");
+                pixiDataRef.current?.unregisterDrawFn("drawHistogramHeatmap");
                 monteCarlo.cleanup();
             };
         }
@@ -73,9 +78,15 @@ const SpyChart = (props) => {
     }, []);
 
     useEffect(() => {
+        if (!candleData[timeframe]) {
+            console.log("no data");
+            Socket.emit("getSpyCandles");
+        }
+    }, [candleData[timeframe]]);
+
+    useEffect(() => {
         if (!getCurrentStrikeData || !pixiDataRef.current || !spyLevelOne?.lastPrice) return;
         const data = getCurrentStrikeData();
-
         const spyPrice = spyLevelOne.lastPrice;
         const strikes = new drawStrikes(data, pixiDataRef, callsOrPuts, spyPrice);
         strikes.drawAllStrikeLines();

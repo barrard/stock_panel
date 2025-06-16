@@ -6,81 +6,190 @@ export const currencyFormatter = new Intl.NumberFormat("en-US", {
     //minimumFractionDigits: 0, // (this suffices for whole numbers, but will print 2500.10 as $2,500.1)
     //maximumFractionDigits: 0, // (causes 2500.99 to be printed as $2,501)
 });
+// export function priceScaleValues({ highest, lowest, tickSize }) {
+//     const _highest = highest;
+//     const diff = highest - lowest;
+//     let priceValues = [];
+
+//     const one = 1;
+//     const five = one * 5;
+//     const ten = five * 2;
+
+//     const twenty = five * 4;
+
+//     const possibleTicks = parseFloat(diff) / parseFloat(tickSize);
+//     //find startingValue
+//     let tickSpread = diff / this.maxTicks;
+
+//     // console.log({ diff, tickSpread });
+
+//     if (tickSpread > 10000) {
+//         tickSpread = 25000;
+//         while (highest % tickSpread !== 0 && highest > 0) {
+//             highest -= this.tickSize;
+//         }
+//     } else if (tickSpread > 1000) {
+//         tickSpread = 5000;
+//         while (highest % tickSpread !== 0 && highest > 0) {
+//             highest -= this.tickSize;
+//         }
+//     } else if (tickSpread > 500) {
+//         tickSpread = 1000;
+//         while (highest % tickSpread !== 0 && highest > 0) {
+//             highest -= this.tickSize;
+//         }
+//     } else if (tickSpread > 100) {
+//         tickSpread = 500;
+//         while (highest % tickSpread !== 0 && highest > 0) {
+//             highest -= this.tickSize;
+//         }
+//     } else if (tickSpread > 4) {
+//         tickSpread = twenty;
+//         while (highest % tickSpread !== 0 && highest > 0) {
+//             highest -= this.tickSize;
+//         }
+//     } else if (tickSpread > 2) {
+//         tickSpread = ten;
+
+//         while (highest % ten !== 0 && highest > 0) {
+//             highest -= this.tickSize;
+//         }
+//     } else if (tickSpread > 1) {
+//         tickSpread = five;
+
+//         while (highest % five !== 0 && highest > 0) {
+//             highest -= this.tickSize;
+//         }
+//     } else if (tickSpread > 0.5) {
+//         tickSpread = one;
+
+//         while (highest % one !== 0 && highest > 0) {
+//             highest -= this.tickSize;
+//         }
+//     } else {
+//         tickSpread = this.tickSize * 2;
+
+//         while (highest % tickSpread !== 0 && highest > 0) {
+//             highest -= this.tickSize;
+//         }
+//     }
+
+//     let price = highest;
+//     while (price > lowest) {
+//         priceValues.push(price);
+//         price -= tickSpread;
+//     }
+
+//     return priceValues;
+// }
+
 export function priceScaleValues({ highest, lowest, tickSize }) {
-    const _highest = highest;
-    const diff = highest - lowest;
-    let priceValues = [];
+    const range = highest - lowest;
+    const maxTicks = this.maxTicks || 15;
 
-    const one = 1;
-    const five = one * 5;
-    const ten = five * 2;
+    // Calculate the raw tick spacing
+    const rawTickSpacing = range / maxTicks;
 
-    const twenty = five * 4;
+    // Find a "nice" tick spacing using powers of 10 and common multipliers
+    const niceTickSpacing = getNiceTickSpacing(rawTickSpacing);
 
-    const possibleTicks = parseFloat(diff) / parseFloat(tickSize);
-    //find startingValue
-    let tickSpread = diff / this.maxTicks;
+    // Find the starting value (ceiling of lowest to nearest nice tick)
+    const startValue = Math.ceil(lowest / niceTickSpacing) * niceTickSpacing;
 
-    // console.log({ diff, tickSpread });
+    // Generate tick values
+    const priceValues = [];
+    let currentValue = startValue;
 
-    if (tickSpread > 10000) {
-        tickSpread = 25000;
-        while (highest % tickSpread !== 0 && highest > 0) {
-            highest -= this.tickSize;
-        }
-    } else if (tickSpread > 1000) {
-        tickSpread = 5000;
-        while (highest % tickSpread !== 0 && highest > 0) {
-            highest -= this.tickSize;
-        }
-    } else if (tickSpread > 500) {
-        tickSpread = 1000;
-        while (highest % tickSpread !== 0 && highest > 0) {
-            highest -= this.tickSize;
-        }
-    } else if (tickSpread > 100) {
-        tickSpread = 500;
-        while (highest % tickSpread !== 0 && highest > 0) {
-            highest -= this.tickSize;
-        }
-    } else if (tickSpread > 4) {
-        tickSpread = twenty;
-        while (highest % tickSpread !== 0 && highest > 0) {
-            highest -= this.tickSize;
-        }
-    } else if (tickSpread > 2) {
-        tickSpread = ten;
+    while (currentValue <= highest) {
+        // Round to avoid floating point precision issues
+        const roundedValue = Math.round(currentValue / niceTickSpacing) * niceTickSpacing;
+        //        const roundedValue = currencyFormatter.format(Math.round(currentValue / niceTickSpacing) * niceTickSpacing);
 
-        while (highest % ten !== 0 && highest > 0) {
-            highest -= this.tickSize;
-        }
-    } else if (tickSpread > 1) {
-        tickSpread = five;
-
-        while (highest % five !== 0 && highest > 0) {
-            highest -= this.tickSize;
-        }
-    } else if (tickSpread > 0.5) {
-        tickSpread = one;
-
-        while (highest % one !== 0 && highest > 0) {
-            highest -= this.tickSize;
-        }
-    } else {
-        tickSpread = this.tickSize * 2;
-
-        while (highest % tickSpread !== 0 && highest > 0) {
-            highest -= this.tickSize;
-        }
-    }
-
-    let price = highest;
-    while (price > lowest) {
-        priceValues.push(price);
-        price -= tickSpread;
+        priceValues.push(roundedValue);
+        currentValue += niceTickSpacing;
     }
 
     return priceValues;
+}
+
+function getNiceTickSpacing(rawSpacing) {
+    // Find the order of magnitude
+    const magnitude = Math.pow(10, Math.floor(Math.log10(rawSpacing)));
+
+    // Normalize the spacing to be between 1 and 10
+    const normalizedSpacing = rawSpacing / magnitude;
+
+    // Choose a nice spacing based on the normalized value
+    let niceSpacing;
+    if (normalizedSpacing <= 1) {
+        niceSpacing = 1;
+    } else if (normalizedSpacing <= 2) {
+        niceSpacing = 2;
+    } else if (normalizedSpacing <= 5) {
+        niceSpacing = 5;
+    } else {
+        niceSpacing = 10;
+    }
+
+    return niceSpacing * magnitude;
+}
+
+// Alternative version with more granular control for your specific use case
+export function priceScaleValuesAlternative({ highest, lowest, tickSize }) {
+    const range = highest - lowest;
+    const maxTicks = this.maxTicks || 15;
+
+    // For small ranges, prioritize whole numbers
+    if (range < 10) {
+        return generateWholeNumberTicks(lowest, highest, maxTicks);
+    }
+
+    // For larger ranges, use the nice spacing approach
+    const rawTickSpacing = range / maxTicks;
+    const niceTickSpacing = getNiceTickSpacing(rawTickSpacing);
+
+    const startValue = Math.ceil(lowest / niceTickSpacing) * niceTickSpacing;
+    const priceValues = [];
+    let currentValue = startValue;
+
+    while (currentValue <= highest) {
+        const roundedValue = Math.round(currentValue / niceTickSpacing) * niceTickSpacing;
+        priceValues.push(roundedValue);
+        currentValue += niceTickSpacing;
+    }
+
+    return priceValues;
+}
+
+function generateWholeNumberTicks(lowest, highest, maxTicks) {
+    const lowestWhole = Math.floor(lowest);
+    const highestWhole = Math.ceil(highest);
+    const wholeRange = highestWhole - lowestWhole;
+
+    if (wholeRange <= maxTicks) {
+        // If we can fit all whole numbers, use them
+        const ticks = [];
+        for (let i = lowestWhole; i <= highestWhole; i++) {
+            if (i >= lowest && i <= highest) {
+                ticks.push(i);
+            }
+        }
+        return ticks;
+    } else {
+        // If too many whole numbers, use step size
+        const stepSize = Math.ceil(wholeRange / maxTicks);
+        const ticks = [];
+        let current = lowestWhole;
+
+        while (current <= highestWhole) {
+            if (current >= lowest && current <= highest) {
+                ticks.push(current);
+            }
+            current += stepSize;
+        }
+
+        return ticks;
+    }
 }
 
 export function timeScaleValues({ highest, lowest, values }) {

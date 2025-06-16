@@ -7,6 +7,7 @@ export default class drawStrikes {
         this.callsOrPuts = callsOrPuts;
         this.currentUnderlyingPrice = currentUnderlyingPrice;
         this.hasInit = false;
+        this.textLabels = []; // Array to store text labels for cleanup
         this.init();
     }
     init() {
@@ -29,6 +30,19 @@ export default class drawStrikes {
     }
 
     cleanup() {
+        // Clean up text labels
+        this.textLabels.forEach((label) => {
+            if (label.parent) {
+                label.parent.removeChild(label);
+            }
+            try {
+                label.destroy();
+            } catch (error) {
+                console.warn("Text label already destroyed:", error);
+            }
+        });
+        this.textLabels = [];
+
         if (this.strikeLinesGfx) {
             // Remove from parent container
             if (this.strikeLinesGfx.parent) {
@@ -42,6 +56,28 @@ export default class drawStrikes {
             }
             this.strikeLinesGfx = null;
         }
+    }
+
+    // Helper method to create text labels
+    createTextLabel(text, x, y, style = {}) {
+        const defaultStyle = new TextStyle({
+            fontFamily: "Arial",
+            fontSize: 12,
+            fill: this.callsOrPuts === "CALLS" ? 0x00ff00 : 0xff0000,
+            stroke: 0x000000,
+            strokeThickness: 1,
+            ...style,
+        });
+
+        const textLabel = new Text(text, defaultStyle);
+        textLabel.x = x;
+        textLabel.y = y;
+
+        // Add to main chart container
+        this.pixiDataRef.current.mainChartContainer.addChild(textLabel);
+        this.textLabels.push(textLabel);
+
+        return textLabel;
     }
 
     drawAllStrikeLines() {
@@ -62,6 +98,19 @@ export default class drawStrikes {
             return err;
         }
 
+        // Clean up existing text labels
+        this.textLabels.forEach((label) => {
+            if (label.parent) {
+                label.parent.removeChild(label);
+            }
+            try {
+                label.destroy();
+            } catch (error) {
+                console.warn("Text label already destroyed:", error);
+            }
+        });
+        this.textLabels = [];
+
         const lineWidth = 1;
         const lineAlpha = 0.7;
 
@@ -80,7 +129,7 @@ export default class drawStrikes {
                     const optionData = optionsAtStrike[0];
                     const strike = parseFloat(strikePrice);
                     const lastPrice = optionData.last;
-                    if (lastPrice > 1) return;
+                    if (lastPrice > 5) return;
 
                     // Calculate breakeven price
                     let breakEvenPrice;
@@ -123,6 +172,25 @@ export default class drawStrikes {
                     this.strikeLinesGfx.lineStyle(2, lineColor, 0.9);
                     this.strikeLinesGfx.moveTo(0, breakEvenY);
                     this.strikeLinesGfx.lineTo(chartWidth, breakEvenY);
+
+                    // Add text labels for strike line
+                    const strikeText = `Strike: $${strike.toFixed(2)}`;
+                    this.createTextLabel(strikeText, 5, strikeY - 15, {
+                        fontSize: 11,
+                        fill: lineColor,
+                        stroke: 0x000000,
+                        strokeThickness: 2,
+                    });
+
+                    // Add text labels for breakeven line
+                    const breakEvenText = `${strikeText} | B/E: $${breakEvenPrice.toFixed(2)} | Last: $${lastPrice.toFixed(2)}`;
+                    this.createTextLabel(breakEvenText, 5, breakEvenY + 5, {
+                        fontSize: 11,
+                        fill: lineColor,
+                        stroke: 0x000000,
+                        strokeThickness: 2,
+                        fontWeight: "bold",
+                    });
                 }
             });
         }

@@ -174,7 +174,7 @@ export default class GenericDataHandler {
             type: "y",
             scale: this.priceScale,
             valueFinder: priceScaleValues,
-            maxTicks: 15,
+            maxTicks: 5,
             tickSize: this.tickSize,
         });
 
@@ -219,6 +219,8 @@ export default class GenericDataHandler {
             // highest: this.xScale.range()[1],
             // lowest: this.xScale.range()[0],
         });
+        //this essentially draws te indicator, but
+        // that contract has yet to be decided
     }
     initScales() {
         this.initXScale();
@@ -256,7 +258,10 @@ export default class GenericDataHandler {
             //     accessors: "test",
             // }),
         };
-        this.chartContainerOrder = ["volume"];
+        this.chartContainerOrder = [
+            "volume",
+            // "test",//shown as example
+        ];
     }
     initContainers() {
         this.mainChartContainer = new Container();
@@ -856,6 +861,7 @@ export default class GenericDataHandler {
         this.fixSliceValues();
 
         this.setupPriceScales();
+        this.initLowerIndicators();
 
         // this.setupTickVolumeScales();
         // this.drawPriceLine();
