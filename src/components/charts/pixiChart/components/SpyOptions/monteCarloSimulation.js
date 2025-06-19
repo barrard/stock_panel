@@ -777,45 +777,45 @@ class MonteCarloCone {
     }
 
     // Analysis function to understand your data
-    analyzeHistogramData(histogramData) {
-        console.log("\n=== HISTOGRAM ANALYSIS ===");
+    // analyzeHistogramData(histogramData) {
+    //     console.log("\n=== HISTOGRAM ANALYSIS ===");
 
-        // Sort by frequency
-        const sortedBins = [...histogramData].sort((a, b) => b.count - a.count);
+    //     // Sort by frequency
+    //     const sortedBins = [...histogramData].sort((a, b) => b.count - a.count);
 
-        console.log("Top 5 most likely price ranges:");
-        sortedBins.slice(0, 5).forEach((bin, index) => {
-            console.log(
-                `${index + 1}. $${bin.start.toFixed(2)} - $${bin.end.toFixed(2)}: ${bin.count} simulations (${bin.percentage.toFixed(1)}%)`
-            );
-        });
+    //     console.log("Top 5 most likely price ranges:");
+    //     sortedBins.slice(0, 5).forEach((bin, index) => {
+    //         console.log(
+    //             `${index + 1}. $${bin.start.toFixed(2)} - $${bin.end.toFixed(2)}: ${bin.count} simulations (${bin.percentage.toFixed(1)}%)`
+    //         );
+    //     });
 
-        // Calculate concentration
-        const top3Count = sortedBins.slice(0, 3).reduce((sum, bin) => sum + bin.count, 0);
-        const top5Count = sortedBins.slice(0, 5).reduce((sum, bin) => sum + bin.count, 0);
-        const totalCount = histogramData.reduce((sum, bin) => sum + bin.count, 0);
+    //     // Calculate concentration
+    //     const top3Count = sortedBins.slice(0, 3).reduce((sum, bin) => sum + bin.count, 0);
+    //     const top5Count = sortedBins.slice(0, 5).reduce((sum, bin) => sum + bin.count, 0);
+    //     const totalCount = histogramData.reduce((sum, bin) => sum + bin.count, 0);
 
-        console.log(`\nConcentration Analysis:`);
-        console.log(`Top 3 bins contain: ${((top3Count / totalCount) * 100).toFixed(1)}% of simulations`);
-        console.log(`Top 5 bins contain: ${((top5Count / totalCount) * 100).toFixed(1)}% of simulations`);
+    //     console.log(`\nConcentration Analysis:`);
+    //     console.log(`Top 3 bins contain: ${((top3Count / totalCount) * 100).toFixed(1)}% of simulations`);
+    //     console.log(`Top 5 bins contain: ${((top5Count / totalCount) * 100).toFixed(1)}% of simulations`);
 
-        // Find the current price position
-        const currentPrice = 596.95; // From your data
-        const containingBin = histogramData.find((bin) => currentPrice >= bin.start && currentPrice <= bin.end);
+    //     // Find the current price position
+    //     const currentPrice = 596.95; // From your data
+    //     const containingBin = histogramData.find((bin) => currentPrice >= bin.start && currentPrice <= bin.end);
 
-        if (containingBin) {
-            console.log(
-                `Current price $${currentPrice} is in bin with ${containingBin.count} simulations (${containingBin.percentage.toFixed(1)}%)`
-            );
-        }
+    //     if (containingBin) {
+    //         console.log(
+    //             `Current price $${currentPrice} is in bin with ${containingBin.count} simulations (${containingBin.percentage.toFixed(1)}%)`
+    //         );
+    //     }
 
-        return {
-            mostLikely: sortedBins[0],
-            top3Concentration: (top3Count / totalCount) * 100,
-            top5Concentration: (top5Count / totalCount) * 100,
-            currentPriceBin: containingBin,
-        };
-    }
+    //     return {
+    //         mostLikely: sortedBins[0],
+    //         top3Concentration: (top3Count / totalCount) * 100,
+    //         top5Concentration: (top5Count / totalCount) * 100,
+    //         currentPriceBin: containingBin,
+    //     };
+    // }
 
     drawHistogramVisualization(histogramData) {
         if (!this.pixiDataRef.current) return;

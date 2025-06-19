@@ -40,7 +40,7 @@ export default class PixiData {
         this.barTypePeriod = barTypePeriod;
         this.allTicks = [];
         this.crossHairYScale = false;
-        this.currentMinute = false;
+        // this.currentMinute = false;
         this.dateLabel = false;
         this.gesture = false;
         this.height = 600;
@@ -189,6 +189,7 @@ export default class PixiData {
         this.xAxis = new PixiAxis({
             chart: this,
             type: "x",
+            maxTicks: 15,
             scale: this.xScale,
             valueAccessor: this.getTime.bind(this),
             valueFinder: timeScaleValues,
@@ -565,7 +566,11 @@ export default class PixiData {
     }
 
     setupPriceScales() {
-        const { allTicks, ohlcDatas, currentMinute } = this;
+        const {
+            allTicks,
+            ohlcDatas,
+            // currentMinute
+        } = this;
         if (!ohlcDatas.length) {
             return;
         }

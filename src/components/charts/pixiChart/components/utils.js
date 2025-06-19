@@ -192,69 +192,147 @@ function generateWholeNumberTicks(lowest, highest, maxTicks) {
     }
 }
 
-export function timeScaleValues({ highest, lowest, values }) {
-    let timeValues = [];
+export function timeScaleValues({ values }) {
+    const maxTicks = this.maxTicks || 5;
+    if (!values || values.length === 0) return [];
 
-    const fiveMin = 1000 * 60 * 5;
-    const fifteenMin = fiveMin * 3;
+    let startTime = values[0];
+    let endTime = values[values.length - 1];
 
-    const hour = fifteenMin * 4;
-    const fourHour = hour * 4;
-    const eightHour = fourHour * 2;
-    const sixteenHour = eightHour * 4;
+    if (typeof startTime === "string") startTime = new Date(startTime).getTime();
+    if (typeof endTime === "string") endTime = new Date(endTime).getTime();
+    const totalDuration = endTime - startTime;
+    debugger;
+    // Expanded time intervals with more options
+    const timeIntervals = [
+        { interval: 1000 * 1, name: "1sec" }, // 1 second
+        { interval: 1000 * 5, name: "5sec" }, // 5 seconds
+        { interval: 1000 * 10, name: "10sec" }, // 10 seconds
+        { interval: 1000 * 15, name: "15sec" }, // 15 seconds
+        { interval: 1000 * 30, name: "30sec" }, // 30 seconds
+        { interval: 1000 * 60, name: "1min" }, // 1 minute
+        { interval: 1000 * 60 * 2, name: "2min" }, // 2 minutes
+        { interval: 1000 * 60 * 5, name: "5min" }, // 5 minutes
+        { interval: 1000 * 60 * 10, name: "10min" }, // 10 minutes
+        { interval: 1000 * 60 * 15, name: "15min" }, // 15 minutes
+        { interval: 1000 * 60 * 30, name: "30min" }, // 30 minutes
+        { interval: 1000 * 60 * 60, name: "1hour" }, // 1 hour
+        { interval: 1000 * 60 * 60 * 2, name: "2hour" }, // 2 hours
+        { interval: 1000 * 60 * 60 * 3, name: "3hour" }, // 3 hours
+        { interval: 1000 * 60 * 60 * 4, name: "4hour" }, // 4 hours
+        { interval: 1000 * 60 * 60 * 6, name: "6hour" }, // 6 hours
+        { interval: 1000 * 60 * 60 * 8, name: "8hour" }, // 8 hours
+        { interval: 1000 * 60 * 60 * 12, name: "12hour" }, // 12 hours
+        { interval: 1000 * 60 * 60 * 24, name: "1day" }, // 1 day
+        { interval: 1000 * 60 * 60 * 24 * 2, name: "2day" }, // 2 days
+        { interval: 1000 * 60 * 60 * 24 * 7, name: "1week" }, // 1 week
+    ];
 
-    lowest = values[0];
-    highest = values[values.length - 1];
+    // Calculate target interval based on duration and max ticks
+    const targetInterval = totalDuration / maxTicks;
 
-    const sixteenHours = [];
-    const eightHours = [];
-    const fourHours = [];
-    const hours = [];
-    const fifteenMins = [];
-    const fiveMins = [];
+    // Find the best interval (closest to target without going under by too much)
+    const bestInterval = findBestTimeInterval(targetInterval, timeIntervals);
 
-    for (let x = 0; x < values.length; x++) {
-        const time = values[x];
-        if (time % sixteenHour === 0) {
-            sixteenHours.push(x);
-        }
-        if (time % eightHour === 0) {
-            eightHours.push(x);
-        }
-        if (fourHours.length > 8) continue;
+    // Generate ticks based on the interval
+    const ticks = generateTimeTicks(startTime, endTime, bestInterval.interval, maxTicks);
 
-        if (time % fourHour === 0) {
-            fourHours.push(x);
-        }
-        if (hours.length > 8) continue;
+    // Map ticks to their closest indices in the values array
+    return mapTicksToIndices(ticks, values);
+}
 
-        if (time % hour === 0) {
-            hours.push(x);
-        }
-        if (fifteenMins.length > 8) continue;
-        if (time % fifteenMin === 0) {
-            fifteenMins.push(x);
-        }
-        if (time % fiveMin === 0) {
-            fiveMins.push(x);
+function findBestTimeInterval(targetInterval, timeIntervals) {
+    // Find the interval that's closest to the target
+    let bestInterval = timeIntervals[timeIntervals.length - 1];
+    let bestDiff = Infinity;
+
+    for (const interval of timeIntervals) {
+        const diff = Math.abs(interval.interval - targetInterval);
+
+        // Prefer intervals that are slightly larger than the target
+        if (interval.interval >= targetInterval * 0.8 && diff < bestDiff) {
+            bestDiff = diff;
+            bestInterval = interval;
         }
     }
 
-    if (fiveMins.length < 8) {
-        timeValues = fiveMins; //.filter((el, i) => i % 2 != 0);
-    } else if (fifteenMins.length < 8) {
-        timeValues = fifteenMins; //.filter((el, i) => i % 2);
-    } else if (hours.length < 8) {
-        timeValues = hours; //.filter((el, i) => i % 2);
-    } else if (fourHours.length < 8) {
-        timeValues = fourHours; //.filter((el, i) => i % 2);
-    } else if (eightHours.length < 8) {
-        timeValues = eightHours; //.filter((el, i) => i % 2);
-    } else if (sixteenHours.length < 8) {
-        timeValues = sixteenHours; //.filter((el, i) => i % 2);
+    return bestInterval;
+}
+
+function generateTimeTicks(startTime, endTime, intervalMs, maxTicks) {
+    const ticks = [];
+
+    // Find the first nice time that's >= startTime
+    let currentTime = Math.ceil(startTime / intervalMs) * intervalMs;
+
+    // If we're very close to the start, include it
+    if (currentTime - startTime < intervalMs * 0.1) {
+        currentTime += intervalMs;
     }
 
-    return timeValues;
+    // Generate ticks until we reach the end or max ticks
+    while (currentTime <= endTime && ticks.length < maxTicks) {
+        ticks.push(currentTime);
+        currentTime += intervalMs;
+    }
+
+    // If we have too few ticks, try to include more
+    if (ticks.length < maxTicks / 2) {
+        const smallerInterval = intervalMs / 2;
+        currentTime = Math.ceil(startTime / smallerInterval) * smallerInterval;
+        ticks.length = 0; // Reset
+
+        while (currentTime <= endTime && ticks.length < maxTicks) {
+            ticks.push(currentTime);
+            currentTime += smallerInterval;
+        }
+    }
+
+    return ticks;
+}
+
+function mapTicksToIndices(ticks, values) {
+    const tickIndices = [];
+    let lastIndex = 0;
+
+    for (const tick of ticks) {
+        // Find the closest value index (optimized with binary search)
+        const index = findClosestTimeIndex(values, tick, lastIndex);
+
+        if (index !== -1 && (tickIndices.length === 0 || tickIndices[tickIndices.length - 1] !== index)) {
+            tickIndices.push(index);
+            lastIndex = index; // Start next search from here for efficiency
+        }
+    }
+
+    return tickIndices;
+}
+
+function findClosestTimeIndex(values, targetTime, startIndex = 0) {
+    let left = startIndex;
+    let right = values.length - 1;
+    let closestIndex = -1;
+    let minDiff = Infinity;
+
+    while (left <= right) {
+        const mid = Math.floor((left + right) / 2);
+        const diff = Math.abs(values[mid] - targetTime);
+
+        if (diff < minDiff) {
+            minDiff = diff;
+            closestIndex = mid;
+        }
+
+        if (values[mid] < targetTime) {
+            left = mid + 1;
+        } else {
+            right = mid - 1;
+        }
+    }
+
+    // Only return if reasonably close
+    return closestIndex;
+    // return minDiff < (values[values.length - 1] - values[0]) / 100 ? closestIndex : -1;
 }
 
 export function priceType(type) {

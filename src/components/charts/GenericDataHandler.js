@@ -182,6 +182,7 @@ export default class GenericDataHandler {
             chart: this,
             type: "x",
             scale: this.xScale,
+            maxTicks: 5,
             valueAccessor: this.getTime.bind(this),
             valueFinder: timeScaleValues,
         });
@@ -278,17 +279,16 @@ export default class GenericDataHandler {
         // // this.mainChartContainer.interactiveMousewheel = true
         // this.hitArea = new Rectangle(0, 0, this.width - (left + right), this.height - (top + bottom));
         // this.mainChartContainer.hitArea = this.hitArea;
-        this.mainChartContainer.addChild(this.xAxis.tickLinesGfx);
-        this.mainChartContainer.addChild(this.yAxis.tickLinesGfx);
-
-        this.mainChartContainer.addChild(this.currentPriceLabelAppendGfx);
-        this.mainChartContainer.addChild(this.currentPriceTxtLabel);
+        // this.mainChartContainer.addChild(this.xAxis.tickLinesGfx);
+        // this.mainChartContainer.addChild(this.yAxis.tickLinesGfx);
 
         this.mainChartContainer.addChild(this.candleStickWickGfx);
         this.mainChartContainer.addChild(this.candleStickGfx);
         this.mainChartContainer.addChild(this.priceGfx);
         this.mainChartContainer.addChild(this.borderGfx);
 
+        this.mainChartContainer.addChild(this.currentPriceLabelAppendGfx);
+        this.mainChartContainer.addChild(this.currentPriceTxtLabel);
         this.mainChartContainer.addChild(this.volGfx);
 
         this.mainChartContainer.addChild(this.volProfileGfx);
@@ -629,11 +629,11 @@ export default class GenericDataHandler {
         //yAxis
         this.yAxis.container.position.x = this.width - this.margin.right;
         this.yAxis.container.position.y = this.margin.top;
-        this.pixiApp.stage.addChild(this.yAxis.container);
+        this.mainChartContainer.addChild(this.yAxis.container);
         //yAxis
         this.xAxis.container.position.x = this.margin.left;
-        this.xAxis.container.position.y = this.height - this.margin.bottom;
-        this.pixiApp.stage.addChild(this.xAxis.container);
+        this.xAxis.container.position.y = this.innerHeight();
+        this.mainChartContainer.addChild(this.xAxis.container);
     }
 
     //Drag and zoom mouse events

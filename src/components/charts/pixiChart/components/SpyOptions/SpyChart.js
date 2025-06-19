@@ -20,7 +20,7 @@ const SpyChart = (props) => {
     const barTypePeriod = 1;
     const tickSize = 0.01;
 
-    const pixiApplicationRef = useRef();
+    // const pixiApplicationRef = useRef();
     const pixiDataRef = useRef();
 
     const [candleData, setCandleData] = useState({});
@@ -28,7 +28,7 @@ const SpyChart = (props) => {
     const [timeframe, setTimeframe] = useState("spy1MinData");
 
     const [lastSpyLevelOne, setLastSpyLevelOne] = useState(null);
-    const [newSpyMinuteBar, setNewSpyMinuteBar] = useState({ open: 596, close: 596, high: 596, low: 596 });
+    const [newSpyMinuteBar, setNewSpyMinuteBar] = useState(null);
 
     useEffect(() => {
         if (!newSpyMinuteBar || !pixiDataRef.current) return;
@@ -61,11 +61,12 @@ const SpyChart = (props) => {
     }, [spyLevelOne, pixiDataRef.current]);
 
     useEffect(() => {
+        console.log("spychart loaded");
         Socket.emit("getSpyCandles");
         Socket.on("spyCandles", (d) => {
             console.log("first spyCandles", d);
             // d[timeframe] = d[timeframe].slice(0, -418); // Drop last 400
-
+            debugger;
             setCandleData(d);
         });
 
@@ -116,7 +117,7 @@ const SpyChart = (props) => {
             barTypePeriod={barTypePeriod}
             // loadData={loadData}
             pixiDataRef={pixiDataRef}
-            pixiApplicationRef={pixiApplicationRef}
+            // pixiApplicationRef={pixiApplicationRef}
             // TouchGesture1Prop={TouchGesture1}
             // TouchGesture2Prop={TouchGesture2}
             // newSymbolTimerRefProp={newSymbolTimerRef}

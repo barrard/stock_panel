@@ -21,7 +21,6 @@ export default class PixiAxis {
         });
         this.tickLabels = [];
 
-        this.rand = 10;
         this.dragScale = dragScale;
 
         return this.init();
@@ -64,9 +63,10 @@ export default class PixiAxis {
                 });
         }
         this.tickLinesGfx = new Graphics();
-        this.testGfx = new Graphics();
+        // this.testGfx = new Graphics();
         this.tickLinesGfx.lineStyle(1, 0xffffff, 1);
-        this.testGfx.lineStyle(1, 0xffffff, 1);
+        // this.testGfx.lineStyle(1, 0xffffff, 1);
+        this.container.addChild(this.tickLinesGfx);
 
         //make 6 ticks, could be configured?
         for (let x = 0; x < this.maxTicks; x++) {
@@ -124,7 +124,7 @@ export default class PixiAxis {
         }
 
         const oppositeAxis = this.type === "x" ? "y" : "x";
-        const start = Math.floor(highest);
+        // const start = Math.floor(highest);
         for (let count = 0; count < this.maxTicks; count++) {
             let value; //= start - sixths * count;
             const priceTxtLabel = this.tickLabels[count];
@@ -173,6 +173,7 @@ export default class PixiAxis {
     }
 
     addTickLine(value) {
+        debugger;
         // console.log(`draw line at ${value}`);
         if (!this.chart.margin && !this.chart.options.margin) {
             alert("No margin??");
@@ -184,11 +185,11 @@ export default class PixiAxis {
         const { left, right, top, bottom } = this.chart.options?.margin || this.chart.margin;
         this.tickLinesGfx.lineStyle(1, 0xffffff, 0.3);
         if (this.type === "x") {
-            this.tickLinesGfx.moveTo(value, this.chart.margin.top);
-            this.tickLinesGfx.lineTo(value, this.chart.innerHeight() + this.chart.margin.top);
+            this.tickLinesGfx.moveTo(value, -this.chart.innerHeight());
+            this.tickLinesGfx.lineTo(value, 0);
         } else if (this.type === "y") {
-            this.tickLinesGfx.moveTo(this.chart.margin.left, value);
-            this.tickLinesGfx.lineTo(this.chart.innerWidth() + this.chart.margin.left, value);
+            this.tickLinesGfx.moveTo(-this.chart.innerWidth(), value);
+            this.tickLinesGfx.lineTo(0, value);
         } else {
             alert("HUH?");
         }

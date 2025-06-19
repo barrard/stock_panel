@@ -22,7 +22,7 @@ export default function GenericPixiChart({
     // loadData,
     Socket,
     onBarClick,
-    pixiApplicationRef,
+    // pixiApplicationRef,
     pixiDataRef,
     TouchGesture1Prop,
     TouchGesture2Prop,
@@ -35,7 +35,8 @@ export default function GenericPixiChart({
     ...rest
 }) {
     // Use provided refs or create them if not provided
-    const PixiAppRef = useRef(pixiApplicationRef);
+    const PixiAppRef = useRef();
+    const PixiChartRef = useRef();
     // const pixiDataRef = useRef(pixiDataRef);
     const TouchGesture1 = useRef(TouchGesture1Prop);
     const TouchGesture2 = useRef(TouchGesture2Prop);
@@ -86,9 +87,11 @@ export default function GenericPixiChart({
     const error = !symbol;
 
     useEffect(() => {
-        console.log("generic");
-        if (error) return;
-        if (!pixiDataRef.current) return;
+        console.log("generic pixi?");
+        debugger;
+        // if (error) return;
+        if (!PixiChartRef.current) return console.log("No PixiChartRef.current");
+        console.log("GenericPixiChart init");
         console.log({ width, height });
         console.log({ width, height });
         console.log({ width, height });
@@ -104,10 +107,10 @@ export default function GenericPixiChart({
         PixiAppRef.current.view.style["image-rendering"] = "pixelated";
         PixiAppRef.current.stage.interactive = true;
 
-        pixiDataRef.current.appendChild(PixiAppRef.current.view);
+        PixiChartRef.current.appendChild(PixiAppRef.current.view);
 
         // this will handle scrolling/zooming events
-        pixiDataRef.current?.addEventListener(
+        PixiChartRef.current?.addEventListener(
             "mousewheel",
             (e) => {
                 e.preventDefault();
@@ -212,8 +215,10 @@ export default function GenericPixiChart({
 
     // CROSSHAIR
     useEffect(() => {
-        if (!pixiDataRef.current || !pixiDataRef.current.showCrosshair || !pixiDataRef.current.hideCrosshair)
+        if (!pixiDataRef.current || !pixiDataRef.current.showCrosshair || !pixiDataRef.current.hideCrosshair) {
+            debugger;
             return console.log("no pixidata?");
+        }
         if (mouseEnter) {
             pixiDataRef.current.showCrosshair();
         } else {
@@ -235,7 +240,7 @@ export default function GenericPixiChart({
     return (
         <div
             className="col-6"
-            ref={pixiDataRef}
+            ref={PixiChartRef}
             style={{ border: "2px solid red" }}
             // onContextMenu={(e) => {
             //     e.preventDefault();

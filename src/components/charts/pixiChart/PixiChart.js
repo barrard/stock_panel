@@ -242,14 +242,6 @@ export default function PixiChart({ Socket }) {
             });
     };
 
-    // useEffect(() => {
-    //     debugger;
-    //     setExchangeInput({
-    //         name: symbolInput.exchange,
-    //         value: symbolInput.exchange,
-    //     });
-    // }, [symbolInput]);
-
     useEffect(() => {
         if (!pixiData) return;
 
@@ -300,36 +292,9 @@ export default function PixiChart({ Socket }) {
             timestamp: data.timestamp + nextTimeBar,
         };
 
-        // if (data.timestamp < lastBar.datetime + nextTimeBar) {
-        //     //merge data
-        //     lastBar.volume += data.volume;
-        //     lastBar.high = lastBar.high < data.high ? data.high : lastBar.high;
-        //     lastBar.low = lastBar.low < data.low ? data.low : lastBar.low;
-        //     lastBar.close = lastBar.close;
-
-        //     pixiData.replaceLast(lastBar);
-
-        //     setOhlcDatas((ohlcDatas) => {
-        //         ohlcDatas[0] = lastBar;
-        //         return [...ohlcDatas];
-        //     });
-        // } else {
         pixiData.replaceLast(data);
         pixiData.prependData(newBar);
-
-        // setOhlcDatas((ohlcDatas) => {
-        //     ohlcDatas[0] = lastBar;
-        //     return [...ohlcDatas, newBar];
-        // });
-        // }
     }, [currentTimeBar]);
-
-    // useEffect(() => {
-    //     // console.log({ orders });
-    //     if (!orders.length) return;
-    //     // pixiData?.setOrders(orders);
-    //     // debugger;
-    // }, [orders, pixiData]);
 
     useEffect(() => {
         // debugger;
@@ -521,16 +486,6 @@ export default function PixiChart({ Socket }) {
             if (data.symbol !== pixiData.symbol.value) return;
             setCurrentTimeBar(data);
         });
-
-        // Socket.on("orderTracker", (data) => {
-        //     console.log("orderTracker");
-
-        //     console.log(data);
-        // });
-        // BACK TESTER
-        // Socket.on("backtester-bars", (d) => {
-        //     console.log(d);
-        // });
 
         return () => {
             console.log("DESTROY PIXI CHART");

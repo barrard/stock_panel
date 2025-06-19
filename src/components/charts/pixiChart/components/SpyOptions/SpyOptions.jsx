@@ -94,7 +94,7 @@ export default function SpyOptions({ Socket }) {
     const [underlyingData, setUnderlyingData] = useState(null);
     const [lvl2Data, setLvl2Data] = useState({});
     // const [chartInstance, setChartInstance] = useState(null);
-    const [spyLevelOne, setSpyLevelOne] = useState({ lastPrice: 596.2 });
+    const [spyLevelOne, setSpyLevelOne] = useState(null);
 
     useEffect(() => {
         Socket.on("spyOptionSnaps", (d) => {
@@ -295,6 +295,10 @@ export default function SpyOptions({ Socket }) {
                                     strike >= spyLevelOne.lastPrice &&
                                     (index === getStrikePrices().length - 1 || getStrikePrices()[index + 1] < spyLevelOne.lastPrice);
 
+                                const putBreakEven = strike - putOption?.last;
+                                const putBreakEvenPercent = ((putBreakEven - spyLevelOne?.lastPrice) / spyLevelOne?.lastPrice) * 100;
+                                const callBreakEven = strike + callOption?.last;
+                                const callBreakEvenPercent = ((callBreakEven - spyLevelOne?.lastPrice) / spyLevelOne?.lastPrice) * 100;
                                 return (
                                     <React.Fragment key={strike}>
                                         <TableRow>
@@ -314,6 +318,8 @@ export default function SpyOptions({ Socket }) {
                                             <PutCell style={{ fontWeight: 500 }}>
                                                 {putOption ? formatPrice(putOption.last) : "-"}
                                                 {putOption?.gamma != undefined && <Lvl2Text>Gex {putOption.gamma}</Lvl2Text>}
+                                                <Lvl2Text>BE {putBreakEven.toFixed(2)}</Lvl2Text>
+                                                <Lvl2Text>BE% {putBreakEvenPercent.toFixed(2)}</Lvl2Text>
                                             </PutCell>
                                             {/* UPDATED PUT BID CELL */}
                                             <PutCell>
@@ -331,6 +337,8 @@ export default function SpyOptions({ Socket }) {
                                             <CallCell style={{ fontWeight: 500 }}>
                                                 {callOption ? formatPrice(callOption.last) : "-"}
                                                 {callOption?.gamma != undefined && <Lvl2Text>Gex {callOption.gamma}</Lvl2Text>}
+                                                <Lvl2Text>BE {callBreakEven.toFixed(2)}</Lvl2Text>
+                                                <Lvl2Text>BE% {callBreakEvenPercent.toFixed(2)}</Lvl2Text>
                                             </CallCell>
                                             {/* UPDATED CALL ASK CELL */}
                                             <CallCell>
