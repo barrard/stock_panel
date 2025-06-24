@@ -262,7 +262,7 @@ export default function SpyOptions({ Socket }) {
                         </TableHead>
                         <TableBody>
                             {getStrikePrices().map((strike, index) => {
-                                const within5 = Math.abs(strike - spyLevelOne.lastPrice) <= 5;
+                                const within5 = Math.abs(strike - spyLevelOne?.lastPrice) <= 5;
                                 if (!within5) return <></>;
                                 const callData = getCurrentCallsData()[strike.toFixed(1)];
                                 const putData = getCurrentPutsData()[strike.toFixed(1)];
