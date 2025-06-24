@@ -1,17 +1,10 @@
-import {
-    Graphics,
-    Container,
-    Rectangle,
-    Text,
-    TextMetrics,
-    TextStyle,
-} from "pixi.js";
+import { Graphics, Container, Rectangle, Text, TextMetrics, TextStyle } from "pixi.js";
 import { extent, scaleLinear, select, zoom, zoomTransform, mouse } from "d3";
 import PixiAxis from "./PixiAxis";
 import { priceScaleValues } from "./utils.js";
 
 export default class Indicator {
-    constructor({ name, height, data, drawFn, chart, accessors }) {
+    constructor({ name, height, data, drawFn, chart, accessors, type, lineColor = 0x3b82f6 }) {
         this.accessors = accessors;
         this.chart = chart;
         this.data = [];
@@ -20,6 +13,8 @@ export default class Indicator {
         this.initialized = false;
         this.name = name;
         this.pointerOver = false;
+        this.type = type;
+        this.lineColor = lineColor;
 
         // console.log(this.name);
     }
@@ -105,6 +100,19 @@ export default class Indicator {
 
         this.yAxis.render({ highest, lowest: 0 });
         //draw shit
-        this.drawFn(this);
+        if (this.type === "line") {
+            this.drawFn({
+                lineColor: this.lineColor,
+                lineWidth: 2,
+                yField: this.accessors,
+                xScale: this.chart.xScale,
+                yScale: this.scale,
+                data: this.chart.slicedData,
+                chartData: this,
+                gfx: this.gfx,
+            });
+        } else {
+            this.drawFn(this);
+        }
     }
 }

@@ -202,7 +202,7 @@ export function timeScaleValues({ values }) {
     if (typeof startTime === "string") startTime = new Date(startTime).getTime();
     if (typeof endTime === "string") endTime = new Date(endTime).getTime();
     const totalDuration = endTime - startTime;
-    debugger;
+
     // Expanded time intervals with more options
     const timeIntervals = [
         { interval: 1000 * 1, name: "1sec" }, // 1 second

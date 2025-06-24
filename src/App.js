@@ -25,6 +25,7 @@ import GptChart from "./components/charts/GptChart";
 import BacktestChart from "./components/charts/BacktestChart";
 import BacktestResults from "./components/charts/BacktestResults";
 import SpyOptionsPage from "./components/SpyOptionsPage";
+import OptionContractChartPage from "./components/OptionContractChartPage";
 import PickList from "./components/PickList.js";
 
 import BidAskStats from "./components/charts/BidAskStats";
@@ -123,6 +124,7 @@ class App extends React.Component {
                     <Route path="/backtest-results" render={(props) => <BacktestResults {...props} Socket={Socket} />} />
                     <Route path="/pick-list" render={(props) => <PickList {...props} Socket={Socket} />} />
                     <Route path="/SpyOptionsPage" render={(props) => <SpyOptionsPage {...props} Socket={Socket} />} />
+                    <Route path="/OptionContractChartPage" render={(props) => <OptionContractChartPage {...props} Socket={Socket} />} />
 
                     <Route path="/bid-ask-stats" render={(props) => <BidAskStats {...props} Socket={Socket} />} />
                     <Route path="/better-tick" render={(props) => <BetterTickChart {...props} Socket={Socket} />} />

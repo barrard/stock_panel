@@ -75,8 +75,12 @@ export default {
     getBacktestData,
     getOrders,
     getPickLists,
+    fetchOptionContractData,
 };
 
+async function fetchOptionContractData({ symbol = "SPY", putCall = "CALL", strike = 590, exp = "2025-06-20" }) {
+    return await GET(`/options/contract/${symbol}/${strike}/${exp}/${putCall}`);
+}
 async function getPickLists() {
     return await GET(`/API/get-pick-lists`);
 }
@@ -312,7 +316,18 @@ async function deleteIndicator(ind, strat) {
     }
 }
 
-async function submitIndicator({ priceDataId, selectedInputs, selectedStrat, indicatorOpts, indicatorName, options, color, inputs, dataInputs, variablePeriods }) {
+async function submitIndicator({
+    priceDataId,
+    selectedInputs,
+    selectedStrat,
+    indicatorOpts,
+    indicatorName,
+    options,
+    color,
+    inputs,
+    dataInputs,
+    variablePeriods,
+}) {
     try {
         console.log({ variablePeriods });
         let list = await fetch(`${REACT_APP_API_SERVER}/API/addIndicator`, {
@@ -739,7 +754,19 @@ async function setTimeframeActive(id, timeframe, props) {
     // console.log({ slopeInts });
 }
 
-async function saveRegressionValues({ symbol, timeframe, minMaxTolerance, regressionErrorLimit, priceLevelMinMax, priceLevelSensitivity, fibonacciMinMax, fibonacciSensitivity, volProfileBins, volProfileBarCount, props }) {
+async function saveRegressionValues({
+    symbol,
+    timeframe,
+    minMaxTolerance,
+    regressionErrorLimit,
+    priceLevelMinMax,
+    priceLevelSensitivity,
+    fibonacciMinMax,
+    fibonacciSensitivity,
+    volProfileBins,
+    volProfileBarCount,
+    props,
+}) {
     try {
         let regressionData = await fetch(`${LOCAL_SERVER}/API/commodityRegressionSettings`, {
             credentials: "include",

@@ -1,12 +1,42 @@
-import {
-    Graphics,
-    Container,
-    Rectangle,
-    Text,
-    TextMetrics,
-    TextStyle,
-} from "pixi.js";
+import { Graphics, Container, Rectangle, Text, TextMetrics, TextStyle } from "pixi.js";
 
+export function drawLine(opts = {}) {
+    const { lineColor = 0x3b82f6, lineWidth = 2, yField = "last", xScale, yScale, data, chartData, gfx } = opts;
+    if (!data.length) {
+        return;
+    }
+    // this.candleWidth = (this.width - (this.margin.left + this.margin.right)) / this.slicedData.length;
+
+    if (!gfx) {
+        return;
+    }
+
+    try {
+        gfx.clear();
+    } catch (err) {
+        return err;
+    }
+
+    // Nice blue color for the main price line
+    // const lineColor = color; // Modern blue
+    // const lineWidth = THICK;
+
+    gfx.lineStyle(lineWidth, lineColor, 0.9);
+
+    let firstPoint = true;
+
+    data.forEach((candle, i) => {
+        const x = xScale(i);
+        const y = yScale(candle[yField]) || 0;
+
+        if (firstPoint) {
+            gfx.moveTo(x, y);
+            firstPoint = false;
+        } else {
+            gfx.lineTo(x, y);
+        }
+    });
+}
 export function drawVolume(indicator) {
     const { chart } = indicator;
 
@@ -27,9 +57,7 @@ export function drawVolume(indicator) {
         return err;
     }
 
-    const candleWidth =
-        (chart.width - (chart.margin.left + chart.margin.right)) /
-        indicator.data.length;
+    const candleWidth = (chart.width - (chart.margin.left + chart.margin.right)) / indicator.data.length;
     const halfWidth = candleWidth / 2;
     // this.candleStickWickGfx.lineStyle(
     //     candleWidth * 0.1,
@@ -60,12 +88,7 @@ export function drawVolume(indicator) {
         // const height = Math.abs(open - close);
         // const start = isUp ? close : open;
         // const end = isUp ? open : close;
-        indicator.gfx.drawRect(
-            x + candleMargin - halfWidth,
-            start + halfStrokeWidth,
-            candleWidth - doubleMargin,
-            height - strokeWidth
-        );
+        indicator.gfx.drawRect(x + candleMargin - halfWidth, start + halfStrokeWidth, candleWidth - doubleMargin, height - strokeWidth);
 
         // this.candleStickWickGfx.moveTo(x, high);
         // this.candleStickWickGfx.lineTo(x, low);

@@ -27,7 +27,8 @@ export default class PixiAxis {
     }
 
     init() {
-        const { margin, height, width } = this.chart.options || this.chart;
+        const { margin, height, width } = this.chart;
+        // const { margin, height, width } = this.chart.options || this.chart;
         const { left, right, top, bottom } = margin;
         this.container = new Container();
 
@@ -173,7 +174,6 @@ export default class PixiAxis {
     }
 
     addTickLine(value) {
-        debugger;
         // console.log(`draw line at ${value}`);
         if (!this.chart.margin && !this.chart.options.margin) {
             alert("No margin??");

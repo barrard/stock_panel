@@ -14,18 +14,13 @@ import {
     TableHead,
     TableHeader,
     TableBody,
-    TableRow,
     UnderlyingContainer,
     UnderlyingPrice,
     UnderlyingStats,
     UnderlyingStat,
-    Lvl2Text,
-    PutCell,
-    CallCell,
-    StrikeCellCenter,
-    PutChangeCell,
-    CallChangeCell,
 } from "./spyOptionsComponents/styledComponents";
+
+import TableRowEl from "./spyOptionsComponents/TableRowEl";
 
 function UnderlyingElement({ underlyingData }) {
     const { netPercentChange, netChange, highPrice, lowPrice, lastPrice, openPrice } = underlyingData;
@@ -199,24 +194,6 @@ export default function SpyOptions({ Socket }) {
         };
     }, [callsData, selectedExpiration, putsData, callsOrPuts]);
 
-    const formatPrice = (price) => {
-        if (price === null || price === undefined) return "-";
-        return price.toFixed(2);
-    };
-
-    const formatVolume = (volume) => {
-        if (!volume) return "-";
-        if (volume >= 1000000) return `${(volume / 1000000).toFixed(1)}M`;
-        if (volume >= 1000) return `${(volume / 1000).toFixed(1)}K`;
-        return volume.toString();
-    };
-
-    const formatPercent = (percent) => {
-        if (percent === null || percent === undefined) return "-";
-        const sign = percent >= 0 ? "+" : "";
-        return `${sign}${percent.toFixed(2)}%`;
-    };
-
     // console.log(getCurrentPutsData());
     const spyChartData = {
         // candleData: candleData.spy1MinData,
@@ -226,7 +203,12 @@ export default function SpyOptions({ Socket }) {
         Socket,
         getCurrentStrikeData,
         callsOrPuts,
+        callsData,
+        putsData,
+        underlyingData,
+        lvl2Data,
     };
+
     return (
         <Container>
             {/* Chart Placeholder */}
@@ -280,6 +262,8 @@ export default function SpyOptions({ Socket }) {
                         </TableHead>
                         <TableBody>
                             {getStrikePrices().map((strike, index) => {
+                                const within5 = Math.abs(strike - spyLevelOne.lastPrice) <= 5;
+                                if (!within5) return <></>;
                                 const callData = getCurrentCallsData()[strike.toFixed(1)];
                                 const putData = getCurrentPutsData()[strike.toFixed(1)];
 
@@ -295,64 +279,20 @@ export default function SpyOptions({ Socket }) {
                                     strike >= spyLevelOne.lastPrice &&
                                     (index === getStrikePrices().length - 1 || getStrikePrices()[index + 1] < spyLevelOne.lastPrice);
 
-                                const putBreakEven = strike - putOption?.last;
-                                const putBreakEvenPercent = ((putBreakEven - spyLevelOne?.lastPrice) / spyLevelOne?.lastPrice) * 100;
-                                const callBreakEven = strike + callOption?.last;
-                                const callBreakEvenPercent = ((callBreakEven - spyLevelOne?.lastPrice) / spyLevelOne?.lastPrice) * 100;
                                 return (
                                     <React.Fragment key={strike}>
-                                        <TableRow>
-                                            {/* PUT Data (right-aligned) */}
-                                            <PutChangeCell positive={putOption?.percentChange >= 0}>
-                                                {putOption ? formatPercent(putOption.percentChange) : "-"}
-                                            </PutChangeCell>
-                                            {/* <PutCell>{putOption?.delta ? putOption.delta.toFixed(3) : "-"}</PutCell> */}
-                                            {/* <PutCell>{putOption?.volatility ? `${putOption.volatility.toFixed(1)}%` : "-"}</PutCell> */}
-                                            <PutCell>{putOption ? formatVolume(putOption.openInterest) : "-"}</PutCell>
-                                            <PutCell>{putOption ? formatVolume(putOption.totalVolume) : "-"}</PutCell>
-                                            {/* UPDATED PUT ASK CELL */}
-                                            <PutCell>
-                                                {putOption ? formatPrice(putOption.ask) : "-"}
-                                                {putLvl2?.askSideLevels?.[0] && <Lvl2Text>@{putLvl2.askSideLevels[0].size}</Lvl2Text>}
-                                            </PutCell>{" "}
-                                            <PutCell style={{ fontWeight: 500 }}>
-                                                {putOption ? formatPrice(putOption.last) : "-"}
-                                                {putOption?.gamma != undefined && <Lvl2Text>Gex {putOption.gamma}</Lvl2Text>}
-                                                <Lvl2Text>BE {putBreakEven.toFixed(2)}</Lvl2Text>
-                                                <Lvl2Text>BE% {putBreakEvenPercent.toFixed(2)}</Lvl2Text>
-                                            </PutCell>
-                                            {/* UPDATED PUT BID CELL */}
-                                            <PutCell>
-                                                {putOption ? formatPrice(putOption.bid) : "-"}
-                                                {putLvl2?.bidSideLevels?.[0] && <Lvl2Text>@{putLvl2.bidSideLevels[0].size}</Lvl2Text>}
-                                            </PutCell>
-                                            {/* STRIKE (center) */}
-                                            <StrikeCellCenter>{strike.toFixed(0)}</StrikeCellCenter>
-                                            {/* CALL Data (left-aligned) */}
-                                            {/* UPDATED CALL BID CELL */}
-                                            <CallCell>
-                                                {callOption ? formatPrice(callOption.bid) : "-"}
-                                                {callLvl2?.bidSideLevels?.[0] && <Lvl2Text>@{callLvl2.bidSideLevels[0].size}</Lvl2Text>}
-                                            </CallCell>{" "}
-                                            <CallCell style={{ fontWeight: 500 }}>
-                                                {callOption ? formatPrice(callOption.last) : "-"}
-                                                {callOption?.gamma != undefined && <Lvl2Text>Gex {callOption.gamma}</Lvl2Text>}
-                                                <Lvl2Text>BE {callBreakEven.toFixed(2)}</Lvl2Text>
-                                                <Lvl2Text>BE% {callBreakEvenPercent.toFixed(2)}</Lvl2Text>
-                                            </CallCell>
-                                            {/* UPDATED CALL ASK CELL */}
-                                            <CallCell>
-                                                {callOption ? formatPrice(callOption.ask) : "-"}
-                                                {callLvl2?.askSideLevels?.[0] && <Lvl2Text>@{callLvl2.askSideLevels[0].size}</Lvl2Text>}
-                                            </CallCell>{" "}
-                                            <CallCell>{callOption ? formatVolume(callOption.totalVolume) : "-"}</CallCell>
-                                            <CallCell>{callOption ? formatVolume(callOption.openInterest) : "-"}</CallCell>
-                                            {/* <CallCell>{callOption?.volatility ? `${callOption.volatility.toFixed(1)}%` : "-"}</CallCell> */}
-                                            {/* <CallCell>{callOption?.delta ? callOption.delta.toFixed(3) : "-"}</CallCell> */}
-                                            <CallChangeCell positive={callOption?.percentChange >= 0}>
-                                                {callOption ? formatPercent(callOption.percentChange) : "-"}
-                                            </CallChangeCell>
-                                        </TableRow>
+                                        <TableRowEl
+                                            // callData={callData}
+                                            // putData={putData}
+                                            putOption={putOption}
+                                            callOption={callOption}
+                                            putLvl2={putLvl2}
+                                            callLvl2={callLvl2}
+                                            strike={strike}
+                                            spyLevelOne={spyLevelOne}
+                                            Socket={Socket}
+                                            exp={selectedExpiration.split(":")[0]}
+                                        />
 
                                         {/* Insert underlying after this row if needed */}
                                         {shouldShowUnderlying && (

@@ -260,7 +260,7 @@ export default class PixiData {
             //init market profile
             this.marketProfile = new MarketProfile(this);
             this.zigZag = new ZigZag(this);
-            this.supplyDemandZones = new SupplyDemandZones(this);
+            // this.supplyDemandZones = new SupplyDemandZones(this);
             this.drawOrders = new DrawOrders(this);
             this.drawPivotPoints = new PivotPoints(this);
 
@@ -282,7 +282,7 @@ export default class PixiData {
 
             this.marketProfile.init();
             this.zigZag.init();
-            this.supplyDemandZones.init();
+            // this.supplyDemandZones.init();
 
             this.draw();
         }

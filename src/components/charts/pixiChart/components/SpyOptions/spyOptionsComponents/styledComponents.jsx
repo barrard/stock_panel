@@ -1,5 +1,6 @@
 import styled from "styled-components";
-
+const RED = "#ffab6b";
+const GREEN = "#00ff44";
 export const Container = styled.div`
     max-width: 1400px;
     margin: 0 auto;
@@ -84,6 +85,18 @@ export const TableRow = styled.tr`
     }
 `;
 
+export const ChartTableRow = styled.tr`
+    background-color: #333;
+
+    &:hover {
+        background-color: #444;
+    }
+
+    & + & {
+        border-top: 1px solid #f0f0f0;
+    }
+`;
+
 export const TableCell = styled.td`
     padding: 16px 12px;
     white-space: nowrap;
@@ -97,7 +110,7 @@ export const StrikeCell = styled(TableCell)`
 
 export const ChangeCell = styled(TableCell)`
     font-weight: 600;
-    color: ${(props) => (props.positive ? "green" : "red")};
+    color: ${(props) => (props.positive ? GREEN : RED)};
     text-shadow: 1px 1px 1px rgba(0, 0, 0, 1);
 `;
 

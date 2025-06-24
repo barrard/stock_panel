@@ -22,7 +22,7 @@ export default class drawStrikes {
         // Create the graphics object for strike lines
         this.strikeLinesGfx = new Graphics();
         // Add to your main chart container
-        this.pixiDataRef.current.mainChartContainer.addChild(this.strikeLinesGfx);
+        this.pixiDataRef.current.addToLayer(0, this.strikeLinesGfx);
     }
 
     getCurrentStrikeData() {
@@ -74,7 +74,8 @@ export default class drawStrikes {
         textLabel.y = y;
 
         // Add to main chart container
-        this.pixiDataRef.current.mainChartContainer.addChild(textLabel);
+        this.pixiDataRef.current.addToLayer(0, textLabel);
+
         this.textLabels.push(textLabel);
 
         return textLabel;
@@ -115,8 +116,8 @@ export default class drawStrikes {
         const lineAlpha = 0.7;
 
         if (data) {
-            const lineColor = this.callsOrPuts === "CALLS" ? 0x00ff00 : 0xff0000;
-            const zoneColor = this.callsOrPuts === "CALLS" ? 0x00ff00 : 0xff0000;
+            const lineColor = this.callsOrPuts === "CALLS" ? 0x22c55e : 0xff6b6b;
+            const zoneColor = this.callsOrPuts === "CALLS" ? 0x22c55e : 0xff6b6b;
 
             // Chart width
             const chartWidth =
@@ -169,7 +170,7 @@ export default class drawStrikes {
                     this.strikeLinesGfx.lineTo(chartWidth, strikeY);
 
                     // Draw the breakeven line (prominent, on top of fade zone)
-                    this.strikeLinesGfx.lineStyle(2, lineColor, 0.9);
+                    this.strikeLinesGfx.lineStyle(0, lineColor, 0.9);
                     this.strikeLinesGfx.moveTo(0, breakEvenY);
                     this.strikeLinesGfx.lineTo(chartWidth, breakEvenY);
 

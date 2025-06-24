@@ -12,7 +12,10 @@ const SpyChart = (props) => {
         spyLevelOne,
         getCurrentStrikeData,
         callsOrPuts,
-        // ...rest
+        callsData,
+        putsData,
+        underlyingData,
+        lvl2Data,
     } = props;
 
     // Default bar type and period for GenericPixiChart
@@ -66,7 +69,6 @@ const SpyChart = (props) => {
         Socket.on("spyCandles", (d) => {
             console.log("first spyCandles", d);
             // d[timeframe] = d[timeframe].slice(0, -418); // Drop last 400
-            debugger;
             setCandleData(d);
         });
 
@@ -101,7 +103,7 @@ const SpyChart = (props) => {
                 strikes.cleanup();
             }
         };
-    }, [getCurrentStrikeData, pixiDataRef.current, callsOrPuts]);
+    }, [pixiDataRef.current, callsOrPuts, underlyingData, callsData, putsData, lvl2Data]);
 
     if (!candleData[timeframe]?.length) {
         return <div>Loading... {timeframe}</div>;

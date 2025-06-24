@@ -22,7 +22,8 @@ class MonteCarloCone {
         try {
             if (this.pixiDataRef.current && this.pixiDataRef.current.mainChartContainer) {
                 this.coneGfx = new Graphics();
-                this.pixiDataRef.current.mainChartContainer.addChild(this.coneGfx);
+
+                this.pixiDataRef.current.addToLayer(0, this.coneGfx);
             }
         } catch (error) {
             console.error("Failed to initialize Monte Carlo graphics:", error);
@@ -845,7 +846,7 @@ class MonteCarloCone {
     cleanup() {
         try {
             if (this.coneGfx && this.pixiDataRef.current && this.pixiDataRef.current.mainChartContainer) {
-                this.pixiDataRef.current.mainChartContainer.removeChild(this.coneGfx);
+                this.coneGfx.parent.removeChild(this.coneGfx);
                 this.coneGfx.destroy();
                 this.coneGfx = null;
             }

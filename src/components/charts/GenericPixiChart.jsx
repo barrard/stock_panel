@@ -32,6 +32,8 @@ export default function GenericPixiChart({
     currentBarRefProp = {},
     tickSize,
     mainChartContainerHeight = 400,
+    options = { chartType: "candlestick" },
+    lowerIndicators = [],
     ...rest
 }) {
     // Use provided refs or create them if not provided
@@ -88,7 +90,7 @@ export default function GenericPixiChart({
 
     useEffect(() => {
         console.log("generic pixi?");
-        debugger;
+
         // if (error) return;
         if (!PixiChartRef.current) return console.log("No PixiChartRef.current");
         console.log("GenericPixiChart init");
@@ -126,8 +128,10 @@ export default function GenericPixiChart({
             height,
             symbol,
             margin: { top: 50, right: 100, left: 0, bottom: 40 },
+            options,
             mainChartContainerHeight,
             tickSize: tickSizeRef.current,
+            lowerIndicators,
         });
         // setPixiData(_pixiData);
 
@@ -225,6 +229,24 @@ export default function GenericPixiChart({
             pixiDataRef.current.hideCrosshair();
         }
     }, [mouseEnter]);
+
+    useEffect(() => {
+        let touch1MoveDiff;
+        const touch1X = TouchGesture1.current?.clientX;
+        const touch2X = TouchGesture2.current?.clientX;
+        if (touch1 && touch2) {
+            const before = Math.abs(touch1 - touch2);
+            const after = Math.abs(touch1X - touch2X);
+            if (before > after) {
+                pixiDataRef.current.zoomOut(before - after);
+            } else if (before < after) {
+                pixiDataRef.current.zoomIn(after - before);
+            }
+        }
+        setTouch1(touch1X);
+
+        setTouch2(touch2X);
+    }, [TouchGesture1.current?.clientX, TouchGesture2.current?.clientX]);
 
     if (error) {
         return (

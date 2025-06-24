@@ -3,7 +3,7 @@
 import { extent, scaleLinear, select, zoom, zoomTransform, mouse, interpolateNumber, interpolateLab } from "d3";
 import { Graphics, Container, Rectangle, Text, TextMetrics, TextStyle, utils } from "pixi.js";
 import Indicator from "./pixiChart/components/Indicator";
-import { drawVolume } from "./pixiChart/components/drawFns.js";
+import { drawVolume, drawLine } from "./pixiChart/components/drawFns.js";
 import PixiAxis from "./pixiChart/components/PixiAxis";
 import { timeScaleValues, priceScaleValues, compileOrders, currencyFormatter } from "./pixiChart/components/utils.js";
 
@@ -18,7 +18,12 @@ export default class GenericDataHandler {
         symbol = null,
         margin = {},
         tickSize,
+        //chartType: "line", lineKey: "last", xKey: "timestamp"
+        options = { chartType: "candlestick" },
+        lowerIndicators = [],
     }) {
+        this.lowerIndicators = lowerIndicators;
+        this.options = options;
         this.loadMoreData = loadMoreData;
         this.ohlcDatas = ohlcDatas;
         this.pixiApp = pixiApp;
@@ -34,6 +39,9 @@ export default class GenericDataHandler {
         this.currentBar = null;
 
         this.customDrawFns = {};
+
+        //bind functions by default??
+        // this.drawLine = drawLine.bind(this);
 
         this.init();
     }
@@ -209,6 +217,12 @@ export default class GenericDataHandler {
         let [_, highest] = extent(this.highs);
         let priceScalePadding = 2;
 
+        if (this.options.chartType === "line") {
+            let lastPrices = sd.map((ohlc) => ohlc[this.options.lineKey]);
+
+            [lowest, highest] = extent(lastPrices);
+        }
+
         lowest = roundTick(lowest - this.tickSize * priceScalePadding, this.tickSize);
         highest = roundTick(highest + this.tickSize * priceScalePadding, this.tickSize);
         this.priceScale.domain([lowest, highest]);
@@ -241,6 +255,14 @@ export default class GenericDataHandler {
     }
     initIndicators() {
         this.lowerIndicatorsData = {
+            // volume1: new Indicator({
+            //     name: "volume",
+            //     height: 200,
+            //     data: [],
+            //     drawFn: drawVolume,
+            //     chart: this,
+            //     accessors: "volume",
+            // }),
             volume: new Indicator({
                 name: "volume",
                 height: this.indicatorHeight,
@@ -259,14 +281,74 @@ export default class GenericDataHandler {
             //     accessors: "test",
             // }),
         };
+        if (this.lowerIndicators.length) {
+            this.lowerIndicators.forEach((indicator) => {
+                this.lowerIndicatorsData[indicator.name] = new Indicator({
+                    type: indicator.type,
+                    name: indicator.name,
+                    height: indicator.height || this.indicatorHeight,
+                    lineColor: indicator.lineColor,
+                    data: [],
+                    drawFn: indicator.drawFn
+                        ? indicator.drawFn
+                        : indicator.type == "line"
+                        ? drawLine
+                        : /**
+						 * drawLine({
+                lineColor: 0x3b82f6,
+                lineWidth: 2,
+                yField: "last",
+                xScale: this.xScale,
+                yScale: this.priceScale,
+                data: this.slicedData,
+                chartData: this,
+                gfx: this.candleStickGfx,
+            });
+			 */
+                          drawVolume,
+                    chart: this,
+                    accessors: indicator.accessors || indicator.name,
+                });
+            });
+        }
         this.chartContainerOrder = [
-            "volume",
+            ...Object.keys(this.lowerIndicatorsData),
+            // "volume",
+            // "volume1",
             // "test",//shown as example
         ];
     }
+
+    //layer is a number
+    addToLayer(layerNumber, gfx) {
+        const layerContainer = this.layers[layerNumber];
+        layerContainer.addChild(gfx);
+    }
+
     initContainers() {
         this.mainChartContainer = new Container();
+        this.indicatorContainer = new Container();
         this.tradeWindowContainer = new Container();
+
+        this.layer0Container = new Container();
+        this.layer1Container = new Container();
+        this.layer2Container = new Container();
+        this.layer3Container = new Container();
+        this.layer4Container = new Container();
+
+        this.mainChartContainer.addChild(this.layer0Container);
+        this.mainChartContainer.addChild(this.layer1Container);
+        this.mainChartContainer.addChild(this.layer2Container);
+        this.mainChartContainer.addChild(this.layer3Container);
+        this.mainChartContainer.addChild(this.layer4Container);
+
+        this.layers = {
+            0: this.layer0Container,
+            1: this.layer1Container,
+            2: this.layer2Container,
+            3: this.layer3Container,
+            4: this.layer4Container,
+        };
 
         //  this.mainChartContainer.addChild(this.liquidityContainer);
         //setHitArea
@@ -282,16 +364,17 @@ export default class GenericDataHandler {
         // this.mainChartContainer.addChild(this.xAxis.tickLinesGfx);
         // this.mainChartContainer.addChild(this.yAxis.tickLinesGfx);
 
-        this.mainChartContainer.addChild(this.candleStickWickGfx);
-        this.mainChartContainer.addChild(this.candleStickGfx);
-        this.mainChartContainer.addChild(this.priceGfx);
-        this.mainChartContainer.addChild(this.borderGfx);
+        this.addToLayer(1, this.candleStickWickGfx);
+        this.addToLayer(1, this.candleStickGfx);
+        this.addToLayer(1, this.priceGfx);
+        this.addToLayer(1, this.borderGfx);
 
-        this.mainChartContainer.addChild(this.currentPriceLabelAppendGfx);
-        this.mainChartContainer.addChild(this.currentPriceTxtLabel);
-        this.mainChartContainer.addChild(this.volGfx);
+        this.addToLayer(2, this.currentPriceLabelAppendGfx);
+        this.addToLayer(2, this.currentPriceTxtLabel);
+        this.addToLayer(1, this.volGfx);
 
-        this.mainChartContainer.addChild(this.volProfileGfx);
+        this.addToLayer(2, this.volProfileGfx);
+        this.pixiApp.stage.addChild(this.indicatorContainer);
         this.pixiApp.stage.addChild(this.mainChartContainer);
         this.updateCurrentPriceLabel(this.ohlcDatas.slice(-1)[0]?.close);
     }
@@ -500,10 +583,12 @@ export default class GenericDataHandler {
                 //resize the canvas
                 this.pixiApp.renderer.resize(this.width, this.height);
                 //add indicator container to the chart
-                this.pixiApp.stage.addChild(container);
+                this.indicatorContainer.addChild(container);
+                // this.addToLayer(1, container);
 
                 //adjust xAxis position
-                this.xAxis.container.position.y = this.height - this.margin.bottom;
+                // console.log("adjust xAxis position");
+                // this.xAxis.container.position.y = this.height - this.margin.bottom;
             } else {
                 //setup the scales
                 indicator.setupScales();
@@ -628,12 +713,12 @@ export default class GenericDataHandler {
 
         //yAxis
         this.yAxis.container.position.x = this.width - this.margin.right;
-        this.yAxis.container.position.y = this.margin.top;
-        this.mainChartContainer.addChild(this.yAxis.container);
+        this.yAxis.container.position.y = 0;
+        this.addToLayer(1, this.yAxis.container);
         //yAxis
         this.xAxis.container.position.x = this.margin.left;
         this.xAxis.container.position.y = this.innerHeight();
-        this.mainChartContainer.addChild(this.xAxis.container);
+        this.addToLayer(1, this.xAxis.container);
     }
 
     //Drag and zoom mouse events
@@ -866,8 +951,23 @@ export default class GenericDataHandler {
         // this.setupTickVolumeScales();
         // this.drawPriceLine();
         // this.drawTickVolumeLine();
+        if (this.options.chartType === "candlestick") {
+            this.drawAllCandles();
+        } else if (this.options.chartType === "line") {
+            //this candleWidth needs to exist for the drag/pan to work
+            this.candleWidth = (this.width - (this.margin.left + this.margin.right)) / this.slicedData.length;
 
-        this.drawAllCandles();
+            drawLine({
+                lineColor: 0x3b82f6,
+                lineWidth: 2,
+                yField: "last",
+                xScale: this.xScale,
+                yScale: this.priceScale,
+                data: this.slicedData,
+                chartData: this,
+                gfx: this.candleStickGfx,
+            });
+        }
 
         Object.keys(this.customDrawFns).forEach((name) => {
             const drawFn = this.customDrawFns[name];
@@ -924,33 +1024,33 @@ export default class GenericDataHandler {
         if (!this.pixiApp?.stage) return console.log("no stage");
         this.crosshair = true;
 
-        this.mainChartContainer.addChild(this.crossHairXGfx);
-        this.mainChartContainer.addChild(this.crossHairYGfx);
-        this.mainChartContainer.addChild(this.tradeWindowContainer);
+        this.addToLayer(3, this.crossHairXGfx);
+        this.addToLayer(3, this.crossHairYGfx);
+        this.addToLayer(3, this.tradeWindowContainer);
         //LABELS
-        this.mainChartContainer.addChild(this.dateLabelAppendGfx);
-        this.mainChartContainer.addChild(this.priceLabelAppendGfx);
+        this.addToLayer(3, this.dateLabelAppendGfx);
+        this.addToLayer(3, this.priceLabelAppendGfx);
         //TEXT
-        this.mainChartContainer.addChild(this.dateTxtLabel);
-        this.mainChartContainer.addChild(this.priceTxtLabel);
+        this.addToLayer(3, this.dateTxtLabel);
+        this.addToLayer(3, this.priceTxtLabel);
     }
 
     hideCrosshair() {
         if (!this.pixiApp?.stage) return console.log("no stage");
         this.crosshair = false;
-        this.mainChartContainer.removeChild(this.crossHairXGfx);
-        this.mainChartContainer.removeChild(this.crossHairYGfx);
+        this.crossHairXGfx.parent?.removeChild(this.crossHairXGfx);
+        this.crossHairYGfx.parent?.removeChild(this.crossHairYGfx);
         //LABELS
-        this.mainChartContainer.removeChild(this.dateLabelAppendGfx);
-        this.mainChartContainer.removeChild(this.priceLabelAppendGfx);
+        this.dateLabelAppendGfx.parent?.removeChild(this.dateLabelAppendGfx);
+        this.priceLabelAppendGfx.parent?.removeChild(this.priceLabelAppendGfx);
         //TEXT
-        this.mainChartContainer.removeChild(this.dateTxtLabel);
-        this.mainChartContainer.removeChild(this.priceTxtLabel);
+        this.dateTxtLabel.parent?.removeChild(this.dateTxtLabel);
+        this.priceTxtLabel.parent?.removeChild(this.priceTxtLabel);
     }
 
     destroy() {
         console.log("destroy");
-        this.ohlcDatas.length = 0;
+        // this.ohlcDatas.length = 0;
         this.initialized = false;
     }
 

@@ -43,7 +43,7 @@ export default class SupplyDemandZones {
 
     init() {
         // console.log("dataHandler");
-        this.data.mainChartContainer.addChild(this.container);
+        this.data.addToLayer(2, this.container);
         this.container.addChild(this.SDZContainer);
 
         this.timesOfHighMomoUp = [];
@@ -68,23 +68,14 @@ export default class SupplyDemandZones {
             // this.data.ohlcDatas.forEach((ohlc, i) => {
             if (i < this.evalLength) continue;
 
-            const evalData = this.data.ohlcDatas.slice(
-                i - this.evalLength,
-                i + 1
-            );
+            const evalData = this.data.ohlcDatas.slice(i - this.evalLength, i + 1);
             const [first, second, third, fourth, fifth] = evalData;
             // const [firstATR, secondATR, thirdATR, fourthATR, fifthATR]
             const ATRs = evalData.map((d) => {
                 return Math.abs(d.open - d.close);
             });
 
-            const [
-                firstClose,
-                secondClose,
-                thirdClose,
-                fourthClose,
-                fifthClose,
-            ] = evalData.map((d) => {
+            const [firstClose, secondClose, thirdClose, fourthClose, fifthClose] = evalData.map((d) => {
                 return d.close;
             });
 
@@ -166,14 +157,7 @@ export default class SupplyDemandZones {
         }
     }
 
-    findLowVolatilityOfGroup(
-        groupingTesting,
-        plotArray,
-        ATRs,
-        evalData,
-        i,
-        highLow
-    ) {
+    findLowVolatilityOfGroup(groupingTesting, plotArray, ATRs, evalData, i, highLow) {
         let lowIndex; // indexOfSmallest(ATRs);
         if (highLow === "high") {
             lowIndex = indexOfLargest(ATRs);
@@ -231,27 +215,11 @@ export default class SupplyDemandZones {
         // this.SDZGfx.lineStyle(2, 0xffffff, 0.9);
 
         this.SDZGfx.beginFill(0x00ff00, fill);
-        this.timesOfHighMomoUp.forEach((momo, i) =>
-            drawMomoMarker(
-                i,
-                this.timesOfHighMomoUpGroupingTesting[i],
-                momo,
-                10,
-                "demand"
-            )
-        );
+        this.timesOfHighMomoUp.forEach((momo, i) => drawMomoMarker(i, this.timesOfHighMomoUpGroupingTesting[i], momo, 10, "demand"));
 
         dataCounter = 0;
         this.SDZGfx.beginFill(0xff0000, fill);
-        this.timesOfHighMomoDown.forEach((momo, i) =>
-            drawMomoMarker(
-                i,
-                this.timesOfHighMomoDownGroupingTesting[i],
-                momo,
-                10,
-                "supply"
-            )
-        );
+        this.timesOfHighMomoDown.forEach((momo, i) => drawMomoMarker(i, this.timesOfHighMomoDownGroupingTesting[i], momo, 10, "supply"));
 
         // dataCounter = 0;
 
@@ -286,35 +254,16 @@ export default class SupplyDemandZones {
                 timestamp = sliceStart;
                 // return;
             }
-            if (
-                timestamp <= sliceEnd &&
-                groupTesting[0].timestamp > sliceStart &&
-                groupTesting.slice(-1)[0].timestamp < sliceEnd
-            ) {
+            if (timestamp <= sliceEnd && groupTesting[0].timestamp > sliceStart && groupTesting.slice(-1)[0].timestamp < sliceEnd) {
                 // return;
                 // console.log(groupTesting);
-                let start = that.data.slicedData.findIndex(
-                    (d) => d.timestamp === groupTesting[0].timestamp
-                );
+                let start = that.data.slicedData.findIndex((d) => d.timestamp === groupTesting[0].timestamp);
                 if (start < 0) start = 1;
                 const left = that.data.xScale(start);
-                const top = that.data.priceScale(
-                    groupTesting.reduce(
-                        (acc, d) => (d.high > acc ? d.high : acc),
-                        -Infinity
-                    )
-                );
-                const height =
-                    that.data.priceScale(
-                        groupTesting.reduce(
-                            (acc, d) => (d.low < acc ? d.low : acc),
-                            Infinity
-                        )
-                    ) - top;
+                const top = that.data.priceScale(groupTesting.reduce((acc, d) => (d.high > acc ? d.high : acc), -Infinity));
+                const height = that.data.priceScale(groupTesting.reduce((acc, d) => (d.low < acc ? d.low : acc), Infinity)) - top;
 
-                let end = that.data.slicedData.findIndex(
-                    (d) => d.timestamp === groupTesting.slice(-1)[0].timestamp
-                );
+                let end = that.data.slicedData.findIndex((d) => d.timestamp === groupTesting.slice(-1)[0].timestamp);
                 if (end < 0) end = that.data.slicedData.length - 1;
                 const width = that.data.xScale(end) - that.data.xScale(start);
 
@@ -322,11 +271,7 @@ export default class SupplyDemandZones {
             }
 
             if (x === undefined) {
-                for (
-                    let _x = dataCounter;
-                    _x < that.data.slicedData.length;
-                    _x++
-                ) {
+                for (let _x = dataCounter; _x < that.data.slicedData.length; _x++) {
                     const ohlcData = that.data.slicedData[_x];
 
                     if (ohlcData.timestamp === timestamp) {
@@ -339,17 +284,13 @@ export default class SupplyDemandZones {
             if (!x) x = 1;
             that.SDZGfx.drawCircle(x, y, radius);
 
-            const SD_ZONE_END = that.data.xScale(
-                that.data.slicedData.length - 1
-            );
+            const SD_ZONE_END = that.data.xScale(that.data.slicedData.length - 1);
             //supportZone
             if (SD === "supply") {
                 let top = that.data.priceScale(momo.open);
                 let bottom = that.data.priceScale(momo.high);
 
-                let start = that.data.slicedData.findIndex(
-                    (d) => d.timestamp === timestamp
-                );
+                let start = that.data.slicedData.findIndex((d) => d.timestamp === timestamp);
                 if (start < 0) {
                     start = 50;
                 }
@@ -364,9 +305,7 @@ export default class SupplyDemandZones {
                 let top = that.data.priceScale(momo.open);
                 let bottom = that.data.priceScale(momo.low);
 
-                let start = that.data.slicedData.findIndex(
-                    (d) => d.timestamp === timestamp
-                );
+                let start = that.data.slicedData.findIndex((d) => d.timestamp === timestamp);
                 if (start < 0) start = 0;
                 const left = that.data.xScale(start);
 
