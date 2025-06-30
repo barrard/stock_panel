@@ -143,7 +143,7 @@ export default class GenericDataHandler {
     }
     updateY____Label({ yLabel, gfx, txt, color }) {
         txt.text = yLabel;
-        let { width, height } = TextMetrics.measureText(yLabel, this.textStyle);
+        let { width, height } = TextMetrics.measureText(yLabel, this.darkTextStyle);
         try {
             gfx.clear();
         } catch (e) {
@@ -424,14 +424,14 @@ export default class GenericDataHandler {
         this.tradeWindowContainer.addChild(this.TW_BuyButtonGfx);
         this.tradeWindowContainer.addChild(this.TW_SellButtonGfx);
 
-        this.TW_symbol = new Text(this.fullSymbol?.current?.fullSymbol, this.textStyle);
-        this.TW_exchange = new Text(this.symbol.exchange, this.textStyle);
+        this.TW_symbol = new Text(this.fullSymbol?.current?.fullSymbol, this.darkTextStyle);
+        this.TW_exchange = new Text(this.symbol.exchange, this.darkTextStyle);
         this.TW_exchange.resolution = 10;
-        this.TW_value = new Text("", this.textStyle);
-        this.TW_BUY = new Text("BUY", this.textStyle);
+        this.TW_value = new Text("", this.darkTextStyle);
+        this.TW_BUY = new Text("BUY", this.darkTextStyle);
         this.TW_BUY.interactive = true;
         this.TW_BUY.on("click", this.BuyButtonClick);
-        this.TW_SELL = new Text("SELL", this.textStyle);
+        this.TW_SELL = new Text("SELL", this.darkTextStyle);
         this.TW_SELL.interactive = true;
         this.TW_SELL.on("click", this.SellButtonClick);
         this.tradeWindowContainer.addChild(this.TW_symbol);
@@ -445,7 +445,7 @@ export default class GenericDataHandler {
         this.dateLabelAppendGfx = new Graphics();
         this.priceLabelAppendGfx = new Graphics();
         this.currentPriceLabelAppendGfx = new Graphics();
-        this.textStyle = new TextStyle({
+        this.darkTextStyle = new TextStyle({
             fontFamily: "Arial",
             fontSize: 20,
             fontWeight: "bold",
@@ -454,11 +454,11 @@ export default class GenericDataHandler {
             userEvents: "none",
         });
 
-        this.dateTxtLabel = new Text("", this.textStyle);
+        this.dateTxtLabel = new Text("", this.darkTextStyle);
         this.dateTxtLabel.anchor.x = 0.5;
-        this.priceTxtLabel = new Text("", this.textStyle);
+        this.priceTxtLabel = new Text("", this.darkTextStyle);
         this.priceTxtLabel.anchor.y = 0.5;
-        this.currentPriceTxtLabel = new Text("", this.textStyle);
+        this.currentPriceTxtLabel = new Text("", this.darkTextStyle);
         this.currentPriceTxtLabel.anchor.y = 0.5;
 
         this.onMouseMove = (e) => {
@@ -535,7 +535,7 @@ export default class GenericDataHandler {
             } else {
                 this.dateLabel = date;
                 this.dateTxtLabel.text = this.dateLabel;
-                let { width, height } = TextMetrics.measureText(this.dateLabel, this.textStyle);
+                let { width, height } = TextMetrics.measureText(this.dateLabel, this.darkTextStyle);
                 //X Date Label
                 this.dateLabelAppendGfx.clear();
                 this.dateLabelAppendGfx.beginFill(0x00ff00); // green
@@ -603,7 +603,7 @@ export default class GenericDataHandler {
         //add hit area for pointer events
         this.mainChartContainer.interactive = true;
         // this.mainChartContainer.interactiveMousewheel = true
-        this.hitArea = new Rectangle(0, 0, this.width - (left + right), this.height - (top + bottom));
+        this.hitArea = new Rectangle(0, 0, this.width - (left + right), this.mainChartContainerHeight - (top + bottom));
         this.mainChartContainer.hitArea = this.hitArea;
         console.log("setting hit area");
     }

@@ -24,14 +24,39 @@ export default class Indicator {
         this.container = new Container();
 
         this.container.interactive = true;
+        // this.container.eventMode = "static"; // or 'dynamic'
+        // this.container.cursor = "pointer"; // Optional: change cursor on hover
+
         const { width, margin } = this.chart;
         const { left, right, bottom, top } = margin;
-        // this.hitArea = new Rectangle(0, 0, width - (left + right), this.height);
-        // this.container.hitArea = this.hitArea;
+        this.hitArea = new Rectangle(0, 0, width - (left + right), this.height);
+        this.container.hitArea = this.hitArea;
+
+        // // Debug: visualize the hit area
+        // const debugGraphics = new Graphics();
+        // debugGraphics.beginFill(0xff0000, 0.3); // Semi-transparent red
+        // debugGraphics.drawRect(0, 0, width - (left + right), this.height / 2);
+        // debugGraphics.endFill();
+        // this.container.addChild(debugGraphics); // Remove this after debugging
 
         this.scale = scaleLinear().range([this.height, 0]); //.range([height, indicatorHeight]);
         this.gfx = new Graphics();
         this.borderGfx = new Graphics();
+        const style = new TextStyle({
+            fontFamily: "Arial, sans-serif",
+            fontSize: 10,
+            fontWeight: "bold",
+            fill: "#ffffff",
+            // stroke: "#2c3e50",
+            // strokeThickness: 3,
+            // dropShadow: true,
+            // dropShadowColor: "#000000",
+            // dropShadowBlur: 4,
+            // dropShadowAngle: Math.PI / 6,
+            // dropShadowDistance: 1,
+        });
+
+        this.nameText = new Text(this.name, style);
 
         this.hitArea = new Rectangle(0, 0, width - (left + right), this.height);
 
@@ -52,12 +77,14 @@ export default class Indicator {
         this.container.addChild(this.yAxis.tickLinesGfx);
 
         this.container.addChild(this.yAxis.container);
+        this.container.addChild(this.nameText);
 
         this.container.hitArea = this.hitArea;
         this.container
             .on("pointerover", (e) => {
                 this.pointerOver = true;
                 //tell the cross hair to use this scale....
+                debugger;
 
                 this.chart.setYScale(this.scale);
                 this.chart.yMouseOffset = this.container.position.y;
