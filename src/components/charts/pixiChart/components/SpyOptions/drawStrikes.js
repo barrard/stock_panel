@@ -130,7 +130,7 @@ export default class drawStrikes {
                     const optionData = optionsAtStrike[0];
                     const strike = parseFloat(strikePrice);
                     const lastPrice = optionData.last;
-                    if (lastPrice > 5) return;
+                    if (lastPrice > 2) return;
 
                     // Calculate breakeven price
                     let breakEvenPrice;
@@ -153,15 +153,15 @@ export default class drawStrikes {
                         const stepHeight = zoneHeight / fadeSteps;
                         const alpha = 0.5 * (1 - i / fadeSteps); // Fade from 0.5 to 0
 
-                        this.strikeLinesGfx.beginFill(zoneColor, alpha);
+                        // this.strikeLinesGfx.beginFill(zoneColor, alpha);
 
                         // Draw layer above breakeven
-                        this.strikeLinesGfx.drawRect(0, breakEvenY - stepHeight * (i + 1), chartWidth, stepHeight);
+                        // this.strikeLinesGfx.drawRect(0, breakEvenY - stepHeight * (i + 1), chartWidth, stepHeight);
 
                         // Draw layer below breakeven
-                        this.strikeLinesGfx.drawRect(0, breakEvenY + stepHeight * i, chartWidth, stepHeight);
+                        // this.strikeLinesGfx.drawRect(0, breakEvenY + stepHeight * i, chartWidth, stepHeight);
 
-                        this.strikeLinesGfx.endFill();
+                        // this.strikeLinesGfx.endFill();
                     }
 
                     // Draw the strike line (thinner, more subtle)
@@ -170,7 +170,7 @@ export default class drawStrikes {
                     this.strikeLinesGfx.lineTo(chartWidth, strikeY);
 
                     // Draw the breakeven line (prominent, on top of fade zone)
-                    this.strikeLinesGfx.lineStyle(0, lineColor, 0.9);
+                    this.strikeLinesGfx.lineStyle(5, lineColor, 0.9);
                     this.strikeLinesGfx.moveTo(0, breakEvenY);
                     this.strikeLinesGfx.lineTo(chartWidth, breakEvenY);
 

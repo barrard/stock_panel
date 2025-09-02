@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import GenericPixiChart from "../../../GenericPixiChart";
 import drawStrikes from "./drawStrikes";
 import MonteCarloCone from "./monteCarloSimulation";
+import TimeframeSelector from "./spyOptionsComponents/TimeframeSelector";
 const SpyChart = (props) => {
     const {
         width,
@@ -81,11 +82,15 @@ const SpyChart = (props) => {
     }, []);
 
     useEffect(() => {
-        if (!candleData[timeframe]) {
-            console.log("no data");
-            Socket.emit("getSpyCandles");
-        }
-    }, [candleData[timeframe]]);
+        console.log(timeframe);
+    }, [timeframe]);
+
+    // useEffect(() => {
+    //     if (!candleData[timeframe]) {
+    //         console.log("no data");
+    //         Socket.emit("getSpyCandles");
+    //     }
+    // }, [candleData[timeframe]]);
 
     useEffect(() => {
         if (!getCurrentStrikeData || !pixiDataRef.current || !spyLevelOne?.lastPrice) return;
@@ -105,29 +110,38 @@ const SpyChart = (props) => {
         };
     }, [pixiDataRef.current, callsOrPuts, underlyingData, callsData, putsData, lvl2Data]);
 
-    if (!candleData[timeframe]?.length) {
-        return <div>Loading... {timeframe}</div>;
-    }
+    // if (!candleData[timeframe]?.length) {
+    //     return <div>Loading... {timeframe}</div>;
+    // }
+
     return (
-        <GenericPixiChart
-            ohlcDatas={candleData[timeframe]}
-            width={width}
-            height={height}
-            symbol={symbol}
-            fullSymbolRef={fullSymbolRef}
-            barType={barType}
-            barTypePeriod={barTypePeriod}
-            // loadData={loadData}
-            pixiDataRef={pixiDataRef}
-            // pixiApplicationRef={pixiApplicationRef}
-            // TouchGesture1Prop={TouchGesture1}
-            // TouchGesture2Prop={TouchGesture2}
-            // newSymbolTimerRefProp={newSymbolTimerRef}
-            // loadDataRefProp={loadDataRef}
-            // lastTradesRefProp={lastTradesRef}
-            tickSize={tickSize}
-            // {...rest}
-        />
+        <>
+            <TimeframeSelector setTimeframe={setTimeframe} timeframe={timeframe} />
+            {!candleData[timeframe]?.length ? (
+                <div>Loading... {timeframe}</div>
+            ) : (
+                <GenericPixiChart
+                    key={timeframe}
+                    ohlcDatas={candleData[timeframe]}
+                    width={width}
+                    height={height}
+                    symbol={symbol}
+                    fullSymbolRef={fullSymbolRef}
+                    barType={barType}
+                    barTypePeriod={barTypePeriod}
+                    // loadData={loadData}
+                    pixiDataRef={pixiDataRef}
+                    // pixiApplicationRef={pixiApplicationRef}
+                    // TouchGesture1Prop={TouchGesture1}
+                    // TouchGesture2Prop={TouchGesture2}
+                    // newSymbolTimerRefProp={newSymbolTimerRef}
+                    // loadDataRefProp={loadDataRef}
+                    // lastTradesRefProp={lastTradesRef}
+                    tickSize={tickSize}
+                    // {...rest}
+                />
+            )}
+        </>
     );
 };
 
