@@ -149,20 +149,20 @@ export default class drawStrikes {
                     const fadeSteps = 6; // Number of fade layers
 
                     // Draw fade zone with multiple layers
-                    for (let i = 0; i < fadeSteps; i++) {
-                        const stepHeight = zoneHeight / fadeSteps;
-                        const alpha = 0.5 * (1 - i / fadeSteps); // Fade from 0.5 to 0
+                    // for (let i = 0; i < fadeSteps; i++) {
+                    // const stepHeight = zoneHeight / fadeSteps;
+                    // const alpha = 0.5 * (1 - i / fadeSteps); // Fade from 0.5 to 0
 
-                        // this.strikeLinesGfx.beginFill(zoneColor, alpha);
+                    // this.strikeLinesGfx.beginFill(zoneColor, alpha);
 
-                        // Draw layer above breakeven
-                        // this.strikeLinesGfx.drawRect(0, breakEvenY - stepHeight * (i + 1), chartWidth, stepHeight);
+                    // Draw layer above breakeven
+                    // this.strikeLinesGfx.drawRect(0, breakEvenY - stepHeight * (i + 1), chartWidth, stepHeight);
 
-                        // Draw layer below breakeven
-                        // this.strikeLinesGfx.drawRect(0, breakEvenY + stepHeight * i, chartWidth, stepHeight);
+                    // Draw layer below breakeven
+                    // this.strikeLinesGfx.drawRect(0, breakEvenY + stepHeight * i, chartWidth, stepHeight);
 
-                        // this.strikeLinesGfx.endFill();
-                    }
+                    // this.strikeLinesGfx.endFill();
+                    // }
 
                     // Draw the strike line (thinner, more subtle)
                     this.strikeLinesGfx.lineStyle(lineWidth, lineColor, lineAlpha * 0.6);

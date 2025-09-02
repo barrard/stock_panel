@@ -7,6 +7,7 @@ const ButtonGroup = styled.div`
     padding: 8px;
     background-color: #f3f4f6;
     border-radius: 8px;
+    width: fit-content;
 `;
 
 const TimeframeButton = styled.button`

@@ -3,6 +3,7 @@ import GenericPixiChart from "../../../GenericPixiChart";
 import drawStrikes from "./drawStrikes";
 import MonteCarloCone from "./monteCarloSimulation";
 import TimeframeSelector from "./spyOptionsComponents/TimeframeSelector";
+import IndicatorSelector from "./spyOptionsComponents/IndicatorSelector";
 const SpyChart = (props) => {
     const {
         width,
@@ -34,29 +35,68 @@ const SpyChart = (props) => {
     const [lastSpyLevelOne, setLastSpyLevelOne] = useState(null);
     const [newSpyMinuteBar, setNewSpyMinuteBar] = useState(null);
 
+    const [indicators, setIndicators] = useState([
+        { id: "monteCarlo", name: "Monte Carlo", enabled: true, drawFunctionKey: "drawHistogramHeatmap", instanceRef: null },
+        { id: "strikes", name: "Strike Lines", enabled: true, drawFunctionKey: "drawAllStrikeLines", instanceRef: null },
+    ]);
+
+    const toggleIndicator = (id) => {
+        setIndicators((prevIndicators) =>
+            prevIndicators.map((indicator) =>
+                indicator.id === id ? { ...indicator, enabled: !indicator.enabled } : indicator
+            )
+        );
+    };
+
     useEffect(() => {
+        const monteCarloIndicator = indicators.find(ind => ind.id === "monteCarlo");
+        if (!monteCarloIndicator) return; // Should not happen if initialized correctly
+
         if (!newSpyMinuteBar || !pixiDataRef.current) return;
         pixiDataRef.current.setNewBar(newSpyMinuteBar);
 
-        if (candleData && pixiDataRef.current) {
+        if (monteCarloIndicator.enabled && candleData && pixiDataRef.current) {
             const monteCarlo = new MonteCarloCone(pixiDataRef, candleData);
-            // setInterval(() => {
-            const results = monteCarlo.updateSimulation();
-            // const histogramData = results.returnAnalysis.sortedBins;
             monteCarlo.drawHistogramHeatmap();
-            // }, 2000);
-            // monteCarlo.drawReturnsHistogram();
-            // monteCarlo.getHeatmapSummary();
 
-            // Register for redraws
-            pixiDataRef.current.registerDrawFn("drawHistogramHeatmap", monteCarlo.drawHistogramHeatmap.bind(monteCarlo));
+            // Update instanceRef in state
+            setIndicators(prevIndicators =>
+                prevIndicators.map(ind =>
+                    ind.id === "monteCarlo" ? { ...ind, instanceRef: monteCarlo } : ind
+                )
+            );
+
+            pixiDataRef.current.registerDrawFn(monteCarloIndicator.drawFunctionKey, monteCarlo.drawHistogramHeatmap.bind(monteCarlo));
 
             return () => {
-                pixiDataRef.current?.unregisterDrawFn("drawHistogramHeatmap");
-                monteCarlo.cleanup();
+                pixiDataRef.current?.unregisterDrawFn(monteCarloIndicator.drawFunctionKey);
+                // Use the instanceRef for cleanup if it exists
+                const currentMonteCarloInstance = indicators.find(ind => ind.id === "monteCarlo")?.instanceRef;
+                if (currentMonteCarloInstance && currentMonteCarloInstance.cleanup) {
+                    currentMonteCarloInstance.cleanup();
+                }
+                // Clear instanceRef in state on cleanup
+                setIndicators(prevIndicators =>
+                    prevIndicators.map(ind =>
+                        ind.id === "monteCarlo" ? { ...ind, instanceRef: null } : ind
+                    )
+                );
             };
+        } else if (!monteCarloIndicator.enabled) {
+            // If disabled, ensure it's cleaned up
+            pixiDataRef.current?.unregisterDrawFn(monteCarloIndicator.drawFunctionKey);
+            const currentMonteCarloInstance = indicators.find(ind => ind.id === "monteCarlo")?.instanceRef;
+            if (currentMonteCarloInstance && currentMonteCarloInstance.cleanup) {
+                currentMonteCarloInstance.cleanup();
+            }
+            // Clear instanceRef in state
+            setIndicators(prevIndicators =>
+                prevIndicators.map(ind =>
+                    ind.id === "monteCarlo" ? { ...ind, instanceRef: null } : ind
+                )
+            );
         }
-    }, [newSpyMinuteBar, pixiDataRef.current]);
+    }, [newSpyMinuteBar, pixiDataRef.current, candleData, indicators]);
 
     useEffect(() => {
         if (!pixiDataRef.current || !spyLevelOne) return;
@@ -93,22 +133,54 @@ const SpyChart = (props) => {
     // }, [candleData[timeframe]]);
 
     useEffect(() => {
-        if (!getCurrentStrikeData || !pixiDataRef.current || !spyLevelOne?.lastPrice) return;
-        const data = getCurrentStrikeData();
-        const spyPrice = spyLevelOne.lastPrice;
-        const strikes = new drawStrikes(data, pixiDataRef, callsOrPuts, spyPrice);
-        strikes.drawAllStrikeLines();
-        pixiDataRef.current.registerDrawFn("drawAllStrikeLines", strikes.drawAllStrikeLines.bind(strikes));
-        return () => {
-            // Unregister the draw function
-            pixiDataRef.current?.unregisterDrawFn("drawAllStrikeLines");
+        const strikesIndicator = indicators.find(ind => ind.id === "strikes");
+        if (!strikesIndicator) return; // Should not happen if initialized correctly
 
-            // Clean up the strikes instance
-            if (strikes && strikes.cleanup) {
-                strikes.cleanup();
+        if (!getCurrentStrikeData || !pixiDataRef.current || !spyLevelOne?.lastPrice) return;
+
+        if (strikesIndicator.enabled) {
+            const data = getCurrentStrikeData();
+            const spyPrice = spyLevelOne.lastPrice;
+            const strikes = new drawStrikes(data, pixiDataRef, callsOrPuts, spyPrice);
+            strikes.drawAllStrikeLines();
+
+            // Update instanceRef in state
+            setIndicators(prevIndicators =>
+                prevIndicators.map(ind =>
+                    ind.id === "strikes" ? { ...ind, instanceRef: strikes } : ind
+                )
+            );
+
+            pixiDataRef.current.registerDrawFn(strikesIndicator.drawFunctionKey, strikes.drawAllStrikeLines.bind(strikes));
+
+            return () => {
+                pixiDataRef.current?.unregisterDrawFn(strikesIndicator.drawFunctionKey);
+                const currentStrikesInstance = indicators.find(ind => ind.id === "strikes")?.instanceRef;
+                if (currentStrikesInstance && currentStrikesInstance.cleanup) {
+                    currentStrikesInstance.cleanup();
+                }
+                // Clear instanceRef in state on cleanup
+                setIndicators(prevIndicators =>
+                    prevIndicators.map(ind =>
+                        ind.id === "strikes" ? { ...ind, instanceRef: null } : ind
+                    )
+                );
+            };
+        } else if (!strikesIndicator.enabled) {
+            // If disabled, ensure it's cleaned up
+            pixiDataRef.current?.unregisterDrawFn(strikesIndicator.drawFunctionKey);
+            const currentStrikesInstance = indicators.find(ind => ind.id === "strikes")?.instanceRef;
+            if (currentStrikesInstance && currentStrikesInstance.cleanup) {
+                currentStrikesInstance.cleanup();
             }
-        };
-    }, [pixiDataRef.current, callsOrPuts, underlyingData, callsData, putsData, lvl2Data]);
+            // Clear instanceRef in state
+            setIndicators(prevIndicators =>
+                prevIndicators.map(ind =>
+                    ind.id === "strikes" ? { ...ind, instanceRef: null } : ind
+                )
+            );
+        }
+    }, [pixiDataRef.current, callsOrPuts, underlyingData, callsData, putsData, lvl2Data, getCurrentStrikeData, spyLevelOne, indicators]);
 
     // if (!candleData[timeframe]?.length) {
     //     return <div>Loading... {timeframe}</div>;
@@ -117,6 +189,7 @@ const SpyChart = (props) => {
     return (
         <>
             <TimeframeSelector setTimeframe={setTimeframe} timeframe={timeframe} />
+            <IndicatorSelector indicators={indicators} toggleIndicator={toggleIndicator} />
             {!candleData[timeframe]?.length ? (
                 <div>Loading... {timeframe}</div>
             ) : (
