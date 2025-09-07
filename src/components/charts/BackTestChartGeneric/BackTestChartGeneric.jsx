@@ -21,8 +21,9 @@ const BackTestChartGeneric = (props) => {
     const [lastSpyLevelOne, setLastSpyLevelOne] = useState(null);
     const [newSpyMinuteBar, setNewSpyMinuteBar] = useState(null);
 
+    const combinedKeyLevelsRef = useRef(null);
     const [indicators, setIndicators] = useState([
-        { id: "combinedKeyLevels", name: "CombinedKey Levels", enabled: true, drawFunctionKey: "drawAllCombinedLevels", instanceRef: null },
+        { id: "combinedKeyLevels", name: "CombinedKey Levels", enabled: true, drawFunctionKey: "drawAllCombinedLevels" },
         // { id: "strikes", name: "Strike Lines", enabled: true, drawFunctionKey: "drawAllStrikeLines", instanceRef: null },
     ]);
 
@@ -33,51 +34,32 @@ const BackTestChartGeneric = (props) => {
     };
 
     useEffect(() => {
-        const combinedKeyLevelsIndicator = indicators.find((ind) => ind.id === "combinedKeyLevels");
-        if (!combinedKeyLevelsIndicator) return; // Should not happen if initialized correctly
+        const indicatorConfig = indicators.find((ind) => ind.id === "combinedKeyLevels");
+        if (!indicatorConfig || !pixiDataRef.current) return;
 
-        if (!data?.combinedKeyLevels || !pixiDataRef.current) return;
+        const cleanup = () => {
+            if (combinedKeyLevelsRef.current) {
+                pixiDataRef.current?.unregisterDrawFn(indicatorConfig.drawFunctionKey);
+                combinedKeyLevelsRef.current.cleanup();
+                combinedKeyLevelsRef.current = null;
+            }
+        };
 
-        if (combinedKeyLevelsIndicator.enabled && data?.combinedKeyLevels?.length > 0 && pixiDataRef.current) {
-            const combinedKeyLevels = new DrawCombinedKeyLevels(data.combinedKeyLevels, pixiDataRef);
+        if (indicatorConfig.enabled && data?.combinedKeyLevels?.length > 0) {
+            cleanup(); // Clean up previous instance.
 
-            combinedKeyLevels.drawAllCombinedLevels();
-
-            // Update instanceRef in state
-            setIndicators((prevIndicators) =>
-                prevIndicators.map((ind) => (ind.id === "combinedKeyLevels" ? { ...ind, instanceRef: combinedKeyLevels } : ind))
-            );
+            const instance = new DrawCombinedKeyLevels(data.combinedKeyLevels, pixiDataRef);
+            combinedKeyLevelsRef.current = instance;
+            instance.drawAllCombinedLevels();
 
             pixiDataRef.current.registerDrawFn(
-                combinedKeyLevelsIndicator.drawFunctionKey,
-                combinedKeyLevels.drawAllCombinedLevels.bind(combinedKeyLevels)
+                indicatorConfig.drawFunctionKey,
+                instance.drawAllCombinedLevels.bind(instance)
             );
-
-            return () => {
-                pixiDataRef.current?.unregisterDrawFn(combinedKeyLevelsIndicator.drawFunctionKey);
-                // Use the instanceRef for cleanup if it exists
-                const currentCombinedKeyLevelsInstance = indicators.find((ind) => ind.id === "combinedKeyLevels")?.instanceRef;
-                if (currentCombinedKeyLevelsInstance && currentCombinedKeyLevelsInstance.cleanup) {
-                    currentCombinedKeyLevelsInstance.cleanup();
-                }
-                // Clear instanceRef in state on cleanup
-                setIndicators((prevIndicators) =>
-                    prevIndicators.map((ind) => (ind.id === "combinedKeyLevels" ? { ...ind, instanceRef: null } : ind))
-                );
-            };
-        } else if (!combinedKeyLevelsIndicator.enabled) {
-            // If disabled, ensure it's cleaned up
-            pixiDataRef.current?.unregisterDrawFn(combinedKeyLevelsIndicator.drawFunctionKey);
-            const combinedKeyLevelsIndicator = indicators.find((ind) => ind.id === "combinedKeyLevels")?.instanceRef;
-            if (combinedKeyLevelsIndicator && combinedKeyLevelsIndicator.cleanup) {
-                combinedKeyLevelsIndicator.cleanup();
-            }
-            // Clear instanceRef in state
-            setIndicators((prevIndicators) =>
-                prevIndicators.map((ind) => (ind.id === "combinedKeyLevels" ? { ...ind, instanceRef: null } : ind))
-            );
+        } else {
+            cleanup(); // Clean up if disabled or no data.
         }
-    }, [pixiDataRef.current, candleData]);
+    }, [data?.combinedKeyLevels, indicators]);
 
     useEffect(() => {
         debugger;

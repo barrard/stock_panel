@@ -1,4 +1,4 @@
-import { Graphics, Container, Rectangle, Text, TextMetrics, TextStyle, utils } from "pixi.js";
+import { Graphics, Container, Text, TextStyle } from "pixi.js";
 
 export default class DrawCombinedKeyLevels {
     constructor(data, pixiDataRef) {
@@ -10,72 +10,44 @@ export default class DrawCombinedKeyLevels {
 
         this.init();
     }
+
     init() {
-        console.log("DrawCombinedKeyLevels init");
         if (this.hasInit) return;
-        console.log("hasInit false, running init");
         this.hasInit = true;
         this.initCombinedKeyLevels();
         this.xScale = this.pixiDataRef.current.xScale;
         this.priceScale = this.pixiDataRef.current.priceScale;
     }
 
-    // In your initialization/setup code:
     initCombinedKeyLevels() {
-        console.log("init combine key levels");
-        // Create the graphics object for strike lines
-        this.combinedKeyLevelsGfx = new Graphics();
-        this.combinedKeyLevelsGfx.interactive = true;
-        this.combinedKeyLevelsGfx.buttonMode = true;
-        // Add to your main chart container
-        this.pixiDataRef.current.addToLayer(0, this.combinedKeyLevelsGfx);
+        // Use a container to hold individual graphics for each level
+        this.combinedKeyLevelsContainer = new Container();
+        this.pixiDataRef.current.addToLayer(0, this.combinedKeyLevelsContainer);
     }
 
     getCombinedKeyLevels() {
-        //might have some logic here to filter or process data
         return this.data;
     }
 
     cleanup() {
-        debugger;
         // Clean up text labels
-        this.textLabels.forEach((label) => {
-            if (label.parent) {
-                label.parent.removeChild(label);
-            }
-            try {
-                label.destroy();
-            } catch (error) {
-                console.warn("Text label already destroyed:", error);
-            }
-        });
+        this.textLabels.forEach((label) => label.destroy());
         this.textLabels = [];
 
-        if (this.combinedKeyLevelsGfx) {
-            // Remove from parent container
-            this.combinedKeyLevelsGfx.clear(); // This will now clear everything
-
-            if (this.combinedKeyLevelsGfx.parent) {
-                this.combinedKeyLevelsGfx.parent.removeChild(this.combinedKeyLevelsGfx);
-            }
-            // Destroy the graphics object safely
-            try {
-                this.combinedKeyLevelsGfx.destroy();
-            } catch (error) {
-                console.warn("Graphics object already destroyed:", error);
-            }
-            this.combinedKeyLevelsGfx = null;
+        // Destroy the container, which will also destroy all its children (the level graphics)
+        if (this.combinedKeyLevelsContainer) {
+            this.combinedKeyLevelsContainer.destroy({ children: true });
+            this.combinedKeyLevelsContainer = null;
         }
     }
 
-    // Helper method to create text labels
     createTextLabel(text, x, y, style = {}) {
         const defaultStyle = new TextStyle({
             fontFamily: "Arial",
             fontSize: 12,
-            fill: this.callsOrPuts === "CALLS" ? 0x00ff00 : 0xff0000,
+            fill: 0xffffff, // Using white as a neutral default color
             stroke: 0x000000,
-            strokeThickness: 1,
+            strokeThickness: 2, // Increased for better readability
             ...style,
         });
 
@@ -83,93 +55,81 @@ export default class DrawCombinedKeyLevels {
         textLabel.x = x;
         textLabel.y = y;
 
-        // Add to main chart container
         this.pixiDataRef.current.addToLayer(0, textLabel);
-
         this.textLabels.push(textLabel);
-
         return textLabel;
     }
+
     drawRect(gfx, data) {
         gfx.drawRect(data.x, data.y, data.w, data.h);
     }
+
     drawZoneLevel(level) {
-        debugger;
         const x1 = this.chartWidth - this.chartWidth * 0.25;
         const x2 = this.chartWidth;
-        const gfx = this.combinedKeyLevelsGfx;
-
-        // const x1 =
-        // const x2 =
         const y1 = level.highest;
         const y2 = level.lowest;
         const opacity = level.opacity;
-        debugger;
         const hasLvn = level.labels.find((item) => item.includes("lvn"));
 
-        gfx.beginFill(hasLvn ? 0x00c8ff : 0xffaa00, opacity);
-
-        const data = {
+        const rectData = {
             x: x1,
             y: this.priceScale(y1),
             w: x2 - x1,
             h: this.priceScale(y2) - this.priceScale(y1),
         };
 
-        this.drawRect(gfx, data);
+        // Create a new Graphics object for each rectangle to make it individually interactive
+        const gfx = new Graphics();
+        gfx.beginFill(hasLvn ? 0x00c8ff : 0xffaa00, opacity);
+        this.drawRect(gfx, rectData);
         gfx.endFill();
-        // this.combinedKeyLevelsContainer.addChild(gfx);
-        gfx.on("mouseover", (e, t) => {
-            console.log("mouseove");
-            console.log({ e, t });
-            console.log(level);
+
+        // Enable interaction for this specific graphic
+        gfx.interactive = true;
+        gfx.buttonMode = true;
+
+        // Add event listeners directly to this graphic object
+        gfx.on("mouseover", (event) => {
+            // Clear any labels from a previous hover
+            this.textLabels.forEach(label => label.destroy());
+            this.textLabels = [];
+    
+            const xPos = rectData.x - 10; // 10px left of the rectangle
+            let yPos = rectData.y;
+    
+            level.labels.forEach(labelText => {
+                const textLabel = this.createTextLabel(labelText, xPos, yPos);
+                textLabel.anchor.set(1, 0); // Align text to the right
+                yPos += textLabel.height + 2; // Stack labels vertically with a 2px gap
+            });
         });
 
-        // Define a mouseout event
-        gfx.on("mouseout", (e, t) => {
-            console.log("mouseout");
-            console.log({ e, t });
-            console.log(level);
+        gfx.on("mouseout", (event) => {
+            // When mouse leaves, destroy all the temporary labels
+            this.textLabels.forEach(label => label.destroy());
+            this.textLabels = [];
         });
+
+        // Add the new graphic to our container
+        this.combinedKeyLevelsContainer.addChild(gfx);
     }
 
     drawAllCombinedLevels() {
-        console.log("drawAllCombinedLevels");
-        debugger;
-        if (!this.combinedKeyLevelsGfx) {
+        if (!this.combinedKeyLevelsContainer) {
             return;
         }
 
-        const combinedKeyLevels = this.getCombinedKeyLevels();
-        if (!combinedKeyLevels) {
-            return;
-        }
+        // Clear the container by removing and destroying all children from the previous draw
+        this.combinedKeyLevelsContainer.removeChildren().forEach(child => child.destroy());
 
-        const data = combinedKeyLevels;
-
-        try {
-            this.combinedKeyLevelsGfx.clear(); // This will now clear everything
-            // return;
-        } catch (err) {
-            return err;
-        }
-
-        // Clean up existing text labels
-        this.textLabels.forEach((label) => {
-            if (label.parent) {
-                label.parent.removeChild(label);
-            }
-            try {
-                label.destroy();
-            } catch (error) {
-                console.warn("Text label already destroyed:", error);
-            }
-        });
-
+        // Clean up any separate text labels
+        this.textLabels.forEach((label) => label.destroy());
         this.textLabels = [];
 
-        if (data) {
-            data.forEach((level) => {
+        const combinedKeyLevels = this.getCombinedKeyLevels();
+        if (combinedKeyLevels) {
+            combinedKeyLevels.forEach((level) => {
                 this.drawZoneLevel(level);
             });
         }
