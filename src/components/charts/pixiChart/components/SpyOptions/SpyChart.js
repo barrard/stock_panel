@@ -3,7 +3,7 @@ import GenericPixiChart from "../../../GenericPixiChart";
 import drawStrikes from "./drawStrikes";
 import MonteCarloCone from "./monteCarloSimulation";
 import TimeframeSelector from "./spyOptionsComponents/TimeframeSelector";
-import IndicatorSelector from "./spyOptionsComponents/IndicatorSelector";
+import IndicatorSelector from "../../../reusableChartComponents/IndicatorSelector";
 const SpyChart = (props) => {
     const {
         width,

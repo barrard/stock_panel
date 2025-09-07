@@ -50,7 +50,10 @@ export default class Chart {
 
         //SCALES
         this.priceScale = scaleLinear().range([this.options.height - (margin.top + margin.bottom), 0]);
-        this.volumeScale = scaleLinear().range([this.options.height - (margin.top + margin.bottom), (this.options.height - (margin.top + margin.bottom)) / 2]);
+        this.volumeScale = scaleLinear().range([
+            this.options.height - (margin.top + margin.bottom),
+            (this.options.height - (margin.top + margin.bottom)) / 2,
+        ]);
         this.xScale = scaleLinear().range([0, this.options.width - (margin.left + margin.right)]);
 
         //Containers
@@ -300,21 +303,21 @@ export default class Chart {
     }
 
     setData(data) {
-        console.log(data);
-        console.log("setting data");
+        // console.log(data);
+        // console.log("setting data");
 
         this.data = this.processData(data?.bars);
         this.weeklyTrendLines = data.weeklyTrendLines;
         this.lastTwoDaysCompiled = data.lastTwoDaysCompiled;
         this.combinedKeyLevels = data.combinedKeyLevels;
-        console.log(this.weeklyTrendLines);
+        // console.log(this.weeklyTrendLines);
     }
 
     setupChart({ tickSize = 0.25, indicators = { enableCombinedKeyLevels: true, enableMinMax: true, enablePivots: true } }) {
         this.tickSize = tickSize;
-        console.log("setupChart");
-        debugger;
-        this.options.PixiChartRef.current.appendChild(this.app.view);
+        // console.log("setupChart");
+
+        this.options.OldPixiChartRef.current.appendChild(this.app.view);
         this.enableCombinedKeyLevels = indicators?.enableCombinedKeyLevels;
         this.enableMinMax = indicators?.enableMinMax;
         this.enablePivots = indicators?.enablePivots;
@@ -453,7 +456,7 @@ export default class Chart {
     drawVolume() {
         this.volumeGfx.clear();
 
-        console.log(`drawVolume with ${this.data.length} points`);
+        // console.log(`drawVolume with ${this.data.length} points`);
 
         this.volumeGfx.lineStyle(1, 0x333333, 1);
 
@@ -608,6 +611,7 @@ export default class Chart {
             console.log(level);
         });
     }
+
     clearMinMax() {
         this.minMaxGfx.clear();
         this.minMaxRegressionGfx.clear();
@@ -759,7 +763,12 @@ export default class Chart {
             const height = Math.abs(open - close) || doubleStrokeWidth;
             const start = isUp ? close : open;
             // const end = isUp ? open : close;
-            this.candleStickGfx.drawRect(x + candleMargin - halfWidth, start + halfStrokeWidth, this.candleWidth - doubleMargin, height - strokeWidth);
+            this.candleStickGfx.drawRect(
+                x + candleMargin - halfWidth,
+                start + halfStrokeWidth,
+                this.candleWidth - doubleMargin,
+                height - strokeWidth
+            );
 
             this.candleStickWickGfx.moveTo(x, high);
             this.candleStickWickGfx.lineTo(x, low);
@@ -770,7 +779,7 @@ export default class Chart {
         this.priceGfx.clear();
         let prevY;
 
-        console.log(`Draw line with ${this.data.length} points`);
+        // console.log(`Draw line with ${this.data.length} points`);
         //Tick line
         this.priceGfx.lineStyle(1, 0xffffff, 1);
         this.data.forEach((d, i) => {
@@ -1041,7 +1050,11 @@ export default class Chart {
         this.mouseX = this.mouseX - left;
         this.mouseY = this.mouseY - top;
 
-        if ((this.crosshair && (this.mouseX < 0 || this.mouseX > width - (right + left))) || this.mouseY < 0 || this.mouseY > height - (top + bottom)) {
+        if (
+            (this.crosshair && (this.mouseX < 0 || this.mouseX > width - (right + left))) ||
+            this.mouseY < 0 ||
+            this.mouseY > height - (top + bottom)
+        ) {
             this.hideCrosshair();
         } else if (!this.crosshair && this.mouseX > 0 && this.mouseX < width - (right + left)) {
             this.showCrosshair();
@@ -1055,7 +1068,7 @@ export default class Chart {
     }
 
     processData(data = []) {
-        console.log("Processing data");
+        // console.log("Processing data");
 
         data = Object.values(data).sort((a, b) => a.datetime - b.datetime);
 

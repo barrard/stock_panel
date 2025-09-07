@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import * as PIXI from "pixi.js";
 import GenericDataHandler from "./GenericDataHandler";
+import { TICKS } from "../../indicators/indicatorHelpers/TICKS";
 
 function getNextTimeBar(data) {
     const { barType, barTypePeriod } = data;
@@ -31,11 +32,13 @@ export default function GenericPixiChart({
     // lastTradesRefProp,
     currentBarRefProp = {},
     tickSize,
-    mainChartContainerHeight = 400,
+    mainChartContainerHeight,
     options = { chartType: "candlestick" },
     lowerIndicators = [],
     ...rest
 }) {
+    tickSize = tickSize || TICKS()[symbol];
+    mainChartContainerHeight = mainChartContainerHeight || height;
     // Use provided refs or create them if not provided
     const PixiAppRef = useRef();
     const PixiChartRef = useRef();
@@ -261,7 +264,7 @@ export default function GenericPixiChart({
 
     return (
         <div
-            className="col-6"
+            // className="col-6"
             ref={PixiChartRef}
             style={{ border: "2px solid red" }}
             // onContextMenu={(e) => {

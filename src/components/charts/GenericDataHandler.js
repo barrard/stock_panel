@@ -71,6 +71,7 @@ export default class GenericDataHandler {
         }
         this.draw();
     }
+
     newTick(tick) {
         if (!tick) return;
         if (!this.lastTick) {
@@ -195,6 +196,7 @@ export default class GenericDataHandler {
             valueFinder: timeScaleValues,
         });
     }
+
     setupPriceScales() {
         const { allTicks, ohlcDatas, currentMinute } = this;
         if (!ohlcDatas.length) {
@@ -625,6 +627,7 @@ export default class GenericDataHandler {
         // Example: this.graphics = new PIXI.Graphics();
         // if (this.pixiApp) this.pixiApp.stage.addChild(this.graphics);
         console.log("INITIALIZED");
+        this.draw();
     }
 
     updateCurrentPriceLabel(price) {

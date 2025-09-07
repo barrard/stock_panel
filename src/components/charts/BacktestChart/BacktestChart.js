@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import Chart from "./classes/BacktestChartClass";
+import BacktestChartGeneric from "../BackTestChartGeneric";
 import API from "../../API";
 import BackTesterStatus from "./components/BackTesterStatus";
 import { GetSymbolBtn, SetIndicatorBtn } from "./components/styled";
@@ -8,6 +9,7 @@ import { TICKS } from "../../../indicators/indicatorHelpers/TICKS";
 const events = ["zoomed", "drag-end", "zoomed-end", "pinch-end"];
 
 export default function GptChart({ Socket }) {
+    const OldPixiChartRef = useRef();
     const PixiChartRef = useRef();
     const PixiRef = useRef();
     const [enableMinMax, setEnableMinMax] = useState(true);
@@ -45,7 +47,7 @@ export default function GptChart({ Socket }) {
             setEventsData,
             height: 700,
             width: 900,
-            PixiChartRef,
+            OldPixiChartRef,
             tickSize: TICKS()[symbol],
             enableCombinedKeyLevels,
             enableMinMax,
@@ -60,7 +62,7 @@ export default function GptChart({ Socket }) {
 
         const chart = new Chart(data, options);
         PixiRef.current = chart;
-        PixiChartRef.current?.addEventListener(
+        OldPixiChartRef.current?.addEventListener(
             "mousewheel",
             (e) => {
                 e.preventDefault();
@@ -93,6 +95,7 @@ export default function GptChart({ Socket }) {
     }, []);
 
     async function getBacktestData(symbol) {
+        setData(null);
         const data = await API.getBacktestData(symbol);
         setData(data);
     }
@@ -128,6 +131,14 @@ export default function GptChart({ Socket }) {
         { group: "drawCombinedKeyLevels", enabled: enableCombinedKeyLevels, labels: [""] },
     ];
 
+    const backTestChartData = {
+        height: 800,
+        width: 1500,
+        data,
+        Socket,
+        symbol,
+    };
+
     return (
         <div className="container">
             {/* <BackTestCharJs /> */}
@@ -153,15 +164,20 @@ export default function GptChart({ Socket }) {
                     <GetSymbolBtn enabled={symbol == "YM"} setSymbol={setSymbol} getData={getBacktestData} symbol="YM" />
                 </div>
             </div>
+            <div className="col">
+                <SetIndicatorBtn
+                    onClick={() => setEnableCombinedKeyLevels(!enableCombinedKeyLevels)}
+                    indicatorName="CombinedKeyLevels"
+                    enabled={enableCombinedKeyLevels}
+                />
+                <SetIndicatorBtn onClick={() => setEnableMinMax(!enableMinMax)} indicatorName="MinMax" enabled={enableMinMax} />
+                <SetIndicatorBtn onClick={() => setEnablePivots(!enablePivots)} indicatorName="Pivots" enabled={enablePivots} />
+            </div>
             <div className="row">
                 <div className="col">
-                    <div ref={PixiChartRef}></div>
+                    <div ref={OldPixiChartRef}></div>
                 </div>
-                <div className="col">
-                    <SetIndicatorBtn onClick={() => setEnableCombinedKeyLevels(!enableCombinedKeyLevels)} indicatorName="CombinedKeyLevels" enabled={enableCombinedKeyLevels} />
-                    <SetIndicatorBtn onClick={() => setEnableMinMax(!enableMinMax)} indicatorName="MinMax" enabled={enableMinMax} />
-                    <SetIndicatorBtn onClick={() => setEnablePivots(!enablePivots)} indicatorName="Pivots" enabled={enablePivots} />
-                </div>
+                {symbol && data && <BacktestChartGeneric {...backTestChartData} />}
             </div>
             <div>
                 {/* <h3>stats</h3> */}
@@ -223,7 +239,8 @@ function DisplayEvent(data) {
                     X: {Math.floor(data.eventData?.screen?.x)} Y: {Math.floor(data.eventData?.screen?.y)}
                 </p>
                 <p>
-                    Scale: x - {Math.floor(data.eventData?.screen?.scale?._x * 100) / 100} y - {Math.floor(data.eventData?.screen?.scale?._y * 100) / 100}
+                    Scale: x - {Math.floor(data.eventData?.screen?.scale?._x * 100) / 100} y -{" "}
+                    {Math.floor(data.eventData?.screen?.scale?._y * 100) / 100}
                 </p>
             </div>
             <div
@@ -236,7 +253,8 @@ function DisplayEvent(data) {
                     X: {Math.floor(data.eventData?.world?.x)} Y: {Math.floor(data.eventData?.world?.y)}
                 </p>
                 <p>
-                    Scale: x - {Math.floor(data.eventData?.world?.scale?._x * 100) / 100} y - {Math.floor(data.eventData?.world?.scale?._y * 100) / 100}
+                    Scale: x - {Math.floor(data.eventData?.world?.scale?._x * 100) / 100} y -{" "}
+                    {Math.floor(data.eventData?.world?.scale?._y * 100) / 100}
                 </p>
             </div>
 
@@ -250,7 +268,8 @@ function DisplayEvent(data) {
                     X: {Math.floor(data.eventData?.viewport?.x)} Y: {Math.floor(data.eventData?.viewport?.y)}
                 </p>
                 <p>
-                    Scale: x - {Math.floor(data.eventData?.viewport?.scale?._x * 100) / 100} y - {Math.floor(data.eventData?.viewport?.scale?._y * 100) / 100}
+                    Scale: x - {Math.floor(data.eventData?.viewport?.scale?._x * 100) / 100} y -{" "}
+                    {Math.floor(data.eventData?.viewport?.scale?._y * 100) / 100}
                 </p>
             </div>
         </div>
