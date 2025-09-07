@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import GenericPixiChart from "../GenericPixiChart";
 import DrawCombinedKeyLevels from "./DrawCombinedKeyLevels";
+import DrawPivots from "./DrawPivots";
 import IndicatorSelector from "../reusableChartComponents/IndicatorSelector";
 
 const BackTestChartGeneric = (props) => {
@@ -22,8 +23,10 @@ const BackTestChartGeneric = (props) => {
     const [newSpyMinuteBar, setNewSpyMinuteBar] = useState(null);
 
     const combinedKeyLevelsRef = useRef(null);
+    const pivotsRef = useRef(null);
     const [indicators, setIndicators] = useState([
         { id: "combinedKeyLevels", name: "CombinedKey Levels", enabled: true, drawFunctionKey: "drawAllCombinedLevels" },
+        { id: "pivots", name: "Pivots", enabled: true, drawFunctionKey: "drawAllPivots" },
         // { id: "strikes", name: "Strike Lines", enabled: true, drawFunctionKey: "drawAllStrikeLines", instanceRef: null },
     ]);
 
@@ -60,6 +63,31 @@ const BackTestChartGeneric = (props) => {
             cleanup(); // Clean up if disabled or no data.
         }
     }, [data?.combinedKeyLevels, indicators]);
+
+    useEffect(() => {
+        const indicatorConfig = indicators.find((ind) => ind.id === "pivots");
+        if (!indicatorConfig || !pixiDataRef.current) return;
+
+        const cleanup = () => {
+            if (pivotsRef.current) {
+                pixiDataRef.current?.unregisterDrawFn(indicatorConfig.drawFunctionKey);
+                pivotsRef.current.cleanup();
+                pivotsRef.current = null;
+            }
+        };
+
+        if (indicatorConfig.enabled && data?.lastTwoDaysCompiled && data?.bars) {
+            cleanup();
+
+            const instance = new DrawPivots(data.lastTwoDaysCompiled, data.bars, pixiDataRef);
+            pivotsRef.current = instance;
+            instance.drawAllPivots();
+
+            pixiDataRef.current.registerDrawFn(indicatorConfig.drawFunctionKey, instance.drawAllPivots.bind(instance));
+        } else {
+            cleanup();
+        }
+    }, [data?.lastTwoDaysCompiled, data?.bars, indicators]);
 
     useEffect(() => {
         debugger;
