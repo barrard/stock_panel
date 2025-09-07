@@ -96,10 +96,16 @@ export default function GenericPixiChart({
 
         // if (error) return;
         if (!PixiChartRef.current) return console.log("No PixiChartRef.current");
+
+        const container = PixiChartRef.current;
+        const rect = container.getBoundingClientRect();
+
+        let { width, height } = rect;
+
         console.log("GenericPixiChart init");
-        console.log({ width, height });
-        console.log({ width, height });
-        console.log({ width, height });
+        console.log({ width: rect.width, height: rect.height });
+        console.log({ width: rect.width, height: rect.height });
+        console.log({ width: rect.width, height: rect.height });
 
         PixiAppRef.current = new PIXI.Application({
             width,
@@ -109,7 +115,17 @@ export default function GenericPixiChart({
             resolution: window.devicePixelRatio || 1,
             autoDensity: true,
         });
-        PixiAppRef.current.view.style["image-rendering"] = "pixelated";
+
+        const canvas = PixiAppRef.current.view;
+        canvas.style.display = "block"; // ✅ kills extra 6px gap
+        canvas.style.width = "100%"; // follow container
+        canvas.style.height = "100%"; // follow container
+        canvas.style.margin = "0";
+        canvas.style.padding = "0";
+        canvas.style.boxSizing = "border-box";
+        canvas.style.imageRendering = "pixelated"; // you already had this
+
+        // PixiAppRef.current.view.style["image-rendering"] = "pixelated";
         PixiAppRef.current.stage.interactive = true;
 
         PixiChartRef.current.appendChild(PixiAppRef.current.view);
@@ -138,6 +154,31 @@ export default function GenericPixiChart({
         });
         // setPixiData(_pixiData);
 
+        let lastWidth = width;
+        let lastHeight = height;
+        // ResizeObserver to handle dynamic sizing
+        const resizeCanvas = () => {
+            const container = PixiChartRef.current;
+            if (!container || !PixiAppRef.current) return;
+
+            const width = Math.round(container.clientWidth);
+            const height = Math.round(container.clientHeight);
+
+            if (width && height) {
+                // update Pixi buffer
+                PixiAppRef.current.renderer.resize(width, height);
+
+                // update your data handler scales / redraw
+                pixiDataRef.current?.resize(width, height);
+            }
+        };
+
+        // Call initially and on container resize
+        // resizeCanvas();
+
+        const resizeObserver = new ResizeObserver(resizeCanvas);
+        resizeObserver.observe(PixiChartRef.current);
+
         if (Socket) {
             Socket.on("timeBarUpdate", (data) => {
                 if (data.symbol !== pixiDataRef.current.symbol.value) return;
@@ -147,6 +188,8 @@ export default function GenericPixiChart({
 
         return () => {
             console.log("DESTROY PIXI CHART");
+
+            resizeObserver.disconnect();
 
             if (PixiAppRef.current) {
                 PixiAppRef.current.destroy(true, true);
@@ -266,7 +309,7 @@ export default function GenericPixiChart({
         <div
             // className="col-6"
             ref={PixiChartRef}
-            style={{ border: "2px solid red" }}
+            // style={{ border: "2px solid red" }}
             // onContextMenu={(e) => {
             //     e.preventDefault();
             //     console.log(`onContextMenu ${openTradeWindow}`);
@@ -327,6 +370,7 @@ export default function GenericPixiChart({
                 }
             }}
             {...rest}
+            style={{ width: "100%", height: "100%", touchAction: "none", padding: 0, margin: 0 }}
         />
     );
 }

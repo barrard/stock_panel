@@ -45,6 +45,7 @@ export default class GenericDataHandler {
 
         this.init();
     }
+
     setNewBar(bar) {
         const lastBar = this.ohlcDatas.slice(-1)[0];
         const lastSlicedData = this.slicedData.slice(-1)[0];
@@ -132,6 +133,7 @@ export default class GenericDataHandler {
             : null;
         return date;
     }
+
     getIndicatorTopPos(index) {
         let totalHeight = 0;
         for (let x = 0; x < this.chartContainerOrder.length; x++) {
@@ -142,6 +144,7 @@ export default class GenericDataHandler {
         }
         return totalHeight;
     }
+
     updateY____Label({ yLabel, gfx, txt, color }) {
         txt.text = yLabel;
         let { width, height } = TextMetrics.measureText(yLabel, this.darkTextStyle);
@@ -239,6 +242,7 @@ export default class GenericDataHandler {
         //this essentially draws te indicator, but
         // that contract has yet to be decided
     }
+
     initScales() {
         this.initXScale();
         this.initYScale();
@@ -249,12 +253,14 @@ export default class GenericDataHandler {
             this.crossHairYScale = yScale;
         };
     }
+
     initDataViewable() {
         // this initializes for zoom and display purposes
         this.slicedData = [];
         this.sliceEnd = this.ohlcDatas.length;
         this.sliceStart = 0;
     }
+
     initIndicators() {
         this.lowerIndicatorsData = {
             // volume1: new Indicator({
@@ -561,6 +567,7 @@ export default class GenericDataHandler {
             }
         };
     }
+
     initLowerIndicators() {
         //add lower indicator containers
         this.chartContainerOrder.forEach((lowerIndicatorName, index) => {
@@ -599,6 +606,7 @@ export default class GenericDataHandler {
             }
         });
     }
+
     setHitArea() {
         const { left, right, top, bottom } = this.margin;
 
@@ -609,6 +617,29 @@ export default class GenericDataHandler {
         this.mainChartContainer.hitArea = this.hitArea;
         console.log("setting hit area");
     }
+
+    resize(width, height, mainChartContainerHeight) {
+        this.width = width;
+        this.height = height;
+        if (mainChartContainerHeight) {
+            this.mainChartContainerHeight = mainChartContainerHeight;
+        }
+
+        this.clearStage();
+
+        this.init();
+    }
+
+    clearStage() {
+        if (this.pixiApp && this.pixiApp.stage) {
+            this.pixiApp.stage.removeChildren().forEach((child) => {
+                if (child.destroy) {
+                    child.destroy({ children: true, texture: true, baseTexture: true });
+                }
+            });
+        }
+    }
+
     init() {
         this.initDataViewable();
         this.initScales();

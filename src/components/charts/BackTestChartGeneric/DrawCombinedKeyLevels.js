@@ -55,7 +55,7 @@ export default class DrawCombinedKeyLevels {
         textLabel.x = x;
         textLabel.y = y;
 
-        this.pixiDataRef.current.addToLayer(0, textLabel);
+        this.pixiDataRef.current.addToLayer(1000, textLabel);
         this.textLabels.push(textLabel);
         return textLabel;
     }
@@ -92,13 +92,13 @@ export default class DrawCombinedKeyLevels {
         // Add event listeners directly to this graphic object
         gfx.on("mouseover", (event) => {
             // Clear any labels from a previous hover
-            this.textLabels.forEach(label => label.destroy());
+            this.textLabels.forEach((label) => label.destroy());
             this.textLabels = [];
-    
+
             const xPos = rectData.x - 10; // 10px left of the rectangle
             let yPos = rectData.y;
-    
-            level.labels.forEach(labelText => {
+
+            level.labels.forEach((labelText) => {
                 const textLabel = this.createTextLabel(labelText, xPos, yPos);
                 textLabel.anchor.set(1, 0); // Align text to the right
                 yPos += textLabel.height + 2; // Stack labels vertically with a 2px gap
@@ -107,7 +107,7 @@ export default class DrawCombinedKeyLevels {
 
         gfx.on("mouseout", (event) => {
             // When mouse leaves, destroy all the temporary labels
-            this.textLabels.forEach(label => label.destroy());
+            this.textLabels.forEach((label) => label.destroy());
             this.textLabels = [];
         });
 
@@ -121,7 +121,7 @@ export default class DrawCombinedKeyLevels {
         }
 
         // Clear the container by removing and destroying all children from the previous draw
-        this.combinedKeyLevelsContainer.removeChildren().forEach(child => child.destroy());
+        this.combinedKeyLevelsContainer.removeChildren().forEach((child) => child.destroy());
 
         // Clean up any separate text labels
         this.textLabels.forEach((label) => label.destroy());
