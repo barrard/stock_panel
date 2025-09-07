@@ -1,9 +1,10 @@
 import { Graphics, Container, Text, TextStyle } from "pixi.js";
 
 export default class DrawCombinedKeyLevels {
-    constructor(data, pixiDataRef) {
+    constructor(data, pixiDataRef, layer = 0) {
         this.data = data;
         this.pixiDataRef = pixiDataRef;
+        this.layer = layer;
         this.hasInit = false;
         this.textLabels = []; // Array to store text labels for cleanup
         this.chartWidth = this.pixiDataRef.current.width - (this.pixiDataRef.current.margin.left + this.pixiDataRef.current.margin.right);
@@ -22,7 +23,7 @@ export default class DrawCombinedKeyLevels {
     initCombinedKeyLevels() {
         // Use a container to hold individual graphics for each level
         this.combinedKeyLevelsContainer = new Container();
-        this.pixiDataRef.current.addToLayer(0, this.combinedKeyLevelsContainer);
+        this.pixiDataRef.current.addToLayer(this.layer, this.combinedKeyLevelsContainer);
     }
 
     getCombinedKeyLevels() {
@@ -36,6 +37,7 @@ export default class DrawCombinedKeyLevels {
 
         // Destroy the container, which will also destroy all its children (the level graphics)
         if (this.combinedKeyLevelsContainer) {
+            this.pixiDataRef.current.removeFromLayer(this.layer, this.combinedKeyLevelsContainer);
             this.combinedKeyLevelsContainer.destroy({ children: true });
             this.combinedKeyLevelsContainer = null;
         }

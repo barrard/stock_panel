@@ -1,10 +1,11 @@
 import { Graphics } from "pixi.js";
 
 export default class DrawPivots {
-    constructor(pivotData, ohlcData, pixiDataRef) {
+    constructor(pivotData, ohlcData, pixiDataRef, layer = 0) {
         this.pivotData = pivotData;
         this.ohlcData = ohlcData;
         this.pixiDataRef = pixiDataRef;
+        this.layer = layer;
         this.hasInit = false;
         this.pivotsGfx = new Graphics();
         this.init();
@@ -13,13 +14,14 @@ export default class DrawPivots {
     init() {
         if (this.hasInit) return;
         this.hasInit = true;
-        this.pixiDataRef.current.addToLayer(0, this.pivotsGfx);
+        this.pixiDataRef.current.addToLayer(this.layer, this.pivotsGfx);
         this.xScale = this.pixiDataRef.current.xScale;
         this.priceScale = this.pixiDataRef.current.priceScale;
     }
 
     cleanup() {
         if (this.pivotsGfx) {
+            this.pixiDataRef.current.removeFromLayer(this.layer, this.pivotsGfx);
             this.pivotsGfx.destroy({ children: true });
             this.pivotsGfx = null;
         }

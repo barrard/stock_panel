@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import GenericPixiChart from "../GenericPixiChart";
 import DrawCombinedKeyLevels from "./DrawCombinedKeyLevels";
 import DrawPivots from "./DrawPivots";
+import DrawMinMax from "./DrawMinMax";
 import IndicatorSelector from "../reusableChartComponents/IndicatorSelector";
 
 const BackTestChartGeneric = (props) => {
@@ -24,9 +25,11 @@ const BackTestChartGeneric = (props) => {
 
     const combinedKeyLevelsRef = useRef(null);
     const pivotsRef = useRef(null);
+    const minMaxRef = useRef(null);
     const [indicators, setIndicators] = useState([
-        { id: "combinedKeyLevels", name: "CombinedKey Levels", enabled: true, drawFunctionKey: "drawAllCombinedLevels" },
-        { id: "pivots", name: "Pivots", enabled: true, drawFunctionKey: "drawAllPivots" },
+        { id: "combinedKeyLevels", name: "CombinedKey Levels", enabled: true, drawFunctionKey: "drawAllCombinedLevels", layer: 0 },
+        { id: "pivots", name: "Pivots", enabled: true, drawFunctionKey: "drawAllPivots", layer: 0 },
+        { id: "minMax", name: "Min/Max", enabled: true, drawFunctionKey: "drawAllMinMax", layer: 0 },
         // { id: "strikes", name: "Strike Lines", enabled: true, drawFunctionKey: "drawAllStrikeLines", instanceRef: null },
     ]);
 
@@ -51,7 +54,7 @@ const BackTestChartGeneric = (props) => {
         if (indicatorConfig.enabled && data?.combinedKeyLevels?.length > 0) {
             cleanup(); // Clean up previous instance.
 
-            const instance = new DrawCombinedKeyLevels(data.combinedKeyLevels, pixiDataRef);
+            const instance = new DrawCombinedKeyLevels(data.combinedKeyLevels, pixiDataRef, indicatorConfig.layer);
             combinedKeyLevelsRef.current = instance;
             instance.drawAllCombinedLevels();
 
@@ -79,7 +82,7 @@ const BackTestChartGeneric = (props) => {
         if (indicatorConfig.enabled && data?.lastTwoDaysCompiled && data?.bars) {
             cleanup();
 
-            const instance = new DrawPivots(data.lastTwoDaysCompiled, data.bars, pixiDataRef);
+            const instance = new DrawPivots(data.lastTwoDaysCompiled, data.bars, pixiDataRef, indicatorConfig.layer);
             pivotsRef.current = instance;
             instance.drawAllPivots();
 
@@ -88,6 +91,31 @@ const BackTestChartGeneric = (props) => {
             cleanup();
         }
     }, [data?.lastTwoDaysCompiled, data?.bars, indicators]);
+
+    useEffect(() => {
+        const indicatorConfig = indicators.find((ind) => ind.id === "minMax");
+        if (!indicatorConfig || !pixiDataRef.current) return;
+
+        const cleanup = () => {
+            if (minMaxRef.current) {
+                pixiDataRef.current?.unregisterDrawFn(indicatorConfig.drawFunctionKey);
+                minMaxRef.current.cleanup();
+                minMaxRef.current = null;
+            }
+        };
+
+        if (indicatorConfig.enabled && data?.weeklyTrendLines) {
+            cleanup();
+
+            const instance = new DrawMinMax(data.weeklyTrendLines, pixiDataRef, indicatorConfig.layer);
+            minMaxRef.current = instance;
+            instance.drawAll();
+
+            pixiDataRef.current.registerDrawFn(indicatorConfig.drawFunctionKey, instance.drawAll.bind(instance));
+        } else {
+            cleanup();
+        }
+    }, [data?.weeklyTrendLines, indicators]);
 
     useEffect(() => {
         debugger;

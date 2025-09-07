@@ -330,7 +330,30 @@ export default class GenericDataHandler {
     //layer is a number
     addToLayer(layerNumber, gfx) {
         const layerContainer = this.layers[layerNumber];
-        layerContainer.addChild(gfx);
+        if (layerContainer) {
+            layerContainer.addChild(gfx);
+        } else {
+            console.error(`Layer ${layerNumber} does not exist.`);
+        }
+    }
+
+    removeFromLayer(layerNumber, gfx) {
+        const layerContainer = this.layers[layerNumber];
+        if (gfx?.parent) {
+            if (layerContainer && gfx.parent === layerContainer) {
+                layerContainer.removeChild(gfx);
+            } else {
+                // Fallback if layer is wrong or gfx was moved
+                gfx.parent.removeChild(gfx);
+            }
+        }
+    }
+
+    changeLayer(gfx, newLayerNumber) {
+        if (gfx?.parent) {
+            gfx.parent.removeChild(gfx);
+        }
+        this.addToLayer(newLayerNumber, gfx);
     }
 
     initContainers() {
