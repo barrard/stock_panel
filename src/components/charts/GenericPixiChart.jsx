@@ -204,7 +204,7 @@ export default function GenericPixiChart({
                 Socket.off("timeBarUpdate");
             }
         };
-    }, [symbol, barType.value, barTypePeriod]);
+    }, [symbol, barType?.value, barTypePeriod]);
 
     useEffect(() => {
         const data = currentTimeBar;
