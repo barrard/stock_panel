@@ -343,12 +343,14 @@ export default class GenericDataHandler {
         this.layer2Container = new Container();
         this.layer3Container = new Container();
         this.layer4Container = new Container();
+        this.layer5Container = new Container(); //for text labels
 
         this.mainChartContainer.addChild(this.layer0Container);
         this.mainChartContainer.addChild(this.layer1Container);
         this.mainChartContainer.addChild(this.layer2Container);
         this.mainChartContainer.addChild(this.layer3Container);
         this.mainChartContainer.addChild(this.layer4Container);
+        this.mainChartContainer.addChild(this.layer5Container);
 
         this.layers = {
             0: this.layer0Container,
@@ -356,6 +358,7 @@ export default class GenericDataHandler {
             2: this.layer2Container,
             3: this.layer3Container,
             4: this.layer4Container,
+            1000: this.layer5Container, //for text labels
         };
 
         //  this.mainChartContainer.addChild(this.liquidityContainer);

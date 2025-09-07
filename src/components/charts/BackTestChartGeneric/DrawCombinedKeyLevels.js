@@ -42,22 +42,41 @@ export default class DrawCombinedKeyLevels {
     }
 
     createTextLabel(text, x, y, style = {}) {
+        const labelContainer = new Container();
+
         const defaultStyle = new TextStyle({
             fontFamily: "Arial",
             fontSize: 12,
-            fill: 0xffffff, // Using white as a neutral default color
+            fill: 0xffffff,
             stroke: 0x000000,
-            strokeThickness: 2, // Increased for better readability
+            strokeThickness: 2,
             ...style,
         });
 
         const textLabel = new Text(text, defaultStyle);
-        textLabel.x = x;
-        textLabel.y = y;
+        textLabel.anchor.set(1, 0); // Top-right anchor
 
-        this.pixiDataRef.current.addToLayer(1000, textLabel);
-        this.textLabels.push(textLabel);
-        return textLabel;
+        const padding = 4;
+        const background = new Graphics();
+        background.beginFill(0x000000, 0.6); // Dark, semi-transparent
+        background.drawRoundedRect(
+            -textLabel.width - padding,
+            -padding,
+            textLabel.width + 2 * padding,
+            textLabel.height + 2 * padding,
+            5 // corner radius
+        );
+        background.endFill();
+
+        labelContainer.addChild(background);
+        labelContainer.addChild(textLabel);
+
+        labelContainer.x = x;
+        labelContainer.y = y;
+
+        this.pixiDataRef.current.addToLayer(1000, labelContainer);
+        this.textLabels.push(labelContainer);
+        return labelContainer;
     }
 
     drawRect(gfx, data) {
@@ -98,10 +117,24 @@ export default class DrawCombinedKeyLevels {
             const xPos = rectData.x - 10; // 10px left of the rectangle
             let yPos = rectData.y;
 
-            level.labels.forEach((labelText) => {
-                const textLabel = this.createTextLabel(labelText, xPos, yPos);
-                textLabel.anchor.set(1, 0); // Align text to the right
-                yPos += textLabel.height + 2; // Stack labels vertically with a 2px gap
+            const sortedLabels = [...level.labels].sort((a, b) => {
+                const numA = a.match(/-?\d+\.?\d*/);
+                const numB = b.match(/-?\d+\.?\d*/);
+
+                if (numA && numB) {
+                    return parseFloat(numB[0]) - parseFloat(numA[0]);
+                } else if (numA) {
+                    return -1;
+                } else if (numB) {
+                    return 1;
+                } else {
+                    return a.localeCompare(b); // Sort alphabetically if no numbers
+                }
+            });
+
+            sortedLabels.forEach((labelText) => {
+                const labelContainer = this.createTextLabel(labelText, xPos, yPos);
+                yPos += labelContainer.height + 2; // Stack labels vertically with a 2px gap
             });
         });
 
