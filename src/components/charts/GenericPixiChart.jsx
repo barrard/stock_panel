@@ -110,7 +110,7 @@ export default function GenericPixiChart({
         PixiAppRef.current = new PIXI.Application({
             width,
             height,
-            backgroundColor: 0x333333,
+            backgroundColor: 0x000,
             antialias: true,
             resolution: window.devicePixelRatio || 1,
             autoDensity: true,
