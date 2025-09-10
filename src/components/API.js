@@ -62,6 +62,7 @@ export default {
     getStockDataForFundamentalsCharts,
     //RAPI STUFF
     rapi_requestBars,
+    rapi_requestLiveBars,
     rapi_submitOrder,
     rapi_cancelOrder,
     getFrontMonthSymbols,
@@ -164,6 +165,10 @@ async function rapi_cancelOrder({ basketId }) {
 
 async function rapi_requestBars({ symbol, exchange, barType, barTypePeriod, startIndex, finishIndex }) {
     return await GET(`/API/rapi/requestBars/${symbol}/${exchange}/${barType}/${barTypePeriod}/${startIndex}/${finishIndex}`);
+}
+
+async function rapi_requestLiveBars({ symbol, timeframe = "30m" }) {
+    return await GET(`/API/rapi/requestLiveBars/${symbol}/${timeframe}`);
 }
 
 async function rapi_submitOrder(order = {}) {

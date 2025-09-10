@@ -119,7 +119,7 @@ export default function GenericPixiChart({
         const canvas = PixiAppRef.current.view;
         canvas.style.display = "block"; // ✅ kills extra 6px gap
         canvas.style.width = "100%"; // follow container
-        canvas.style.height = "100%"; // follow container
+        // canvas.style.height = "100%"; // follow container
         canvas.style.margin = "0";
         canvas.style.padding = "0";
         canvas.style.boxSizing = "border-box";
@@ -370,7 +370,7 @@ export default function GenericPixiChart({
                 }
             }}
             {...rest}
-            style={{ width: "100%", height: "100%", touchAction: "none", padding: 0, margin: 0 }}
+            style={{ width: "100%", touchAction: "none", padding: 0, margin: 0 }}
         />
     );
 }

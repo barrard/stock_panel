@@ -70,7 +70,7 @@ export default function TableRowEl({ putOption, strike, exp, callOption, putLvl2
                 </PutCell>{" "}
                 <PutCell style={{ fontWeight: 500 }}>
                     {putOption ? formatPrice(putOption.last) : "-"}
-                    {putOption?.gamma != undefined && <Lvl2Text>Gex {putOption.gamma}</Lvl2Text>}
+                    {putOption?.delta != undefined && <Lvl2Text>Delta {putOption.delta}</Lvl2Text>}
                     <Lvl2Text>BE {putBreakEven.toFixed(2)}</Lvl2Text>
                     <Lvl2Text>BE% {putBreakEvenPercent.toFixed(2)}</Lvl2Text>
                 </PutCell>

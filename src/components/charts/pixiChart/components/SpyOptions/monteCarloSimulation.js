@@ -646,7 +646,7 @@ class MonteCarloCone {
         }
 
         // Clear existing graphics
-        if (this.coneGfx) {
+        if (this.coneGfx && this.coneGfx._geometry) {
             this.coneGfx.clear();
             this.coneGfx.removeChildren().forEach((child) => child.destroy());
         } else {

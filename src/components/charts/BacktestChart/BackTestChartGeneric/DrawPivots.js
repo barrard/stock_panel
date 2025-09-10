@@ -37,7 +37,7 @@ export default class DrawPivots {
             return;
         }
         this.pivotsGfx.clear();
-        debugger;
+
         Object.keys(this.pivotData).forEach((day) => {
             const { closeTime, pivot = {} } = this.pivotData[day];
             if (!pivot || !closeTime) return;

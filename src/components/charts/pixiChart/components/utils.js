@@ -354,6 +354,11 @@ export function priceType(type) {
     }
 }
 
+export const getExchangeFromSymbol = (symbol) => {
+    const symbolData = symbolOptions.find((s) => s.value === symbol);
+    return symbolData ? symbolData.exchange : "CME";
+};
+
 export const symbolOptions = [
     //Index Futures
     { value: "ES", name: "S&P 500 Index (E-mini) (ES)", exchange: "CME" },
