@@ -114,7 +114,6 @@ export default class PixiData {
 
             const priceType = this.TW_BUY.text === "LIMIT" ? 1 : 4;
 
-            debugger;
             this.sendOrder({ transactionType: 1, limitPrice: this.TW_Price, priceType, symbolData: this.fullSymbol?.current });
             // console.log(`Buy ${this.TW_BUY.text} Button clicked!`);
         };
@@ -129,7 +128,6 @@ export default class PixiData {
 
             console.log(this.TW_SELL.text);
             const priceType = this.TW_SELL.text === "LIMIT" ? 1 : 4;
-            debugger;
             // console.log(`Sell ${this.TW_SELL.text} Button clicked!`);
             this.sendOrder({ transactionType: 2, limitPrice: this.TW_Price, priceType, symbolData: this.fullSymbol?.current });
         };
@@ -1078,7 +1076,28 @@ export default class PixiData {
             // console.log("draw liquid");
             // console.log(this.liquidityData);
             if (!this.isDrawOrderbook) return;
-            const liquidityHeight = 1;
+            let liquidityHeight = this.liquidityHeight
+                ? this.liquidityHeight
+                : this.liquidityData.reduce((acc, liquidData, index) => {
+                      if (index === 0) return acc;
+                      const diff = Math.abs(this.liquidityData[index - 1].p - liquidData.p);
+                      if (diff < acc) return diff;
+                      return acc;
+                  }, 10000);
+            this.liquidityHeight = liquidityHeight;
+            liquidityHeight = smartRound(liquidityHeight);
+
+            function smartRound(num, decimals = 2) {
+                const factor = Math.pow(10, decimals);
+                const rounded = Math.round(num * factor) / factor;
+
+                // If rounding loses significant precision, use more decimals
+                if (Math.abs(num - rounded) > 0.001) {
+                    return Math.round(num * 10000) / 10000; // 4 decimal places
+                }
+                return rounded;
+            }
+
             const width = this.width;
             this.liquidityContainer.children.forEach((gfx) => {
                 gfx.clear();
@@ -1160,7 +1179,8 @@ export default class PixiData {
             }
 
             // Clean data by capping outliers
-            const cleanedDataCapped = handleOutliers(this.liquidityData, "size", "cap");
+            // const cleanedDataCapped = handleOutliers(this.liquidityData, "size", "cap");
+            const cleanedDataCapped = this.liquidityData; //handleOutliers(this.liquidityData, "size", "cap");
 
             // Clean data by removing outliers
             // const cleanedDataRemoved = handleOutliers(this.liquidityData, 'size', 'remove');
@@ -1188,7 +1208,6 @@ export default class PixiData {
                     sizePercentileIndex: index,
                 };
             });
-            debugger;
 
             const height = this.priceScale(0) - this.priceScale(liquidityHeight);
             enrichedData.forEach((liquidity, i) => {

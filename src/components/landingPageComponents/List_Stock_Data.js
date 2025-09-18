@@ -96,7 +96,32 @@ class List_Stock_Data extends React.Component {
 export default withRouter(List_Stock_Data);
 
 function Display_Stock_Row({ stock_data, index, props }) {
-    let { askPrice, askSize, bidPrice, bidSize, closePrice, highPrice, lastPrice, lastSize, lowPrice, netChange, netPercentChange, postMarketPercentChange, postMarketnetChange, quoteTime, regMarketQuote, regularMarketNetChange, regularMarketPercentChange, symbol, totalVol, tradeTime, _52weekHigh, _52weekLow } = stock_data;
+    let {
+        askPrice,
+        askSize,
+        bidPrice,
+        bidSize,
+        closePrice,
+        highPrice,
+        lastPrice,
+        lastSize,
+        lowPrice,
+        netChange,
+        netPercentChange,
+        postMarketPercentChange,
+        postMarketnetChange,
+        quoteTime,
+        regMarketQuote,
+        regularMarketNetChange,
+        regularMarketPercentChange,
+        symbol,
+        totalVol,
+        tradeTime,
+        _52weekHigh,
+        _52weekLow,
+        description,
+        trades,
+    } = stock_data;
 
     let class_name = index % 2 == 0 ? "ticker_row_light" : "ticker_row_dark";
     let timeframe = "day";
@@ -115,8 +140,13 @@ function Display_Stock_Row({ stock_data, index, props }) {
                     <div className="col-12 ">
                         <Symbol symbol={symbol} />
                     </div>
+                    <div className="col-12 ">
+                        <Symbol symbol={description} />
+                    </div>
                     <br />
-                    <div className="col-12   ">{netPercentChange ? <Percent_Change percent_change={netPercentChange} /> : <>{"no chg"}</>}</div>
+                    <div className="col-12   ">
+                        {netPercentChange ? <Percent_Change percent_change={netPercentChange} /> : <>{"no chg"}</>}
+                    </div>
                 </div>
             </div>
 
@@ -124,13 +154,15 @@ function Display_Stock_Row({ stock_data, index, props }) {
                 <Price price={lastPrice} />
             </div>
             <div className="col-2 flex_end">
-                <Price price={_52weekLow} />
-            </div>
-            <div className="col-2 flex_end">
-                <Price price={_52weekHigh} />
-            </div>
-            <div className="col-2 flex_end">
                 <Price price={netChange} />
+            </div>
+            {/* <div className="col-2 flex_end">
+                <Price price={_52weekLow} />
+                <Price price={_52weekLow} />
+            </div> */}
+            <div className="col-2 flex_end">
+                <Price price={trades} />
+                {/* <Price price={_52weekHigh} /> */}
             </div>
 
             <div className="col-2 flex_end">
@@ -170,19 +202,26 @@ const Stock_List_Header = ({ sort_by, sort_state, sorted_prop }) => {
             </div>
 
             {/* 2 _52weekLow*/}
-            <div className="align-items-center col-2 flex_end">
+            {/* <div className="align-items-center col-2 flex_end">
                 <h6 onClick={() => sort_by("_52weekLow")}>52 Wk Low</h6>
                 {sort_state && sorted_prop == "_52weekLow" && <div className="arrow-up" />}
 
                 {!sort_state && sorted_prop == "_52weekLow" && <div className="arrow-down" />}
-            </div>
+            </div> */}
 
             {/* 2 _52weekHigh*/}
-            <div className="align-items-center col-2 flex_end">
+            {/* <div className="align-items-center col-2 flex_end">
                 <h6 onClick={() => sort_by("_52weekHigh")}>52 Wk High</h6>
                 {sort_state && sorted_prop == "_52weekHigh" && <div className="arrow-up" />}
 
                 {!sort_state && sorted_prop == "_52weekHigh" && <div className="arrow-down" />}
+            </div> */}
+            {/* 2 Trades*/}
+            <div className="align-items-center col-2 flex_end">
+                <h6 onClick={() => sort_by("trades")}>Trades</h6>
+                {sort_state && sorted_prop == "trades" && <div className="arrow-up" />}
+
+                {!sort_state && sorted_prop == "trades" && <div className="arrow-down" />}
             </div>
             {/* 2 netChange */}
             <div className="align-items-center col-2 flex_end">

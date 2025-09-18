@@ -11,8 +11,8 @@ function getNextTimeBar(data) {
 }
 
 export default function GenericPixiChart({
-    chartDataRef,
-    onDataUpdate,
+    // chartDataRef,
+    // onDataUpdate,
     ohlcDatas = [],
     width = 1200,
     height = 600,
@@ -164,12 +164,17 @@ export default function GenericPixiChart({
             const width = Math.round(container.clientWidth);
             const height = Math.round(container.clientHeight);
 
-            if (width && height) {
+            const widthIsDiff = Math.abs(width - lastWidth) > 20;
+            const heightIsDiff = Math.abs(height - lastHeight) > 20;
+
+            if (width && height && (widthIsDiff || heightIsDiff)) {
                 // update Pixi buffer
                 PixiAppRef.current.renderer.resize(width, height);
 
                 // update your data handler scales / redraw
                 pixiDataRef.current?.resize(width, height);
+                lastWidth = width;
+                lastHeight = height;
             }
         };
 

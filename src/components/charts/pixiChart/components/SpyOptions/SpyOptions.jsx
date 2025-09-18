@@ -23,7 +23,7 @@ import {
 import TableRowEl from "./spyOptionsComponents/TableRowEl";
 
 function UnderlyingElement({ underlyingData }) {
-    const { netPercentChange, netChange, highPrice, lowPrice, lastPrice, openPrice } = underlyingData;
+    const { netPercentChange, netChange, highPrice, lowPrice, lastPrice, openPrice, bidAskRatio, maSpyBidAsk } = underlyingData;
     const roundedNetPercentChange = netPercentChange?.toFixed(2);
     return (
         <tr>
@@ -38,7 +38,11 @@ function UnderlyingElement({ underlyingData }) {
                             <div className="label">O</div>
                             <div className="value">{currencyFormatter.format(openPrice)}</div>
                         </UnderlyingStat>
-                        <UnderlyingPrice>{currencyFormatter.format(lastPrice)}</UnderlyingPrice>
+                        <UnderlyingPrice>
+                            {currencyFormatter.format(lastPrice)}
+                            <br />
+                            {bidAskRatio && bidAskRatio.toFixed(2)}/{maSpyBidAsk && maSpyBidAsk.toFixed(2)}
+                        </UnderlyingPrice>
                         <UnderlyingStat>
                             <div className="label">L</div>
                             <div className="value">{currencyFormatter.format(lowPrice)}</div>

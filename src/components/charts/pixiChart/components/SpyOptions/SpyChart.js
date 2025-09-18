@@ -6,7 +6,7 @@ import TimeframeSelector from "./spyOptionsComponents/TimeframeSelector";
 import IndicatorSelector from "../../../reusableChartComponents/IndicatorSelector";
 const SpyChart = (props) => {
     const {
-        width,
+        // width,
         height,
         symbol = "SPY",
         Socket,
@@ -25,7 +25,6 @@ const SpyChart = (props) => {
     const barTypePeriod = 1;
     const tickSize = 0.01;
 
-    // const pixiApplicationRef = useRef();
     const pixiDataRef = useRef();
 
     const [candleData, setCandleData] = useState({});
@@ -177,7 +176,6 @@ const SpyChart = (props) => {
                 <GenericPixiChart
                     key={timeframe}
                     ohlcDatas={candleData[timeframe]}
-                    width={width}
                     height={height}
                     symbol={symbol}
                     fullSymbolRef={fullSymbolRef}
@@ -185,14 +183,7 @@ const SpyChart = (props) => {
                     barTypePeriod={barTypePeriod}
                     // loadData={loadData}
                     pixiDataRef={pixiDataRef}
-                    // pixiApplicationRef={pixiApplicationRef}
-                    // TouchGesture1Prop={TouchGesture1}
-                    // TouchGesture2Prop={TouchGesture2}
-                    // newSymbolTimerRefProp={newSymbolTimerRef}
-                    // loadDataRefProp={loadDataRef}
-                    // lastTradesRefProp={lastTradesRef}
                     tickSize={tickSize}
-                    // {...rest}
                 />
             )}
         </>

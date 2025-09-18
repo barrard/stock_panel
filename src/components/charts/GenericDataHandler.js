@@ -87,11 +87,11 @@ export default class GenericDataHandler {
             //mock a new candlestick
             this.currentBar = {
                 datetime: new Date().getTime(),
-                open: tick.lastPrice,
-                close: tick.lastPrice,
-                low: tick.lastPrice,
-                high: tick.lastPrice,
-                volume: totalNewVol,
+                open: tick.lastPrice || tick.open,
+                close: tick.lastPrice || tick.close,
+                low: tick.lastPrice || tick.low,
+                high: tick.lastPrice || tick.high,
+                volume: totalNewVol || 0,
             };
             this.ohlcDatas.push(this.currentBar);
             this.lastTick = tick;
@@ -100,22 +100,22 @@ export default class GenericDataHandler {
             const lastBar = this.ohlcDatas.slice(-1)[0];
 
             if (!lastBar.open) {
-                lastBar.open = tick.lastPrice;
+                lastBar.open = tick.lastPrice || tick.open || tick.close;
             }
 
-            lastBar.close = tick.lastPrice;
-            if (lastBar.high < tick.lastPrice) {
-                lastBar.high = tick.lastPrice;
+            lastBar.close = tick.lastPrice || tick.close;
+            if (lastBar.high < tick.lastPrice || tick.high) {
+                lastBar.high = tick.lastPrice || tick.high;
             }
 
-            if (lastBar.low > tick.lastPrice) {
-                lastBar.low = tick.lastPrice;
+            if (lastBar.low > tick.lastPrice || tick.low) {
+                lastBar.low = tick.lastPrice || tick.low;
             }
             const lastVol = this.lastTick.totalVol || this.lastTick.volume || 0;
 
             lastBar.volume += totalNewVol;
 
-            this.updateCurrentPriceLabel(tick.lastPrice);
+            this.updateCurrentPriceLabel(tick.lastPrice || tick.close);
 
             this.draw();
             this.lastTick = tick;
@@ -145,9 +145,23 @@ export default class GenericDataHandler {
         return totalHeight;
     }
 
-    updateY____Label({ yLabel, gfx, txt, color }) {
+    calcPriceDiff(currentPrice, crossHairPrice) {
+        if (!currentPrice || !crossHairPrice) return {};
+
+        const diff = crossHairPrice - currentPrice;
+        const percent = (diff / currentPrice) * 100;
+
+        return {
+            difference: diff,
+            percent: percent, // raw percent
+            formatted: `${percent.toFixed(2)}%`, // nice string
+        };
+    }
+
+    updateY____Label({ yLabel, yPercentLabel, gfx, txt, percentTxt, color }) {
         txt.text = yLabel;
-        let { width, height } = TextMetrics.measureText(yLabel, this.darkTextStyle);
+
+        let { width, height } = TextMetrics.measureText(yLabel, this.darkTextStyle());
         try {
             gfx.clear();
         } catch (e) {
@@ -160,6 +174,11 @@ export default class GenericDataHandler {
         const x = this.width + padding - (this.margin.left + this.margin.right);
         txt.x = x;
         gfx.position.x = x;
+
+        if (percentTxt) {
+            percentTxt.text = yPercentLabel;
+            percentTxt.x = x;
+        }
 
         const coords = rightAxisMarkerTagLine({
             x,
@@ -458,14 +477,14 @@ export default class GenericDataHandler {
         this.tradeWindowContainer.addChild(this.TW_BuyButtonGfx);
         this.tradeWindowContainer.addChild(this.TW_SellButtonGfx);
 
-        this.TW_symbol = new Text(this.fullSymbol?.current?.fullSymbol, this.darkTextStyle);
-        this.TW_exchange = new Text(this.symbol.exchange, this.darkTextStyle);
+        this.TW_symbol = new Text(this.fullSymbol?.current?.fullSymbol, this.darkTextStyle());
+        this.TW_exchange = new Text(this.symbol.exchange, this.darkTextStyle());
         this.TW_exchange.resolution = 10;
-        this.TW_value = new Text("", this.darkTextStyle);
-        this.TW_BUY = new Text("BUY", this.darkTextStyle);
+        this.TW_value = new Text("", this.darkTextStyle());
+        this.TW_BUY = new Text("BUY", this.darkTextStyle());
         this.TW_BUY.interactive = true;
         this.TW_BUY.on("click", this.BuyButtonClick);
-        this.TW_SELL = new Text("SELL", this.darkTextStyle);
+        this.TW_SELL = new Text("SELL", this.darkTextStyle());
         this.TW_SELL.interactive = true;
         this.TW_SELL.on("click", this.SellButtonClick);
         this.tradeWindowContainer.addChild(this.TW_symbol);
@@ -479,20 +498,32 @@ export default class GenericDataHandler {
         this.dateLabelAppendGfx = new Graphics();
         this.priceLabelAppendGfx = new Graphics();
         this.currentPriceLabelAppendGfx = new Graphics();
-        this.darkTextStyle = new TextStyle({
-            fontFamily: "Arial",
-            fontSize: 20,
-            fontWeight: "bold",
-            fill: 0x333333,
-            align: "center",
-            userEvents: "none",
-        });
+        this.darkTextStyle = (opts = {}) => {
+            const {
+                fontFamily = "Arial",
+                fontSize = 14,
+                fontWeight = "bold",
+                fill = 0x333333,
+                align = "center",
+                userEvents = "none",
+            } = opts;
+            return new TextStyle({
+                fontFamily,
+                fontSize,
+                fontWeight,
+                fill,
+                align,
+                userEvents,
+            });
+        };
 
-        this.dateTxtLabel = new Text("", this.darkTextStyle);
+        this.dateTxtLabel = new Text("", this.darkTextStyle());
         this.dateTxtLabel.anchor.x = 0.5;
-        this.priceTxtLabel = new Text("", this.darkTextStyle);
+        this.priceTxtLabel = new Text("", this.darkTextStyle());
         this.priceTxtLabel.anchor.y = 0.5;
-        this.currentPriceTxtLabel = new Text("", this.darkTextStyle);
+        this.percentTxtLabel = new Text("", this.darkTextStyle({ fontSize: 14 }));
+        this.percentTxtLabel.anchor.y = 0.5;
+        this.currentPriceTxtLabel = new Text("", this.darkTextStyle());
         this.currentPriceTxtLabel.anchor.y = 0.5;
 
         this.onMouseMove = (e) => {
@@ -537,13 +568,16 @@ export default class GenericDataHandler {
         };
         this.updatePriceCrossHairLabel = () => {
             if (!this.crosshair) return;
-            let yLabel, yScale;
+            let yLabel, yScale, yPercentLabel;
             if (this.crossHairYScale) {
                 yScale = this.crossHairYScale;
                 yLabel = Math.floor(yScale.invert(this.mouseY - this.yMouseOffset + this.margin.top)).toString();
             } else {
                 yScale = this.priceScale;
-                yLabel = currencyFormatter.format(roundTick(yScale.invert(this.mouseY), this.tickSize));
+                const value = roundTick(yScale.invert(this.mouseY), this.tickSize);
+                yLabel = currencyFormatter.format(value);
+                const { difference, percent, formatted } = this.calcPriceDiff(this.lastPrice, value);
+                yPercentLabel = formatted;
             }
 
             if (!yLabel) return;
@@ -556,6 +590,8 @@ export default class GenericDataHandler {
                     yLabel: this.yLabel,
                     gfx: this.priceLabelAppendGfx,
                     txt: this.priceTxtLabel,
+                    percentTxt: this.percentTxtLabel,
+                    yPercentLabel,
                 });
             }
         };
@@ -569,7 +605,7 @@ export default class GenericDataHandler {
             } else {
                 this.dateLabel = date;
                 this.dateTxtLabel.text = this.dateLabel;
-                let { width, height } = TextMetrics.measureText(this.dateLabel, this.darkTextStyle);
+                let { width, height } = TextMetrics.measureText(this.dateLabel, this.darkTextStyle());
                 //X Date Label
                 this.dateLabelAppendGfx.clear();
                 this.dateLabelAppendGfx.beginFill(0x00ff00); // green
@@ -818,12 +854,14 @@ export default class GenericDataHandler {
         } else if (!this.crosshair && this.mouseX > 0 && this.mouseX < this.width - (right + left)) {
             this.showCrosshair();
         }
+        const spread = 6;
         this.crossHairYGfx.position.x = this.mouseX;
         this.crossHairXGfx.position.y = this.mouseY;
         this.priceLabelAppendGfx.position.y = this.mouseY;
         this.dateLabelAppendGfx.position.x = this.mouseX;
         this.dateTxtLabel.x = this.mouseX;
-        this.priceTxtLabel.y = this.mouseY;
+        this.priceTxtLabel.y = this.mouseY - spread;
+        this.percentTxtLabel.y = this.mouseY + spread;
     }
 
     onMouseMove(e) {
@@ -1093,6 +1131,7 @@ export default class GenericDataHandler {
         //TEXT
         this.addToLayer(3, this.dateTxtLabel);
         this.addToLayer(3, this.priceTxtLabel);
+        this.addToLayer(3, this.percentTxtLabel);
     }
 
     hideCrosshair() {
@@ -1106,6 +1145,7 @@ export default class GenericDataHandler {
         //TEXT
         this.dateTxtLabel.parent?.removeChild(this.dateTxtLabel);
         this.priceTxtLabel.parent?.removeChild(this.priceTxtLabel);
+        this.percentTxtLabel.parent?.removeChild(this.percentTxtLabel);
     }
 
     destroy() {

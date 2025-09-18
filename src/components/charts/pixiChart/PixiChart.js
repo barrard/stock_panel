@@ -13,6 +13,7 @@ import { IconButton } from "../../StratBuilder/components";
 import { Flex } from "../../StratBuilder/components/chartComponents/styled";
 
 import PixiData from "./components/DataHandler";
+import PixiChartV2 from "./PixiChartV2";
 // import TradeControls from "./components/TradeControls";
 import OrdersList from "./components/OrdersList";
 import Select from "./components/Select";
@@ -188,7 +189,7 @@ export default function PixiChart({ Socket }) {
                         });
                 }
                 loadDataRef.current = 0;
-                console.log(_ohlcDatas);
+                // console.log(_ohlcDatas);
                 //pre  process the data
                 _ohlcDatas.forEach((d) => {
                     if (d.askVolume.high || d.bidVolume.high) {
@@ -516,7 +517,6 @@ export default function PixiChart({ Socket }) {
 
     useEffect(() => {
         Socket.on("ordersShown", (data) => {
-            debugger;
             Object.keys(data).forEach((basketId) => {
                 // setOrders((orders) => [...orders, data[basketId]]);
                 if (!orders[basketId]) orders[basketId] = [];
@@ -673,6 +673,20 @@ export default function PixiChart({ Socket }) {
         [barType, barTypePeriod, symbolInput]
     );
 
+    const mainChartProps = {
+        // candleData: candleData.spy1MinData,
+        height: 500,
+        // width: 600,
+        // spyLevelOne,
+        Socket,
+        // getCurrentStrikeData,
+        // callsOrPuts,
+        // callsData,
+        // putsData,
+        // underlyingData,
+        // lvl2Data,
+    };
+
     // console.log("das render");
     return (
         <>
@@ -729,6 +743,9 @@ export default function PixiChart({ Socket }) {
                         />
                     </div>
                 </div>
+            </div>
+            <div className="col-10">
+                <PixiChartV2 {...mainChartProps} />
             </div>
             <div
                 className="col-10"

@@ -5,7 +5,7 @@ import API from "../../../../API";
 // import MonteCarloCone from "./monteCarloSimulation";
 const OptionContractChart = (props) => {
     const {
-        width = 800,
+        // width = 800,
         height = 600,
         symbol = "SPY",
         Socket,
@@ -65,7 +65,6 @@ const OptionContractChart = (props) => {
         tick.totalVol = tick.totalVolume;
         tick.lastPrice = tick.last;
 
-        debugger;
         pixiDataRef.current.setNewBar(tick);
         pixiDataRef.current.newTick(tick);
         console.log(tick);
@@ -116,7 +115,7 @@ const OptionContractChart = (props) => {
     return (
         <GenericPixiChart
             ohlcDatas={candleData[timeframe]}
-            width={width}
+            // width={width}
             height={height}
             symbol={symbol}
             fullSymbolRef={fullSymbolRef}
