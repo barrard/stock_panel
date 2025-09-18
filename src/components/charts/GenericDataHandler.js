@@ -40,8 +40,11 @@ export default class GenericDataHandler {
 
         this.customDrawFns = {};
 
-        //bind functions by default??
-        // this.drawLine = drawLine.bind(this);
+        // Domain caching properties
+        this.slicedHighest = null;
+        this.slicedLowest = null;
+        this.slicedHighestIdx = null;
+        this.slicedLowestIdx = null;
 
         this.init();
     }
@@ -53,6 +56,7 @@ export default class GenericDataHandler {
         if (lastSlicedData.datetime === lastBar.datetime) {
             shouldAddToSlicedData = true;
         }
+
         if (!lastBar.symbol) {
             bar.symbol = this.symbol;
             this.ohlcDatas[this.ohlcDatas.length - 1] = bar;
@@ -63,11 +67,20 @@ export default class GenericDataHandler {
             }
         } else {
             this.currentBar = null;
-
             this.ohlcDatas.push(bar);
+            const newBarIndex = this.ohlcDatas.length - 1;
+
             if (shouldAddToSlicedData) {
-                // this.slicedData.push(bar);
                 this.sliceEnd++;
+                // New bar is visible, so do incremental update
+                if (this.slicedHighest === null || bar.high > this.slicedHighest) {
+                    this.slicedHighest = bar.high;
+                    this.slicedHighestIdx = newBarIndex;
+                }
+                if (this.slicedLowest === null || bar.low < this.slicedLowest) {
+                    this.slicedLowest = bar.low;
+                    this.slicedLowestIdx = newBarIndex;
+                }
             }
         }
         this.draw();
@@ -98,6 +111,7 @@ export default class GenericDataHandler {
             this.sliceEnd++;
         } else {
             const lastBar = this.ohlcDatas.slice(-1)[0];
+            const lastBarIndex = this.ohlcDatas.length - 1;
 
             if (!lastBar.open) {
                 lastBar.open = tick.lastPrice || tick.open || tick.close;
@@ -114,6 +128,23 @@ export default class GenericDataHandler {
             const lastVol = this.lastTick.totalVol || this.lastTick.volume || 0;
 
             lastBar.volume += totalNewVol;
+
+            // Incremental domain update
+            if (lastBar.high > this.slicedHighest) {
+                this.slicedHighest = lastBar.high;
+                this.slicedHighestIdx = lastBarIndex;
+            } else if (lastBarIndex === this.slicedHighestIdx && lastBar.high < this.slicedHighest) {
+                // The highest bar was modified to be lower, so we must rescan.
+                this.slicedHighestIdx = null; // Invalidate cache
+            }
+
+            if (lastBar.low < this.slicedLowest) {
+                this.slicedLowest = lastBar.low;
+                this.slicedLowestIdx = lastBarIndex;
+            } else if (lastBarIndex === this.slicedLowestIdx && lastBar.low > this.slicedLowest) {
+                // The lowest bar was modified to be higher, so we must rescan.
+                this.slicedLowestIdx = null; // Invalidate cache
+            }
 
             this.updateCurrentPriceLabel(tick.lastPrice || tick.close);
 
@@ -220,46 +251,97 @@ export default class GenericDataHandler {
     }
 
     setupPriceScales() {
-        const { allTicks, ohlcDatas, currentMinute } = this;
+        const { ohlcDatas } = this;
         if (!ohlcDatas.length) {
             return;
         }
 
         this.slicedData = ohlcDatas.slice(this.sliceStart, this.sliceEnd);
-
         const sd = this.slicedData;
+        if (sd.length === 0) return;
 
-        this.highs = sd.map(({ high }) => high);
-        this.lows = sd.map(({ low }) => low);
-        this.vols = sd.map(({ volume }) => volume);
+        // Check if the cached min/max indices are outside the current visible slice.
+        const isCacheInvalid =
+            this.slicedHighestIdx === null ||
+            this.slicedLowestIdx === null ||
+            this.slicedHighestIdx < this.sliceStart ||
+            this.slicedHighestIdx >= this.sliceEnd ||
+            this.slicedLowestIdx < this.sliceStart ||
+            this.slicedLowestIdx >= this.sliceEnd;
+
+        let loops = 0;
+
+        if (isCacheInvalid) {
+            let lowest, highest;
+            let lowestIdx = -1,
+                highestIdx = -1;
+
+            if (this.options.chartType === "line") {
+                const lineKey = this.options.lineKey;
+                highest = -Infinity;
+                lowest = Infinity;
+                for (let i = 0; i < sd.length; i++) {
+                    const val = sd[i][lineKey];
+                    if (val > highest) {
+                        highest = val;
+                        highestIdx = i;
+                    }
+                    if (val < lowest) {
+                        lowest = val;
+                        lowestIdx = i;
+                    }
+                    loops++;
+                }
+            } else {
+                // Candlestick
+                highest = -Infinity;
+                lowest = Infinity;
+                for (let i = 0; i < sd.length; i++) {
+                    if (sd[i].high > highest) {
+                        highest = sd[i].high;
+                        highestIdx = i;
+                    }
+                    if (sd[i].low < lowest) {
+                        lowest = sd[i].low;
+                        lowestIdx = i;
+                    }
+                    loops++;
+                }
+            }
+
+            // Update cache with new values and their absolute indices
+            this.slicedHighest = highest;
+            this.slicedLowest = lowest;
+            this.slicedHighestIdx = this.sliceStart + highestIdx;
+            this.slicedLowestIdx = this.sliceStart + lowestIdx;
+            console.log(`Rescanned ${loops} bars for min/max`);
+        }
+
+        // Use the cached values for the domain
+        let lowest = this.slicedLowest;
+        let highest = this.slicedHighest;
+
         this.timestamps = sd.map(({ timestamp, datetime }) => timestamp || datetime);
 
         //DOMAIN
         this.xScale.domain([0, sd.length]);
 
-        let [lowest] = extent(this.lows);
-        let [_, highest] = extent(this.highs);
         let priceScalePadding = 2;
 
-        if (this.options.chartType === "line") {
-            let lastPrices = sd.map((ohlc) => ohlc[this.options.lineKey]);
-
-            [lowest, highest] = extent(lastPrices);
+        if (lowest === null || highest === null || lowest === Infinity || highest === -Infinity) {
+            lowest = 0;
+            highest = 1;
         }
 
-        lowest = roundTick(lowest - this.tickSize * priceScalePadding, this.tickSize);
-        highest = roundTick(highest + this.tickSize * priceScalePadding, this.tickSize);
-        this.priceScale.domain([lowest, highest]);
+        const paddedLowest = roundTick(lowest - this.tickSize * priceScalePadding, this.tickSize);
+        const paddedHighest = roundTick(highest + this.tickSize * priceScalePadding, this.tickSize);
+        this.priceScale.domain([paddedLowest, paddedHighest]);
 
         //find the price ticks
-        this.yAxis.render({ highest, lowest });
+        this.yAxis.render({ highest: paddedHighest, lowest: paddedLowest });
         this.xAxis.render({
             values: this.timestamps,
-            // highest: this.xScale.range()[1],
-            // lowest: this.xScale.range()[0],
         });
-        //this essentially draws te indicator, but
-        // that contract has yet to be decided
     }
 
     initScales() {
@@ -282,14 +364,6 @@ export default class GenericDataHandler {
 
     initIndicators() {
         this.lowerIndicatorsData = {
-            // volume1: new Indicator({
-            //     name: "volume",
-            //     height: 200,
-            //     data: [],
-            //     drawFn: drawVolume,
-            //     chart: this,
-            //     accessors: "volume",
-            // }),
             volume: new Indicator({
                 name: "volume",
                 height: this.indicatorHeight,
@@ -298,15 +372,6 @@ export default class GenericDataHandler {
                 chart: this,
                 accessors: "volume",
             }),
-
-            // test: new Indicator({
-            //     name: "test",
-            //     height: indicatorHeight,
-            //     data: [],
-            //     drawFn: drawVolume,
-            //     chart: this,
-            //     accessors: "test",
-            // }),
         };
         if (this.lowerIndicators.length) {
             this.lowerIndicators.forEach((indicator) => {
@@ -316,34 +381,13 @@ export default class GenericDataHandler {
                     height: indicator.height || this.indicatorHeight,
                     lineColor: indicator.lineColor,
                     data: [],
-                    drawFn: indicator.drawFn
-                        ? indicator.drawFn
-                        : indicator.type == "line"
-                        ? drawLine
-                        : /**
-						 * drawLine({
-                lineColor: 0x3b82f6,
-                lineWidth: 2,
-                yField: "last",
-                xScale: this.xScale,
-                yScale: this.priceScale,
-                data: this.slicedData,
-                chartData: this,
-                gfx: this.candleStickGfx,
-            });
-			 */
-                          drawVolume,
+                    drawFn: indicator.drawFn ? indicator.drawFn : indicator.type == "line" ? drawLine : drawVolume,
                     chart: this,
                     accessors: indicator.accessors || indicator.name,
                 });
             });
         }
-        this.chartContainerOrder = [
-            ...Object.keys(this.lowerIndicatorsData),
-            // "volume",
-            // "volume1",
-            // "test",//shown as example
-        ];
+        this.chartContainerOrder = [...Object.keys(this.lowerIndicatorsData)];
     }
 
     //layer is a number
@@ -403,20 +447,6 @@ export default class GenericDataHandler {
             1000: this.layer5Container, //for text labels
         };
 
-        //  this.mainChartContainer.addChild(this.liquidityContainer);
-        //setHitArea
-        // const { left, right, top, bottom } = this.margin;
-
-        // //add hit area for pointer events
-
-        // this.mainChartContainer.interactive = true;
-        // debugger;
-        // // this.mainChartContainer.interactiveMousewheel = true
-        // this.hitArea = new Rectangle(0, 0, this.width - (left + right), this.height - (top + bottom));
-        // this.mainChartContainer.hitArea = this.hitArea;
-        // this.mainChartContainer.addChild(this.xAxis.tickLinesGfx);
-        // this.mainChartContainer.addChild(this.yAxis.tickLinesGfx);
-
         this.addToLayer(1, this.candleStickWickGfx);
         this.addToLayer(1, this.candleStickGfx);
         this.addToLayer(1, this.priceGfx);
@@ -429,7 +459,11 @@ export default class GenericDataHandler {
         this.addToLayer(2, this.volProfileGfx);
         this.pixiApp.stage.addChild(this.indicatorContainer);
         this.pixiApp.stage.addChild(this.mainChartContainer);
-        this.updateCurrentPriceLabel(this.ohlcDatas.slice(-1)[0]?.close);
+        const lastDataPoint = this.ohlcDatas.slice(-1)[0];
+        if (lastDataPoint) {
+            const price = this.options.chartType === "line" ? lastDataPoint[this.options.lineKey] : lastDataPoint.close;
+            this.updateCurrentPriceLabel(price);
+        }
     }
     initGraphics() {
         this.candleStickGfx = new Graphics();
@@ -643,23 +677,12 @@ export default class GenericDataHandler {
                 container.position.x = this.margin.left;
                 container.position.y = yPos;
 
-                //TEXT draw
-                // gfx.beginFill(0xff0000);
-
-                // gfx.drawRect(0, 0, this.innerWidth(), this.indicatorHeight);
-                // container.addChild(gfx);
-
                 //new canvas height
                 this.height = yPos + height + this.margin.bottom;
                 //resize the canvas
                 this.pixiApp.renderer.resize(this.width, this.height);
                 //add indicator container to the chart
                 this.indicatorContainer.addChild(container);
-                // this.addToLayer(1, container);
-
-                //adjust xAxis position
-                // console.log("adjust xAxis position");
-                // this.xAxis.container.position.y = this.height - this.margin.bottom;
             } else {
                 //setup the scales
                 indicator.setupScales();
@@ -703,6 +726,11 @@ export default class GenericDataHandler {
     }
 
     init() {
+        this.slicedHighest = null;
+        this.slicedLowest = null;
+        this.slicedHighestIdx = null;
+        this.slicedLowestIdx = null;
+
         this.initDataViewable();
         this.initScales();
         // this.initCandlesticks();
@@ -903,7 +931,6 @@ export default class GenericDataHandler {
         } else {
             this.sliceEnd = this.sliceEnd + candleCount;
         }
-
         this.draw();
     }
 
@@ -923,7 +950,6 @@ export default class GenericDataHandler {
         } else {
             this.sliceStart = this.sliceStart - candleCount;
         }
-
         this.draw();
     }
 
@@ -1115,6 +1141,7 @@ export default class GenericDataHandler {
 
     updateData(newData) {
         this.ohlcDatas = newData;
+        this.slicedHighestIdx = null; // Invalidate cache
         this.draw();
     }
 

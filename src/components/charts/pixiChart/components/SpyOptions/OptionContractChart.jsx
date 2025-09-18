@@ -58,6 +58,7 @@ const OptionContractChart = (props) => {
     };
 
     useEffect(() => {
+        debugger;
         if (!tick || !pixiDataRef.current) return;
         // const lastBar = pixiDataRef.current.ohlcDatas.slice(-1)[0];
         const lastVolume = lastTotalVolumeRef.current || tick.totalVolume;
@@ -66,7 +67,7 @@ const OptionContractChart = (props) => {
         tick.lastPrice = tick.last;
 
         pixiDataRef.current.setNewBar(tick);
-        pixiDataRef.current.newTick(tick);
+        pixiDataRef.current.updateCurrentPriceLabel(tick.lastPrice);
         console.log(tick);
         lastTotalVolumeRef.current = tick.totalVolume;
 

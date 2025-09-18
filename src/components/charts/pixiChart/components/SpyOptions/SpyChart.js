@@ -160,7 +160,7 @@ const SpyChart = (props) => {
             // Clear instanceRef in state
             setIndicators((prevIndicators) => prevIndicators.map((ind) => (ind.id === "strikes" ? { ...ind, instanceRef: null } : ind)));
         }
-    }, [pixiDataRef.current, callsOrPuts, underlyingData, callsData, putsData, lvl2Data, getCurrentStrikeData, spyLevelOne]);
+    }, [pixiDataRef.current, callsOrPuts, callsData, putsData, spyLevelOne]);
 
     // if (!candleData[timeframe]?.length) {
     //     return <div>Loading... {timeframe}</div>;
