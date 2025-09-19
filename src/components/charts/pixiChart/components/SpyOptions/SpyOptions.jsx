@@ -213,6 +213,8 @@ export default function SpyOptions({ Socket }) {
         lvl2Data,
     };
 
+    const strikePrices = getStrikePrices();
+
     return (
         <Container>
             {/* Chart Placeholder */}
@@ -265,9 +267,9 @@ export default function SpyOptions({ Socket }) {
                             </tr>
                         </TableHead>
                         <TableBody>
-                            {getStrikePrices().map((strike, index) => {
+                            {strikePrices.map((strike, index) => {
                                 const within5 = Math.abs(strike - spyLevelOne?.lastPrice) <= 5;
-                                if (!within5) return <></>;
+                                if (!within5) return null;
                                 const callData = getCurrentCallsData()[strike.toFixed(1)];
                                 const putData = getCurrentPutsData()[strike.toFixed(1)];
 
@@ -281,7 +283,7 @@ export default function SpyOptions({ Socket }) {
                                 const shouldShowUnderlying =
                                     spyLevelOne &&
                                     strike >= spyLevelOne.lastPrice &&
-                                    (index === getStrikePrices().length - 1 || getStrikePrices()[index + 1] < spyLevelOne.lastPrice);
+                                    (index === strikePrices.length - 1 || strikePrices[index + 1] < spyLevelOne.lastPrice);
 
                                 return (
                                     <React.Fragment key={strike}>
@@ -300,15 +302,7 @@ export default function SpyOptions({ Socket }) {
 
                                         {/* Insert underlying after this row if needed */}
                                         {shouldShowUnderlying && (
-                                            //<UnderlyingElement underlyingData={spyLevelOne} />
-                                            <React.Fragment key="underlying-chart-section">
-                                                {/* // <TableRow> */}
-                                                {/* <td colSpan="10" style={{ padding: 0, border: "none" }}> */}
-                                                <UnderlyingElement underlyingData={spyLevelOne} />
-
-                                                {/* </td> */}
-                                                {/* // </TableRow> */}
-                                            </React.Fragment>
+                                            <UnderlyingElement key={`${strike}-underlying-chart-section`} underlyingData={spyLevelOne} />
                                         )}
                                     </React.Fragment>
                                 );
