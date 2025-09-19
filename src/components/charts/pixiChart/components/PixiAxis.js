@@ -32,8 +32,8 @@ export default class PixiAxis {
         const { left, right, top, bottom } = margin;
         this.container = new Container();
 
-        if (this.dragScale) {
-            // this.container.interactive = true;
+        if (this.dragScale || true) {
+            this.container.interactive = true;
             console.log("adddd eveentss");
             this.setHitArea();
             this.backgroundGfx
@@ -103,25 +103,6 @@ export default class PixiAxis {
         let customValues, textValues;
         if (this.valueFinder) {
             customValues = this.valueFinder({ highest, lowest, values });
-            // ticks = customValues.length;
-            // console.log("customValues.length", customValues.length);
-            // if (customValues.length > 6) {
-            //     ;
-            //     textValues = reduceValues(customValues);
-            //     while (Object.keys(textValues).length > 6) {
-            //         textValues = reduceValues(Object.values(textValues));
-            //     }
-            //     console.log(Object.keys(textValues).length);
-
-            //     function reduceValues(values) {
-            //         return values
-            //             .filter((el, i) => i % 2 !== 0)
-            //             .reduce((acc, val) => {
-            //                 acc[val] = true;
-            //                 return acc;
-            //             }, {});
-            //     }
-            // }
         }
 
         const oppositeAxis = this.type === "x" ? "y" : "x";
@@ -144,10 +125,7 @@ export default class PixiAxis {
             }
 
             //TEXT LABEL POSITION
-            // if (this.valueAccessor) {
-            //     priceTxtLabel[this.type] = value;
-            //     this.addTickLine(value);
-            // } else {
+
             const _val = this.scale(value);
             priceTxtLabel[this.type] = _val;
             this.addTickLine(_val);
@@ -196,23 +174,30 @@ export default class PixiAxis {
     }
 
     setHitArea() {
+        debugger;
         const { margin, height, width } = this.chart || !this.chart.options;
         const { left, right, top, bottom } = margin;
         if (!this?.container) return;
         this.backgroundGfx = new Graphics();
         this.container.addChild(this.backgroundGfx);
-        this.backgroundGfx.beginFill(0x365456);
-        this.backgroundGfx.drawRect(0, 0, right, height - (top + bottom));
-        this.backgroundGfx.endFill();
-        console.log("setting hit area axis");
+
         //add hit area for pointer events
 
         this.backgroundGfx.interactive = true;
-        // this.container.interactiveMousewheel = true;
+        this.container.interactiveMousewheel = true;
+        this.backgroundGfx.beginFill(0x365456);
 
         if (this.type === "y") {
-            this.hitArea = new Rectangle(width - right, top, right, height - (top + bottom));
-            this.container.hitArea = this.hitArea;
+            this.backgroundGfx.drawRect(0, 0, right, height - (top + bottom));
+            // this.hitArea = new Rectangle(width - right, top, right, height - (top + bottom));
+        } else if (this.type === "x") {
+            debugger;
+            this.backgroundGfx.drawRect(0, 0, width - (left + right), bottom);
+            // this.hitArea = new Rectangle(0, 0, width - (left + right), bottom);
         }
+        // this.container.hitArea = this.hitArea;
+
+        this.backgroundGfx.endFill();
+        console.log("setting hit area axis");
     }
 }

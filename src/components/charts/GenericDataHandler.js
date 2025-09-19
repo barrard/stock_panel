@@ -239,6 +239,8 @@ export default class GenericDataHandler {
             maxTicks: 5,
             tickSize: this.tickSize,
         });
+        this.yAxis.container.position.x = this.width - this.margin.right;
+        this.yAxis.container.position.y = 0;
 
         this.xAxis = new PixiAxis({
             chart: this,
@@ -248,6 +250,8 @@ export default class GenericDataHandler {
             valueAccessor: this.getTime.bind(this),
             valueFinder: timeScaleValues,
         });
+        this.xAxis.container.position.x = this.margin.left;
+        this.xAxis.container.position.y = this.innerHeight();
     }
 
     setupPriceScales() {
@@ -697,8 +701,9 @@ export default class GenericDataHandler {
 
         //add hit area for pointer events
         this.mainChartContainer.interactive = true;
-        // this.mainChartContainer.interactiveMousewheel = true
-        this.hitArea = new Rectangle(0, 0, this.width - (left + right), this.mainChartContainerHeight - (top + bottom));
+
+        this.hitArea = new Rectangle(0, 0, this.width, this.mainChartContainerHeight);
+
         this.mainChartContainer.hitArea = this.hitArea;
         console.log("setting hit area");
     }
@@ -836,12 +841,12 @@ export default class GenericDataHandler {
             });
 
         //yAxis
-        this.yAxis.container.position.x = this.width - this.margin.right;
-        this.yAxis.container.position.y = 0;
+        // this.yAxis.container.position.x = this.width - this.margin.right;
+        // this.yAxis.container.position.y = 0;
         this.addToLayer(1, this.yAxis.container);
         //yAxis
-        this.xAxis.container.position.x = this.margin.left;
-        this.xAxis.container.position.y = this.innerHeight();
+        // this.xAxis.container.position.x = this.margin.left;
+        // this.xAxis.container.position.y = this.innerHeight();
         this.addToLayer(1, this.xAxis.container);
     }
 
