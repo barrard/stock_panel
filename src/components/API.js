@@ -77,7 +77,12 @@ export default {
     getOrders,
     getPickLists,
     fetchOptionContractData,
+    getSchwabAcountDetails,
 };
+
+async function getSchwabAcountDetails() {
+    return await GET(`/API/account-details`);
+}
 
 async function fetchOptionContractData({ symbol = "SPY", putCall = "CALL", strike = 590, exp = "2025-06-20" }) {
     return await GET(`/options/contract/${symbol}/${strike}/${exp}/${putCall}`);

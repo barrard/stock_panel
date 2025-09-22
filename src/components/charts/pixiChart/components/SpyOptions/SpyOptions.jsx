@@ -21,6 +21,7 @@ import {
 } from "./spyOptionsComponents/styledComponents";
 
 import TableRowEl from "./spyOptionsComponents/TableRowEl";
+import API from "../../../../API";
 
 function UnderlyingElement({ underlyingData }) {
     const { netPercentChange, netChange, highPrice, lowPrice, lastPrice, openPrice, bidAskRatio, maSpyBidAsk } = underlyingData;
@@ -94,8 +95,17 @@ export default function SpyOptions({ Socket }) {
     const [lvl2Data, setLvl2Data] = useState({});
     // const [chartInstance, setChartInstance] = useState(null);
     const [spyLevelOne, setSpyLevelOne] = useState(null);
+    const [accountDetails, setAccountDetails] = useState({});
+
+    async function getAccountDetails() {
+        const accountDetails = await API.getSchwabAcountDetails();
+        console.log({ accountDetails });
+        debugger;
+        setAccountDetails(accountDetails);
+    }
 
     useEffect(() => {
+        getAccountDetails();
         Socket.on("spyOptionSnaps", (d) => {
             const calls = d?.callExpDateMap;
             const puts = d?.putExpDateMap;

@@ -125,7 +125,10 @@ export default class PixiAxis {
             }
 
             //TEXT LABEL POSITION
-
+            // if (this.valueAccessor) {
+            //     priceTxtLabel[this.type] = value;
+            //     this.addTickLine(value);
+            // } else {
             const _val = this.scale(value);
             priceTxtLabel[this.type] = _val;
             this.addTickLine(_val);
