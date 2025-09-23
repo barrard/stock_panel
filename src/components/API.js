@@ -77,11 +77,11 @@ export default {
     getOrders,
     getPickLists,
     fetchOptionContractData,
-    getSchwabAcountDetails,
+    getSchwabAccountDetails,
 };
 
-async function getSchwabAcountDetails() {
-    return await GET(`/API/account-details`);
+async function getSchwabAccountDetails() {
+    return await GET(`/API/account-details`, { withCreds: true });
 }
 
 async function fetchOptionContractData({ symbol = "SPY", putCall = "CALL", strike = 590, exp = "2025-06-20" }) {
@@ -144,9 +144,12 @@ async function getOrderFlow({ start, end, symbol = "ES" }) {
     return await GET(`/API/getOrderFlow/${start}/${end}/${symbol}`);
 }
 
-async function GET(url) {
+async function GET(url, opts = {}) {
+    const { withCreds = false } = opts;
+
     let data = await fetch(`${REACT_APP_API_SERVER}${url}`, {
         method: "GET",
+        ...(withCreds ? { credentials: "include" } : {}),
     });
     return await data.json();
 }

@@ -177,7 +177,6 @@ export default class PixiAxis {
     }
 
     setHitArea() {
-        debugger;
         const { margin, height, width } = this.chart || !this.chart.options;
         const { left, right, top, bottom } = margin;
         if (!this?.container) return;
@@ -194,7 +193,6 @@ export default class PixiAxis {
             this.backgroundGfx.drawRect(0, 0, right, height - (top + bottom));
             // this.hitArea = new Rectangle(width - right, top, right, height - (top + bottom));
         } else if (this.type === "x") {
-            debugger;
             this.backgroundGfx.drawRect(0, 0, width - (left + right), bottom);
             // this.hitArea = new Rectangle(0, 0, width - (left + right), bottom);
         }

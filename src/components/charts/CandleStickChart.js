@@ -4,7 +4,11 @@ import { withRouter } from "react-router-dom";
 import styled from "styled-components";
 import { axisBottom, axisRight, axisLeft, axisTop } from "d3-axis";
 // import { useDispatch, useSelector } from "react-redux";
-import { view_selected_stock, getMinutesForTimeframe, appendMinutelyCommodityDataAsNeeded } from "../landingPageComponents/chart_data_utils.js";
+import {
+    view_selected_stock,
+    getMinutesForTimeframe,
+    appendMinutelyCommodityDataAsNeeded,
+} from "../landingPageComponents/chart_data_utils.js";
 import TradesList from "./chartHelpers/TradesList.js";
 import { zoom } from "d3-zoom";
 import { scaleLinear, scaleTime } from "d3-scale";
@@ -39,7 +43,14 @@ import { toastr } from "react-redux-toastr";
 const { TICKS, dropDuplicateMinMax } = require("../../indicators/indicatorHelpers/utils.js");
 const { VolProfile } = require("../../indicators/VolProfile.js");
 const { addRSI, addNewRSI } = require("../../indicators/RSI.js");
-const { stochasticsAnalysis, stochasticPeriods, calcStochastics, addStochastics, addNewestStochastics, prevCurrentStoch } = require("../../indicators/stochastics.js");
+const {
+    stochasticsAnalysis,
+    stochasticPeriods,
+    calcStochastics,
+    addStochastics,
+    addNewestStochastics,
+    prevCurrentStoch,
+} = require("../../indicators/stochastics.js");
 const { addNewestCCI_data, addAllCCI_data } = require("../../indicators/CCI.js");
 const { momentumAnalysis, addNewestMomentumAnalysis } = require("../../indicators/momentum.js");
 const { addNewVWAP } = require("../../indicators/VWAP.js");
@@ -652,7 +663,17 @@ class CandleStickChart extends React.Component {
     }
 
     async loadCommodityData({ timeframe, symbol, props }) {
-        let { active, fibonacciMinMax, fibonacciSensitivity, minMaxTolerance, priceLevelMinMax, priceLevelSensitivity, regressionErrorLimit, volProfileBarCount, volProfileBins } = this.props.stock_data.commodityRegressionData[symbol][timeframe];
+        let {
+            active,
+            fibonacciMinMax,
+            fibonacciSensitivity,
+            minMaxTolerance,
+            priceLevelMinMax,
+            priceLevelSensitivity,
+            regressionErrorLimit,
+            volProfileBarCount,
+            volProfileBins,
+        } = this.props.stock_data.commodityRegressionData[symbol][timeframe];
         this.setState({
             fibonacciMinMax,
             fibonacciSensitivity,
@@ -744,7 +765,11 @@ class CandleStickChart extends React.Component {
             .call(priceAxis);
 
         //appand volAxis
-        let volAxisG = svg.append("g").attr("class", "white volAxis").attr("transform", `translate(${margin.left}, ${margin.top})`).call(volAxis);
+        let volAxisG = svg
+            .append("g")
+            .attr("class", "white volAxis")
+            .attr("transform", `translate(${margin.left}, ${margin.top})`)
+            .call(volAxis);
 
         //append the crosshair marker
         volAxisG
@@ -977,7 +1002,6 @@ class CandleStickChart extends React.Component {
     }
 
     draw(data) {
-        debugger;
         if (!this.state.timeAxis) return console.log("Disaster averted!");
         // console.log(this.state.timeAxis)
         let drawData;
@@ -1572,7 +1596,17 @@ class CandleStickChart extends React.Component {
     //TODO add user id
     saveRegressionSettings() {
         let { symbol } = this.props;
-        let { minMaxTolerance, regressionErrorLimit, priceLevelMinMax, priceLevelSensitivity, fibonacciMinMax, fibonacciSensitivity, timeframe, volProfileBins, volProfileBarCount } = this.state;
+        let {
+            minMaxTolerance,
+            regressionErrorLimit,
+            priceLevelMinMax,
+            priceLevelSensitivity,
+            fibonacciMinMax,
+            fibonacciSensitivity,
+            timeframe,
+            volProfileBins,
+            volProfileBarCount,
+        } = this.state;
         let { props } = this;
         API.saveRegressionValues({
             timeframe,
@@ -1716,7 +1750,10 @@ class CandleStickChart extends React.Component {
           </div>
         </div> */}
 
-                <ToggleIndicators toggleIndicators={(indicator) => this.toggleIndicators(indicator)} visibleIndicators={this.state.visibleIndicators} />
+                <ToggleIndicators
+                    toggleIndicators={(indicator) => this.toggleIndicators(indicator)}
+                    visibleIndicators={this.state.visibleIndicators}
+                />
 
                 <svg ref={this.state.chartRef} width={this.props.width} height={this.state.height} className="svgChart"></svg>
                 <select onChange={(e) => this.setTimeframe(e)} className="form-control" name="" id="">

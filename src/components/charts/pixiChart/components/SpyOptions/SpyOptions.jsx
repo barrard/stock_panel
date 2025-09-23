@@ -22,6 +22,7 @@ import {
 
 import TableRowEl from "./spyOptionsComponents/TableRowEl";
 import API from "../../../../API";
+import { useSelector } from "react-redux";
 
 function UnderlyingElement({ underlyingData }) {
     const { netPercentChange, netChange, highPrice, lowPrice, lastPrice, openPrice, bidAskRatio, maSpyBidAsk } = underlyingData;
@@ -96,16 +97,22 @@ export default function SpyOptions({ Socket }) {
     // const [chartInstance, setChartInstance] = useState(null);
     const [spyLevelOne, setSpyLevelOne] = useState(null);
     const [accountDetails, setAccountDetails] = useState({});
+    const user = useSelector((state) => state.user);
 
     async function getAccountDetails() {
-        const accountDetails = await API.getSchwabAcountDetails();
+        const accountDetails = await API.getSchwabAccountDetails();
         console.log({ accountDetails });
         debugger;
         setAccountDetails(accountDetails);
     }
 
     useEffect(() => {
-        getAccountDetails();
+        if (user && user.isLoggedIn) {
+            getAccountDetails();
+        }
+    }, [user.isLoggedIn]);
+
+    useEffect(() => {
         Socket.on("spyOptionSnaps", (d) => {
             const calls = d?.callExpDateMap;
             const puts = d?.putExpDateMap;

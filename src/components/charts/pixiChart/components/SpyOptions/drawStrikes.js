@@ -18,7 +18,7 @@ export default class drawStrikes {
 
     // In your initialization/setup code:
     initStrikePriceLines() {
-        console.log("init lines");
+        // console.log("init lines");
         // Create the graphics object for strike lines
         this.strikeLinesGfx = new Graphics();
         // Add to your main chart container
