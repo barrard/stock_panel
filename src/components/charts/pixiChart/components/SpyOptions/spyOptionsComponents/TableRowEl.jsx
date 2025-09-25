@@ -21,16 +21,15 @@ const formatPercent = (percent) => {
 };
 
 const buttonStyle = {
-    fontSize: "9px",
+    fontSize: "19px",
     padding: "1px 4px",
-    // backgroundColor: "#51cf66",
     color: "white",
     border: "none",
     borderRadius: "2px",
     cursor: "pointer",
     marginTop: "2px",
     width: "100%",
-    maxWidth: "35px",
+    // maxWidth: "35px",
     boxShadow: "0 2px 4px rgba(0, 0, 0, 0.7)",
 };
 
@@ -108,58 +107,61 @@ const MiddleCellControls = ({
     const currentPnL = position ? (option?.last - position.averagePrice) * position.quantity * 100 : 0;
     const pnlPercent = position && position.averagePrice ? ((option?.last - position.averagePrice) / position.averagePrice) * 100 : 0;
 
-    const buttonStyle = {
-        fontSize: "15px",
-        padding: "0px 8px",
-        margin: "2px 2px",
+    const quantityButtonStyle = {
+        fontSize: "18px",
+        padding: "0px 3px",
+        margin: "0px 1px",
         color: "white",
         border: "none",
         borderRadius: "1px",
         cursor: "pointer",
-        height: "20px",
-        minWidth: "12px",
-        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.7)",
+        marginTop: "3px",
+        // height: "10px",
+        // minWidth: "10px",
+        boxShadow: "0 1px 2px rgba(0, 0, 0, 0.7)",
     };
 
-    const QuantityButtons = (props = {}) => {
-        const { setValue, increment = 1 } = props;
+    const QuantityButtons = ({ setValue, increment = 1 }) => {
         return (
             <div style={{ display: "flex", flexDirection: "column", gap: "0px" }}>
                 <button
-                    onClick={() => setValue((prev) => (parseFloat(prev) + increment).toFixed(2))}
+                    onClick={() => setValue((prev) => (parseFloat(prev) + increment).toFixed(increment < 1 ? 2 : 0))}
                     style={{
                         backgroundColor: "#51cf66",
-                        ...buttonStyle,
+                        ...quantityButtonStyle,
                     }}
-                    title={`Increase price by ${increment}`}
+                    title={`Increase by ${increment}`}
                 >
                     ▲
                 </button>
                 <button
-                    onClick={() => setValue((prev) => Math.max(increment, parseFloat(prev) - increment).toFixed(2))}
+                    onClick={() => setValue((prev) => Math.max(increment, parseFloat(prev) - increment).toFixed(increment < 1 ? 2 : 0))}
                     style={{
                         backgroundColor: "#ff6b6b",
-                        ...buttonStyle,
+                        ...quantityButtonStyle,
                     }}
-                    title={`Decrease price by ${increment}`}
+                    title={`Decrease by ${increment}`}
                 >
                     ▼
                 </button>
             </div>
         );
     };
+
     return (
-        <div style={{ fontSize: "10px" }}>
+        <div style={{ fontSize: "10px", lineHeight: "1.1" }}>
             {/* Last Price */}
-            <div style={{ fontWeight: 500, marginBottom: "2px" }}>{option ? formatPrice(option.last) : "-"}</div>
+            {/* <div style={{ fontWeight: 500, marginBottom: "1px" }}>{option ? formatPrice(option.last) : "-"}</div> */}
 
             {/* Delta/Gamma info */}
-            {type === "PUT" && option?.delta !== undefined && <Lvl2Text>Delta {option.delta}</Lvl2Text>}
-            {type === "CALL" && option?.gamma !== undefined && <Lvl2Text>Gex {option.gamma}</Lvl2Text>}
+            <Lvl2Text>Delta {option.delta}</Lvl2Text>
+            <Lvl2Text>Gex {option.gamma}</Lvl2Text>
+            {/* {type === "PUT" && option?.delta !== undefined && <Lvl2Text>Delta {option.delta}</Lvl2Text>}
+            {type === "CALL" && option?.gamma !== undefined && <Lvl2Text>Gex {option.gamma}</Lvl2Text>} */}
 
             {/* Position Info */}
             {position && (
-                <div style={{ fontSize: "9px", fontWeight: "bold", marginBottom: "2px" }}>
+                <div style={{ fontSize: "8px", fontWeight: "bold", marginBottom: "1px" }}>
                     <div>
                         Pos: {position.quantity} @ ${position.averagePrice.toFixed(2)}
                     </div>
@@ -171,7 +173,7 @@ const MiddleCellControls = ({
 
             {/* Open Orders */}
             {openOrders && openOrders.length > 0 && (
-                <div style={{ fontSize: "8px", color: "#666", marginBottom: "2px" }}>
+                <div style={{ fontSize: "7px", color: "#666", marginBottom: "1px" }}>
                     {openOrders.map((order, idx) => (
                         <div key={idx}>
                             {order.action} {order.quantity} @ ${order.limitPrice?.toFixed(2) || "MKT"}
@@ -180,44 +182,170 @@ const MiddleCellControls = ({
                 </div>
             )}
 
-            {/* Trading Controls */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
-                {/* Quantity and Order Type Row */}
-                <div style={{ display: "flex", gap: "2px", alignItems: "center" }}>
+            {/* Trading Controls - More Inline */}
+            <div
+                style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "1px",
+                    alignItems: "center",
+                    marginBottom: "1px",
+                }}
+            >
+                {/* Quantity input and buttons */}
+                {/* <label style={{ fontSize: "18px", padding: "1px", minWidth: "25px", display: "inline" }} htmlFor="quantity">
+                    Qty.
+                </label> */}
+                {/* <input
+                    type="number"
+                    min="1"
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                    style={{ width: "15%", fontSize: "18px", padding: "1px", minWidth: "25px" }}
+                    placeholder="1"
+                /> */}
+
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    <label style={{ fontSize: "17px", color: "#666", lineHeight: "1" }}>Qty</label>
                     <input
                         type="number"
                         min="1"
                         value={quantity}
                         onChange={(e) => setQuantity(e.target.value)}
-                        style={{ width: "30px", fontSize: "9px", padding: "1px" }}
-                        placeholder="Qty"
+                        style={{ width: "25px", fontSize: "18px", minWidth: "35px", padding: "1px" }}
                     />
-                    <QuantityButtons setValue={setQuantity} value={quantity} increment={1} />
+                </div>
+                <QuantityButtons setValue={setQuantity} increment={1} />
 
-                    <select value={orderType} onChange={(e) => setOrderType(e.target.value)} style={{ fontSize: "9px", padding: "1px" }}>
-                        <option value="LIMIT">LMT</option>
-                        <option value="MARKET">MKT</option>
+                {/* Order type selector */}
+
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    <label style={{ fontSize: "17px", color: "#666", lineHeight: "1" }}>Price</label>
+                    <select
+                        value={orderType}
+                        onChange={(e) => setOrderType(e.target.value)}
+                        style={{
+                            fontSize: "18px",
+                            padding: "1px",
+                            width: "25px",
+                            marginLeft: "10px",
+                            marginRight: "10px",
+                            minWidth: "80px",
+                        }}
+                    >
+                        <option value="LIMIT">LIMIT</option>
+                        <option value="MARKET">MARKET</option>
+                        <option value="STOP_MARKET">STOP_MARKET</option>
+                        <option value="STOP_LIMIT">STOP_LIMIT</option>
                     </select>
                 </div>
 
-                {/* Limit Price with Up/Down Arrows */}
-                {orderType === "LIMIT" && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "1px" }}>
+                {/* Limit price input and buttons - only show for LIMIT orders */}
+                {/* {orderType === "LIMIT" && ( */}
+                <>
+                    {/* <label style={{ fontSize: "17px", color: "#666", lineHeight: "1" }}>Qty</label> */}
+
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                        <label style={{ fontSize: "17px", color: "#666", lineHeight: "1" }}>Price</label>
                         <input
+                            disabled={orderType === "MARKET"}
                             type="number"
                             step="0.01"
                             value={limitPrice}
                             onChange={(e) => setLimitPrice(e.target.value)}
-                            style={{ width: "40px", fontSize: "9px", padding: "1px" }}
+                            style={{ width: "75px", fontSize: "18px", minWidth: "55px", padding: "1px" }}
+                            placeholder="$"
                         />
-                        <QuantityButtons setValue={setLimitPrice} value={limitPrice} increment={0.01} />
                     </div>
-                )}
+                    <QuantityButtons setValue={setLimitPrice} increment={0.01} />
+                </>
+                {/* )} */}
+            </div>
+
+            {/* Break Even Info */}
+            <div style={{ fontSize: "8px", color: "#666" }}>
+                <Lvl2Text>
+                    {/* BE {(type === "PUT" ? option.last : type) || "-"} */}
+                    BE {(type === "PUT" ? option.strikePrice - option?.last : option?.strikePrice + option?.last)?.toFixed(2) || "-"}
+                </Lvl2Text>
             </div>
         </div>
     );
 };
 
+// Styled price display component
+const PriceDisplay = ({ onClick = () => {}, children, type = "neutral", clickable = false }) => {
+    const baseStyle = {
+        display: "inline-block",
+        padding: "2px 6px",
+        margin: "1px 0",
+        borderRadius: "3px",
+        border: "1px solid #ddd",
+        backgroundColor: "#ffffff",
+        fontSize: "18px",
+        fontWeight: "500",
+        minWidth: "35px",
+        textAlign: "center",
+        //gold boxshadow
+        boxShadow: "0 5px 5px rgba(0, 0, 0, 0.9), 0 0 0 1px #ffcc00",
+        fontWeight: "bold",
+        // boxShadow: "0 1px 2px rgba(0, 0, 0, 0.1)",
+        transition: "all 0.15s ease",
+    };
+
+    const typeStyles = {
+        ask: {
+            borderColor: "#ff9999",
+            color: "#cc0000",
+        },
+        bid: {
+            borderColor: "#99cc99",
+            color: "#006600",
+        },
+        neutral: {
+            borderColor: "#cccccc",
+            color: "#333333",
+        },
+    };
+
+    const hoverStyle = clickable
+        ? {
+              transform: "translateY(-1px)",
+              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.15)",
+              borderColor: type === "ask" ? "#ff6666" : type === "bid" ? "#66bb66" : "#999999",
+          }
+        : {};
+
+    return (
+        <div
+            style={{
+                ...baseStyle,
+                ...typeStyles[type],
+                ...(clickable ? { cursor: "pointer" } : {}),
+            }}
+            onClick={() => {
+                // alert("clicked");
+                onClick(5);
+            }}
+            onMouseEnter={(e) => {
+                if (clickable) {
+                    Object.assign(e.target.style, hoverStyle);
+                }
+            }}
+            onMouseLeave={(e) => {
+                if (clickable) {
+                    Object.assign(e.target.style, {
+                        transform: "translateY(0)",
+                        boxShadow: "0 1px 2px rgba(0, 0, 0, 0.1)",
+                        borderColor: typeStyles[type].borderColor,
+                    });
+                }
+            }}
+        >
+            {children}
+        </div>
+    );
+};
 export default function TableRowEl({
     putOption,
     strike,
@@ -295,9 +423,12 @@ export default function TableRowEl({
                 <PutCell>{putOption ? formatVolume(putOption.totalVolume) : "-"}</PutCell>
 
                 {/* PUT ASK CELL with SELL button */}
-                <PutCell onClick={() => setPutLimitPrice(putOption?.ask)} style={{ cursor: "pointer" }}>
-                    <div>{putOption ? formatPrice(putOption.ask) : "-"}</div>
-                    {putLvl2?.askSideLevels?.[0] && <Lvl2Text>@{putLvl2.askSideLevels[0].size}</Lvl2Text>}
+                <PutCell style={{ cursor: "pointer" }}>
+                    {/* <div>{putOption ? formatPrice(putOption.ask) : "-"}</div> */}
+                    <PriceDisplay onClick={() => setPutLimitPrice(putOption?.ask)} type="ask" clickable={true}>
+                        {callOption ? formatPrice(putOption?.ask) : "-"}
+                    </PriceDisplay>
+                    <Lvl2Text>@{putLvl2?.askSideLevels?.[0].size}</Lvl2Text>
                     {putOption && (
                         <SellButton
                             onOrder={handleOrder}
@@ -311,7 +442,7 @@ export default function TableRowEl({
                 </PutCell>
 
                 {/* PUT LAST PRICE CELL with Trading Controls */}
-                <PutCell style={{ minWidth: "80px", padding: "4px" }}>
+                <PutCell style={{ minWidth: "100px", padding: "2px" }}>
                     <MiddleCellControls
                         option={putOption}
                         type="PUT"
@@ -324,14 +455,16 @@ export default function TableRowEl({
                         limitPrice={putLimitPrice}
                         setLimitPrice={setPutLimitPrice}
                     />
-                    <Lvl2Text>BE {putBreakEven.toFixed(2)}</Lvl2Text>
                     <Lvl2Text>BE% {putBreakEvenPercent.toFixed(2)}</Lvl2Text>
                 </PutCell>
 
                 {/* PUT BID CELL with BUY button */}
-                <PutCell onClick={() => setPutLimitPrice(putOption?.bid)} style={{ cursor: "pointer" }}>
-                    <div>{putOption ? formatPrice(putOption.bid) : "-"}</div>
-                    {putLvl2?.bidSideLevels?.[0] && <Lvl2Text>@{putLvl2.bidSideLevels[0].size}</Lvl2Text>}
+                <PutCell style={{ cursor: "pointer" }}>
+                    {/* <div>{putOption ? formatPrice(putOption.bid) : "-"}</div> */}
+                    <PriceDisplay onClick={() => setPutLimitPrice(putOption?.bid)} type="bid" clickable={true}>
+                        {callOption ? formatPrice(putOption?.bid) : "-"}
+                    </PriceDisplay>
+                    <Lvl2Text>@{putLvl2?.bidSideLevels?.[0].size}</Lvl2Text>
                     {putOption && (
                         <BuyButton
                             onOrder={handleOrder}
@@ -351,9 +484,12 @@ export default function TableRowEl({
                 </StrikeCellCenter>
 
                 {/* CALL BID CELL with BUY button */}
-                <CallCell onClick={() => setCallLimitPrice(callOption?.bid)} style={{ cursor: "pointer" }}>
-                    <div>{callOption ? formatPrice(callOption.bid) : "-"}</div>
-                    {callLvl2?.bidSideLevels?.[0] && <Lvl2Text>@{callLvl2.bidSideLevels[0].size}</Lvl2Text>}
+                <CallCell style={{ cursor: "pointer" }}>
+                    {/* <div>{callOption ? formatPrice(callOption.bid) : "-"}</div> */}
+                    <PriceDisplay onClick={() => setCallLimitPrice(callOption?.bid)} type="bid" clickable={true}>
+                        {callOption ? formatPrice(callOption?.bid) : "-"}
+                    </PriceDisplay>
+                    <Lvl2Text>@{callLvl2?.bidSideLevels?.[0].size}</Lvl2Text>
                     {callOption && (
                         <BuyButton
                             onOrder={handleOrder}
@@ -367,7 +503,7 @@ export default function TableRowEl({
                 </CallCell>
 
                 {/* CALL LAST PRICE CELL with Trading Controls */}
-                <CallCell style={{ minWidth: "80px", padding: "4px" }}>
+                <CallCell style={{ minWidth: "100px", padding: "2px" }}>
                     <MiddleCellControls
                         option={callOption}
                         type="CALL"
@@ -380,14 +516,16 @@ export default function TableRowEl({
                         limitPrice={callLimitPrice}
                         setLimitPrice={setCallLimitPrice}
                     />
-                    <Lvl2Text>BE {callBreakEven.toFixed(2)}</Lvl2Text>
                     <Lvl2Text>BE% {callBreakEvenPercent.toFixed(2)}</Lvl2Text>
                 </CallCell>
 
                 {/* CALL ASK CELL with SELL button */}
-                <CallCell onClick={() => setCallLimitPrice(callOption?.ask)} style={{ cursor: "pointer" }}>
-                    <div>{callOption ? formatPrice(callOption.ask) : "-"}</div>
-                    {callLvl2?.askSideLevels?.[0] && <Lvl2Text>@{callLvl2.askSideLevels[0].size}</Lvl2Text>}
+                <CallCell style={{ cursor: "pointer" }}>
+                    {/* <div>{callOption ? formatPrice(callOption.ask) : "-"}</div> */}
+                    <PriceDisplay onClick={() => setCallLimitPrice(callOption?.ask)} type="ask" clickable={true}>
+                        {callOption ? formatPrice(callOption?.ask) : "-"}
+                    </PriceDisplay>
+                    <Lvl2Text>@{callLvl2?.askSideLevels?.[0].size}</Lvl2Text>
                     {callOption && (
                         <SellButton
                             onOrder={handleOrder}

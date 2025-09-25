@@ -35,8 +35,8 @@ const SpyChart = (props) => {
     const [newSpyMinuteBar, setNewSpyMinuteBar] = useState(null);
 
     const [indicators, setIndicators] = useState([
-        { id: "monteCarlo", name: "Monte Carlo", enabled: true, drawFunctionKey: "drawHistogramHeatmap", instanceRef: null },
-        { id: "strikes", name: "Strike Lines", enabled: true, drawFunctionKey: "drawAllStrikeLines", instanceRef: null },
+        { id: "monteCarlo", name: "Monte Carlo", enabled: false, drawFunctionKey: "drawHistogramHeatmap", instanceRef: null },
+        { id: "strikes", name: "Strike Lines", enabled: false, drawFunctionKey: "drawAllStrikeLines", instanceRef: null },
     ]);
 
     const toggleIndicator = (id) => {

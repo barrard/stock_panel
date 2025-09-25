@@ -139,7 +139,7 @@ const PixiChartV2 = (props) => {
             symbol: symbol,
             // exchange: getExchangeFromSymbol(symbol),
         });
-        console.log(liveData);
+        // console.log(liveData);
         liveData.forEach((d) => {
             d.datetime = d.datetime * 1000;
             if (d.volume.low) {
@@ -178,7 +178,7 @@ const PixiChartV2 = (props) => {
         const liveBarUpdate = `1s-${symbol}-LiveBarUpdate`;
         Socket.on(liveBarUpdate, (tick) => {
             //update last ohlcBar
-            console.log("tick", tick);
+            // console.log("tick", tick);
             updateBar(tick);
         });
 

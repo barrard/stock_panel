@@ -15,7 +15,7 @@ import { login_success } from "../redux/actions/user_actions.js";
 const API_SERVER = process.env.REACT_APP_STOCK_DATA_URL;
 const LOCAL_SERVER = process.env.REACT_APP_LOCAL_DATA;
 const REACT_APP_API_SERVER = process.env.REACT_APP_API_SERVER;
-export default {
+const API = {
     getFundamentals,
     getTickers,
     // getIndicatorValues,
@@ -79,6 +79,8 @@ export default {
     fetchOptionContractData,
     getSchwabAccountDetails,
 };
+
+export default API;
 
 async function getSchwabAccountDetails() {
     return await GET(`/API/account-details`, { withCreds: true });
