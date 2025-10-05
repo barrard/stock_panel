@@ -53,7 +53,7 @@ export default function GptChart({ Socket }) {
     );
 
     const backTestChartData = {
-        height: 800,
+        height: 400,
         width: 1500,
         data,
         Socket,

@@ -64,6 +64,7 @@ export default function GenericPixiChart({
     const [touch, setTouch] = useState(false);
     const [zoomGesture, setZoomGesture] = useState(false);
     const [openTradeWindow, setOpenTradeWindow] = useState(false);
+    const [showResetButton, setShowResetButton] = useState(false);
 
     const clearLongPress = () => {
         clearInterval(longPressTimer);
@@ -152,6 +153,9 @@ export default function GenericPixiChart({
             tickSize: tickSizeRef.current,
             lowerIndicators,
         });
+
+        // Set up callback for manual scale changes
+        pixiDataRef.current.onManualScaleChange = setShowResetButton;
         // setPixiData(_pixiData);
 
         let lastWidth = width;
@@ -310,72 +314,100 @@ export default function GenericPixiChart({
         );
     }
 
+    const handleResetScale = () => {
+        if (pixiDataRef.current && pixiDataRef.current.yAxis) {
+            pixiDataRef.current.yAxis.resetScale();
+        }
+    };
+
     return (
-        <div
-            // className="col-6"
-            ref={PixiChartRef}
-            // style={{ border: "2px solid red" }}
-            // onContextMenu={(e) => {
-            //     e.preventDefault();
-            //     console.log(`onContextMenu ${openTradeWindow}`);
-            //     setOpenTradeWindow((v) => !v);
-            // }}
-            onMouseEnter={(e) => {
-                // console.log("onMouseEnter");
-                setMouseEnter(true);
-            }}
-            onTouchMove={(e) => {
-                // debugger;
-                // console.log("onTouchMove");
-                setTouchMoveEvent(e);
-                checkGesture(e);
-            }}
-            onTouchStart={(e) => {
-                checkGesture(e);
-                setTouch(true);
-                setMouseEnter(false);
-                pixiDataRef.current.touches++;
+        <div style={{ position: "relative", width: "100%" }}>
+            {showResetButton && (
+                <button
+                    onClick={handleResetScale}
+                    style={{
+                        position: "absolute",
+                        top: "10px",
+                        right: "10px",
+                        zIndex: 1000,
+                        padding: "5px 10px",
+                        background: "#333",
+                        color: "white",
+                        border: "1px solid #666",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        fontSize: "12px",
+                    }}
+                >
+                    Reset Scale
+                </button>
+            )}
+            <div
+                // className="col-6"
+                ref={PixiChartRef}
+                // style={{ border: "2px solid red" }}
+                // onContextMenu={(e) => {
+                //     e.preventDefault();
+                //     console.log(`onContextMenu ${openTradeWindow}`);
+                //     setOpenTradeWindow((v) => !v);
+                // }}
+                onMouseEnter={(e) => {
+                    // console.log("onMouseEnter");
+                    setMouseEnter(true);
+                }}
+                onTouchMove={(e) => {
+                    // debugger;
+                    // console.log("onTouchMove");
+                    setTouchMoveEvent(e);
+                    checkGesture(e);
+                }}
+                onTouchStart={(e) => {
+                    checkGesture(e);
+                    setTouch(true);
+                    setMouseEnter(false);
+                    pixiDataRef.current.touches++;
 
-                if (!longPressTimer) {
-                    const _longPressTimer = setTimeout(() => {
-                        console.log("long press");
-                        setLongPress(true);
-                        setMouseEnter(true);
-                    }, 1000);
+                    if (!longPressTimer) {
+                        const _longPressTimer = setTimeout(() => {
+                            console.log("long press");
+                            setLongPress(true);
+                            setMouseEnter(true);
+                        }, 1000);
 
-                    setLongPressTimer(_longPressTimer);
-                }
-            }}
-            onTouchEnd={() => {
-                setTouch(false);
-                clearGesture();
-                setTouchMoveEvent(false);
-                setTouch1(false);
-                setTouch2(false);
-                setZoomGesture(false);
-                clearLongPress();
-                pixiDataRef.current.touches--;
-            }}
-            onMouseLeave={() => {
-                // console.log("onMouseLeave");
-                clearLongPress();
-                setMouseEnter(false);
-                setLongPress(false);
-                setOpenTradeWindow(false);
-            }}
-            onPointerEnter={() => setMouseEnter(true)}
-            onPointerLeave={() => setMouseEnter(false)}
-            onWheel={(e) => {
-                if (e.deltaY > 0) {
-                    // console.log("The user scrolled up");
-                    pixiDataRef.current.zoomOut("scroll");
-                } else {
-                    // console.log("The user scrolled down");
-                    pixiDataRef.current.zoomIn("scroll");
-                }
-            }}
-            {...rest}
-            style={{ width: "100%", touchAction: "none", padding: 0, margin: 0 }}
-        />
+                        setLongPressTimer(_longPressTimer);
+                    }
+                }}
+                onTouchEnd={() => {
+                    setTouch(false);
+                    clearGesture();
+                    setTouchMoveEvent(false);
+                    setTouch1(false);
+                    setTouch2(false);
+                    setZoomGesture(false);
+                    clearLongPress();
+                    pixiDataRef.current.touches--;
+                }}
+                onMouseLeave={() => {
+                    // console.log("onMouseLeave");
+                    clearLongPress();
+                    setMouseEnter(false);
+                    setLongPress(false);
+                    setOpenTradeWindow(false);
+                }}
+                onPointerEnter={() => setMouseEnter(true)}
+                onPointerLeave={() => setMouseEnter(false)}
+                onWheel={(e) => {
+                    if (e.deltaY > 0) {
+                        // console.log("The user scrolled up");
+                        pixiDataRef.current.zoomOut("scroll");
+                    } else {
+                        // console.log("The user scrolled down");
+                        pixiDataRef.current.zoomIn("scroll");
+                    }
+                }}
+                {...rest}
+                style={{ width: "100%", touchAction: "none", padding: 0, margin: 0 }}
+            />
+        </div>
     );
 }

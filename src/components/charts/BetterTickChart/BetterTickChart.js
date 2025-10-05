@@ -62,7 +62,10 @@ class ChartComponent extends React.Component {
             error: null,
             tempLastTrade: [],
             join: parseInt(params.join) || 1, // Add join with default value of 1
+            dataVersion: 0, // Add version counter for forcing re-renders
         };
+        this.dataRef = React.createRef();
+        this.dataRef.current = [];
     }
 
     componentDidMount() {
@@ -90,6 +93,7 @@ class ChartComponent extends React.Component {
     loadChartData = async () => {
         try {
             const data = await loadData({ symbol: this.state.symbol, join: this.state.join });
+            this.dataRef.current = data;
             this.setState({ data, isLoading: false });
         } catch (error) {
             this.setState({ error: error.message, isLoading: false });
@@ -102,16 +106,17 @@ class ChartComponent extends React.Component {
             if (d.symbol !== this.state.symbol) return; // Add symbol check
 
             d.date = new Date(d.datetime);
-            const data = this.state.data;
+            const data = this.dataRef.current;
             const lastData = data.slice(-1)[0];
 
-            if (lastData.partial) {
+            if (lastData && lastData.partial) {
                 data[data.length - 1] = d;
             } else {
                 data.push(d);
             }
 
-            this.setState({ data: [...data] });
+            // Update state data reference to trigger render
+            this.setState({ data: this.dataRef.current });
         });
 
         this.props.Socket.on("lastTrade", (d) => {
@@ -190,7 +195,8 @@ class ChartComponent extends React.Component {
     };
 
     render() {
-        const { data, isLoading, error, symbol, join } = this.state;
+        const { isLoading, error, symbol, join } = this.state;
+        const data = this.dataRef.current;
 
         return (
             <ChartPageContainer>
@@ -207,7 +213,7 @@ class ChartComponent extends React.Component {
                     <NoDataContainer>No data available</NoDataContainer>
                 ) : (
                     <ChartContainer>
-                        <Chart type="hybrid" data={data} symbol={symbol} />
+                        <Chart key={symbol} type="hybrid" data={data} symbol={symbol} />
                     </ChartContainer>
                 )}
             </ChartPageContainer>

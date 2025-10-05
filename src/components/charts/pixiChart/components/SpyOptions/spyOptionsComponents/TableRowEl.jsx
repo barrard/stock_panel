@@ -428,7 +428,7 @@ export default function TableRowEl({
                     <PriceDisplay onClick={() => setPutLimitPrice(putOption?.ask)} type="ask" clickable={true}>
                         {callOption ? formatPrice(putOption?.ask) : "-"}
                     </PriceDisplay>
-                    <Lvl2Text>@{putLvl2?.askSideLevels?.[0].size}</Lvl2Text>
+                    <Lvl2Text>@{putLvl2?.askSideLevels?.[0]?.size}</Lvl2Text>
                     {putOption && (
                         <SellButton
                             onOrder={handleOrder}
@@ -464,7 +464,7 @@ export default function TableRowEl({
                     <PriceDisplay onClick={() => setPutLimitPrice(putOption?.bid)} type="bid" clickable={true}>
                         {callOption ? formatPrice(putOption?.bid) : "-"}
                     </PriceDisplay>
-                    <Lvl2Text>@{putLvl2?.bidSideLevels?.[0].size}</Lvl2Text>
+                    <Lvl2Text>@{putLvl2?.bidSideLevels?.[0]?.size}</Lvl2Text>
                     {putOption && (
                         <BuyButton
                             onOrder={handleOrder}
@@ -489,7 +489,7 @@ export default function TableRowEl({
                     <PriceDisplay onClick={() => setCallLimitPrice(callOption?.bid)} type="bid" clickable={true}>
                         {callOption ? formatPrice(callOption?.bid) : "-"}
                     </PriceDisplay>
-                    <Lvl2Text>@{callLvl2?.bidSideLevels?.[0].size}</Lvl2Text>
+                    <Lvl2Text>@{callLvl2?.bidSideLevels?.[0]?.size}</Lvl2Text>
                     {callOption && (
                         <BuyButton
                             onOrder={handleOrder}
@@ -525,7 +525,7 @@ export default function TableRowEl({
                     <PriceDisplay onClick={() => setCallLimitPrice(callOption?.ask)} type="ask" clickable={true}>
                         {callOption ? formatPrice(callOption?.ask) : "-"}
                     </PriceDisplay>
-                    <Lvl2Text>@{callLvl2?.askSideLevels?.[0].size}</Lvl2Text>
+                    <Lvl2Text>@{callLvl2?.askSideLevels?.[0]?.size}</Lvl2Text>
                     {callOption && (
                         <SellButton
                             onOrder={handleOrder}

@@ -46,7 +46,73 @@ export default class GenericDataHandler {
         this.slicedHighestIdx = null;
         this.slicedLowestIdx = null;
 
+        // Manual scale override flags
+        this.manualYScale = false;
+        this.onManualScaleChange = null; // Callback for React state updates
+
+        // Vertical panning state
+        this.verticalPanning = false;
+        this.lastPanY = null;
+        this.panSensitivity = 0.002;
+        this.prevMouseY = null;
+
+        // Horizontal panning state (when manualYScale is active)
+        this.horizontalPanOffset = 0; // Number of bars to offset from the right
+        this.maxHorizontalPanOffset = 50000000000; // Maximum bars that can be panned
+        this.fakeBars = []; // Generated fake bars for padding
+
         this.init();
+    }
+
+    setIsVerticalZooming(value) {
+        this.isVerticalZooming = value;
+    }
+
+    setManualYScale(value) {
+        // console.log(`setManualYScale called with value: ${value}`);
+        this.manualYScale = value;
+
+        // Reset horizontal pan offset when switching to automatic mode
+        if (!value) {
+            this.horizontalPanOffset = 0;
+            this.fakeBars = [];
+        }
+
+        if (this.onManualScaleChange) {
+            this.onManualScaleChange(value);
+        }
+        console.log(`manualYScale is now: ${this.manualYScale}`);
+    }
+
+    generateFakeBars(count) {
+        if (count <= 0 || !this.ohlcDatas.length) return;
+
+        // Determine the base bar (last real bar or last fake bar)
+        const lastRealBar = this.ohlcDatas[this.ohlcDatas.length - 1];
+        const lastBar = this.fakeBars.length > 0 ? this.fakeBars[this.fakeBars.length - 1] : lastRealBar;
+        const lastPrice = lastBar.close || lastBar.high || lastBar.low || 0;
+
+        // Determine time increment based on existing data
+        let timeIncrement = 60000; // Default 1 minute
+        if (this.ohlcDatas.length >= 2) {
+            const secondLast = this.ohlcDatas[this.ohlcDatas.length - 2];
+            timeIncrement = (lastRealBar.timestamp || lastRealBar.datetime) - (secondLast.timestamp || secondLast.datetime);
+        }
+
+        // Append new fake bars to existing array
+        for (let i = 1; i <= count; i++) {
+            const fakeBar = {
+                timestamp: (lastBar.timestamp || lastBar.datetime) + timeIncrement * i,
+                datetime: (lastBar.timestamp || lastBar.datetime) + timeIncrement * i,
+                open: lastPrice,
+                high: lastPrice,
+                low: lastPrice,
+                close: lastPrice,
+                volume: 0,
+                isFake: true, // Mark as fake for styling/rendering
+            };
+            this.fakeBars.push(fakeBar);
+        }
     }
 
     setNewBar(bar) {
@@ -260,7 +326,13 @@ export default class GenericDataHandler {
             return;
         }
 
-        this.slicedData = ohlcDatas.slice(this.sliceStart, this.sliceEnd);
+        // Create combined data array (real + fake bars)
+        const combinedData = this.fakeBars.length > 0 ? [...ohlcDatas, ...this.fakeBars] : ohlcDatas;
+
+        console.log(
+            `Slicing from ${this.sliceStart} to ${this.sliceEnd} of ${combinedData.length} bars (${ohlcDatas.length} real + ${this.fakeBars.length} fake)`
+        );
+        this.slicedData = combinedData.slice(this.sliceStart, this.sliceEnd);
         const sd = this.slicedData;
         if (sd.length === 0) return;
 
@@ -330,19 +402,23 @@ export default class GenericDataHandler {
         //DOMAIN
         this.xScale.domain([0, sd.length]);
 
-        let priceScalePadding = 2;
+        // Only update Y scale domain if not manually overridden
+        if (!this.manualYScale) {
+            let priceScalePadding = 2;
 
-        if (lowest === null || highest === null || lowest === Infinity || highest === -Infinity) {
-            lowest = 0;
-            highest = 1;
+            if (lowest === null || highest === null || lowest === Infinity || highest === -Infinity) {
+                lowest = 0;
+                highest = 1;
+            }
+
+            const paddedLowest = roundTick(lowest - this.tickSize * priceScalePadding, this.tickSize);
+            const paddedHighest = roundTick(highest + this.tickSize * priceScalePadding, this.tickSize);
+            this.priceScale.domain([paddedLowest, paddedHighest]);
+
+            //find the price ticks
+            this.yAxis.render({ highest: paddedHighest, lowest: paddedLowest });
         }
 
-        const paddedLowest = roundTick(lowest - this.tickSize * priceScalePadding, this.tickSize);
-        const paddedHighest = roundTick(highest + this.tickSize * priceScalePadding, this.tickSize);
-        this.priceScale.domain([paddedLowest, paddedHighest]);
-
-        //find the price ticks
-        this.yAxis.render({ highest: paddedHighest, lowest: paddedLowest });
         this.xAxis.render({
             values: this.timestamps,
         });
@@ -575,19 +651,45 @@ export default class GenericDataHandler {
             if (this.openTradeWindow) {
                 this.showTradeWindow(this.openTradeWindow);
             }
-            if (this.drag && !this.gesture) {
-                // this.hideCrosshair();
+            if (this.drag && !this.gesture && !this.isVerticalZooming) {
+                // console.log(`Drag detected in crosshair onMouseMove: drag=${this.drag}, manualYScale=${this.manualYScale}`);
+
+                // Handle both horizontal and vertical dragging
+                let horizontalDrag = false;
+
+                // Handle horizontal (timeline) dragging
                 if (!this.prevMouseX) {
                     this.prevMouseX = this.mouseX;
-                    return;
                 } else {
                     this.deltaDrag = this.mouseX - this.prevMouseX;
-                    if (Math.abs(this.deltaDrag) < 5 || Math.abs(this.deltaDrag) < this.candleWidth) return;
+                    if (Math.abs(this.deltaDrag) >= 5 && Math.abs(this.deltaDrag) >= this.candleWidth) {
+                        horizontalDrag = true;
+                    }
+                }
+
+                // Handle vertical (price) dragging when Y scale is manual
+                if (this.manualYScale && this.prevMouseY !== null) {
+                    const deltaY = this.mouseY - this.prevMouseY;
+                    if (Math.abs(deltaY) >= 2) {
+                        this.handleVerticalPan(deltaY);
+                        this.prevMouseY = this.mouseY;
+                    }
+                }
+
+                // Execute horizontal drag if detected
+                if (horizontalDrag) {
+                    // Manage fake bars BEFORE panning when in manual Y scale mode
+                    if (this.manualYScale) {
+                        this.manageFakeBars(this.deltaDrag);
+                    }
+
+                    // Always do normal panning
                     if (this.deltaDrag > 0) {
                         this.dragRight();
                     } else if (this.deltaDrag < 0) {
                         this.dragLeft();
                     }
+
                     this.prevMouseX = this.mouseX;
                 }
             }
@@ -821,11 +923,15 @@ export default class GenericDataHandler {
             //     console.log(e);
             // })
             .on("pointerdown", (e) => {
-                // console.log("pointerdown");
+                if (this.pointerdown) return;
+                this.pointerdown = true;
+                console.log("pointerdown event fired");
                 this.onMouseMove(e);
                 this.onDragStart();
             })
             .on("pointerup", (e) => {
+                this.pointerdown = false;
+
                 this.onDragEnd();
                 // console.log(e.button);
                 if (this.openTradeWindow && e.button !== 2) {
@@ -837,7 +943,12 @@ export default class GenericDataHandler {
             .on("pointerupoutside", () => this.onDragEnd())
 
             .on("pointermove", (e) => {
-                this.onMouseMove(e);
+                // console.log("pointermove event fired, calling onMouseMove");
+                try {
+                    this.onMouseMove(e);
+                } catch (error) {
+                    console.error("Error in onMouseMove:", error);
+                }
             });
 
         //yAxis
@@ -857,6 +968,15 @@ export default class GenericDataHandler {
         this.hideCrosshair();
 
         this.drag = this.mouseX;
+        console.log(`onDragStart: Set drag to ${this.drag}`);
+
+        // Always enable vertical panning when Y scale is manual
+        if (this.manualYScale) {
+            this.prevMouseY = this.mouseY;
+            console.log(`Drag start: Set prevMouseY to ${this.prevMouseY} (manualYScale=${this.manualYScale})`);
+        } else {
+            console.log(`Drag start: manualYScale is false, not setting prevMouseY`);
+        }
     }
 
     onDragEnd() {
@@ -865,6 +985,9 @@ export default class GenericDataHandler {
         this.showCrosshair();
         this.drag = false;
         this.prevMouseX = false;
+
+        // Reset vertical panning state
+        this.prevMouseY = null;
     }
 
     setMouse(e) {
@@ -898,8 +1021,21 @@ export default class GenericDataHandler {
     }
 
     onMouseMove(e) {
-        this.setMouse(e);
-        if (!this.crosshair && !this.drag) return;
+        console.log("onMouseMove: ENTRY");
+        try {
+            this.setMouse(e);
+            console.log("onMouseMove: setMouse completed");
+        } catch (error) {
+            console.error("Error in setMouse:", error);
+            return;
+        }
+        console.log(
+            `onMouseMove: crosshair=${this.crosshair}, drag=${this.drag}, gesture=${this.gesture}, mouseX=${this.mouseX}, mouseY=${this.mouseY}`
+        );
+        if (!this.crosshair && !this.drag) {
+            console.log("onMouseMove: returning early - no crosshair and no drag");
+            return;
+        }
 
         // const price = this.priceScale.invert(this.mouseY);
 
@@ -909,18 +1045,43 @@ export default class GenericDataHandler {
             this.showTradeWindow(this.openTradeWindow);
         }
         if (this.drag && !this.gesture) {
-            // this.hideCrosshair();
+            console.log(`Drag detected: drag=${this.drag}, gesture=${this.gesture}, mouseX=${this.mouseX}, mouseY=${this.mouseY}`);
+            // Handle both horizontal and vertical dragging
+            let horizontalDrag = false;
+
+            // Handle horizontal (timeline) dragging
             if (!this.prevMouseX) {
                 this.prevMouseX = this.mouseX;
-                return;
             } else {
                 this.deltaDrag = this.mouseX - this.prevMouseX;
-                if (Math.abs(this.deltaDrag) < 5 || Math.abs(this.deltaDrag) < this.candleWidth) return;
+                if (Math.abs(this.deltaDrag) >= 5 && Math.abs(this.deltaDrag) >= this.candleWidth) {
+                    horizontalDrag = true;
+                }
+            }
+
+            // Handle vertical (price) dragging when Y scale is manual
+            if (this.manualYScale && this.prevMouseY !== null) {
+                const deltaY = this.mouseY - this.prevMouseY;
+                if (Math.abs(deltaY) >= 2) {
+                    this.handleVerticalPan(deltaY);
+                    this.prevMouseY = this.mouseY;
+                }
+            }
+
+            // Execute horizontal drag if detected
+            if (horizontalDrag) {
+                // Manage fake bars BEFORE panning when in manual Y scale mode
+                if (this.manualYScale) {
+                    this.manageFakeBars(this.deltaDrag);
+                }
+
+                // Always do normal panning
                 if (this.deltaDrag > 0) {
                     this.dragRight();
                 } else if (this.deltaDrag < 0) {
                     this.dragLeft();
                 }
+
                 this.prevMouseX = this.mouseX;
             }
         }
@@ -930,12 +1091,20 @@ export default class GenericDataHandler {
         if (this.longPress) return;
         //try to sub from left, and add to right
         const candleCount = Math.ceil((this.deltaDrag * -1) / this.candleWidth);
-        // console.log(`Move ${candleCount} candles`);
+        const combinedLength = this.ohlcDatas.length + this.fakeBars.length;
+
+        const oldSliceEnd = this.sliceEnd;
         this.sliceStart = this.sliceStart + candleCount;
-        if (this.sliceEnd == this.ohlcDatas.length) {
-        } else {
-            this.sliceEnd = this.sliceEnd + candleCount;
+        // Always try to extend sliceEnd (it will be capped by draw/setupPriceScales if needed)
+        this.sliceEnd = this.sliceEnd + candleCount;
+
+        // Cap at combined length
+        if (this.sliceEnd > combinedLength) {
+            this.sliceEnd = combinedLength;
         }
+
+        console.log(`dragLeft: sliceEnd changed from ${oldSliceEnd} to ${this.sliceEnd}, combinedLength=${combinedLength}`);
+
         this.draw();
     }
 
@@ -968,27 +1137,97 @@ export default class GenericDataHandler {
     }
     zoomOut(delta) {
         const { takeFromLeft, takeFromRight, amountToZoom } = this.calcZoom(delta);
+        const combinedLength = this.ohlcDatas.length + this.fakeBars.length;
 
         this.sliceStart = this.sliceStart - Math.ceil(takeFromLeft * amountToZoom);
         this.sliceEnd = this.sliceEnd + Math.ceil(takeFromRight * amountToZoom);
 
         if (this.sliceStart < 0) this.sliceStart = 0;
-        if (this.sliceEnd > this.ohlcDatas.length) this.sliceEnd = this.ohlcDatas.length;
+        if (this.sliceEnd > combinedLength) this.sliceEnd = combinedLength;
+
         this.draw();
+    }
+
+    handleVerticalPan(deltaY) {
+        // Get current domain
+        const currentDomain = this.priceScale.domain();
+        const [lowest, highest] = currentDomain;
+        const range = highest - lowest;
+
+        // console.log(`handleVerticalPan: deltaY=${deltaY}, current domain=[${lowest}, ${highest}], range=${range}`);
+
+        // Calculate adjustment based on deltaY and sensitivity
+        const adjustment = deltaY * this.panSensitivity * range;
+
+        // Adjust the domain by moving both bounds (panning the view)
+        const newLowest = lowest + adjustment;
+        const newHighest = highest + adjustment;
+
+        // console.log(`handleVerticalPan: adjustment=${adjustment}, new domain=[${newLowest}, ${newHighest}]`);
+
+        // Update the price scale domain directly
+        this.priceScale.domain([newLowest, newHighest]);
+
+        // Re-render the axis with new domain
+        this.yAxis.render({ highest: newHighest, lowest: newLowest });
+
+        // Update current price label if it exists
+        if (this.lastPrice) {
+            this.updateCurrentPriceLabel(this.lastPrice);
+        }
+        this.draw();
+    }
+
+    manageFakeBars(deltaDrag) {
+        const candleCount = Math.ceil(Math.abs(deltaDrag) / this.candleWidth);
+        const combinedLength = this.ohlcDatas.length + this.fakeBars.length;
+
+        console.log(
+            `Fake bar check: deltaDrag=${deltaDrag}, sliceEnd=${this.sliceEnd}, combinedLength=${combinedLength}, sliceEnd>=combined: ${
+                this.sliceEnd >= combinedLength
+            }`
+        );
+
+        if (deltaDrag < 0) {
+            // Dragging left: always try to add fake bars when sliceEnd would hit or exceed the edge
+            // Check if dragLeft will try to extend sliceEnd beyond current combined length
+            if (this.sliceEnd >= combinedLength) {
+                // At the right edge: add fake bars so dragLeft can extend sliceEnd
+                this.generateFakeBars(candleCount);
+                console.log(`Added ${candleCount} fake bars at edge. Total: ${this.fakeBars.length}`);
+            } else {
+                console.log(`Not at edge, sliceEnd=${this.sliceEnd} < combinedLength=${combinedLength}`);
+            }
+        } else {
+            // Dragging right: remove fake bars if they exist
+            if (this.fakeBars.length > 0) {
+                const barsToRemove = Math.min(candleCount, this.fakeBars.length);
+                this.fakeBars.splice(-barsToRemove, barsToRemove); // Remove from end
+                console.log(`Removed ${barsToRemove} fake bars. Remaining: ${this.fakeBars.length}`);
+            }
+        }
+
+        // Note: No draw() call here - dragLeft/dragRight already call draw()
     }
 
     calcZoom(zoomType) {
         // zoomType = "scroll";
         this.fixSliceValues();
 
+        const combinedLength = this.ohlcDatas.length + this.fakeBars.length;
         const zoomedLeft = this.sliceStart;
-        const zoomedRight = this.ohlcDatas.length - this.sliceEnd;
+        const zoomedRight = combinedLength - this.sliceEnd;
         const totalZoomedAmount = zoomedLeft + zoomedRight;
+
+        // Calculate visible window size
+        const visibleWindowSize = this.sliceEnd - this.sliceStart;
+
         let amountToZoom, centered;
 
         if (zoomType === "scroll") {
             const zoomPerc = 0.1;
-            amountToZoom = (this.ohlcDatas.length - totalZoomedAmount) * zoomPerc;
+            // Use visible window size for zoom amount calculation
+            amountToZoom = visibleWindowSize * zoomPerc;
             //determine how "centered" we are
             centered = this.mouseX / this.width;
 
@@ -1046,7 +1285,13 @@ export default class GenericDataHandler {
             const low = this.priceScale(candle.low);
 
             const isUp = open >= close;
-            this.candleStickGfx.beginFill(isUp ? 0x00ff00 : 0xff0000);
+
+            // Use different styling for fake bars
+            if (candle.isFake) {
+                this.candleStickGfx.beginFill(0x333333, 0.3); // Dark gray with transparency
+            } else {
+                this.candleStickGfx.beginFill(isUp ? 0x00ff00 : 0xff0000);
+            }
 
             const height = Math.abs(open - close) || doubleStrokeWidth;
             const start = isUp ? close : open;
@@ -1121,6 +1366,8 @@ export default class GenericDataHandler {
     }
 
     fixSliceValues() {
+        const combinedLength = this.ohlcDatas.length + this.fakeBars.length;
+
         if (isNaN(this.sliceStart)) {
             this.sliceStart = 0;
         }
@@ -1130,8 +1377,8 @@ export default class GenericDataHandler {
         if (this.sliceStart < 0) {
             this.sliceStart = 0;
         }
-        if (this.sliceEnd > this.ohlcDatas.length) {
-            this.sliceEnd = this.ohlcDatas.length;
+        if (this.sliceEnd > combinedLength) {
+            this.sliceEnd = combinedLength;
         }
         if (this.sliceStart === 0) {
             while (this.sliceEnd <= this.sliceStart) {

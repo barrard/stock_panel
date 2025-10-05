@@ -15,6 +15,20 @@ import { last } from "react-stockcharts/lib/utils";
 import { OHLCTooltip, MovingAverageTooltip, MACDTooltip } from "react-stockcharts/lib/tooltip";
 
 class CandleStickStockScaleChartWithVolumeBarV3 extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            xExtents: null,
+        };
+    }
+
+    componentDidUpdate(prevProps) {
+        // Reset xExtents only when symbol changes
+        if (prevProps.symbol !== this.props.symbol) {
+            this.setState({ xExtents: null });
+        }
+    }
+
     render() {
         const changeCalculator = change();
 
@@ -70,10 +84,6 @@ class CandleStickStockScaleChartWithVolumeBarV3 extends React.Component {
         const xScaleProvider = discontinuousTimeScaleProvider.inputDateAccessor((d) => d.date);
         const { data, xScale, xAccessor, displayXAccessor } = xScaleProvider(initialData);
 
-        const start = xAccessor(last(data));
-        const end = xAccessor(data[Math.max(0, data.length - 100)]);
-        const xExtents = [start, end];
-
         return (
             <ChartCanvas
                 height={600}
@@ -81,12 +91,10 @@ class CandleStickStockScaleChartWithVolumeBarV3 extends React.Component {
                 width={width}
                 margin={{ left: 50, right: 50, top: 10, bottom: 30 }}
                 type={type}
-                symbol={this.props.symbol} // Use symbol from props
                 data={data}
                 xScale={xScale}
                 xAccessor={xAccessor}
                 displayXAccessor={displayXAccessor}
-                xExtents={xExtents}
             >
                 <Chart id={1} height={400} yExtents={(d) => [d.high, d.low]} padding={{ top: 10, bottom: 10 }}>
                     <YAxis axisAt="right" orient="right" ticks={5} />
