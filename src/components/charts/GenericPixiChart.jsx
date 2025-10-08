@@ -317,6 +317,7 @@ export default function GenericPixiChart({
     const handleResetScale = () => {
         if (pixiDataRef.current && pixiDataRef.current.yAxis) {
             pixiDataRef.current.yAxis.resetScale();
+            pixiDataRef.current.draw();
         }
     };
 

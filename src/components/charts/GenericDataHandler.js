@@ -329,73 +329,69 @@ export default class GenericDataHandler {
         // Create combined data array (real + fake bars)
         const combinedData = this.fakeBars.length > 0 ? [...ohlcDatas, ...this.fakeBars] : ohlcDatas;
 
-        console.log(
-            `Slicing from ${this.sliceStart} to ${this.sliceEnd} of ${combinedData.length} bars (${ohlcDatas.length} real + ${this.fakeBars.length} fake)`
-        );
         this.slicedData = combinedData.slice(this.sliceStart, this.sliceEnd);
         const sd = this.slicedData;
         if (sd.length === 0) return;
 
-        // Check if the cached min/max indices are outside the current visible slice.
-        const isCacheInvalid =
-            this.slicedHighestIdx === null ||
-            this.slicedLowestIdx === null ||
-            this.slicedHighestIdx < this.sliceStart ||
-            this.slicedHighestIdx >= this.sliceEnd ||
-            this.slicedLowestIdx < this.sliceStart ||
-            this.slicedLowestIdx >= this.sliceEnd;
-
-        let loops = 0;
-
-        if (isCacheInvalid) {
-            let lowest, highest;
-            let lowestIdx = -1,
-                highestIdx = -1;
-
-            if (this.options.chartType === "line") {
-                const lineKey = this.options.lineKey;
-                highest = -Infinity;
-                lowest = Infinity;
-                for (let i = 0; i < sd.length; i++) {
-                    const val = sd[i][lineKey];
-                    if (val > highest) {
-                        highest = val;
-                        highestIdx = i;
-                    }
-                    if (val < lowest) {
-                        lowest = val;
-                        lowestIdx = i;
-                    }
-                    loops++;
-                }
-            } else {
-                // Candlestick
-                highest = -Infinity;
-                lowest = Infinity;
-                for (let i = 0; i < sd.length; i++) {
-                    if (sd[i].high > highest) {
-                        highest = sd[i].high;
-                        highestIdx = i;
-                    }
-                    if (sd[i].low < lowest) {
-                        lowest = sd[i].low;
-                        lowestIdx = i;
-                    }
-                    loops++;
-                }
-            }
-
-            // Update cache with new values and their absolute indices
-            this.slicedHighest = highest;
-            this.slicedLowest = lowest;
-            this.slicedHighestIdx = this.sliceStart + highestIdx;
-            this.slicedLowestIdx = this.sliceStart + lowestIdx;
-            console.log(`Rescanned ${loops} bars for min/max`);
-        }
-
-        // Use the cached values for the domain
+        // Only update Y scale domain if not manually overridden
         let lowest = this.slicedLowest;
         let highest = this.slicedHighest;
+        this._scanLoops = 0;
+
+        if (!this.manualYScale) {
+            // Check if the cached min/max indices are outside the current visible slice.
+            const isCacheInvalid =
+                this.slicedHighestIdx === null ||
+                this.slicedLowestIdx === null ||
+                this.slicedHighestIdx < this.sliceStart ||
+                this.slicedHighestIdx >= this.sliceEnd ||
+                this.slicedLowestIdx < this.sliceStart ||
+                this.slicedLowestIdx >= this.sliceEnd;
+
+            if (isCacheInvalid) {
+                let lowestIdx = -1,
+                    highestIdx = -1;
+
+                if (this.options.chartType === "line") {
+                    const lineKey = this.options.lineKey;
+                    highest = -Infinity;
+                    lowest = Infinity;
+                    for (let i = 0; i < sd.length; i++) {
+                        const val = sd[i][lineKey];
+                        if (val > highest) {
+                            highest = val;
+                            highestIdx = i;
+                        }
+                        if (val < lowest) {
+                            lowest = val;
+                            lowestIdx = i;
+                        }
+                        this._scanLoops++;
+                    }
+                } else {
+                    // Candlestick
+                    highest = -Infinity;
+                    lowest = Infinity;
+                    for (let i = 0; i < sd.length; i++) {
+                        if (sd[i].high > highest) {
+                            highest = sd[i].high;
+                            highestIdx = i;
+                        }
+                        if (sd[i].low < lowest) {
+                            lowest = sd[i].low;
+                            lowestIdx = i;
+                        }
+                        this._scanLoops++;
+                    }
+                }
+
+                // Update cache with new values and their absolute indices
+                this.slicedHighest = highest;
+                this.slicedLowest = lowest;
+                this.slicedHighestIdx = this.sliceStart + highestIdx;
+                this.slicedLowestIdx = this.sliceStart + lowestIdx;
+            }
+        }
 
         this.timestamps = sd.map(({ timestamp, datetime }) => timestamp || datetime);
 
@@ -1093,7 +1089,6 @@ export default class GenericDataHandler {
         const candleCount = Math.ceil((this.deltaDrag * -1) / this.candleWidth);
         const combinedLength = this.ohlcDatas.length + this.fakeBars.length;
 
-        const oldSliceEnd = this.sliceEnd;
         this.sliceStart = this.sliceStart + candleCount;
         // Always try to extend sliceEnd (it will be capped by draw/setupPriceScales if needed)
         this.sliceEnd = this.sliceEnd + candleCount;
@@ -1102,8 +1097,6 @@ export default class GenericDataHandler {
         if (this.sliceEnd > combinedLength) {
             this.sliceEnd = combinedLength;
         }
-
-        console.log(`dragLeft: sliceEnd changed from ${oldSliceEnd} to ${this.sliceEnd}, combinedLength=${combinedLength}`);
 
         this.draw();
     }
@@ -1182,28 +1175,16 @@ export default class GenericDataHandler {
         const candleCount = Math.ceil(Math.abs(deltaDrag) / this.candleWidth);
         const combinedLength = this.ohlcDatas.length + this.fakeBars.length;
 
-        console.log(
-            `Fake bar check: deltaDrag=${deltaDrag}, sliceEnd=${this.sliceEnd}, combinedLength=${combinedLength}, sliceEnd>=combined: ${
-                this.sliceEnd >= combinedLength
-            }`
-        );
-
         if (deltaDrag < 0) {
-            // Dragging left: always try to add fake bars when sliceEnd would hit or exceed the edge
-            // Check if dragLeft will try to extend sliceEnd beyond current combined length
+            // Dragging left: check if at edge and add fake bars
             if (this.sliceEnd >= combinedLength) {
-                // At the right edge: add fake bars so dragLeft can extend sliceEnd
                 this.generateFakeBars(candleCount);
-                console.log(`Added ${candleCount} fake bars at edge. Total: ${this.fakeBars.length}`);
-            } else {
-                console.log(`Not at edge, sliceEnd=${this.sliceEnd} < combinedLength=${combinedLength}`);
             }
         } else {
             // Dragging right: remove fake bars if they exist
             if (this.fakeBars.length > 0) {
                 const barsToRemove = Math.min(candleCount, this.fakeBars.length);
-                this.fakeBars.splice(-barsToRemove, barsToRemove); // Remove from end
-                console.log(`Removed ${barsToRemove} fake bars. Remaining: ${this.fakeBars.length}`);
+                this.fakeBars.splice(-barsToRemove, barsToRemove);
             }
         }
 
@@ -1317,9 +1298,15 @@ export default class GenericDataHandler {
     }
 
     draw() {
+        const drawStart = performance.now();
+        let totalLoops = 0;
+
         this.fixSliceValues();
 
+        const setupStart = performance.now();
         this.setupPriceScales();
+        const setupEnd = performance.now();
+
         this.initLowerIndicators();
 
         // this.setupTickVolumeScales();
@@ -1363,6 +1350,20 @@ export default class GenericDataHandler {
         // if (this.isDrawPivotPoints) {
         //     this.drawPivotPoints?.draw();
         // }
+
+        // Performance logging
+        const drawEnd = performance.now();
+        const drawTime = (drawEnd - drawStart).toFixed(2);
+        const setupTime = (setupEnd - setupStart).toFixed(2);
+
+        if (this._perfLogCount === undefined) this._perfLogCount = 0;
+        this._perfLogCount++;
+
+        // Log every 30 frames (~0.5s at 60fps)
+        if (this._perfLogCount % 30 === 0) {
+            const scanInfo = this._scanLoops > 0 ? `| Scanned: ${this._scanLoops} loops` : '';
+            console.log(`[PERF] Draw: ${drawTime}ms | Setup: ${setupTime}ms | Manual Y: ${this.manualYScale} | Slice: ${this.sliceEnd - this.sliceStart} bars ${scanInfo}`);
+        }
     }
 
     fixSliceValues() {
