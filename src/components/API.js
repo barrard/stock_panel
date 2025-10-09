@@ -142,8 +142,8 @@ async function getTicks() {
     return await GET(`/API/ticks`);
 }
 
-async function getOrderFlow({ start, end, symbol = "ES" }) {
-    return await GET(`/API/getOrderFlow/${start}/${end}/${symbol}`);
+async function getOrderFlow({ start, end, symbol = "ES", compiled = false }) {
+    return await GET(`/API/getOrderFlow/${start}/${end}/${symbol}/${compiled}`);
 }
 
 async function GET(url, opts = {}) {

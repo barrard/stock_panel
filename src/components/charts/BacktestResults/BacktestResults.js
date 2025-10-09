@@ -96,6 +96,7 @@ export default function GptChart({ Socket }) {
 
         Socket.on("backtest-results", (d) => {
             setResults((r) => {
+                debugger;
                 const res = { ...r, ...d };
 
                 return res;
@@ -165,8 +166,18 @@ export default function GptChart({ Socket }) {
                             name="deltaHistSlopeLimit"
                             onChange={setDeltaHistSlopeLimit}
                         />
-                        <VariableInput value={totalDaysToGet} hint={`How many to run backtest.`} name="totalDaysToGet" onChange={setTotalDays} />
-                        <VariableInput value={offsetStart} hint={`How many days to offset start of backtest.`} name="offsetStart" onChange={setOffsetStart} />
+                        <VariableInput
+                            value={totalDaysToGet}
+                            hint={`How many to run backtest.`}
+                            name="totalDaysToGet"
+                            onChange={setTotalDays}
+                        />
+                        <VariableInput
+                            value={offsetStart}
+                            hint={`How many days to offset start of backtest.`}
+                            name="offsetStart"
+                            onChange={setOffsetStart}
+                        />
 
                         <VariableInput
                             hint={`How many xTimes bigger than vol avg to trigger volume spike.`}
@@ -182,7 +193,12 @@ export default function GptChart({ Socket }) {
                             name="getMoveGoingLimit"
                             onChange={setGetMoveGoingLimit}
                         />
-                        <VariableInput hint={`How many points VAH and VAL span .`} name="valueAreaRange" value={valueAreaRange} onChange={setValueAreaRange} />
+                        <VariableInput
+                            hint={`How many points VAH and VAL span .`}
+                            name="valueAreaRange"
+                            value={valueAreaRange}
+                            onChange={setValueAreaRange}
+                        />
                         <VariableInput
                             hint={`How many points outside value to trigger "Outside" .`}
                             name="valueAreaOffset"
@@ -201,7 +217,12 @@ export default function GptChart({ Socket }) {
                             value={goodTimeStart}
                             onChange={setGoodTimeStart}
                         />
-                        <VariableInput hint={`Hour Before what time can trades trigger.`} name="goodTimeEnd" value={goodTimeEnd} onChange={setGoodTimeEnd} />
+                        <VariableInput
+                            hint={`Hour Before what time can trades trigger.`}
+                            name="goodTimeEnd"
+                            value={goodTimeEnd}
+                            onChange={setGoodTimeEnd}
+                        />
                     </form>
                 </div>
 
@@ -220,7 +241,11 @@ export default function GptChart({ Socket }) {
                         trades={results.trades}
                         getBacktestDay={async (date) => {
                             if (backtestResultsDate === date) return;
-                            const backtestDayData = await API.getBacktestDay({ symbol: "ES", exchange: "CME", date: encodeURIComponent(date) });
+                            const backtestDayData = await API.getBacktestDay({
+                                symbol: "ES",
+                                exchange: "CME",
+                                date: encodeURIComponent(date),
+                            });
                             console.log(backtestDayData);
                             setBacktestResultsDate(date);
 

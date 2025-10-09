@@ -1,6 +1,6 @@
 import io from "socket.io-client";
 
-const Events = {};
+const Events = {}; // Now stores arrays of handlers per event
 
 const Socket = {
     socket: null,
@@ -21,17 +21,69 @@ const Socket = {
         }
     },
     on: (event, fn) => {
+        // Initialize event array if it doesn't exist
         if (!Events[event]) {
-            Events[event] = fn;
-            Socket.socket.on(event, fn);
+            Events[event] = [];
+            console.log(`[Socket.on] Creating new event handler array: ${event}`);
+        }
+
+        // Check if this specific handler is already registered
+        if (Events[event].includes(fn)) {
+            console.log(`[Socket.on] Handler already registered for event: ${event}`);
+            return;
+        }
+
+        // Add handler to array
+        Events[event].push(fn);
+        console.log(`[Socket.on] Registered handler #${Events[event].length} for event: ${event}`);
+
+        // Register with socket.io (only once per event, not per handler)
+        if (Events[event].length === 1) {
+            // First handler for this event - register a multiplexer
+            const multiplexer = (data) => {
+                // Call all registered handlers
+                Events[event].forEach(handler => {
+                    try {
+                        handler(data);
+                    } catch (error) {
+                        console.error(`[Socket] Error in handler for ${event}:`, error);
+                    }
+                });
+            };
+            Socket.socket.on(event, multiplexer);
+            Events[event]._multiplexer = multiplexer; // Store reference for cleanup
         }
     },
-    off: (event) => {
-        // console.log({ event });
-        // console.log(typeof Events[event]);
-        if (typeof (Events[event] === "function")) {
-            Events[event] = null;
-            Socket.socket.off(event);
+    off: (event, fn) => {
+        console.log(`[Socket.off] Removing handler from event: ${event}, exists: ${!!Events[event]}`);
+
+        if (!Events[event] || !Array.isArray(Events[event])) {
+            console.log(`[Socket.off] Event not found: ${event}`);
+            return;
+        }
+
+        if (fn) {
+            // Remove specific handler
+            const index = Events[event].indexOf(fn);
+            if (index > -1) {
+                Events[event].splice(index, 1);
+                console.log(`[Socket.off] Removed specific handler, ${Events[event].length} handlers remaining for: ${event}`);
+            }
+        } else {
+            // Remove all handlers (legacy behavior for backwards compatibility)
+            console.log(`[Socket.off] Removing all handlers for: ${event}`);
+            Events[event] = [];
+        }
+
+        // If no handlers remain, unregister from socket.io
+        if (Events[event].length === 0) {
+            if (Events[event]._multiplexer) {
+                Socket.socket.off(event, Events[event]._multiplexer);
+            } else {
+                Socket.socket.off(event);
+            }
+            delete Events[event];
+            console.log(`[Socket.off] Event fully unregistered: ${event}`);
         }
     },
     onConnect: {},

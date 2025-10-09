@@ -553,19 +553,22 @@ export default function PixiChart({ Socket }) {
         pixiData.draw();
 
         /////////////////////////////////////
-        Socket.on("lastTrade", onLastTrade({ setLastTrade, setOhlcDatas, pixiData, lastTradesRef }));
+        const handleLastTrade = onLastTrade({ setLastTrade, setOhlcDatas, pixiData, lastTradesRef });
+        Socket.on("lastTrade", handleLastTrade);
         // Socket.on("lastTickBar", onLastTrade({ setLastTrade, setOhlcDatas, pixiData, tickBar: true }));
 
-        Socket.on("liquidity", (data) => {
+        const liquidityEventName = `liquidity-${pixiData.symbol.value}`;
+        const handleLiquidity = (data) => {
             if (data.symbol !== pixiData.symbol.value) return;
 
             pixiData.setLiquidityData(data);
-        });
+        };
+        Socket.on(liquidityEventName, handleLiquidity);
         ////////////////////////////////////////////////////
         return () => {
-            Socket.off("lastTrade");
+            Socket.off("lastTrade", handleLastTrade);
             Socket.off("lastTickBar");
-            Socket.off("liquidity");
+            Socket.off(liquidityEventName, handleLiquidity);
         };
     }, [ohlcDatas, PixiAppRef.current, pixiData, setOhlcDatas, setLastTrade, symbol]);
 

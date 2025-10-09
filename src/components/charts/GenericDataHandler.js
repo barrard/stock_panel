@@ -122,16 +122,19 @@ export default class GenericDataHandler {
         if (lastSlicedData.datetime === lastBar.datetime) {
             shouldAddToSlicedData = true;
         }
-
-        if (!lastBar.symbol) {
+        //i guess this means it came from rithmic? this is not great but oh well
+        if (!lastBar?.symbol) {
             bar.symbol = this.symbol;
-            this.ohlcDatas[this.ohlcDatas.length - 1] = bar;
+            // this.ohlcDatas[this.ohlcDatas.length - 1] = bar;
+            this.ohlcDatas.push(bar);
             this.currentBar = null;
             if (shouldAddToSlicedData) {
                 this.sliceEnd = this.ohlcDatas.length + 1;
-                this.slicedData[this.slicedData.length - 1] = bar;
+                // this.slicedData[this.slicedData.length - 1] = bar;
+                this.slicedData.push(bar);
             }
         } else {
+            //else it's from Schwab, it's all about datetime start or end of bar
             this.currentBar = null;
             this.ohlcDatas.push(bar);
             const newBarIndex = this.ohlcDatas.length - 1;
@@ -158,65 +161,78 @@ export default class GenericDataHandler {
             this.lastTick = tick;
         }
 
-        const lastVol = this.lastTick.totalVol || this.lastTick.volume || tick.totalVol;
-
-        const totalNewVol = tick.totalVol - lastVol;
+        const lastVol = this.lastTick.totalVol || tick.totalVol || this.lastTick.volume?.low || this.lastTick.volume || 0;
+        // const totalVol = tick.totalVol || tick.volume?.low || tick.volume || 0;
+        // const totalNewVol = totalVol - lastVol;
         // add this tick to the "currentBar"
         if (!this.currentBar) {
-            //mock a new candlestick
-            this.currentBar = {
-                datetime: new Date().getTime(),
-                open: tick.lastPrice || tick.open,
-                close: tick.lastPrice || tick.close,
-                low: tick.lastPrice || tick.low,
-                high: tick.lastPrice || tick.high,
-                volume: totalNewVol || 0,
-            };
-            this.ohlcDatas.push(this.currentBar);
-            this.lastTick = tick;
-            this.sliceEnd++;
-        } else {
-            const lastBar = this.ohlcDatas.slice(-1)[0];
-            const lastBarIndex = this.ohlcDatas.length - 1;
-
-            if (!lastBar.open) {
-                lastBar.open = tick.lastPrice || tick.open || tick.close;
+            if (tick.datetime < new Date().getTime()) {
+                this.currentBar = this.ohlcDatas.slice(-1)[0];
+            } else {
+                let newDateTime;
+                if (new Date().getTime() < tick.datetime) {
+                    const bar1 = this.ohlcDatas.slice(-1)[0];
+                    const bar2 = this.ohlcDatas.slice(-2)[0];
+                    newDateTime = bar1.datetime + (bar2.datetime - bar1.datetime);
+                } else {
+                    newDateTime = new Date().getTime();
+                }
+                //mock a new candlestick
+                this.currentBar = {
+                    datetime: newDateTime,
+                    open: tick.lastPrice || tick.open,
+                    close: tick.lastPrice || tick.close,
+                    low: tick.lastPrice || tick.low,
+                    high: tick.lastPrice || tick.high,
+                    volume: lastVol || 0,
+                };
+                this.ohlcDatas.push(this.currentBar);
+                this.lastTick = tick;
+                this.sliceEnd++;
             }
-
-            lastBar.close = tick.lastPrice || tick.close;
-            if (lastBar.high < tick.lastPrice || tick.high) {
-                lastBar.high = tick.lastPrice || tick.high;
-            }
-
-            if (lastBar.low > tick.lastPrice || tick.low) {
-                lastBar.low = tick.lastPrice || tick.low;
-            }
-            const lastVol = this.lastTick.totalVol || this.lastTick.volume || 0;
-
-            lastBar.volume += totalNewVol;
-
-            // Incremental domain update
-            if (lastBar.high > this.slicedHighest) {
-                this.slicedHighest = lastBar.high;
-                this.slicedHighestIdx = lastBarIndex;
-            } else if (lastBarIndex === this.slicedHighestIdx && lastBar.high < this.slicedHighest) {
-                // The highest bar was modified to be lower, so we must rescan.
-                this.slicedHighestIdx = null; // Invalidate cache
-            }
-
-            if (lastBar.low < this.slicedLowest) {
-                this.slicedLowest = lastBar.low;
-                this.slicedLowestIdx = lastBarIndex;
-            } else if (lastBarIndex === this.slicedLowestIdx && lastBar.low > this.slicedLowest) {
-                // The lowest bar was modified to be higher, so we must rescan.
-                this.slicedLowestIdx = null; // Invalidate cache
-            }
-
-            this.updateCurrentPriceLabel(tick.lastPrice || tick.close);
-
-            this.draw();
-            this.lastTick = tick;
         }
+        // else {
+        const lastBar = this.ohlcDatas.slice(-1)[0];
+        const lastBarIndex = this.ohlcDatas.length - 1;
+
+        if (!lastBar.open) {
+            lastBar.open = tick.lastPrice || tick.open || tick.close || tick.lastPrice;
+        }
+
+        lastBar.close = tick.lastPrice || tick.close;
+        if (lastBar.high < (tick.lastPrice || tick.high)) {
+            lastBar.high = tick.lastPrice || tick.high;
+        }
+
+        if (lastBar.low > (tick.lastPrice || tick.low)) {
+            lastBar.low = tick.lastPrice || tick.low;
+        }
+        // const lastVol = this.lastTick.totalVol || this.lastTick.volume || 0;
+
+        lastBar.volume += lastVol;
+
+        // Incremental domain update
+        if (lastBar.high > this.slicedHighest) {
+            this.slicedHighest = lastBar.high;
+            this.slicedHighestIdx = lastBarIndex;
+        } else if (lastBarIndex === this.slicedHighestIdx && lastBar.high < this.slicedHighest) {
+            // The highest bar was modified to be lower, so we must rescan.
+            this.slicedHighestIdx = null; // Invalidate cache
+        }
+
+        if (lastBar.low < this.slicedLowest) {
+            this.slicedLowest = lastBar.low;
+            this.slicedLowestIdx = lastBarIndex;
+        } else if (lastBarIndex === this.slicedLowestIdx && lastBar.low > this.slicedLowest) {
+            // The lowest bar was modified to be higher, so we must rescan.
+            this.slicedLowestIdx = null; // Invalidate cache
+        }
+
+        this.updateCurrentPriceLabel(tick.lastPrice || tick.close);
+
+        this.draw();
+        this.lastTick = tick;
+        // }
     }
 
     //Methods
@@ -1361,8 +1377,12 @@ export default class GenericDataHandler {
 
         // Log every 30 frames (~0.5s at 60fps)
         if (this._perfLogCount % 30 === 0) {
-            const scanInfo = this._scanLoops > 0 ? `| Scanned: ${this._scanLoops} loops` : '';
-            console.log(`[PERF] Draw: ${drawTime}ms | Setup: ${setupTime}ms | Manual Y: ${this.manualYScale} | Slice: ${this.sliceEnd - this.sliceStart} bars ${scanInfo}`);
+            const scanInfo = this._scanLoops > 0 ? `| Scanned: ${this._scanLoops} loops` : "";
+            console.log(
+                `[PERF] Draw: ${drawTime}ms | Setup: ${setupTime}ms | Manual Y: ${this.manualYScale} | Slice: ${
+                    this.sliceEnd - this.sliceStart
+                } bars ${scanInfo}`
+            );
         }
     }
 

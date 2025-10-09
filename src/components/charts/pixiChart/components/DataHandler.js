@@ -1076,6 +1076,7 @@ export default class PixiData {
             // console.log("draw liquid");
             // console.log(this.liquidityData);
             if (!this.isDrawOrderbook) return;
+
             let liquidityHeight = this.liquidityHeight
                 ? this.liquidityHeight
                 : this.liquidityData.reduce((acc, liquidData, index) => {
