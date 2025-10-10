@@ -6,6 +6,10 @@ export default class LiquidityHeatmap {
         this.chart = chart;
         this.container = new Container();
 
+        // Separate containers for historical and current bar (for incremental updates)
+        this.historicalBarsContainer = new Container();
+        this.currentBarContainer = new Container();
+
         this.liquidityHistory = []; // Array of {datetime, liquidity: {price: {volume, orders}}} - compiled per bar
         this.currentBarSnapshots = []; // Array of snapshots for the current bar (to average)
         this.currentBarDatetime = null; // Datetime of the current bar being built
@@ -13,7 +17,7 @@ export default class LiquidityHeatmap {
         this.maxHistoryLength = 500; // Max bars to keep in history
 
         // Visualization mode: 'volume', 'orders', or 'ratio' (volume/orders = avg size per order)
-        this.visualizationMode = 'volume';
+        this.visualizationMode = "volume";
         // this.colors = ["black", "blue", "green", "yellow", "red", "pink"];
 
         // // Fixed thresholds for liquidity size (no forward-looking bias)
@@ -24,7 +28,7 @@ export default class LiquidityHeatmap {
         // this.colors = ["black", "darkblue", "blue", "cyan", "yellow", "orange", "red", "white"];
         // this.liquidityThresholds = [0, 55, 100, 200, 300, 400, 500, 550];
 
-        this.liquidityThresholds = [0, 10, 20, 30, 40, 50, 60, 70];
+        this.liquidityThresholds = [0, 15, 30, 60, 90, 120, 180, 250];
         //   This is the classic heatmap - dark to bright, cool to hot.
 
         //   Option 2: Bookmap-style (Dark → Vibrant)
@@ -48,15 +52,22 @@ export default class LiquidityHeatmap {
         this.initialized = false;
         this.lastSliceStart = null; // Track pan/zoom changes
         this.lastSliceEnd = null;
+        this.needsFullRedraw = false; // Flag set when pan/zoom detected, cleared after full redraw
     }
 
     init() {
         if (this.initialized) return;
 
-        // Ensure container exists (in case it was destroyed during cleanup)
+        // Ensure containers exist (in case they were destroyed during cleanup)
         if (!this.container || this.container._destroyed) {
             this.container = new Container();
+            this.historicalBarsContainer = new Container();
+            this.currentBarContainer = new Container();
         }
+
+        // Add sub-containers to main container
+        this.container.addChild(this.historicalBarsContainer);
+        this.container.addChild(this.currentBarContainer);
 
         // Add container to the chart at layer 0 (background)
         this.chart.addToLayer(0, this.container);
@@ -140,8 +151,8 @@ export default class LiquidityHeatmap {
                     priceCount[price] = 0;
                 }
                 // Handle both old format (just number) and new format ({volume, orders})
-                const volume = typeof data === 'object' ? data.volume : data;
-                const orders = typeof data === 'object' ? data.orders : 0;
+                const volume = typeof data === "object" ? data.volume : data;
+                const orders = typeof data === "object" ? data.orders : 0;
 
                 priceVolumeSum[price] += volume;
                 priceOrdersSum[price] += orders;
@@ -245,10 +256,10 @@ export default class LiquidityHeatmap {
 
     /**
      * Main draw method - only called manually on data updates
-     * @param {Boolean} forceFullRedraw - Force redraw all bars (for pan/zoom)
+     * @param {Boolean} forceFullRedraw - Force redraw all bars (for pan/zoom/options changes)
      */
     draw(forceFullRedraw = false) {
-        console.log(`[LiquidityHeatmap] draw() called - initialized: ${this.initialized}`);
+        console.log(`[LiquidityHeatmap] draw() called - forceFullRedraw: ${forceFullRedraw}, initialized: ${this.initialized}`);
         const startTime = performance.now();
 
         if (!this.initialized) {
@@ -263,8 +274,32 @@ export default class LiquidityHeatmap {
             return;
         }
 
-        // Always do full redraw (simpler, handles all cases)
-        this.drawAllBars();
+        // Detect pan/zoom changes by comparing sliceStart/sliceEnd
+        if (this.lastSliceStart !== null && this.lastSliceEnd !== null) {
+            if (this.lastSliceStart !== sliceStart || this.lastSliceEnd !== sliceEnd) {
+                console.log(`[LiquidityHeatmap] Pan/zoom detected - setting needsFullRedraw flag`);
+                console.log(`[LiquidityHeatmap] Previous: ${this.lastSliceStart}-${this.lastSliceEnd}, Current: ${sliceStart}-${sliceEnd}`);
+                this.needsFullRedraw = true;
+            }
+        }
+
+        // Store current slice values for next comparison
+        this.lastSliceStart = sliceStart;
+        this.lastSliceEnd = sliceEnd;
+
+        if (forceFullRedraw || this.needsFullRedraw) {
+            // Full redraw needed (pan/zoom/options change)
+            console.log(
+                `[LiquidityHeatmap] Full redraw triggered - forceFullRedraw: ${forceFullRedraw}, needsFullRedraw: ${this.needsFullRedraw}`
+            );
+            this.drawAllBars();
+            // Clear the flag after full redraw
+            this.needsFullRedraw = false;
+        } else {
+            // Incremental update: only redraw current bar (socket update)
+            console.log(`[LiquidityHeatmap] Incremental update: drawing current bar only`);
+            this.drawCurrentBarOnly();
+        }
 
         const endTime = performance.now();
         const drawTime = (endTime - startTime).toFixed(2);
@@ -275,26 +310,32 @@ export default class LiquidityHeatmap {
      * Draw all visible bars including current bar data
      */
     drawAllBars() {
-        console.log(`[LiquidityHeatmap] drawAllBars called - history: ${this.liquidityHistory.length}, currentSnapshots: ${this.currentBarSnapshots.length}`);
+        console.log(
+            `[LiquidityHeatmap] drawAllBars called - history: ${this.liquidityHistory.length}, currentSnapshots: ${this.currentBarSnapshots.length}`
+        );
 
-        // Clear container
-        this.container.removeChildren();
+        // Clear both containers
+        this.historicalBarsContainer.removeChildren();
+        this.currentBarContainer.removeChildren();
 
         const { slicedData, xScale, priceScale } = this.chart;
         const barWidth = this.chart.candleWidth || this.chart.innerWidth() / slicedData.length;
         const liquidityHeight = this.calculateLiquidityHeight();
 
+        const barHeight = Math.abs(priceScale(0) - priceScale(liquidityHeight));
+
         // Calculate color functions based on FIXED thresholds (no data needed)
         const globalColorScale = this.getColorFunctions();
 
-        // Create a SINGLE Graphics object for everything
-        const gfx = new Graphics();
+        // Create SINGLE Graphics objects for historical and current data
+        const historicalGfx = new Graphics();
+        const currentGfx = new Graphics();
 
         // Draw all bars from history
         slicedData.forEach((bar, relativeIndex) => {
             const barDatetime = bar.timestamp || bar.datetime;
 
-            // First check if this is the current bar being built
+            // Check if this is the current bar being built
             const alignedBarDatetime = this.getBarDatetime(barDatetime);
             if (this.currentBarSnapshots.length > 0 && alignedBarDatetime === this.currentBarDatetime) {
                 // Use live current bar data (averaged from snapshots)
@@ -303,18 +344,19 @@ export default class LiquidityHeatmap {
                     datetime: this.currentBarDatetime,
                     liquidity: currentBarLiquidity,
                 };
-                this.drawBarLiquidityBatched(currentSnapshot, relativeIndex, barWidth, liquidityHeight, gfx, globalColorScale);
+                this.drawBarLiquidityBatched(currentSnapshot, relativeIndex, barWidth, barHeight, currentGfx, globalColorScale);
             } else {
                 // Use historical finalized data
                 const liquiditySnapshot = this.findLiquiditySnapshotForBar(barDatetime);
                 if (liquiditySnapshot) {
-                    this.drawBarLiquidityBatched(liquiditySnapshot, relativeIndex, barWidth, liquidityHeight, gfx, globalColorScale);
+                    this.drawBarLiquidityBatched(liquiditySnapshot, relativeIndex, barWidth, barHeight, historicalGfx, globalColorScale);
                 }
             }
         });
 
-        // Add the single graphics object to container
-        this.container.addChild(gfx);
+        // Add the graphics objects to their respective containers
+        this.historicalBarsContainer.addChild(historicalGfx);
+        this.currentBarContainer.addChild(currentGfx);
     }
 
     /**
@@ -328,7 +370,9 @@ export default class LiquidityHeatmap {
      * Draw current bar with optional pre-calculated color scale
      */
     drawCurrentBarOnlyWithColorScale(globalColorScale = null) {
-        console.log(`[LiquidityHeatmap] drawCurrentBarOnly called - snapshots: ${this.currentBarSnapshots.length}, currentBarDatetime: ${this.currentBarDatetime}`);
+        console.log(
+            `[LiquidityHeatmap] drawCurrentBarOnly called - snapshots: ${this.currentBarSnapshots.length}, currentBarDatetime: ${this.currentBarDatetime}`
+        );
 
         // Clear current bar container
         this.currentBarContainer.removeChildren();
@@ -351,7 +395,11 @@ export default class LiquidityHeatmap {
         const lastBar = slicedData[slicedData.length - 1];
         const lastBarDatetime = lastBar.timestamp || lastBar.datetime;
 
-        console.log(`[LiquidityHeatmap] Last bar datetime: ${new Date(lastBarDatetime).toLocaleTimeString()}, current bar datetime: ${new Date(this.currentBarDatetime).toLocaleTimeString()}, match: ${this.getBarDatetime(lastBarDatetime) === this.currentBarDatetime}`);
+        console.log(
+            `[LiquidityHeatmap] Last bar datetime: ${new Date(lastBarDatetime).toLocaleTimeString()}, current bar datetime: ${new Date(
+                this.currentBarDatetime
+            ).toLocaleTimeString()}, match: ${this.getBarDatetime(lastBarDatetime) === this.currentBarDatetime}`
+        );
 
         // Check if current bar datetime matches the last visible bar
         if (this.getBarDatetime(lastBarDatetime) === this.currentBarDatetime) {
@@ -388,7 +436,7 @@ export default class LiquidityHeatmap {
      * @param {Graphics} gfx - Single Graphics object to batch all rectangles into
      * @param {Object} globalColorScale - Pre-calculated color scale (optional, will calculate per-bar if null)
      */
-    drawBarLiquidityBatched(liquiditySnapshot, relativeIndex, barWidth, liquidityHeight, gfx, globalColorScale = null) {
+    drawBarLiquidityBatched(liquiditySnapshot, relativeIndex, barWidth, barHeight, gfx, globalColorScale = null) {
         const { xScale, priceScale } = this.chart;
 
         if (!liquiditySnapshot || !liquiditySnapshot.liquidity) return;
@@ -410,16 +458,16 @@ export default class LiquidityHeatmap {
 
             // Extract value based on visualization mode
             let value = 0;
-            if (typeof data === 'object') {
+            if (typeof data === "object") {
                 // New format: {volume, orders}
                 switch (this.visualizationMode) {
-                    case 'volume':
+                    case "volume":
                         value = data.volume;
                         break;
-                    case 'orders':
+                    case "orders":
                         value = data.orders;
                         break;
-                    case 'ratio':
+                    case "ratio":
                         // Average size per order (volume/orders)
                         value = data.orders > 0 ? data.volume / data.orders : 0;
                         break;
@@ -432,8 +480,9 @@ export default class LiquidityHeatmap {
             }
 
             // Calculate y position and height
-            const yTop = priceScale(price);
-            const barHeight = Math.abs(priceScale(0) - priceScale(liquidityHeight));
+            const yBottom = priceScale(price);
+            const yTop = yBottom - barHeight;
+            // const barHeight = Math.abs(priceScale(0) - priceScale(liquidityHeight));
 
             // Get threshold info for color (which range does this value fall into)
             const { value: colorValue, index } = this.getThresholdInfo(value, thresholdData);
@@ -525,7 +574,7 @@ export default class LiquidityHeatmap {
      * @param {String} mode - 'volume', 'orders', or 'ratio'
      */
     setVisualizationMode(mode) {
-        if (['volume', 'orders', 'ratio'].includes(mode)) {
+        if (["volume", "orders", "ratio"].includes(mode)) {
             this.visualizationMode = mode;
             console.log(`[LiquidityHeatmap] Visualization mode set to: ${mode}`);
             // Trigger full redraw with new visualization mode

@@ -157,13 +157,13 @@ export default class GenericDataHandler {
 
     newTick(tick) {
         if (!tick) return;
-        if (!this.lastTick) {
-            this.lastTick = tick;
-        }
+        // if (!this.lastTick) {
+        //     this.lastTick = tick;
+        // }
 
-        const lastVol = this.lastTick.totalVol || tick.totalVol || this.lastTick.volume?.low || this.lastTick.volume || 0;
+        const volume = tick.totalVol || tick.volume?.low || tick.volume || 0;
         // const totalVol = tick.totalVol || tick.volume?.low || tick.volume || 0;
-        // const totalNewVol = totalVol - lastVol;
+        // const totalNewVol = totalVol - volume;
         // add this tick to the "currentBar"
         if (!this.currentBar) {
             if (tick.datetime < new Date().getTime()) {
@@ -184,7 +184,7 @@ export default class GenericDataHandler {
                     close: tick.lastPrice || tick.close,
                     low: tick.lastPrice || tick.low,
                     high: tick.lastPrice || tick.high,
-                    volume: lastVol || 0,
+                    volume: volume || 0,
                 };
                 this.ohlcDatas.push(this.currentBar);
                 this.lastTick = tick;
@@ -207,9 +207,9 @@ export default class GenericDataHandler {
         if (lastBar.low > (tick.lastPrice || tick.low)) {
             lastBar.low = tick.lastPrice || tick.low;
         }
-        // const lastVol = this.lastTick.totalVol || this.lastTick.volume || 0;
+        // const volume = this.lastTick.totalVol || this.lastTick.volume || 0;
 
-        lastBar.volume += lastVol;
+        lastBar.volume += volume;
 
         // Incremental domain update
         if (lastBar.high > this.slicedHighest) {
@@ -542,10 +542,10 @@ export default class GenericDataHandler {
         this.addToLayer(1, this.candleStickWickGfx);
         this.addToLayer(1, this.candleStickGfx);
         this.addToLayer(1, this.priceGfx);
-        this.addToLayer(1, this.borderGfx);
+        this.addToLayer(3, this.borderGfx); // Layer 3 and 4 won't be masked
 
-        this.addToLayer(2, this.currentPriceLabelAppendGfx);
-        this.addToLayer(2, this.currentPriceTxtLabel);
+        this.addToLayer(3, this.currentPriceLabelAppendGfx);
+        this.addToLayer(3, this.currentPriceTxtLabel);
         this.addToLayer(1, this.volGfx);
 
         this.addToLayer(2, this.volProfileGfx);
@@ -820,6 +820,21 @@ export default class GenericDataHandler {
 
         this.mainChartContainer.hitArea = this.hitArea;
         console.log("setting hit area");
+
+        // Add mask to clip graphics within the main chart area (excluding margins and volume indicator)
+        // Apply mask only to layers 0, 1, 2 (chart graphics), not to layer 1 (which has axes)
+        const maskGfx = new Graphics();
+        maskGfx.beginFill(0xffffff);
+        maskGfx.drawRect(0, 0, this.width - (left + right), this.mainChartContainerHeight - (top + bottom));
+        maskGfx.endFill();
+
+        // Add mask to a dedicated layer so it can be shared
+        this.layer0Container.addChild(maskGfx);
+
+        // Apply the same mask to layers that need clipping (not axes/crosshair layers)
+        this.layer0Container.mask = maskGfx;
+        this.layer1Container.mask = maskGfx;
+        this.layer2Container.mask = maskGfx;
     }
 
     resize(width, height, mainChartContainerHeight) {
@@ -966,11 +981,11 @@ export default class GenericDataHandler {
         //yAxis
         // this.yAxis.container.position.x = this.width - this.margin.right;
         // this.yAxis.container.position.y = 0;
-        this.addToLayer(1, this.yAxis.container);
-        //yAxis
+        this.addToLayer(3, this.yAxis.container); // Layer 3 won't be masked
+        //xAxis
         // this.xAxis.container.position.x = this.margin.left;
         // this.xAxis.container.position.y = this.innerHeight();
-        this.addToLayer(1, this.xAxis.container);
+        this.addToLayer(3, this.xAxis.container); // Layer 3 won't be masked
     }
 
     //Drag and zoom mouse events

@@ -1,25 +1,34 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import GenericPixiChart from "../GenericPixiChart";
 import API from "../../API";
 import LiquidityHeatmap from "./components/LiquidityHeatmap";
+import DrawOrdersV2 from "./components/DrawOrdersV2";
 import IndicatorsBtns from "./components/IndicatorsBtns";
+import SymbolBtns from "./components/SymbolBtns";
+import TimeFrameBtns from "./components/TimeFrameBtns";
+import Select from "./components/Select";
+import OrdersList from "./components/OrdersList";
+import { symbolOptions } from "./components/utils";
 import { useIndicator } from "../hooks/useIndicator";
 import { useToggleIndicator } from "../hooks/useToggleIndicator";
+import { TICKS } from "../../../indicators/indicatorHelpers/TICKS";
 // import drawStrikes from "./drawStrikes";
 // import MonteCarloCone from "./monteCarloSimulation";
 // import TimeframeSelector from "./spyOptionsComponents/TimeframeSelector";
 // import IndicatorSelector from "../../../reusableChartComponents/IndicatorSelector";
+const ticks = TICKS();
+
 const PixiChartV2 = (props) => {
-    const { Socket, height = 500 } = props;
+    const { Socket, height = 500, orders: ordersFromParent = {} } = props;
 
     // always need to make a ref for pixiDataRef
     const pixiDataRef = useRef();
 
     //most charts handle timeframe with barType and barTypePeriod
     // barType 1 = seconds, 2 = minutes, 3 = hours, 4 = days
-    const [barType, setBarType] = useState("1");
+    const [barType, setBarType] = useState({ value: 1, name: "Seconds" });
     // barTypePeriod is the number of barType units
-    const [barTypePeriod, setBarTypePeriod] = useState("60");
+    const [barTypePeriod, setBarTypePeriod] = useState(60);
     //human readable timeframe
     const [timeframe, setTimeframe] = useState("1m");
 
@@ -27,7 +36,12 @@ const PixiChartV2 = (props) => {
     const [ohlcData, setOhlcData] = useState([]);
 
     // the symbol of the chart
-    const [symbol, setSymbol] = useState("ES");
+    const [symbol, setSymbol] = useState({
+        value: "ES",
+        name: "ES",
+        exchange: "CME",
+        tickSize: ticks["ES"],
+    });
 
     // Cache for liquidity data (persists across indicator toggles)
     const liquidityDataCacheRef = useRef({
@@ -55,6 +69,16 @@ const PixiChartV2 = (props) => {
                 thresholds: [0, 10, 20, 30, 40, 50, 60, 70], // Color thresholds
             },
         },
+        {
+            id: "orders",
+            name: "Orders",
+            enabled: false,
+            drawFunctionKey: "draw",
+            instanceRef: null,
+        },
+        // { id: "zigZag", name: "ZigZag", enabled: false, drawFunctionKey: "draw", instanceRef: null },
+        // { id: "marketProfile", name: "Market Profile", enabled: false, drawFunctionKey: "draw", instanceRef: null },
+        // { id: "pivotLines", name: "Pivot Lines", enabled: false, drawFunctionKey: "draw", instanceRef: null },
         // { id: "monteCarlo", name: "Monte Carlo", enabled: false, drawFunctionKey: "drawHistogramHeatmap", instanceRef: null },
         // { id: "strikes", name: "Strike Lines", enabled: false, drawFunctionKey: "drawAllStrikeLines", instanceRef: null },
     ]);
@@ -101,6 +125,22 @@ const PixiChartV2 = (props) => {
 
     // Get indicator configs
     const liquidityHeatmapIndicator = indicators.find((ind) => ind.id === "liquidityHeatmap");
+    const ordersIndicator = indicators.find((ind) => ind.id === "orders");
+
+    // Debug: Log indicators on mount
+    useEffect(() => {
+        console.log(
+            "[PixiChartV2] Indicators:",
+            indicators.map((ind) => ({ id: ind.id, enabled: ind.enabled }))
+        );
+        console.log("[PixiChartV2] Orders from parent:", Object.keys(ordersFromParent).length, "baskets");
+    }, []);
+
+    // Keep a ref to indicators to avoid stale closures in socket handlers
+    const indicatorsRef = useRef(indicators);
+    useEffect(() => {
+        indicatorsRef.current = indicators;
+    }, [indicators]);
 
     // Use the useIndicator hook for liquidity heatmap
     useIndicator({
@@ -117,6 +157,17 @@ const PixiChartV2 = (props) => {
         dependencies: [timeframe],
     });
 
+    // Use the useIndicator hook for orders
+    useIndicator({
+        indicator: ordersIndicator,
+        pixiDataRef,
+        createInstance: (pixiData) => {
+            return new DrawOrdersV2(pixiData);
+        },
+        setIndicators,
+        dependencies: [],
+    });
+
     // Fetch initial liquidity data when indicator is enabled
     useEffect(() => {
         const heatmapInstance = liquidityHeatmapIndicator?.instanceRef;
@@ -128,11 +179,11 @@ const PixiChartV2 = (props) => {
         const cache = liquidityDataCacheRef.current;
 
         // Check if cache is invalid (symbol or timeframe changed)
-        if (cache.symbol !== symbol || cache.timeframe !== timeframe) {
+        if (cache.symbol !== symbol.value || cache.timeframe !== timeframe) {
             // Clear cache for new symbol/timeframe
             cache.history = [];
             cache.hasLoaded = false;
-            cache.symbol = symbol;
+            cache.symbol = symbol.value;
             cache.timeframe = timeframe;
         }
 
@@ -183,7 +234,7 @@ const PixiChartV2 = (props) => {
                 const liquidityData = await API.getOrderFlow({
                     start,
                     end,
-                    symbol,
+                    symbol: symbol.value,
                     compiled: timeframe, // Get pre-compiled data from server
                 });
 
@@ -245,20 +296,42 @@ const PixiChartV2 = (props) => {
         fetchLiquidityData();
     }, [liquidityHeatmapIndicator?.enabled, liquidityHeatmapIndicator?.instanceRef, symbol, timeframe]);
 
+    // Draw orders when indicator is enabled or orders change
+    useEffect(() => {
+        const ordersInstance = ordersIndicator?.instanceRef;
+
+        console.log(
+            "[Orders] useEffect - enabled:",
+            ordersIndicator?.enabled,
+            "instance:",
+            !!ordersInstance,
+            "orders count:",
+            Object.keys(ordersFromParent).length
+        );
+
+        if (!ordersInstance || !ordersIndicator?.enabled) {
+            return;
+        }
+
+        // Draw orders on chart
+        console.log("[Orders] Drawing orders on chart...");
+        ordersInstance.draw(ordersFromParent);
+    }, [ordersFromParent, ordersIndicator?.enabled, ordersIndicator?.instanceRef]);
+
     //function to get Data
     async function fetchLiveDataAndUpdate() {
         const liveData = await API.rapi_requestLiveBars({
             // barType,
             // barTypePeriod,
             timeframe,
-            symbol: symbol,
+            symbol: symbol.value,
             // exchange: getExchangeFromSymbol(symbol),
         });
         // console.log(liveData);
         liveData.forEach((d) => {
             d.datetime = d.datetime * 1000;
             if (d.volume.low) {
-                d.totalVol = d.volume.low;
+                d.volume = d.volume.low;
             }
         });
 
@@ -274,20 +347,22 @@ const PixiChartV2 = (props) => {
 
     const addBar = (newBar) => {
         newBar.datetime = newBar.datetime * 1000;
+        newBar.volume = newBar.volume.low;
         pixiDataRef?.current?.setNewBar(newBar);
     };
     const updateBar = (tick) => {
         tick.datetime = tick.datetime * 1000;
+        tick.volume = tick.volume.low;
         pixiDataRef?.current?.newTick(tick);
     };
     //main on load to get data
     useEffect(() => {
-        console.log(`[useEffect] Socket setup running - symbol: ${symbol}, timeframe: ${timeframe}`);
+        console.log(`[useEffect] Socket setup running - symbol: ${symbol.value}, timeframe: ${timeframe}`);
 
         //get data from OHLC_Compiler thing
         fetchLiveDataAndUpdate();
 
-        const liveBarNew = `${timeframe}-${symbol}-LiveBarNew`;
+        const liveBarNew = `${timeframe}-${symbol.value}-LiveBarNew`;
         const handleLiveBarNew = (newBar) => {
             // setNewSpyMinuteBar(d);
             //add this to ohlcData
@@ -296,7 +371,7 @@ const PixiChartV2 = (props) => {
         };
         Socket.on(liveBarNew, handleLiveBarNew);
 
-        const liveBarUpdate = `1s-${symbol}-LiveBarUpdate`;
+        const liveBarUpdate = `1s-${symbol.value}-LiveBarUpdate`;
         const handleLiveBarUpdate = (tick) => {
             //update last ohlcBar
             // console.log("tick", tick);
@@ -310,14 +385,12 @@ const PixiChartV2 = (props) => {
 
         console.log(`[Socket] Checking timeframe: ${timeframe}, is 1m or 5m: ${timeframe === "1m" || timeframe === "5m"}`);
         if (timeframe === "1m" || timeframe === "5m") {
-            liquidityEventName = `liquidity-${symbol}`;
+            liquidityEventName = `liquidity-${symbol.value}`;
             console.log(`[Socket] Registering liquidity listener for event: ${liquidityEventName}`);
 
             handleLiquidityData = (liquidityData) => {
-                console.log(`[Socket] Received liquidity data for ${symbol} at ${new Date().toLocaleTimeString()}`);
-
                 // liquidityData format: { symbol, highLiquidity: [{p: price, size: volume, orders: count}], ... }
-                if (liquidityData.symbol !== symbol || !liquidityData.highLiquidity) return;
+                if (liquidityData.symbol !== symbol.value || !liquidityData.highLiquidity) return;
 
                 // Convert to our snapshot format: {datetime, liquidity: {price: {volume, orders}}}
                 const datetime = Date.now();
@@ -335,13 +408,11 @@ const PixiChartV2 = (props) => {
                     liquidity,
                 };
 
-                console.log(`[Socket] Converted snapshot - price levels: ${Object.keys(liquidity).length}`);
-
                 // Always store socket data in cache (even if indicator is disabled)
                 const cache = liquidityDataCacheRef.current;
 
                 // Only cache if this matches current symbol/timeframe
-                if (cache.symbol === symbol && cache.timeframe === timeframe) {
+                if (cache.symbol === symbol.value && cache.timeframe === timeframe) {
                     // Find if we already have a bar for this datetime
                     const barDatetime = new Date(datetime);
                     barDatetime.setSeconds(0, 0);
@@ -352,11 +423,9 @@ const PixiChartV2 = (props) => {
                     if (existingBarIndex >= 0) {
                         // Update existing bar (replace with latest snapshot)
                         cache.history[existingBarIndex] = { datetime: alignedDatetime, liquidity };
-                        console.log(`[Socket] Updated existing cache bar at ${new Date(alignedDatetime).toLocaleTimeString()}`);
                     } else {
                         // Add new bar
                         cache.history.push({ datetime: alignedDatetime, liquidity });
-                        console.log(`[Socket] Added new cache bar at ${new Date(alignedDatetime).toLocaleTimeString()}`);
 
                         // Keep only recent history (e.g., last 500 bars)
                         if (cache.history.length > 500) {
@@ -370,27 +439,15 @@ const PixiChartV2 = (props) => {
                 }
 
                 // If indicator is enabled, also update the heatmap instance
-                // Use setIndicators callback to get current state (avoids stale closure)
-                setIndicators((currentIndicators) => {
-                    const currentHeatmapIndicator = currentIndicators.find((ind) => ind.id === "liquidityHeatmap");
-                    const heatmapInstance = currentHeatmapIndicator?.instanceRef;
+                // Use ref to get current indicators without causing re-renders
+                const currentHeatmapIndicator = indicatorsRef.current.find((ind) => ind.id === "liquidityHeatmap");
+                const heatmapInstance = currentHeatmapIndicator?.instanceRef;
 
-                    if (heatmapInstance && heatmapInstance.addLiquiditySnapshot) {
-                        console.log(`[Socket] Adding snapshot to heatmap instance`);
-                        heatmapInstance.addLiquiditySnapshot(snapshot);
-                        // Manually trigger draw (only on socket updates, not on pan/zoom)
-                        heatmapInstance.draw();
-                    } else {
-                        console.log(
-                            `[Socket] Heatmap instance not available - enabled: ${
-                                currentHeatmapIndicator?.enabled
-                            }, hasInstance: ${!!heatmapInstance}`
-                        );
-                    }
-
-                    // Return unchanged to avoid triggering re-render
-                    return currentIndicators;
-                });
+                if (heatmapInstance && heatmapInstance.addLiquiditySnapshot) {
+                    heatmapInstance.addLiquiditySnapshot(snapshot);
+                    // Manually trigger draw (only on socket updates, not on pan/zoom)
+                    heatmapInstance.draw();
+                }
             };
 
             Socket.on(liquidityEventName, handleLiquidityData);
@@ -405,33 +462,76 @@ const PixiChartV2 = (props) => {
         };
     }, [symbol, timeframe]); // Socket intentionally omitted to prevent re-registrations
 
+    // Filter orders by current symbol
+    const symbolFilteredOrders = useMemo(() => {
+        const filtered = {};
+        debugger;
+        Object.keys(ordersFromParent).forEach((basketId) => {
+            const orderArray = ordersFromParent[basketId];
+            // Check if any order in this basket matches the current symbol
+            if (orderArray && orderArray.length > 0) {
+                const firstOrder = orderArray[0];
+                if (firstOrder.symbol === symbol.value) {
+                    filtered[basketId] = orderArray;
+                }
+            }
+        });
+
+        console.log("[Orders] Filtered orders for", symbol.value, ":", Object.keys(filtered).length, "baskets");
+        return filtered;
+    }, [ordersFromParent, symbol.value]);
+
     return (
         <>
-            {/* <TimeframeSelector setTimeframe={setTimeframe} timeframe={timeframe} />
-            <IndicatorSelector indicators={indicators} toggleIndicator={toggleIndicator} /> */}
-            <IndicatorsBtns
-                indicators={indicators}
-                toggleIndicator={toggleIndicator}
-                timeframe={timeframe}
-                updateIndicatorOptions={updateIndicatorOptions}
-            />
+            <div className="row g-0">
+                <div className="col-auto">
+                    <IndicatorsBtns
+                        indicators={indicators}
+                        toggleIndicator={toggleIndicator}
+                        timeframe={timeframe}
+                        updateIndicatorOptions={updateIndicatorOptions}
+                    />
+                </div>
+                <div className="col-auto">
+                    <TimeFrameBtns
+                        barType={barType}
+                        barTypePeriod={barTypePeriod}
+                        setBarType={setBarType}
+                        setBarTypePeriod={setBarTypePeriod}
+                    />
+                </div>
+                <div className="col-auto">
+                    <SymbolBtns symbolOptions={symbolOptions} symbol={symbol} setSymbol={setSymbol} />
+                </div>
+                <div className="col-auto">
+                    <Select value={symbol} setValue={setSymbol} options={symbolOptions} />
+                </div>
+            </div>
             {!ohlcData?.length ? (
-                <div>Loading... {symbol}</div>
+                <div>Loading... {symbol.value}</div>
             ) : (
                 <GenericPixiChart
                     //always add a unique key to force remount on changes to important props
-                    key={symbol} //symbol works well for as the key
+                    key={symbol.value} //symbol works well for as the key
                     ohlcDatas={ohlcData}
                     // width={width}
                     height={height}
-                    symbol={symbol}
+                    symbol={symbol.value}
                     // fullSymbolRef={fullSymbolRef}
-                    barType={barType}
+                    barType={barType.value}
                     barTypePeriod={barTypePeriod}
                     // loadData={loadData}
                     pixiDataRef={pixiDataRef}
                     // tickSize={tickSize}
                 />
+            )}
+
+            {/* Symbol-filtered orders list */}
+            {Object.keys(symbolFilteredOrders).length > 0 && (
+                <div className="mt-3">
+                    <h5>Orders for {symbol.value}</h5>
+                    <OrdersList orders={symbolFilteredOrders} />
+                </div>
             )}
         </>
     );

@@ -682,6 +682,7 @@ export default function PixiChart({ Socket }) {
         // width: 600,
         // spyLevelOne,
         Socket,
+        orders, // Pass orders to PixiChartV2
         // getCurrentStrikeData,
         // callsOrPuts,
         // callsData,

@@ -137,7 +137,7 @@ export default function IndicatorsBtns(props) {
     };
     // Icon mapping for indicators
     const iconMap = {
-        liquidityHeatmap: <MdLayers />,
+        liquidityHeatmap: <CgReadme />, // Book icon for order book/liquidity
         zigZag: <GiAirZigzag />,
         marketProfile: <GiAmplitude />,
         orderbook: <CgReadme />,

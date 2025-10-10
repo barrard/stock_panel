@@ -111,10 +111,24 @@ export default class Indicator {
         this.yAxis.container.position.x = width - (right + left);
         this.yAxis.container.position.y = 0;
 
-        this.borderGfx.lineStyle(3, 0xaaaaaa, 1);
+        this.borderGfx.clear();
+        this.borderGfx.lineStyle(3, 0xffffff, 1);
 
+        const rightSide = width - (left + right);
+
+        // Draw top dividing line
         this.borderGfx.moveTo(0, 0);
-        this.borderGfx.lineTo(width - (left + right), 0);
+        this.borderGfx.lineTo(rightSide, 0);
+
+        // Draw left side
+        this.borderGfx.moveTo(0, 0);
+        this.borderGfx.lineTo(0, this.height);
+
+        // Draw bottom
+        this.borderGfx.lineTo(rightSide, this.height);
+
+        // Draw right side
+        this.borderGfx.lineTo(rightSide, 0);
     }
 
     setupScales() {
