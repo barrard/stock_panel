@@ -303,7 +303,7 @@ export default class LiquidityHeatmap {
 
         const endTime = performance.now();
         const drawTime = (endTime - startTime).toFixed(2);
-        console.log(`[LiquidityHeatmap] Draw time: ${drawTime}ms`);
+        // console.log(`[LiquidityHeatmap] Draw time: ${drawTime}ms`);
     }
 
     /**
@@ -489,7 +489,11 @@ export default class LiquidityHeatmap {
                         break;
                     case "ratio":
                         // Average size per order (volume/orders)
-                        value = data.orders > 0 ? data.volume / data.orders : 0;
+                        if (data.ratio != undefined) {
+                            value = data.ratio;
+                        } else {
+                            value = data.ratio = data.orders > 0 ? data.volume / data.orders : 0;
+                        }
                         break;
                     default:
                         value = data.volume;

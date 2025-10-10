@@ -66,7 +66,19 @@ const PixiChartV2 = (props) => {
             shouldEnable: (timeframe) => timeframe === "1m" || timeframe === "5m",
             options: {
                 visualizationMode: "volume", // 'volume', 'orders', or 'ratio'
-                thresholds: [0, 15, 30, 60, 90, 120, 180, 250], // Color thresholds (matches LiquidityHeatmap defaults)
+                colorScheme: {
+                    name: "Bookmap Style",
+                    colorStops: [
+                        { color: "#000033", threshold: 0 },
+                        { color: "#000066", threshold: 15 },
+                        { color: "#0000ff", threshold: 30 },
+                        { color: "#00ff00", threshold: 60 },
+                        { color: "#ffff00", threshold: 90 },
+                        { color: "#ff8800", threshold: 120 },
+                        { color: "#ff0000", threshold: 180 },
+                        { color: "#ffffff", threshold: 250 },
+                    ],
+                },
             },
         },
         {
@@ -109,13 +121,16 @@ const PixiChartV2 = (props) => {
                             instance.setVisualizationMode(newOptions.visualizationMode);
                         }
 
-                        // Update thresholds if changed
-                        if (newOptions.thresholds && Array.isArray(newOptions.thresholds)) {
-                            instance.liquidityThresholds = newOptions.thresholds;
+                        // Update color scheme if changed
+                        if (newOptions.colorScheme && newOptions.colorScheme.colorStops) {
+                            const { colorStops } = newOptions.colorScheme;
+                            instance.colors = colorStops.map(stop => stop.color);
+                            instance.liquidityThresholds = colorStops.map(stop => stop.threshold);
+                            console.log('[updateIndicatorOptions] Updated color scheme:', newOptions.colorScheme.name);
                         }
 
-                        // If we only updated thresholds (not visualization mode), trigger redraw
-                        if (!newOptions.visualizationMode && newOptions.thresholds && instance.draw) {
+                        // If we only updated color scheme (not visualization mode), trigger redraw
+                        if (!newOptions.visualizationMode && newOptions.colorScheme && instance.draw) {
                             instance.draw(true);
                         }
                     } else {
@@ -163,8 +178,10 @@ const PixiChartV2 = (props) => {
                 if (liquidityHeatmapIndicator.options.visualizationMode) {
                     instance.visualizationMode = liquidityHeatmapIndicator.options.visualizationMode;
                 }
-                if (liquidityHeatmapIndicator.options.thresholds) {
-                    instance.liquidityThresholds = liquidityHeatmapIndicator.options.thresholds;
+                if (liquidityHeatmapIndicator.options.colorScheme) {
+                    const { colorStops } = liquidityHeatmapIndicator.options.colorScheme;
+                    instance.colors = colorStops.map(stop => stop.color);
+                    instance.liquidityThresholds = colorStops.map(stop => stop.threshold);
                 }
             }
             return instance;

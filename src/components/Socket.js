@@ -24,25 +24,25 @@ const Socket = {
         // Initialize event array if it doesn't exist
         if (!Events[event]) {
             Events[event] = [];
-            console.log(`[Socket.on] Creating new event handler array: ${event}`);
+            // console.log(`[Socket.on] Creating new event handler array: ${event}`);
         }
 
         // Check if this specific handler is already registered
         if (Events[event].includes(fn)) {
-            console.log(`[Socket.on] Handler already registered for event: ${event}`);
+            // console.log(`[Socket.on] Handler already registered for event: ${event}`);
             return;
         }
 
         // Add handler to array
         Events[event].push(fn);
-        console.log(`[Socket.on] Registered handler #${Events[event].length} for event: ${event}`);
+        // console.log(`[Socket.on] Registered handler #${Events[event].length} for event: ${event}`);
 
         // Register with socket.io (only once per event, not per handler)
         if (Events[event].length === 1) {
             // First handler for this event - register a multiplexer
             const multiplexer = (data) => {
                 // Call all registered handlers
-                Events[event].forEach(handler => {
+                Events[event].forEach((handler) => {
                     try {
                         handler(data);
                     } catch (error) {

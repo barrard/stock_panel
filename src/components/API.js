@@ -78,6 +78,7 @@ const API = {
     getPickLists,
     fetchOptionContractData,
     getSchwabAccountDetails,
+    fetchMarketBreadth,
 };
 
 export default API;
@@ -93,6 +94,20 @@ async function getPickLists() {
     return await GET(`/API/get-pick-lists`);
 }
 
+async function fetchMarketBreadth(opts = {}) {
+    const { filter = {}, limit = 1000, sort = { _id: -1 } } = opts;
+
+    const query = new URLSearchParams({
+        filter: JSON.stringify(filter),
+        limit: limit.toString(),
+        sort: JSON.stringify(sort),
+    });
+
+    const data = await GET(`/API/rapi/marketBreadth?${query.toString()}`);
+    return data
+        .map((d) => ({ ...d, datetime: new Date(d.createdAt).getTime() }))
+        .sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+}
 async function getOrders(opts = {}) {
     const { symbol, skip, limit = 400, bracketId } = opts;
 

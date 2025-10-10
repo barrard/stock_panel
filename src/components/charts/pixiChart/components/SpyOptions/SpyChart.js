@@ -90,6 +90,8 @@ const SpyChart = (props) => {
 
     useEffect(() => {
         if (!pixiDataRef.current || !spyLevelOne) return;
+        const volume = spyLevelOne.totalVol - (lastSpyLevelOne ? lastSpyLevelOne.totalVol : 0);
+        spyLevelOne.volume = volume;
         pixiDataRef.current.newTick(spyLevelOne);
         setLastSpyLevelOne(spyLevelOne);
     }, [spyLevelOne, pixiDataRef.current]);
@@ -108,6 +110,7 @@ const SpyChart = (props) => {
         });
         return () => {
             Socket.off("spyCandles");
+            Socket.off("newSpyMinuteBar");
         };
     }, []);
 

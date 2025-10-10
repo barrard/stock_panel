@@ -1,4 +1,4 @@
-import React, { useState, memo } from "react";
+import React, { useState, memo, useCallback } from "react";
 import { IconButton } from "../../../StratBuilder/components";
 import { GiAirZigzag, GiHistogram, GiAmplitude } from "react-icons/gi";
 import { IoIosReorder } from "react-icons/io";
@@ -7,6 +7,7 @@ import { AiOutlineTransaction, AiFillCloseCircle } from "react-icons/ai";
 import { MdLayers } from "react-icons/md";
 import styled from "styled-components";
 import Input from "./Input";
+import ColorSchemeEditor from "./ColorSchemeEditor";
 
 // import Select from "./Select";
 
@@ -36,6 +37,14 @@ function IndicatorsBtns(props) {
     const [optsWindow, setOptsWindow] = useState(null); // Store indicator object, not string
     const [tempOptions, setTempOptions] = useState({}); // Temporary options for editing
 
+    // Memoize onChange callback to prevent ColorSchemeEditor from re-rendering
+    const handleColorSchemeChange = useCallback(
+        (newScheme) => {
+            setTempOptions((prev) => ({ ...prev, colorScheme: newScheme }));
+        },
+        []
+    );
+
     function showOptions(indicator) {
         if (!indicator || !indicator.options) {
             return <div>No options available</div>;
@@ -44,9 +53,11 @@ function IndicatorsBtns(props) {
         switch (indicator.id) {
             case "liquidityHeatmap":
                 return (
-                    <div style={{ padding: "10px" }}>
-                        <label style={{ display: "block", marginBottom: "15px", color: "#fff" }}>
-                            <span style={{ display: "block", marginBottom: "5px" }}>Visualization Mode:</span>
+                    <div>
+                        <label style={{ display: "block", marginBottom: "15px", padding: "10px", color: "#fff" }}>
+                            <span style={{ display: "block", marginBottom: "5px", fontSize: "12px", color: "#aaa", fontWeight: "bold" }}>
+                                Visualization Mode:
+                            </span>
                             <select
                                 value={tempOptions.visualizationMode || "volume"}
                                 onChange={(e) => setTempOptions({ ...tempOptions, visualizationMode: e.target.value })}
@@ -57,7 +68,7 @@ function IndicatorsBtns(props) {
                                     border: "1px solid #555",
                                     background: "#333",
                                     color: "#fff",
-                                    fontSize: "14px",
+                                    fontSize: "13px",
                                 }}
                             >
                                 <option value="volume">Volume</option>
@@ -66,33 +77,10 @@ function IndicatorsBtns(props) {
                             </select>
                         </label>
 
-                        <label style={{ display: "block", marginBottom: "10px", color: "#fff" }}>
-                            <span style={{ display: "block", marginBottom: "5px" }}>Thresholds:</span>
-                            <input
-                                type="text"
-                                value={tempOptions.thresholds?.join(", ") || ""}
-                                onChange={(e) => {
-                                    const values = e.target.value
-                                        .split(",")
-                                        .map((v) => parseFloat(v.trim()))
-                                        .filter((v) => !isNaN(v));
-                                    setTempOptions({ ...tempOptions, thresholds: values });
-                                }}
-                                placeholder="0, 10, 20, 30..."
-                                style={{
-                                    width: "100%",
-                                    padding: "8px",
-                                    borderRadius: "4px",
-                                    border: "1px solid #555",
-                                    background: "#333",
-                                    color: "#fff",
-                                    fontSize: "14px",
-                                }}
-                            />
-                            <small style={{ color: "#aaa", display: "block", marginTop: "5px" }}>
-                                Comma-separated values for color thresholds
-                            </small>
-                        </label>
+                        <ColorSchemeEditor
+                            colorScheme={tempOptions.colorScheme || indicator.options.colorScheme}
+                            onChange={handleColorSchemeChange}
+                        />
                     </div>
                 );
             case "ZigZag":
@@ -245,8 +233,11 @@ function IndicatorsBtns(props) {
 }
 
 const OptsWindowContainer = styled.div`
-    min-width: 350px;
+    min-width: 500px;
+    max-width: 600px;
     min-height: 250px;
+    max-height: 80vh;
+    overflow-y: auto;
     border: 2px solid #666;
     background: #222;
     position: absolute;

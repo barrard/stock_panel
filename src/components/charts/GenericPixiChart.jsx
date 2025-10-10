@@ -37,6 +37,10 @@ export default function GenericPixiChart({
     lowerIndicators = [],
     ...rest
 }) {
+    if (symbol == "$SPX") {
+        // debugger;
+        console.log(symbol);
+    }
     tickSize = tickSize || TICKS()[symbol];
     mainChartContainerHeight = mainChartContainerHeight || height;
     // Use provided refs or create them if not provided

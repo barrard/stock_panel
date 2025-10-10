@@ -25,6 +25,7 @@ import GptChart from "./components/charts/GptChart";
 import BacktestChart from "./components/charts/BacktestChart";
 import BacktestResults from "./components/charts/BacktestResults";
 import SpyOptionsPage from "./components/SpyOptionsPage";
+import MarketBreadth from "./components/charts/pixiChart/components/MarketBreadth/MarketBreadth.jsx";
 import OptionContractChartPage from "./components/OptionContractChartPage";
 import PickList from "./components/PickList.js";
 
@@ -123,6 +124,7 @@ class App extends React.Component {
                     <Route path="/pixi-backtest" render={(props) => <BacktestChart {...props} Socket={Socket} />} />
                     <Route path="/backtest-results" render={(props) => <BacktestResults {...props} Socket={Socket} />} />
                     <Route path="/pick-list" render={(props) => <PickList {...props} Socket={Socket} />} />
+                    <Route path="/marketBreadth" render={(props) => <MarketBreadth {...props} Socket={Socket} />} />
                     <Route path="/SpyOptionsPage" render={(props) => <SpyOptionsPage {...props} Socket={Socket} />} />
                     <Route path="/OptionContractChartPage" render={(props) => <OptionContractChartPage {...props} Socket={Socket} />} />
 

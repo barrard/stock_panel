@@ -31,6 +31,7 @@ import { parseBarTypeTimeFrame, symbolOptions } from "./components/utils";
 import onLastTrade from "./handlers/onLastTrade";
 import PlantStatuses from "./components/PlantStatuses";
 import { TICKS } from "../../../indicators/indicatorHelpers/TICKS";
+import MarketBreadth from "./components/MarketBreadth";
 
 function getNextTimeBar(data) {
     const { barType, barTypePeriod } = data;
@@ -692,6 +693,7 @@ export default function PixiChart({ Socket }) {
     };
 
     // console.log("das render");
+    // const MarketBreadthMemo = useMemo(() => <MarketBreadth Socket={Socket} />, [Socket]);
     return (
         <>
             <div className="row g-0 relative">
@@ -701,7 +703,15 @@ export default function PixiChart({ Socket }) {
                 <AccountInfoTable Socket={Socket} />
 
                 <SpyOptions Socket={Socket} />
-                <MarketOverview Socket={Socket} lastTradesRef={lastTradesRef} fullSymbols={fullSymbols} />
+                <div className="row ">
+                    <div className="col-auto flex_center">
+                        <MarketOverview Socket={Socket} lastTradesRef={lastTradesRef} fullSymbols={fullSymbols} />
+                    </div>
+                    <div style={{ height: "100%", border: "10px solid black" }} className="col-6">
+                        {/* {MarketBreadthMemo} */}
+                        <MarketBreadth Socket={Socket} />
+                    </div>
+                </div>
                 {/* <div className="col-12">
                     <div className="row">
                         <div className="col">Start {new Date(startTime).toLocaleString()}</div>

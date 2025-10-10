@@ -22,6 +22,10 @@ export default class GenericDataHandler {
         options = { chartType: "candlestick" },
         lowerIndicators = [],
     }) {
+        if (symbol == "$SPX") {
+            console.log(ohlcDatas);
+            // debugger;
+        }
         this.lowerIndicators = lowerIndicators;
         this.options = options;
         this.loadMoreData = loadMoreData;
@@ -455,16 +459,19 @@ export default class GenericDataHandler {
     }
 
     initIndicators() {
-        this.lowerIndicatorsData = {
-            volume: new Indicator({
-                name: "volume",
-                height: this.indicatorHeight,
-                data: [],
-                drawFn: drawVolume,
-                chart: this,
-                accessors: "volume",
-            }),
-        };
+        this.lowerIndicatorsData = {};
+        if (!this.options.withoutVolume) {
+            this.lowerIndicatorsData = {
+                volume: new Indicator({
+                    name: "volume",
+                    height: this.indicatorHeight,
+                    data: [],
+                    drawFn: drawVolume,
+                    chart: this,
+                    accessors: "volume",
+                }),
+            };
+        }
         if (this.lowerIndicators.length) {
             this.lowerIndicators.forEach((indicator) => {
                 this.lowerIndicatorsData[indicator.name] = new Indicator({
@@ -522,6 +529,8 @@ export default class GenericDataHandler {
         this.layer3Container = new Container();
         this.layer4Container = new Container();
         this.layer5Container = new Container(); //for text labels
+        this.layer6Container = new Container(); //for text labels
+        this.layer7Container = new Container(); //for text labels
 
         this.mainChartContainer.addChild(this.layer0Container);
         this.mainChartContainer.addChild(this.layer1Container);
@@ -529,6 +538,8 @@ export default class GenericDataHandler {
         this.mainChartContainer.addChild(this.layer3Container);
         this.mainChartContainer.addChild(this.layer4Container);
         this.mainChartContainer.addChild(this.layer5Container);
+        this.mainChartContainer.addChild(this.layer6Container);
+        this.mainChartContainer.addChild(this.layer7Container);
 
         this.layers = {
             0: this.layer0Container,
@@ -536,7 +547,9 @@ export default class GenericDataHandler {
             2: this.layer2Container,
             3: this.layer3Container,
             4: this.layer4Container,
-            1000: this.layer5Container, //for text labels
+            5: this.layer5Container,
+            6: this.layer6Container,
+            1000: this.layer7Container, //for text labels
         };
 
         this.addToLayer(1, this.candleStickWickGfx);
@@ -544,11 +557,16 @@ export default class GenericDataHandler {
         this.addToLayer(1, this.priceGfx);
         this.addToLayer(3, this.borderGfx); // Layer 3 and 4 won't be masked
 
-        this.addToLayer(3, this.currentPriceLabelAppendGfx);
-        this.addToLayer(3, this.currentPriceTxtLabel);
+        this.addToLayer(4, this.currentPriceLabelAppendGfx);
+        this.addToLayer(4, this.currentPriceTxtLabel);
         this.addToLayer(1, this.volGfx);
 
         this.addToLayer(2, this.volProfileGfx);
+
+        // Add background text and position it in the center
+        this.addToLayer(0, this.backgroundText);
+        this.backgroundText.position.x = (this.width - (this.margin.left + this.margin.right)) / 2;
+        this.backgroundText.position.y = this.mainChartContainerHeight / 2;
         this.pixiApp.stage.addChild(this.indicatorContainer);
         this.pixiApp.stage.addChild(this.mainChartContainer);
         const lastDataPoint = this.ohlcDatas.slice(-1)[0];
@@ -566,6 +584,21 @@ export default class GenericDataHandler {
         this.crossHairYGfx = new Graphics();
         this.crossHairXGfx = new Graphics();
         this.borderGfx = new Graphics();
+
+        // Background watermark text
+        const watermarkText = this.symbol || "hello world";
+        this.backgroundText = new Text(
+            watermarkText,
+            new TextStyle({
+                fontFamily: "Arial",
+                fontSize: 72,
+                fontWeight: "bold",
+                fill: 0xffffff,
+                align: "center",
+                alpha: 0.1,
+            })
+        );
+        this.backgroundText.anchor.set(0.5, 0.5);
     }
     initTradeWindow() {
         //TRADE WINDOW
@@ -1117,7 +1150,8 @@ export default class GenericDataHandler {
     dragLeft() {
         if (this.longPress) return;
         //try to sub from left, and add to right
-        const candleCount = Math.ceil((this.deltaDrag * -1) / this.candleWidth);
+        const panAdjuster = this.slicedData.length / 1000 > 1 ? this.slicedData.length / 1000 : 1;
+        const candleCount = Math.ceil((this.deltaDrag * (-1 * panAdjuster)) / this.candleWidth);
         const combinedLength = this.ohlcDatas.length + this.fakeBars.length;
 
         this.sliceStart = this.sliceStart + candleCount;
@@ -1350,9 +1384,9 @@ export default class GenericDataHandler {
             this.candleWidth = (this.width - (this.margin.left + this.margin.right)) / this.slicedData.length;
 
             drawLine({
-                lineColor: 0x3b82f6,
+                lineColor: this.options.lineColor || 0x3b82f6,
                 lineWidth: 2,
-                yField: "last",
+                yField: this.options.lineKey || "last",
                 xScale: this.xScale,
                 yScale: this.priceScale,
                 data: this.slicedData,
@@ -1442,11 +1476,11 @@ export default class GenericDataHandler {
         this.addToLayer(3, this.tradeWindowContainer);
         //LABELS
         this.addToLayer(3, this.dateLabelAppendGfx);
-        this.addToLayer(3, this.priceLabelAppendGfx);
+        this.addToLayer(4, this.priceLabelAppendGfx);
         //TEXT
         this.addToLayer(3, this.dateTxtLabel);
-        this.addToLayer(3, this.priceTxtLabel);
-        this.addToLayer(3, this.percentTxtLabel);
+        this.addToLayer(4, this.priceTxtLabel);
+        this.addToLayer(4, this.percentTxtLabel);
     }
 
     hideCrosshair() {
