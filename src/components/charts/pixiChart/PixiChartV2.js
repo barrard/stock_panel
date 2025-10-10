@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import GenericPixiChart from "../GenericPixiChart";
 import API from "../../API";
 import LiquidityHeatmap from "./components/LiquidityHeatmap";
@@ -66,7 +66,7 @@ const PixiChartV2 = (props) => {
             shouldEnable: (timeframe) => timeframe === "1m" || timeframe === "5m",
             options: {
                 visualizationMode: "volume", // 'volume', 'orders', or 'ratio'
-                thresholds: [0, 10, 20, 30, 40, 50, 60, 70], // Color thresholds
+                thresholds: [0, 15, 30, 60, 90, 120, 180, 250], // Color thresholds (matches LiquidityHeatmap defaults)
             },
         },
         {
@@ -86,11 +86,13 @@ const PixiChartV2 = (props) => {
     // Use custom hook for indicator toggling
     const toggleIndicator = useToggleIndicator(indicators, setIndicators, timeframe);
 
-    // Function to update indicator options
-    const updateIndicatorOptions = (indicatorId, newOptions) => {
+    // Function to update indicator options (memoized to prevent unnecessary re-renders)
+    const updateIndicatorOptions = useCallback((indicatorId, newOptions) => {
+        console.log('[updateIndicatorOptions] Called with:', indicatorId, newOptions);
         setIndicators((prevIndicators) => {
             return prevIndicators.map((ind) => {
                 if (ind.id === indicatorId) {
+                    console.log('[updateIndicatorOptions] Found indicator:', ind.id, 'enabled:', ind.enabled, 'instanceRef:', !!ind.instanceRef);
                     const updatedIndicator = {
                         ...ind,
                         options: { ...ind.options, ...newOptions },
@@ -99,10 +101,12 @@ const PixiChartV2 = (props) => {
                     // If the indicator is enabled and has an instance, update it
                     if (updatedIndicator.enabled && updatedIndicator.instanceRef) {
                         const instance = updatedIndicator.instanceRef;
+                        console.log('[updateIndicatorOptions] Instance found, has setVisualizationMode:', !!instance.setVisualizationMode);
 
-                        // Update visualization mode if changed
+                        // Update visualization mode if changed (this triggers a redraw internally)
                         if (newOptions.visualizationMode && instance.setVisualizationMode) {
-                            instance.visualizationMode = newOptions.visualizationMode;
+                            console.log('[updateIndicatorOptions] Calling setVisualizationMode with:', newOptions.visualizationMode);
+                            instance.setVisualizationMode(newOptions.visualizationMode);
                         }
 
                         // Update thresholds if changed
@@ -110,10 +114,12 @@ const PixiChartV2 = (props) => {
                             instance.liquidityThresholds = newOptions.thresholds;
                         }
 
-                        // Trigger redraw with new settings
-                        if (instance.draw) {
+                        // If we only updated thresholds (not visualization mode), trigger redraw
+                        if (!newOptions.visualizationMode && newOptions.thresholds && instance.draw) {
                             instance.draw(true);
                         }
+                    } else {
+                        console.log('[updateIndicatorOptions] Instance not available - enabled:', updatedIndicator.enabled, 'instanceRef:', !!updatedIndicator.instanceRef);
                     }
 
                     return updatedIndicator;
@@ -121,7 +127,7 @@ const PixiChartV2 = (props) => {
                 return ind;
             });
         });
-    };
+    }, []);
 
     // Get indicator configs
     const liquidityHeatmapIndicator = indicators.find((ind) => ind.id === "liquidityHeatmap");
@@ -151,7 +157,17 @@ const PixiChartV2 = (props) => {
             if (timeframe !== "1m" && timeframe !== "5m") {
                 return null;
             }
-            return new LiquidityHeatmap(pixiData);
+            const instance = new LiquidityHeatmap(pixiData);
+            // Initialize with options from indicator config
+            if (liquidityHeatmapIndicator?.options) {
+                if (liquidityHeatmapIndicator.options.visualizationMode) {
+                    instance.visualizationMode = liquidityHeatmapIndicator.options.visualizationMode;
+                }
+                if (liquidityHeatmapIndicator.options.thresholds) {
+                    instance.liquidityThresholds = liquidityHeatmapIndicator.options.thresholds;
+                }
+            }
+            return instance;
         },
         setIndicators,
         dependencies: [timeframe],
@@ -465,7 +481,6 @@ const PixiChartV2 = (props) => {
     // Filter orders by current symbol
     const symbolFilteredOrders = useMemo(() => {
         const filtered = {};
-        debugger;
         Object.keys(ordersFromParent).forEach((basketId) => {
             const orderArray = ordersFromParent[basketId];
             // Check if any order in this basket matches the current symbol

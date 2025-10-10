@@ -1,3 +1,5 @@
+import { useCallback } from "react";
+
 /**
  * Custom hook to handle indicator toggling with timeframe validation
  * @param {Array} indicators - Current indicators state
@@ -6,7 +8,7 @@
  * @returns {Function} toggleIndicator - Function to toggle indicator by id
  */
 export const useToggleIndicator = (indicators, setIndicators, timeframe) => {
-    const toggleIndicator = (id) => {
+    const toggleIndicator = useCallback((id) => {
         setIndicators((prevIndicators) =>
             prevIndicators.map((indicator) => {
                 if (indicator.id === id) {
@@ -20,7 +22,7 @@ export const useToggleIndicator = (indicators, setIndicators, timeframe) => {
                 return indicator;
             })
         );
-    };
+    }, [setIndicators, timeframe]);
 
     return toggleIndicator;
 };

@@ -14,7 +14,7 @@ export default class LiquidityHeatmap {
         this.currentBarSnapshots = []; // Array of snapshots for the current bar (to average)
         this.currentBarDatetime = null; // Datetime of the current bar being built
 
-        this.maxHistoryLength = 500; // Max bars to keep in history
+        this.maxHistoryLength = 5000; // Max bars to keep in history (increased to support more data)
 
         // Visualization mode: 'volume', 'orders', or 'ratio' (volume/orders = avg size per order)
         this.visualizationMode = "volume";
@@ -303,16 +303,16 @@ export default class LiquidityHeatmap {
 
         const endTime = performance.now();
         const drawTime = (endTime - startTime).toFixed(2);
-        // console.log(`[LiquidityHeatmap] Draw time: ${drawTime}ms`);
+        console.log(`[LiquidityHeatmap] Draw time: ${drawTime}ms`);
     }
 
     /**
      * Draw all visible bars including current bar data
      */
     drawAllBars() {
-        // console.log(
-        //     `[LiquidityHeatmap] drawAllBars called - history: ${this.liquidityHistory.length}, currentSnapshots: ${this.currentBarSnapshots.length}`
-        // );
+        console.log(
+            `[LiquidityHeatmap] drawAllBars called - history: ${this.liquidityHistory.length}, currentSnapshots: ${this.currentBarSnapshots.length}, slicedData: ${this.chart.slicedData?.length}`
+        );
 
         // Clear both containers
         this.historicalBarsContainer.removeChildren();
@@ -331,6 +331,10 @@ export default class LiquidityHeatmap {
         const historicalGfx = new Graphics();
         const currentGfx = new Graphics();
 
+        // Track stats
+        let drawnCount = 0;
+        let missedCount = 0;
+
         // Draw all bars from history
         slicedData.forEach((bar, relativeIndex) => {
             const barDatetime = bar.timestamp || bar.datetime;
@@ -345,14 +349,20 @@ export default class LiquidityHeatmap {
                     liquidity: currentBarLiquidity,
                 };
                 this.drawBarLiquidityBatched(currentSnapshot, relativeIndex, barWidth, barHeight, currentGfx, globalColorScale);
+                drawnCount++;
             } else {
                 // Use historical finalized data
                 const liquiditySnapshot = this.findLiquiditySnapshotForBar(barDatetime);
                 if (liquiditySnapshot) {
                     this.drawBarLiquidityBatched(liquiditySnapshot, relativeIndex, barWidth, barHeight, historicalGfx, globalColorScale);
+                    drawnCount++;
+                } else {
+                    missedCount++;
                 }
             }
         });
+
+        console.log(`[LiquidityHeatmap] Drew ${drawnCount} bars, missed ${missedCount} bars out of ${slicedData.length} total`);
 
         // Add the graphics objects to their respective containers
         this.historicalBarsContainer.addChild(historicalGfx);
@@ -442,14 +452,24 @@ export default class LiquidityHeatmap {
         if (!liquiditySnapshot || !liquiditySnapshot.liquidity) return;
 
         const liquidityData = liquiditySnapshot.liquidity;
+        const priceLevelCount = Object.keys(liquidityData).length;
 
-        if (!Object.keys(liquidityData).length) return;
+        if (!priceLevelCount) return;
 
         // Use global color scale if provided, otherwise calculate (fixed thresholds, fast either way)
         const { colorFns, thresholdData } = globalColorScale || this.getColorFunctions();
 
         // Calculate x position for this bar
         const x = xScale(relativeIndex);
+
+        // Log first bar details for debugging
+        if (relativeIndex === 0) {
+            console.log(
+                `[LiquidityHeatmap] First bar - price levels: ${priceLevelCount}, barWidth: ${barWidth.toFixed(
+                    2
+                )}, barHeight: ${barHeight.toFixed(2)}, x: ${x.toFixed(2)}`
+            );
+        }
 
         // Draw each price level into the SAME Graphics object
         Object.keys(liquidityData).forEach((priceStr) => {
@@ -501,6 +521,15 @@ export default class LiquidityHeatmap {
             colorStr = colorStr.replace("rgb(", "").replace(")", "");
             const [r, g, b] = colorStr.split(",").map((v) => parseFloat(v.trim()));
             const color = new Color([r / 255, g / 255, b / 255]).toNumber();
+
+            // Log first price level of first bar for debugging
+            if (relativeIndex === 0 && price === parseFloat(Object.keys(liquidityData)[0])) {
+                console.log(
+                    `[LiquidityHeatmap] First price level - price: ${price}, value: ${value}, yTop: ${yTop.toFixed(
+                        2
+                    )}, yBottom: ${yBottom.toFixed(2)}, color: #${color.toString(16)}`
+                );
+            }
 
             // Batch draw into single Graphics object
             gfx.beginFill(color, 0.5); // alpha in beginFill, not separate property

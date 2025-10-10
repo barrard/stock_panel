@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, memo } from "react";
 import { IconButton } from "../../../StratBuilder/components";
 import { GiAirZigzag, GiHistogram, GiAmplitude } from "react-icons/gi";
 import { IoIosReorder } from "react-icons/io";
@@ -10,7 +10,7 @@ import Input from "./Input";
 
 // import Select from "./Select";
 
-export default function IndicatorsBtns(props) {
+function IndicatorsBtns(props) {
     const {
         // Legacy props (for old PixiChart v1)
         setDrawZigZag,
@@ -49,9 +49,7 @@ export default function IndicatorsBtns(props) {
                             <span style={{ display: "block", marginBottom: "5px" }}>Visualization Mode:</span>
                             <select
                                 value={tempOptions.visualizationMode || "volume"}
-                                onChange={(e) =>
-                                    setTempOptions({ ...tempOptions, visualizationMode: e.target.value })
-                                }
+                                onChange={(e) => setTempOptions({ ...tempOptions, visualizationMode: e.target.value })}
                                 style={{
                                     width: "100%",
                                     padding: "8px",
@@ -59,7 +57,7 @@ export default function IndicatorsBtns(props) {
                                     border: "1px solid #555",
                                     background: "#333",
                                     color: "#fff",
-                                    fontSize: "14px"
+                                    fontSize: "14px",
                                 }}
                             >
                                 <option value="volume">Volume</option>
@@ -74,7 +72,10 @@ export default function IndicatorsBtns(props) {
                                 type="text"
                                 value={tempOptions.thresholds?.join(", ") || ""}
                                 onChange={(e) => {
-                                    const values = e.target.value.split(",").map((v) => parseFloat(v.trim())).filter((v) => !isNaN(v));
+                                    const values = e.target.value
+                                        .split(",")
+                                        .map((v) => parseFloat(v.trim()))
+                                        .filter((v) => !isNaN(v));
                                     setTempOptions({ ...tempOptions, thresholds: values });
                                 }}
                                 placeholder="0, 10, 20, 30..."
@@ -85,7 +86,7 @@ export default function IndicatorsBtns(props) {
                                     border: "1px solid #555",
                                     background: "#333",
                                     color: "#fff",
-                                    fontSize: "14px"
+                                    fontSize: "14px",
                                 }}
                             />
                             <small style={{ color: "#aaa", display: "block", marginTop: "5px" }}>
@@ -109,6 +110,8 @@ export default function IndicatorsBtns(props) {
 
     const OptionsWindow = () => {
         const handleOK = () => {
+            console.log("[IndicatorsBtns] handleOK called - optsWindow:", optsWindow?.id, "tempOptions:", tempOptions);
+            console.log("[IndicatorsBtns] updateIndicatorOptions exists:", !!updateIndicatorOptions);
             if (optsWindow && updateIndicatorOptions) {
                 updateIndicatorOptions(optsWindow.id, tempOptions);
             }
@@ -118,18 +121,11 @@ export default function IndicatorsBtns(props) {
         return (
             <OptsWindowContainer>
                 <Position>
-                    <IconButton
-                        borderColor={false}
-                        title="Close"
-                        onClick={() => setOptsWindow(null)}
-                        rIcon={<AiFillCloseCircle />}
-                    />
+                    <IconButton borderColor={false} title="Close" onClick={() => setOptsWindow(null)} rIcon={<AiFillCloseCircle />} />
                 </Position>
-                <h4 style={{ color: "#fff", padding: "10px", margin: 0 }}>
-                    {optsWindow?.name || "Options"}
-                </h4>
+                <h4 style={{ color: "#fff", padding: "10px", margin: 0 }}>{optsWindow?.name || "Options"}</h4>
                 {showOptions(optsWindow)}
-                <button className="btn" onClick={handleOK} style={{ margin: "10px" }}>
+                <button className="btn" onClick={handleOK} style={{ margin: "10px", color: "#fff", backgroundColor: "green" }}>
                     Apply
                 </button>
             </OptsWindowContainer>
@@ -257,12 +253,20 @@ const OptsWindowContainer = styled.div`
     z-index: 10000;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 10px;
 `;
 
 const Position = styled.div`
-    top: ${(props) => props.top};
+    top: ${(props) => props.top || 0};
+    right: 0;
+    color: #fff;
     border: 2px solid #666;
     background: #333;
     position: absolute;
     z-index: 10000;
 `;
+
+// Export memoized component to prevent re-renders from parent updates
+export default memo(IndicatorsBtns);
