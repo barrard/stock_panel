@@ -11,9 +11,19 @@ import StartEndTimes from "./StartEndTimes";
 import Select from "./Select";
 
 export default function TimeFrameBtns(props) {
-    console.log("TimeFrameBtns");
-    const { barType, barTypePeriod, setBarType, setBarTypePeriod, backgroundDataFetch, setBackgroundDataFetch, setStartTime, setEndTime, startTime, endTime } =
-        props;
+    // console.log("TimeFrameBtns");
+    const {
+        barType,
+        barTypePeriod,
+        setBarType,
+        setBarTypePeriod,
+        backgroundDataFetch,
+        setBackgroundDataFetch,
+        setStartTime,
+        setEndTime,
+        startTime,
+        endTime,
+    } = props;
 
     const [optsWindow, setOptsWindow] = useState("");
 

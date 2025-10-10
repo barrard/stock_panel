@@ -378,7 +378,7 @@ export default function TableRowEl({
     const callBreakEvenPercent = ((callBreakEven - spyLevelOne?.lastPrice) / spyLevelOne?.lastPrice) * 100;
 
     const spyPutOptionContractChart = {
-        height: 500,
+        height: 200,
         width: 600,
         spyLevelOne,
         Socket,
@@ -390,7 +390,7 @@ export default function TableRowEl({
     };
 
     const spyCallOptionContractChart = {
-        height: 500,
+        height: 200,
         width: 600,
         spyLevelOne,
         Socket,

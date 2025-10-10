@@ -310,7 +310,7 @@ export default class GenericDataHandler {
         this.xScale = scaleLinear().range([0, this.width - (this.margin.left + this.margin.right)]);
     }
     initYScale() {
-        this.priceScale = scaleLinear().range([this.mainChartContainerHeight - (this.margin.top + this.margin.bottom), 0]);
+        this.priceScale = scaleLinear().range([this.mainChartContainerHeight, 0]);
     }
     initAxis() {
         this.yAxis = new PixiAxis({
@@ -790,7 +790,7 @@ export default class GenericDataHandler {
                 indicator.init();
                 let { container, name, scale, gfx, initialized, height } = indicator;
 
-                const yPos = this.mainChartContainerHeight - this.margin.bottom + this.getIndicatorTopPos(index);
+                const yPos = this.mainChartContainerHeight + this.margin.top + this.getIndicatorTopPos(index);
                 //place the container at some place
                 container.position.x = this.margin.left;
                 container.position.y = yPos;
@@ -825,7 +825,7 @@ export default class GenericDataHandler {
         // Apply mask only to layers 0, 1, 2 (chart graphics), not to layer 1 (which has axes)
         const maskGfx = new Graphics();
         maskGfx.beginFill(0xffffff);
-        maskGfx.drawRect(0, 0, this.width - (left + right), this.mainChartContainerHeight - (top + bottom));
+        maskGfx.drawRect(0, 0, this.width - (left + right), this.mainChartContainerHeight);
         maskGfx.endFill();
 
         // Add mask to a dedicated layer so it can be shared

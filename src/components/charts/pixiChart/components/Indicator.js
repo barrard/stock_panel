@@ -84,7 +84,7 @@ export default class Indicator {
             .on("pointerover", (e) => {
                 this.pointerOver = true;
                 //tell the cross hair to use this scale....
-                debugger;
+                console.log(`Pointer over ${this.name}, container.position.y: ${this.container.position.y}, hitArea:`, this.hitArea);
 
                 this.chart.setYScale(this.scale);
                 this.chart.yMouseOffset = this.container.position.y;

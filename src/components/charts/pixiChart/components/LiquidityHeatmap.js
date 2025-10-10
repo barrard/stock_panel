@@ -99,11 +99,11 @@ export default class LiquidityHeatmap {
 
         // Add snapshot to current bar buffer
         this.currentBarSnapshots.push(snapshot);
-        console.log(
-            `[LiquidityHeatmap] Added snapshot - current buffer size: ${this.currentBarSnapshots.length}, price levels: ${
-                Object.keys(snapshot.liquidity).length
-            }`
-        );
+        // console.log(
+        //     `[LiquidityHeatmap] Added snapshot - current buffer size: ${this.currentBarSnapshots.length}, price levels: ${
+        //         Object.keys(snapshot.liquidity).length
+        //     }`
+        // );
     }
 
     /**
@@ -259,7 +259,7 @@ export default class LiquidityHeatmap {
      * @param {Boolean} forceFullRedraw - Force redraw all bars (for pan/zoom/options changes)
      */
     draw(forceFullRedraw = false) {
-        console.log(`[LiquidityHeatmap] draw() called - forceFullRedraw: ${forceFullRedraw}, initialized: ${this.initialized}`);
+        // console.log(`[LiquidityHeatmap] draw() called - forceFullRedraw: ${forceFullRedraw}, initialized: ${this.initialized}`);
         const startTime = performance.now();
 
         if (!this.initialized) {
@@ -289,30 +289,30 @@ export default class LiquidityHeatmap {
 
         if (forceFullRedraw || this.needsFullRedraw) {
             // Full redraw needed (pan/zoom/options change)
-            console.log(
-                `[LiquidityHeatmap] Full redraw triggered - forceFullRedraw: ${forceFullRedraw}, needsFullRedraw: ${this.needsFullRedraw}`
-            );
+            // console.log(
+            //     `[LiquidityHeatmap] Full redraw triggered - forceFullRedraw: ${forceFullRedraw}, needsFullRedraw: ${this.needsFullRedraw}`
+            // );
             this.drawAllBars();
             // Clear the flag after full redraw
             this.needsFullRedraw = false;
         } else {
             // Incremental update: only redraw current bar (socket update)
-            console.log(`[LiquidityHeatmap] Incremental update: drawing current bar only`);
+            // console.log(`[LiquidityHeatmap] Incremental update: drawing current bar only`);
             this.drawCurrentBarOnly();
         }
 
         const endTime = performance.now();
         const drawTime = (endTime - startTime).toFixed(2);
-        console.log(`[LiquidityHeatmap] Draw time: ${drawTime}ms`);
+        // console.log(`[LiquidityHeatmap] Draw time: ${drawTime}ms`);
     }
 
     /**
      * Draw all visible bars including current bar data
      */
     drawAllBars() {
-        console.log(
-            `[LiquidityHeatmap] drawAllBars called - history: ${this.liquidityHistory.length}, currentSnapshots: ${this.currentBarSnapshots.length}`
-        );
+        // console.log(
+        //     `[LiquidityHeatmap] drawAllBars called - history: ${this.liquidityHistory.length}, currentSnapshots: ${this.currentBarSnapshots.length}`
+        // );
 
         // Clear both containers
         this.historicalBarsContainer.removeChildren();
@@ -370,9 +370,9 @@ export default class LiquidityHeatmap {
      * Draw current bar with optional pre-calculated color scale
      */
     drawCurrentBarOnlyWithColorScale(globalColorScale = null) {
-        console.log(
-            `[LiquidityHeatmap] drawCurrentBarOnly called - snapshots: ${this.currentBarSnapshots.length}, currentBarDatetime: ${this.currentBarDatetime}`
-        );
+        // console.log(
+        //     `[LiquidityHeatmap] drawCurrentBarOnly called - snapshots: ${this.currentBarSnapshots.length}, currentBarDatetime: ${this.currentBarDatetime}`
+        // );
 
         // Clear current bar container
         this.currentBarContainer.removeChildren();
@@ -395,11 +395,11 @@ export default class LiquidityHeatmap {
         const lastBar = slicedData[slicedData.length - 1];
         const lastBarDatetime = lastBar.timestamp || lastBar.datetime;
 
-        console.log(
-            `[LiquidityHeatmap] Last bar datetime: ${new Date(lastBarDatetime).toLocaleTimeString()}, current bar datetime: ${new Date(
-                this.currentBarDatetime
-            ).toLocaleTimeString()}, match: ${this.getBarDatetime(lastBarDatetime) === this.currentBarDatetime}`
-        );
+        // console.log(
+        //     `[LiquidityHeatmap] Last bar datetime: ${new Date(lastBarDatetime).toLocaleTimeString()}, current bar datetime: ${new Date(
+        //         this.currentBarDatetime
+        //     ).toLocaleTimeString()}, match: ${this.getBarDatetime(lastBarDatetime) === this.currentBarDatetime}`
+        // );
 
         // Check if current bar datetime matches the last visible bar
         if (this.getBarDatetime(lastBarDatetime) === this.currentBarDatetime) {
@@ -417,13 +417,13 @@ export default class LiquidityHeatmap {
             this.drawBarLiquidityBatched(currentSnapshot, relativeIndex, barWidth, liquidityHeight, currentGfx, globalColorScale);
             this.currentBarContainer.addChild(currentGfx);
 
-            console.log(
-                `[LiquidityHeatmap] Drew current bar - price levels: ${Object.keys(currentBarLiquidity).length}, position: ${relativeIndex}`
-            );
+            // console.log(
+            //     `[LiquidityHeatmap] Drew current bar - price levels: ${Object.keys(currentBarLiquidity).length}, position: ${relativeIndex}`
+            // );
         } else {
-            console.log(
-                `[LiquidityHeatmap] Current bar datetime mismatch - chart: ${lastBarDatetime}, heatmap: ${this.currentBarDatetime}`
-            );
+            // console.log(
+            //     `[LiquidityHeatmap] Current bar datetime mismatch - chart: ${lastBarDatetime}, heatmap: ${this.currentBarDatetime}`
+            // );
         }
     }
 

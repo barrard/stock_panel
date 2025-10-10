@@ -11,7 +11,7 @@ import Select from "./Select";
 import { TICKS } from "../../../../indicators/indicatorHelpers/TICKS";
 const ticks = TICKS();
 export default function SymbolBtns(props) {
-    console.log("SymbolBtns");
+    // console.log("SymbolBtns");
     const { symbolOptions, symbol, setSymbol } = props;
 
     let isEs, isNQ, isYm, isCL, isGC, isRTY, isZN;
