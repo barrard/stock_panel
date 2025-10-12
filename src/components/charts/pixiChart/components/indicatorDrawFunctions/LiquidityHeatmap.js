@@ -17,7 +17,7 @@ export default class LiquidityHeatmap {
         this.currentBarSnapshots = []; // Array of snapshots for the current bar (to average)
         this.currentBarDatetime = null; // Datetime of the current bar being built
 
-        this.maxHistoryLength = 5000; // Max bars to keep in history (increased to support more data)
+        this.maxHistoryLength = 500000; // Max bars to keep in history (increased to support more data)
 
         // Visualization mode: 'volume', 'orders', or 'ratio' (volume/orders = avg size per order)
         this.visualizationMode = "volume";

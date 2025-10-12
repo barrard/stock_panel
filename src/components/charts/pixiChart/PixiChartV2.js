@@ -11,6 +11,7 @@ import OrdersList from "./components/OrdersList";
 import { symbolOptions } from "./components/utils";
 import { useIndicator } from "../hooks/useIndicator";
 import { useToggleIndicator } from "../hooks/useToggleIndicator";
+import { useLiquidityData } from "../hooks/useLiquidityData";
 import { TICKS } from "../../../indicators/indicatorHelpers/TICKS";
 // import { liquidityHeatMapConfig } from "./components/indicatorConfigs";
 // import drawStrikes from "./drawStrikes";
@@ -42,16 +43,6 @@ const PixiChartV2 = (props) => {
         name: "ES",
         exchange: "CME",
         tickSize: ticks["ES"],
-    });
-
-    // Cache for liquidity data (persists across indicator toggles)
-    const liquidityDataCacheRef = useRef({
-        history: [], // Historical compiled data from API
-        hasLoaded: false, // Flag to track if we've fetched from server
-        symbol: null, // Track which symbol this cache is for
-        timeframe: null, // Track which timeframe this cache is for
-        lastFetchTime: null, // Track when we last fetched data
-        endDatetime: null, // Track the end datetime of cached data
     });
 
     //controls various indicators
@@ -190,133 +181,16 @@ const PixiChartV2 = (props) => {
         dependencies: [],
     });
 
-    // Fetch initial liquidity data when indicator is enabled
-    useEffect(() => {
-        const heatmapInstance = liquidityHeatmapIndicator?.instanceRef;
-
-        if (!heatmapInstance || !liquidityHeatmapIndicator?.enabled || !ohlcData.length) {
-            return;
-        }
-
-        const cache = liquidityDataCacheRef.current;
-
-        // Check if cache is invalid (symbol or timeframe changed)
-        if (cache.symbol !== symbol.value || cache.timeframe !== timeframe) {
-            // Clear cache for new symbol/timeframe
-            cache.history = [];
-            cache.hasLoaded = false;
-            cache.symbol = symbol.value;
-            cache.timeframe = timeframe;
-        }
-
-        // Check if we need to fetch more OHLC bars (if cache indicates we have data beyond current OHLC range)
-        const currentStartDatetime = ohlcData[0].timestamp || ohlcData[0].datetime;
-        const currentEndDatetime = ohlcData[ohlcData.length - 1].timestamp || ohlcData[ohlcData.length - 1].datetime;
-
-        // If cache has data beyond our current OHLC range, we might be missing OHLC bars
-        if (cache.endDatetime && cache.endDatetime - 1000 * 60 * 30 > currentEndDatetime) {
-            console.log(
-                `[Cache] Detected missing OHLC data - cache ends at ${new Date(
-                    cache.endDatetime
-                ).toLocaleTimeString()}, OHLC ends at ${new Date(currentEndDatetime).toLocaleTimeString()}`
-            );
-            // Trigger OHLC data fetch (this will re-run this effect with updated ohlcData)
-            fetchLiveDataAndUpdate();
-            return;
-        }
-
-        // Cache staleness check - determine if we need to fetch new data
-        const now = Date.now();
-        const CACHE_STALE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
-
-        const isCacheStale =
-            !cache.hasLoaded ||
-            !cache.history.length ||
-            !cache.lastFetchTime ||
-            now - cache.lastFetchTime > CACHE_STALE_THRESHOLD ||
-            (cache.endDatetime && currentEndDatetime > cache.endDatetime);
-
-        // Check cache first - if we have fresh data, use it
-        if (cache.hasLoaded && cache.history.length > 0 && !isCacheStale) {
-            console.log("Loading liquidity data from cache (fresh)");
-            heatmapInstance.setLiquidityHistory(cache.history);
-            heatmapInstance.draw(true);
-            return;
-        }
-
-        // Cache is stale or missing - fetch from API
-        const fetchLiquidityData = async () => {
-            try {
-                const startTime = ohlcData[0].timestamp || ohlcData[0].datetime;
-                const endTime = ohlcData[ohlcData.length - 1].timestamp || ohlcData[ohlcData.length - 1].datetime;
-                const start = startTime;
-                const end = endTime;
-
-                console.log("Fetching liquidity data from API");
-                const liquidityData = await API.getOrderFlow({
-                    start,
-                    end,
-                    symbol: symbol.value,
-                    compiled: timeframe, // Get pre-compiled data from server
-                });
-
-                // Server returns array of objects with:
-                // { datetime, orderPrices: [], orderSizes: [], orderCounts: [], ... }
-                // Transform to our format: { datetime, liquidity: {price: {volume, orders}} }
-                if (liquidityData && Array.isArray(liquidityData)) {
-                    const transformedData = liquidityData.map((bar) => {
-                        const liquidity = {};
-
-                        // Convert parallel arrays to price: {volume, orders} object
-                        if (bar.orderPrices && bar.orderSizes) {
-                            bar.orderPrices.forEach((price, index) => {
-                                const volume = bar.orderSizes[index];
-                                const orders = bar.orderCounts ? bar.orderCounts[index] : 0;
-                                if (price !== undefined && volume !== undefined) {
-                                    liquidity[price.toString()] = {
-                                        volume,
-                                        orders: orders || 0,
-                                    };
-                                }
-                            });
-                        }
-
-                        return {
-                            datetime: bar.datetime,
-                            liquidity,
-                            // Store the extra metrics for future use
-                            metrics: {
-                                bidSizeOrderRatio: bar.bidSizeOrderRatio,
-                                askSizeOrderRatio: bar.askSizeOrderRatio,
-                                bidSizeToAskSizeRatio: bar.bidSizeToAskSizeRatio,
-                                bidOrderToAskOrderRatio: bar.bidOrderToAskOrderRatio,
-                                bidSizeToAskSizeRatioMA: bar.bidSizeToAskSizeRatioMA,
-                                delta: bar.delta,
-                            },
-                        };
-                    });
-
-                    // Store in cache with metadata
-                    cache.history = transformedData;
-                    cache.hasLoaded = true;
-                    cache.lastFetchTime = Date.now();
-                    cache.endDatetime = endTime;
-
-                    console.log(`[Cache] Stored ${transformedData.length} bars, end datetime: ${new Date(endTime).toLocaleString()}`);
-
-                    // Load into heatmap
-                    heatmapInstance.setLiquidityHistory(transformedData);
-
-                    // Manually trigger heatmap draw (force full redraw)
-                    heatmapInstance.draw(true);
-                }
-            } catch (error) {
-                console.error("Failed to fetch liquidity data:", error);
-            }
-        };
-
-        fetchLiquidityData();
-    }, [liquidityHeatmapIndicator?.enabled, liquidityHeatmapIndicator?.instanceRef, symbol, timeframe]);
+    // Use the liquidity data hook for fetching and caching
+    useLiquidityData({
+        liquidityHeatmapIndicator,
+        symbol: symbol.value,
+        timeframe,
+        ohlcData,
+        Socket,
+        indicatorsRef,
+        fetchLiveDataAndUpdate, // Pass for OHLC bar fetching when needed
+    });
 
     // Draw orders when indicator is enabled or orders change
     useEffect(() => {
@@ -401,86 +275,9 @@ const PixiChartV2 = (props) => {
         };
         Socket.on(liveBarUpdate, handleLiveBarUpdate);
 
-        // Liquidity data socket listener (only for 1m and 5m timeframes)
-        let liquidityEventName = null;
-        let handleLiquidityData = null;
-
-        console.log(`[Socket] Checking timeframe: ${timeframe}, is 1m or 5m: ${timeframe === "1m" || timeframe === "5m"}`);
-        if (timeframe === "1m" || timeframe === "5m") {
-            liquidityEventName = `liquidity-${symbol.value}`;
-            console.log(`[Socket] Registering liquidity listener for event: ${liquidityEventName}`);
-
-            handleLiquidityData = (liquidityData) => {
-                // liquidityData format: { symbol, highLiquidity: [{p: price, size: volume, orders: count}], ... }
-                if (liquidityData.symbol !== symbol.value || !liquidityData.highLiquidity) return;
-
-                // Convert to our snapshot format: {datetime, liquidity: {price: {volume, orders}}}
-                const datetime = Date.now();
-                const liquidity = {};
-
-                liquidityData.highLiquidity.forEach((level) => {
-                    liquidity[level.p.toString()] = {
-                        volume: level.size,
-                        orders: level.orders || 0,
-                    };
-                });
-
-                const snapshot = {
-                    datetime,
-                    liquidity,
-                };
-
-                // Always store socket data in cache (even if indicator is disabled)
-                const cache = liquidityDataCacheRef.current;
-
-                // Only cache if this matches current symbol/timeframe
-                if (cache.symbol === symbol.value && cache.timeframe === timeframe) {
-                    // Find if we already have a bar for this datetime
-                    const barDatetime = new Date(datetime);
-                    barDatetime.setSeconds(0, 0);
-                    const alignedDatetime = barDatetime.getTime();
-
-                    const existingBarIndex = cache.history.findIndex((bar) => bar.datetime === alignedDatetime);
-
-                    if (existingBarIndex >= 0) {
-                        // Update existing bar (replace with latest snapshot)
-                        cache.history[existingBarIndex] = { datetime: alignedDatetime, liquidity };
-                    } else {
-                        // Add new bar
-                        cache.history.push({ datetime: alignedDatetime, liquidity });
-
-                        // Keep only recent history (e.g., last 500 bars)
-                        if (cache.history.length > 500) {
-                            cache.history.shift();
-                        }
-                    }
-
-                    // Update cache metadata to reflect latest data
-                    cache.endDatetime = Math.max(cache.endDatetime || 0, alignedDatetime);
-                    cache.lastFetchTime = Date.now();
-                }
-
-                // If indicator is enabled, also update the heatmap instance
-                // Use ref to get current indicators without causing re-renders
-                const currentHeatmapIndicator = indicatorsRef.current.find((ind) => ind.id === "liquidityHeatmap");
-                const heatmapInstance = currentHeatmapIndicator?.instanceRef;
-
-                if (heatmapInstance && heatmapInstance.addLiquiditySnapshot) {
-                    heatmapInstance.addLiquiditySnapshot(snapshot);
-                    // Manually trigger draw (only on socket updates, not on pan/zoom)
-                    heatmapInstance.draw();
-                }
-            };
-
-            Socket.on(liquidityEventName, handleLiquidityData);
-        }
-
         return () => {
             Socket.off(liveBarNew, handleLiveBarNew);
             Socket.off(liveBarUpdate, handleLiveBarUpdate);
-            if (liquidityEventName && handleLiquidityData) {
-                Socket.off(liquidityEventName, handleLiquidityData);
-            }
         };
     }, [symbol, timeframe]); // Socket intentionally omitted to prevent re-registrations
 

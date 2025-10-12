@@ -137,7 +137,7 @@ export default class Indicator {
 
     setupScales() {
         // Clear graphics for redraw
-        this.gfx.clear();
+        this.gfx?.clear();
 
         let lowest, highest;
 
@@ -147,7 +147,7 @@ export default class Indicator {
             let allValues = [];
             this.lines.forEach((lineConfig) => {
                 const lineData = this.chart.slicedData.map((ohlc) => ohlc[lineConfig.lineKey]);
-                allValues = allValues.concat(lineData.filter(v => v != null && !isNaN(v)));
+                allValues = allValues.concat(lineData.filter((v) => v != null && !isNaN(v)));
             });
 
             [lowest, highest] = extent(allValues);

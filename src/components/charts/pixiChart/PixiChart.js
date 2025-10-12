@@ -680,7 +680,7 @@ export default function PixiChart({ Socket }) {
 
     const mainChartProps = {
         // candleData: candleData.spy1MinData,
-        height: 200,
+        height: 400,
         // width: 600,
         // spyLevelOne,
         Socket,

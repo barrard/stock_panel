@@ -5,6 +5,7 @@ import { IconButton } from "../../../../StratBuilder/components";
 import IndicatorsBtns from "../IndicatorsBtns";
 import { useToggleIndicator } from "../../../hooks/useToggleIndicator";
 import { useIndicator } from "../../../hooks/useIndicator";
+import { useLiquidityData } from "../../../hooks/useLiquidityData";
 import { LiquidityHeatmap, liquidityHeatMapConfig } from "../indicatorDrawFunctions";
 // import { liquidityHeatMapConfig } from "../indicatorConfigs";
 
@@ -12,18 +13,11 @@ const BetterTickChart = (props) => {
     const { height = 400, symbol = "SPY", Socket, fullSymbolRef } = props;
 
     const pixiDataRef = useRef();
+    const loadingRef = useRef(false);
+    // Chart data state
     const [candleData, setCandleData] = useState([]);
     const [join, setJoin] = useState(1);
     const rawDataRef = useRef([]);
-
-    // Cache for liquidity data (persists across indicator toggles)
-    const liquidityDataCacheRef = useRef({
-        history: [], // Historical compiled data from API
-        hasLoaded: false, // Flag to track if we've fetched from server
-        symbol: null, // Track which symbol this cache is for
-        lastFetchTime: null, // Track when we last fetched data
-        endDatetime: null, // Track the end datetime of cached data
-    });
 
     // Indicators configuration
     const [indicators, setIndicators] = useState([
@@ -114,120 +108,15 @@ const BetterTickChart = (props) => {
         dependencies: [],
     });
 
-    // Fetch initial liquidity data when indicator is enabled
-    useEffect(() => {
-        const heatmapInstance = liquidityHeatmapIndicator?.instanceRef;
-
-        if (!heatmapInstance || !liquidityHeatmapIndicator?.enabled || !candleData.length) {
-            return;
-        }
-
-        const cache = liquidityDataCacheRef.current;
-
-        // Check if cache is invalid (symbol changed)
-        if (cache.symbol !== symbol) {
-            // Clear cache for new symbol
-            cache.history = [];
-            cache.hasLoaded = false;
-            cache.symbol = symbol;
-        }
-
-        // Cache staleness check
-        const now = Date.now();
-        const CACHE_STALE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
-
-        const isCacheStale =
-            !cache.hasLoaded || !cache.history.length || !cache.lastFetchTime || now - cache.lastFetchTime > CACHE_STALE_THRESHOLD;
-
-        // Check cache first - if we have fresh data, use it
-        if (cache.hasLoaded && cache.history.length > 0 && !isCacheStale) {
-            console.log("[BetterTickChart] Loading liquidity data from cache (fresh)");
-            console.log("[BetterTickChart] Cache has", cache.history.length, "items");
-            if (cache.history.length > 0) {
-                console.log("[BetterTickChart] First cache item datetime:", cache.history[0].datetime);
-            }
-            heatmapInstance.setLiquidityHistory(cache.history);
-            heatmapInstance.draw(true);
-            return;
-        }
-
-        // Cache is stale or missing - fetch from API
-        const fetchLiquidityData = async () => {
-            try {
-                const startTime = candleData[0].timestamp || candleData[0].datetime;
-                const endTime = candleData[candleData.length - 1].timestamp || candleData[candleData.length - 1].datetime;
-
-                console.log("[BetterTickChart] Fetching liquidity data from API");
-                const liquidityData = await API.getOrderFlow({
-                    start: startTime,
-                    end: endTime,
-                    symbol: symbol,
-                    compiled: "tick", // Get tick-level compiled data
-                });
-
-                // Log first item to see structure
-                if (liquidityData && liquidityData.length > 0) {
-                    console.log("[BetterTickChart] First liquidity item:", liquidityData[0]);
-                    console.log("[BetterTickChart] All keys in first item:", Object.keys(liquidityData[0]));
-                    console.log("[BetterTickChart] Full first item:", JSON.stringify(liquidityData[0], null, 2));
-                }
-
-                // Transform to our format
-                if (liquidityData && Array.isArray(liquidityData)) {
-                    const transformedData = liquidityData.map((bar) => {
-                        const liquidity = {};
-
-                        // Convert parallel arrays to price: {volume, orders} object
-                        if (bar.orderPrices && bar.orderSizes) {
-                            bar.orderPrices.forEach((price, index) => {
-                                const volume = bar.orderSizes[index];
-                                const orders = bar.orderCounts ? bar.orderCounts[index] : 0;
-                                if (price !== undefined && volume !== undefined) {
-                                    liquidity[price.toString()] = {
-                                        volume,
-                                        orders: orders || 0,
-                                    };
-                                }
-                            });
-                        }
-
-                        // Handle different datetime field names
-                        // For tick data, use createdAt; for compiled data, use datetime
-                        const datetime = bar.createdAt || bar.datetime || bar.timestamp || bar.time || bar.dt;
-
-                        if (!datetime) {
-                            console.warn("[BetterTickChart] Missing datetime in bar:", bar);
-                        }
-
-                        return {
-                            datetime: datetime ? new Date(datetime).getTime() : null,
-                            liquidity,
-                        };
-                    });
-
-                    // Store in cache
-                    cache.history = transformedData;
-                    cache.hasLoaded = true;
-                    cache.lastFetchTime = Date.now();
-                    cache.endDatetime = endTime;
-
-                    console.log(`[BetterTickChart] Stored ${transformedData.length} bars in cache`);
-                    if (transformedData.length > 0) {
-                        console.log(`[BetterTickChart] First transformed item datetime:`, transformedData[0].datetime);
-                        console.log(`[BetterTickChart] First transformed item liquidity keys:`, Object.keys(transformedData[0].liquidity).length);
-                    }
-
-                    // Load into heatmap
-                    heatmapInstance.setLiquidityHistory(transformedData);
-                    heatmapInstance.draw(true);
-                }
-            } catch (error) {
-                console.error("[BetterTickChart] Failed to fetch liquidity data:", error);
-            }
-        };
-
-        fetchLiquidityData();
-    }, [liquidityHeatmapIndicator?.enabled, liquidityHeatmapIndicator?.instanceRef, symbol, candleData.length]);
+    // Use the liquidity data hook for fetching and caching
+    useLiquidityData({
+        liquidityHeatmapIndicator,
+        symbol,
+        timeframe: "tick",
+        ohlcData: candleData,
+        Socket,
+        indicatorsRef,
+    });
 
     // Function to combine bars on the frontend
     const combineBars = (bars, joinValue) => {
@@ -259,6 +148,61 @@ const BetterTickChart = (props) => {
         rawDataRef.current = data;
         const combined = combineBars(data, join);
         setCandleData(combined);
+    };
+
+    // Load more historical data (called when scrolling back)
+    const loadMoreData = async () => {
+        if (loadingRef.current) {
+            return;
+        }
+        loadingRef.current = true;
+
+        if (rawDataRef.current.length === 0) {
+            console.log("[BetterTickChart] No data to load more from");
+            return;
+        }
+
+        // Get the datetime of the earliest bar (first in the array)
+        const firstBar = rawDataRef.current[0];
+        const finishTime = firstBar.timestamp || firstBar.datetime;
+        console.log(`[BetterTickChart] Loading more data before ${new Date(finishTime).toLocaleString()}`);
+
+        try {
+            const olderData = await API.getCustomTicks({
+                symbol,
+                finish: Math.floor(finishTime),
+                limit: 2000, // Load 2000 older bars
+            });
+
+            if (olderData && olderData.length > 0) {
+                console.log(`[BetterTickChart] Loaded ${olderData.length} older bars`);
+
+                // Prepend older data to raw data
+                rawDataRef.current = [...olderData, ...rawDataRef.current];
+
+                // Recombine all bars with current join value
+                const combined = combineBars(rawDataRef.current, join);
+
+                // Combine the older data with the current join value
+                const combinedOlderData = combineBars(olderData, join);
+
+                // Update the data handler - same as old version
+                if (pixiDataRef.current) {
+                    pixiDataRef.current.sliceStart += combinedOlderData.length;
+                    pixiDataRef.current.sliceEnd += combinedOlderData.length;
+                    pixiDataRef.current.ohlcDatas = combinedOlderData.concat(pixiDataRef.current.ohlcDatas);
+                    pixiDataRef.current.draw();
+                }
+
+                setCandleData(combined);
+            } else {
+                console.log("[BetterTickChart] No more historical data available");
+            }
+            loadingRef.current = false;
+        } catch (error) {
+            console.error("[BetterTickChart] Failed to load more data:", error);
+            loadingRef.current = false;
+        }
     };
 
     useEffect(() => {
@@ -318,76 +262,8 @@ const BetterTickChart = (props) => {
             }
         });
 
-        // Liquidity data socket listener
-        const liquidityEventName = `liquidity-${symbol}`;
-        console.log(`[BetterTickChart] Registering liquidity listener for event: ${liquidityEventName}`);
-
-        const handleLiquidityData = (liquidityData) => {
-            // liquidityData format: { symbol, highLiquidity: [{p: price, size: volume, orders: count}], ... }
-            if (liquidityData.symbol !== symbol || !liquidityData.highLiquidity) return;
-
-            // Convert to our snapshot format: {datetime, liquidity: {price: {volume, orders}}}
-            const datetime = Date.now();
-            const liquidity = {};
-
-            liquidityData.highLiquidity.forEach((level) => {
-                liquidity[level.p.toString()] = {
-                    volume: level.size,
-                    orders: level.orders || 0,
-                };
-            });
-
-            const snapshot = {
-                datetime,
-                liquidity,
-            };
-
-            // Always store socket data in cache (even if indicator is disabled)
-            const cache = liquidityDataCacheRef.current;
-
-            // Only cache if this matches current symbol
-            if (cache.symbol === symbol) {
-                // Determine which bar this snapshot belongs to
-                const barDatetime = new Date(datetime);
-                barDatetime.setSeconds(0, 0);
-                const alignedDatetime = barDatetime.getTime();
-
-                const existingBarIndex = cache.history.findIndex((bar) => bar.datetime === alignedDatetime);
-
-                if (existingBarIndex >= 0) {
-                    // Update existing bar (replace with latest snapshot)
-                    cache.history[existingBarIndex] = { datetime: alignedDatetime, liquidity };
-                } else {
-                    // Add new bar
-                    cache.history.push({ datetime: alignedDatetime, liquidity });
-
-                    // Keep only recent history (e.g., last 500 bars)
-                    if (cache.history.length > 500) {
-                        cache.history.shift();
-                    }
-                }
-
-                // Update cache metadata
-                cache.endDatetime = Math.max(cache.endDatetime || 0, alignedDatetime);
-                cache.lastFetchTime = Date.now();
-            }
-
-            // If indicator is enabled, also update the heatmap instance
-            const currentHeatmapIndicator = indicatorsRef.current.find((ind) => ind.id === "liquidityHeatmap");
-            const heatmapInstance = currentHeatmapIndicator?.instanceRef;
-
-            if (heatmapInstance && heatmapInstance.addLiquiditySnapshot) {
-                heatmapInstance.addLiquiditySnapshot(snapshot);
-                // Manually trigger draw (only on socket updates, not on pan/zoom)
-                heatmapInstance.draw();
-            }
-        };
-
-        Socket.on(liquidityEventName, handleLiquidityData);
-
         return () => {
             Socket.off("better-tick");
-            Socket.off(liquidityEventName, handleLiquidityData);
         };
     }, [symbol, join]);
 
@@ -435,6 +311,7 @@ const BetterTickChart = (props) => {
                     pixiDataRef={pixiDataRef}
                     tickSize={0.01}
                     Socket={Socket}
+                    loadMoreData={loadMoreData}
                     options={{
                         withoutVolume: false,
                         chartType: "OHLC",

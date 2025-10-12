@@ -20,7 +20,7 @@ export default function GenericPixiChart({
     fullSymbolRef: fullSymbolRefProp,
     barType,
     barTypePeriod,
-    // loadData,
+    loadData,
     Socket,
     onBarClick,
     // pixiApplicationRef,
@@ -28,7 +28,7 @@ export default function GenericPixiChart({
     TouchGesture1Prop,
     TouchGesture2Prop,
     // newSymbolTimerRefProp,
-    // loadDataRefProp,
+    loadDataRefProp,
     // lastTradesRefProp,
     currentBarRefProp = {},
     tickSize,
@@ -36,6 +36,7 @@ export default function GenericPixiChart({
     options = { chartType: "candlestick" },
     lowerIndicators = [],
     margin = { top: 50, right: 100, left: 0, bottom: 40 },
+    loadMoreData = () => {},
     ...rest
 }) {
     if (symbol == "$SPX") {
@@ -157,6 +158,7 @@ export default function GenericPixiChart({
             mainChartContainerHeight,
             tickSize: tickSizeRef.current,
             lowerIndicators,
+            loadMoreData,
         });
 
         // Set up callback for manual scale changes
