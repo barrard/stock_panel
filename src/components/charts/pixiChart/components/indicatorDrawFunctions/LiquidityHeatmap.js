@@ -2,13 +2,16 @@ import { extent, scaleLinear, interpolateLab } from "d3";
 import { Graphics, Container, Color } from "pixi.js";
 
 export default class LiquidityHeatmap {
-    constructor(chart) {
+    constructor(chart, options = {}) {
         this.chart = chart;
         this.container = new Container();
 
         // Separate containers for historical and current bar (for incremental updates)
         this.historicalBarsContainer = new Container();
         this.currentBarContainer = new Container();
+
+        // Timeframe for datetime alignment (e.g., '1m', '5m', 'tick')
+        this.timeframe = options.timeframe || "1m";
 
         this.liquidityHistory = []; // Array of {datetime, liquidity: {price: {volume, orders}}} - compiled per bar
         this.currentBarSnapshots = []; // Array of snapshots for the current bar (to average)
@@ -174,11 +177,17 @@ export default class LiquidityHeatmap {
 
     /**
      * Get the bar datetime for a given datetime (align to bar boundary)
-     * Assumes 1-minute bars for now
+     * Alignment depends on timeframe
      */
     getBarDatetime(datetime) {
-        // Round down to the nearest minute
         const date = new Date(datetime);
+
+        // For tick bars, use the exact datetime (no rounding)
+        if (this.timeframe === "tick") {
+            return datetime;
+        }
+
+        // For minute-based bars, round down to the nearest minute
         date.setSeconds(0, 0);
         return date.getTime();
     }

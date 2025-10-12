@@ -1,12 +1,12 @@
 const liquidityHeatMapConfig = {
-    id: "liquidityHeatMapConfig",
+    id: "liquidityHeatmap",
     name: "Liquidity Heatmap",
     enabled: false,
     drawFunctionKey: "draw",
     instanceRef: null,
     manualDraw: true, // Only draw on socket updates (every 2 seconds), not on pan/zoom
-    // Only enable for 1m/5m timeframes
-    shouldEnable: (timeframe) => timeframe === "1m" || timeframe === "5m",
+    // Only enable for 1m/5m/tick timeframes
+    shouldEnable: (timeframe) => timeframe === "1m" || timeframe === "5m" || timeframe === "tick",
     options: {
         visualizationMode: "volume", // 'volume', 'orders', or 'ratio'
         colorScheme: {

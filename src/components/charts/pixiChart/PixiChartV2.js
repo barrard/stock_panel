@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import GenericPixiChart from "../GenericPixiChart";
 import API from "../../API";
-import LiquidityHeatmap from "./components/LiquidityHeatmap";
+import { LiquidityHeatmap, liquidityHeatMapConfig } from "./components/indicatorDrawFunctions";
 import DrawOrdersV2 from "./components/DrawOrdersV2";
 import IndicatorsBtns from "./components/IndicatorsBtns";
 import SymbolBtns from "./components/SymbolBtns";
@@ -12,6 +12,7 @@ import { symbolOptions } from "./components/utils";
 import { useIndicator } from "../hooks/useIndicator";
 import { useToggleIndicator } from "../hooks/useToggleIndicator";
 import { TICKS } from "../../../indicators/indicatorHelpers/TICKS";
+// import { liquidityHeatMapConfig } from "./components/indicatorConfigs";
 // import drawStrikes from "./drawStrikes";
 // import MonteCarloCone from "./monteCarloSimulation";
 // import TimeframeSelector from "./spyOptionsComponents/TimeframeSelector";
@@ -55,32 +56,7 @@ const PixiChartV2 = (props) => {
 
     //controls various indicators
     const [indicators, setIndicators] = useState([
-        {
-            id: "liquidityHeatmap",
-            name: "Liquidity Heatmap",
-            enabled: false,
-            drawFunctionKey: "draw",
-            instanceRef: null,
-            manualDraw: true, // Only draw on socket updates (every 2 seconds), not on pan/zoom
-            // Only enable for 1m/5m timeframes
-            shouldEnable: (timeframe) => timeframe === "1m" || timeframe === "5m",
-            options: {
-                visualizationMode: "volume", // 'volume', 'orders', or 'ratio'
-                colorScheme: {
-                    name: "Bookmap Style",
-                    colorStops: [
-                        { color: "#000033", threshold: 0 },
-                        { color: "#000066", threshold: 15 },
-                        { color: "#0000ff", threshold: 30 },
-                        { color: "#00ff00", threshold: 60 },
-                        { color: "#ffff00", threshold: 90 },
-                        { color: "#ff8800", threshold: 120 },
-                        { color: "#ff0000", threshold: 180 },
-                        { color: "#ffffff", threshold: 250 },
-                    ],
-                },
-            },
-        },
+        liquidityHeatMapConfig,
         {
             id: "orders",
             name: "Orders",
@@ -184,7 +160,8 @@ const PixiChartV2 = (props) => {
             if (timeframe !== "1m" && timeframe !== "5m") {
                 return null;
             }
-            const instance = new LiquidityHeatmap(pixiData);
+            // Pass timeframe to LiquidityHeatmap for proper datetime alignment
+            const instance = new LiquidityHeatmap(pixiData, { timeframe });
             // Initialize with options from indicator config
             if (liquidityHeatmapIndicator?.options) {
                 if (liquidityHeatmapIndicator.options.visualizationMode) {
