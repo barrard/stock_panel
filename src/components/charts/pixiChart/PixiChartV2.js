@@ -100,11 +100,18 @@ const PixiChartV2 = (props) => {
 
     // Function to update indicator options (memoized to prevent unnecessary re-renders)
     const updateIndicatorOptions = useCallback((indicatorId, newOptions) => {
-        console.log('[updateIndicatorOptions] Called with:', indicatorId, newOptions);
+        console.log("[updateIndicatorOptions] Called with:", indicatorId, newOptions);
         setIndicators((prevIndicators) => {
             return prevIndicators.map((ind) => {
                 if (ind.id === indicatorId) {
-                    console.log('[updateIndicatorOptions] Found indicator:', ind.id, 'enabled:', ind.enabled, 'instanceRef:', !!ind.instanceRef);
+                    console.log(
+                        "[updateIndicatorOptions] Found indicator:",
+                        ind.id,
+                        "enabled:",
+                        ind.enabled,
+                        "instanceRef:",
+                        !!ind.instanceRef
+                    );
                     const updatedIndicator = {
                         ...ind,
                         options: { ...ind.options, ...newOptions },
@@ -113,20 +120,20 @@ const PixiChartV2 = (props) => {
                     // If the indicator is enabled and has an instance, update it
                     if (updatedIndicator.enabled && updatedIndicator.instanceRef) {
                         const instance = updatedIndicator.instanceRef;
-                        console.log('[updateIndicatorOptions] Instance found, has setVisualizationMode:', !!instance.setVisualizationMode);
+                        console.log("[updateIndicatorOptions] Instance found, has setVisualizationMode:", !!instance.setVisualizationMode);
 
                         // Update visualization mode if changed (this triggers a redraw internally)
                         if (newOptions.visualizationMode && instance.setVisualizationMode) {
-                            console.log('[updateIndicatorOptions] Calling setVisualizationMode with:', newOptions.visualizationMode);
+                            console.log("[updateIndicatorOptions] Calling setVisualizationMode with:", newOptions.visualizationMode);
                             instance.setVisualizationMode(newOptions.visualizationMode);
                         }
 
                         // Update color scheme if changed
                         if (newOptions.colorScheme && newOptions.colorScheme.colorStops) {
                             const { colorStops } = newOptions.colorScheme;
-                            instance.colors = colorStops.map(stop => stop.color);
-                            instance.liquidityThresholds = colorStops.map(stop => stop.threshold);
-                            console.log('[updateIndicatorOptions] Updated color scheme:', newOptions.colorScheme.name);
+                            instance.colors = colorStops.map((stop) => stop.color);
+                            instance.liquidityThresholds = colorStops.map((stop) => stop.threshold);
+                            console.log("[updateIndicatorOptions] Updated color scheme:", newOptions.colorScheme.name);
                         }
 
                         // If we only updated color scheme (not visualization mode), trigger redraw
@@ -134,7 +141,12 @@ const PixiChartV2 = (props) => {
                             instance.draw(true);
                         }
                     } else {
-                        console.log('[updateIndicatorOptions] Instance not available - enabled:', updatedIndicator.enabled, 'instanceRef:', !!updatedIndicator.instanceRef);
+                        console.log(
+                            "[updateIndicatorOptions] Instance not available - enabled:",
+                            updatedIndicator.enabled,
+                            "instanceRef:",
+                            !!updatedIndicator.instanceRef
+                        );
                     }
 
                     return updatedIndicator;
@@ -180,8 +192,8 @@ const PixiChartV2 = (props) => {
                 }
                 if (liquidityHeatmapIndicator.options.colorScheme) {
                     const { colorStops } = liquidityHeatmapIndicator.options.colorScheme;
-                    instance.colors = colorStops.map(stop => stop.color);
-                    instance.liquidityThresholds = colorStops.map(stop => stop.threshold);
+                    instance.colors = colorStops.map((stop) => stop.color);
+                    instance.liquidityThresholds = colorStops.map((stop) => stop.threshold);
                 }
             }
             return instance;

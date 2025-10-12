@@ -32,6 +32,7 @@ import onLastTrade from "./handlers/onLastTrade";
 import PlantStatuses from "./components/PlantStatuses";
 import { TICKS } from "../../../indicators/indicatorHelpers/TICKS";
 import MarketBreadth from "./components/MarketBreadth";
+import BetterTickChart from "./components/BetterTickChart";
 
 function getNextTimeBar(data) {
     const { barType, barTypePeriod } = data;
@@ -707,10 +708,13 @@ export default function PixiChart({ Socket }) {
                     <div className="col-auto flex_center">
                         <MarketOverview Socket={Socket} lastTradesRef={lastTradesRef} fullSymbols={fullSymbols} />
                     </div>
-                    <div style={{ height: "100%", border: "10px solid black" }} className="col-6">
+                    <div className="col-6">
                         {/* {MarketBreadthMemo} */}
                         <MarketBreadth Socket={Socket} />
                     </div>
+                </div>
+                <div className="row flex_center">
+                    <BetterTickChart height={400} symbol={"ES"} Socket={Socket} />
                 </div>
                 {/* <div className="col-12">
                     <div className="row">

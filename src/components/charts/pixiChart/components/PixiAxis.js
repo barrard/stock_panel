@@ -12,9 +12,14 @@ export default class PixiAxis {
 
         this.valueFinder = valueFinder;
         this.valueAccessor = valueAccessor.bind(this);
+
+        // Calculate font size based on margin
+        const margin = this.chart.margin || this.chart.options?.margin || {};
+        const fontSize = this.calculateFontSize(margin);
+
         this.textStyle = new TextStyle({
             fontFamily: "Arial",
-            fontSize: 16,
+            fontSize: fontSize,
             fontWeight: "bold",
             fill: 0xffffff,
             align: "center",
@@ -29,6 +34,22 @@ export default class PixiAxis {
         this.dragSensitivity = 0.01; // Adjust this to control drag sensitivity
 
         return this.init();
+    }
+
+    calculateFontSize(margin) {
+        // Scale font size based on the relevant margin dimension
+        // Y-axis uses right margin, X-axis uses bottom margin
+        const relevantMargin = this.type === "y" ? (margin.right || 100) : (margin.bottom || 40);
+
+        // Base calculation: scale proportionally
+        // Default: right: 100 -> fontSize: 16, bottom: 40 -> fontSize: 16
+        const baseFontSize = this.type === "y" ? 16 : 16;
+        const baseMargin = this.type === "y" ? 100 : 40;
+
+        const scaledSize = (relevantMargin / baseMargin) * baseFontSize;
+
+        // Clamp between min and max values
+        return Math.max(10, Math.min(20, scaledSize));
     }
 
     init() {
@@ -170,12 +191,17 @@ export default class PixiAxis {
                 value = this.valueAccessor(value);
                 priceTxtLabel.text = value;
 
-                // Position text labels to the right of the Y-axis, not extending into chart area
+                // Position text labels based on margin size
+                const margin = this.chart.margin || this.chart.options?.margin || {};
                 if (this.type === "y") {
-                    priceTxtLabel.x = 20; // Further to the right
+                    // Scale X offset based on right margin (base: 100 -> 20px, min: 50 -> 10px)
+                    const xOffset = Math.max(5, (margin.right || 100) * 0.2);
+                    priceTxtLabel.x = xOffset;
                     priceTxtLabel.anchor.x = 0; // Left-align the text
                 } else {
-                    priceTxtLabel[oppositeAxis] = 10;
+                    // Scale Y offset based on bottom margin (base: 40 -> 10px, min: 15 -> 4px)
+                    const yOffset = Math.max(3, (margin.bottom || 40) * 0.25);
+                    priceTxtLabel[oppositeAxis] = yOffset;
                 }
 
                 this.container.addChild(priceTxtLabel);

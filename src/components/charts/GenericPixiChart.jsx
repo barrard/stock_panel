@@ -35,6 +35,7 @@ export default function GenericPixiChart({
     mainChartContainerHeight,
     options = { chartType: "candlestick" },
     lowerIndicators = [],
+    margin = { top: 50, right: 100, left: 0, bottom: 40 },
     ...rest
 }) {
     if (symbol == "$SPX") {
@@ -151,7 +152,7 @@ export default function GenericPixiChart({
             width,
             height,
             symbol,
-            margin: { top: 50, right: 100, left: 0, bottom: 40 },
+            margin,
             options,
             mainChartContainerHeight,
             tickSize: tickSizeRef.current,

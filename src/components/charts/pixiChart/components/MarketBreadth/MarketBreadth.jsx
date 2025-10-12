@@ -5,70 +5,39 @@ import API from "../../../../API";
 // import MonteCarloCone from "./monteCarloSimulation";
 
 const breadthKeys = {
-    // $ADVN: {
-    //     ticks: 0.01,
-    // },
-    // $COMPX: {
-    //     ticks: 0.01,
-    // },
-    // $DECN: {
-    //     ticks: 0.01,
-    // },
-    // $DJC: {
-    //     ticks: 0.01,
-    // },
-    // $DJI: {
-    //     ticks: 0.01,
-    // },
-    // $DJT: {
-    //     ticks: 0.01,
-    // },
-    // $DVOL: {
-    //     ticks: 0.01,
-    // },
-    // $GDMOC: {
-    //     ticks: 0.01,
-    // },
-    // $NDX: {
-    //     ticks: 0.01,
-    // },
-    // $NYA: {
-    //     ticks: 0.01,
-    // },
-    // $OEX: {
-    //     ticks: 0.01,
-    // },
-    // $R25I: {
-    //     ticks: 0.01,
-    // },
-    // $RUI: {
-    //     ticks: 0.01,
-    // },
-    // $RUT: {
-    //     ticks: 0.01,
-    // },
-    $SPX: {
-        ticks: 0.01,
-    },
-    // $TICK: {
-    //     ticks: 0.01,
-    // },
-    // $TRIN: {
-    //     ticks: 0.01,
-    // },
-    // $UVOL: {
-    //     ticks: 0.01,
-    // },
-    // $VIX: {
-    //     ticks: 0.01,
-    // },
+    $ADVN: { color: 0x1abc9c },
+    $COMPX: { color: 0x3498db },
+    $DECN: { color: 0x9b59b6 },
+    $DJC: { color: 0xe67e22 },
+    $DJI: { color: 0xe74c3c },
+    $DJT: { color: 0xf1c40f },
+    $DVOL: { color: 0x2ecc71 },
+    $GDMOC: { color: 0x16a085 },
+    $NDX: { color: 0x2980b9 },
+    $NYA: { color: 0x8e44ad },
+    $OEX: { color: 0xd35400 },
+    $R25I: { color: 0xc0392b },
+    $RUI: { color: 0xf39c12 },
+    $RUT: { color: 0x27ae60 },
+    $UVOL: { color: 0x2f3e50 },
+    $VIX: { color: 0x95a5a6 },
+
     // avgTICK: {
     //     ticks: 0.01,
     // },
     // avgTRIN: {
     //     ticks: 0.01,
     // },
-    // createdAt: {
+
+    // $TICK: {
+    //     ticks: 0.01,
+    // },
+
+    // $TRIN: {
+    //     ticks: 0.01,
+    // },
+
+    // $SPX: {
     //     ticks: 0.01,
     // },
     // tick: {
@@ -116,23 +85,7 @@ const MarketBreadth = (props) => {
         const data = await API.fetchMarketBreadth(opts);
         console.log(data);
 
-        //process data
-
-        const cleanArrays = {};
-        debugger;
-        data.forEach((entry) => {
-            Object.keys(breadthKeys).forEach((key) => {
-                if (!cleanArrays[key]) {
-                    cleanArrays[key] = [];
-                }
-                cleanArrays[key]?.push({ datetime: entry.datetime, value: entry[key] });
-            });
-        });
-
-        console.log(cleanArrays);
-
-        // candleData = cleanSnaps;
-        setCandleData(cleanArrays);
+        setCandleData(data);
     };
 
     useEffect(() => {
@@ -176,19 +129,19 @@ const MarketBreadth = (props) => {
 
     useEffect(() => {
         console.log("MarketBreadth loaded");
-        fetchData({ limit: 1000, sort: { _id: -1 }, filter: {} });
+        fetchData({ limit: 2000, sort: { _id: -1 }, filter: {} });
 
         Socket.on("market-breadth", (data) => {
             debugger;
             console.log("market-breadth", data);
             const datetime = new Date().getTime();
-            Object.keys(breadthKeys).forEach((key) => {
-                const tick = { datetime, value: data[key] };
-                candleData[key].push(tick);
-                pixiDataRef.current.setNewBar(tick);
-                pixiDataRef.current.updateCurrentPriceLabel(tick.value);
-            });
-            setCandleData({ ...candleData });
+            // Object.keys(breadthKeys).forEach((key) => {
+            //     const tick = { datetime, value: data[key] };
+            //     candleData[key].push(tick);
+            //     pixiDataRef.current.setNewBar(tick);
+            //     pixiDataRef.current.updateCurrentPriceLabel(tick.value);
+            // });
+            // setCandleData({ ...candleData });
         });
 
         return () => {
@@ -196,33 +149,68 @@ const MarketBreadth = (props) => {
         };
     }, []);
 
-    if (!candleData?.["$SPX"]?.length) {
+    if (!candleData?.length) {
         return <div>Loading... </div>;
     }
     let key = "$SPX";
     return (
         <>
-            {/* // <div className="row w-100 ">
-        //     {Object.keys(breadthKeys).map((key) => (
-			//         <div style={{ width: "100px", border: "1px solid white" }} className="col  border-white" key={key}> */}
-            <p>{key}</p>
-            <GenericPixiChart
-                ohlcDatas={candleData[key]}
-                // width={100}
-                // height={200}
-                symbol={key}
-                fullSymbolRef={fullSymbolRef}
-                barType={barType}
-                barTypePeriod={barTypePeriod}
-                // loadData={loadData}
-                pixiDataRef={pixiDataRef}
-                tickSize={breadthKeys[key].ticks}
-                options={{ withoutVolume: false, chartType: "line", lineKey: "value", xKey: "datetime", lineColor: 0xffa500 }}
-            />
-            {/* //         </div>
-			//     ))}
-			// </div>
-			*/}
+            <div className="row w-100 ">
+                {/* {Object.keys(breadthKeys).map((key) => ( */}
+                <div style={{ border: "1px solid white" }} className="col-12  border-white" key={key}>
+                    <GenericPixiChart
+                        ohlcDatas={candleData}
+                        // width={100}
+                        height={50}
+                        symbol={key}
+                        fullSymbolRef={fullSymbolRef}
+                        barType={barType}
+                        barTypePeriod={barTypePeriod}
+                        // loadData={loadData}
+                        pixiDataRef={pixiDataRef}
+                        tickSize={1}
+                        lowerIndicators={[
+                            ...Object.keys(breadthKeys).map((key) => ({
+                                lineColor: breadthKeys[key].color,
+                                name: key,
+                                type: "line",
+                                lineKey: key,
+                                xKey: "datetime",
+                            })),
+                            // { lineColor: 0x44ef44, name: "$NDX", type: "line", lineKey: "$NDX", xKey: "datetime" },
+                            // { lineColor: 0x11ff11, name: "$TRIN", type: "line", lineKey: "$TRIN", xKey: "datetime" },
+                            // { lineColor: 0xff1111, name: "avgTRIN", type: "line", lineKey: "avgTRIN", xKey: "datetime" },
+                            {
+                                name: "TICK",
+                                type: "multi-line",
+                                lines: [
+                                    { lineColor: 0xef4444, lineKey: "$TICK" },
+                                    { lineColor: 0x44ef44, lineKey: "avgTICK" },
+                                ],
+                            },
+
+                            {
+                                name: "TRIN",
+                                type: "multi-line",
+                                height: 80,
+                                lines: [
+                                    { lineColor: 0x11ff11, lineKey: "$TRIN", lineWidth: 1 },
+                                    { lineColor: 0xff1111, lineKey: "avgTRIN", lineWidth: 2 },
+                                ],
+                            },
+                        ]}
+                        options={{
+                            withoutVolume: true,
+                            chartType: "line",
+                            lineKey: key,
+                            xKey: "datetime",
+                            lineColor: 0xffa500,
+                        }}
+                        margin={{ top: 0, right: 50, left: 0, bottom: 15 }}
+                    />
+                </div>
+                {/* ))} */}
+            </div>
         </>
     );
 };

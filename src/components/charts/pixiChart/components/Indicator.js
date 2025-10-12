@@ -4,7 +4,7 @@ import PixiAxis from "./PixiAxis";
 import { priceScaleValues } from "./utils.js";
 
 export default class Indicator {
-    constructor({ name, height, data, drawFn, chart, accessors, type, lineColor = 0x3b82f6 }) {
+    constructor({ name, height, data, drawFn, chart, accessors, type, lineColor = 0x3b82f6, canGoNegative = false, lines = null }) {
         this.accessors = accessors;
         this.chart = chart;
         this.data = [];
@@ -15,6 +15,10 @@ export default class Indicator {
         this.pointerOver = false;
         this.type = type;
         this.lineColor = lineColor;
+        this.canGoNegative = canGoNegative;
+
+        // Multi-line support
+        this.lines = lines; // Array of line configs: [{ name, lineColor, lineKey, xKey }]
 
         // console.log(this.name);
     }
@@ -132,28 +136,80 @@ export default class Indicator {
     }
 
     setupScales() {
-        //data accessor
-        this.data = this.chart.slicedData.map((ohlc) => ohlc[this.accessors]);
+        // Clear graphics for redraw
+        this.gfx.clear();
 
-        let [low, highest] = extent(this.data);
+        let lowest, highest;
 
-        this.scale.domain([0, highest]);
-
-        this.yAxis.render({ highest, lowest: 0 });
-        //draw shit
-        if (this.type === "line") {
-            this.drawFn({
-                lineColor: this.lineColor,
-                lineWidth: 2,
-                yField: this.accessors,
-                xScale: this.chart.xScale,
-                yScale: this.scale,
-                data: this.chart.slicedData,
-                chartData: this,
-                gfx: this.gfx,
+        // Multi-line indicator
+        if (this.lines && this.lines.length > 0) {
+            // Calculate extent across all lines
+            let allValues = [];
+            this.lines.forEach((lineConfig) => {
+                const lineData = this.chart.slicedData.map((ohlc) => ohlc[lineConfig.lineKey]);
+                allValues = allValues.concat(lineData.filter(v => v != null && !isNaN(v)));
             });
-        } else {
-            this.drawFn(this);
+
+            [lowest, highest] = extent(allValues);
+
+            // For line charts, allow negative values by using actual extent
+            if (this.canGoNegative || this.type === "line" || this.type === "multi-line") {
+                // Keep as is
+            } else {
+                lowest = Math.min(0, lowest);
+            }
+
+            this.scale.domain([lowest, highest]);
+            this.yAxis.render({ highest, lowest });
+
+            // Draw each line
+            this.lines.forEach((lineConfig) => {
+                this.drawFn({
+                    lineColor: lineConfig.lineColor,
+                    lineWidth: lineConfig.lineWidth || 2,
+                    yField: lineConfig.lineKey,
+                    xScale: this.chart.xScale,
+                    yScale: this.scale,
+                    data: this.chart.slicedData,
+                    chartData: this,
+                    gfx: this.gfx,
+                    skipClear: true, // Don't clear - we already cleared once at the top
+                });
+            });
+        }
+        // Single line/volume indicator (legacy)
+        else {
+            this.data = this.chart.slicedData.map((ohlc) => ohlc[this.accessors]);
+
+            let [low, high] = extent(this.data);
+
+            // For line charts, allow negative values by using actual extent
+            // For volume charts, keep 0 as the minimum
+            if (this.canGoNegative || this.type === "line") {
+                lowest = low;
+            } else {
+                lowest = 0;
+            }
+            highest = high;
+
+            this.scale.domain([lowest, highest]);
+            this.yAxis.render({ highest, lowest });
+
+            // Draw single line or volume
+            if (this.type === "line") {
+                this.drawFn({
+                    lineColor: this.lineColor,
+                    lineWidth: 2,
+                    yField: this.accessors,
+                    xScale: this.chart.xScale,
+                    yScale: this.scale,
+                    data: this.chart.slicedData,
+                    chartData: this,
+                    gfx: this.gfx,
+                });
+            } else {
+                this.drawFn(this);
+            }
         }
     }
 }

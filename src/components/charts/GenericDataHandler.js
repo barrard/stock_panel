@@ -3,7 +3,7 @@
 import { extent, scaleLinear, select, zoom, zoomTransform, mouse, interpolateNumber, interpolateLab } from "d3";
 import { Graphics, Container, Rectangle, Text, TextMetrics, TextStyle, utils } from "pixi.js";
 import Indicator from "./pixiChart/components/Indicator";
-import { drawVolume, drawLine } from "./pixiChart/components/drawFns.js";
+import { drawVolume, drawLine, drawVolumeLines, calculateMovingAverage, drawOHLC } from "./pixiChart/components/drawFns.js";
 import PixiAxis from "./pixiChart/components/PixiAxis";
 import { timeScaleValues, priceScaleValues, compileOrders, currencyFormatter } from "./pixiChart/components/utils.js";
 
@@ -70,6 +70,51 @@ export default class GenericDataHandler {
 
     setIsVerticalZooming(value) {
         this.isVerticalZooming = value;
+    }
+
+    calculateVolumeMovingAverage(period = 20) {
+        // Calculate moving average for the entire dataset and store on each bar
+        for (let i = 0; i < this.ohlcDatas.length; i++) {
+            if (i < period - 1) {
+                this.ohlcDatas[i].volumeAvg20 = null; // Not enough data points
+            } else {
+                let sum = 0;
+                for (let j = 0; j < period; j++) {
+                    sum += this.ohlcDatas[i - j].volume || 0;
+                }
+                this.ohlcDatas[i].volumeAvg20 = sum / period;
+            }
+        }
+    }
+
+    calculateCrosshairFontSize() {
+        // Scale font size based on average of right and bottom margins
+        const rightMargin = this.margin.right || 100;
+        const bottomMargin = this.margin.bottom || 40;
+
+        // Average the scaling factors from both margins
+        const rightScale = rightMargin / 100; // base 100 -> 1.0
+        const bottomScale = bottomMargin / 40; // base 40 -> 1.0
+        const avgScale = (rightScale + bottomScale) / 2;
+
+        // Base font size is 14, scale it
+        const scaledSize = 14 * avgScale;
+
+        // Clamp between 10 and 16
+        return Math.max(10, Math.min(16, scaledSize));
+    }
+
+    calculateLabelPadding() {
+        // Scale padding based on margins
+        const rightMargin = this.margin.right || 100;
+        const bottomMargin = this.margin.bottom || 40;
+        const avgMargin = (rightMargin + bottomMargin) / 1.5;
+
+        // Base padding is 5-10, scale it
+        const scaledPadding = (avgMargin / 70) * 5; // base (100+40)/2=70 -> 5px
+
+        // Clamp between 2 and 10
+        return Math.max(2, Math.min(10, scaledPadding));
     }
 
     setManualYScale(value) {
@@ -156,6 +201,10 @@ export default class GenericDataHandler {
                 }
             }
         }
+
+        // Recalculate volume moving average for new bar
+        this.calculateVolumeMovingAverage();
+
         this.draw();
     }
 
@@ -287,7 +336,7 @@ export default class GenericDataHandler {
         gfx.beginFill(color || 0x00ff00); // green
 
         gfx.lineStyle(1, 0x333333, 1);
-        const padding = 10;
+        const padding = this.calculateLabelPadding();
         const x = this.width + padding - (this.margin.left + this.margin.right);
         txt.x = x;
         gfx.position.x = x;
@@ -315,6 +364,11 @@ export default class GenericDataHandler {
     }
     initYScale() {
         this.priceScale = scaleLinear().range([this.mainChartContainerHeight, 0]);
+
+        // Initialize volume scale for overlay (if volumeOverlay option is enabled)
+        if (this.options.volumeOverlay) {
+            this.volumeScale = scaleLinear().range([this.mainChartContainerHeight, 0]);
+        }
     }
     initAxis() {
         this.yAxis = new PixiAxis({
@@ -438,6 +492,20 @@ export default class GenericDataHandler {
         this.xAxis.render({
             values: this.timestamps,
         });
+
+        // Set up volume scale domain if volumeOverlay is enabled
+        if (this.options.volumeOverlay && this.volumeScale) {
+            // Find max volume in visible data
+            let maxVolume = 0;
+            for (let i = 0; i < sd.length; i++) {
+                const vol = sd[i].volume || 0;
+                if (vol > maxVolume) {
+                    maxVolume = vol;
+                }
+            }
+            // Set domain from 0 to max volume (with some padding)
+            this.volumeScale.domain([0, maxVolume * 1.1]);
+        }
     }
 
     initScales() {
@@ -480,9 +548,14 @@ export default class GenericDataHandler {
                     height: indicator.height || this.indicatorHeight,
                     lineColor: indicator.lineColor,
                     data: [],
-                    drawFn: indicator.drawFn ? indicator.drawFn : indicator.type == "line" ? drawLine : drawVolume,
+                    drawFn: indicator.drawFn
+                        ? indicator.drawFn
+                        : indicator.type == "line" || indicator.type == "multi-line"
+                        ? drawLine
+                        : drawVolume,
                     chart: this,
                     accessors: indicator.accessors || indicator.name,
+                    lines: indicator.lines || null, // Pass lines array for multi-line indicators
                 });
             });
         }
@@ -563,6 +636,10 @@ export default class GenericDataHandler {
 
         this.addToLayer(2, this.volProfileGfx);
 
+        // Add volume overlay graphics to layer 2 (above candlesticks but below crosshair)
+        this.addToLayer(2, this.volumeLineGfx);
+        this.addToLayer(2, this.avgVolumeLineGfx);
+
         // Add background text and position it in the center
         this.addToLayer(0, this.backgroundText);
         this.backgroundText.position.x = (this.width - (this.margin.left + this.margin.right)) / 2;
@@ -585,19 +662,24 @@ export default class GenericDataHandler {
         this.crossHairXGfx = new Graphics();
         this.borderGfx = new Graphics();
 
+        // Volume overlay graphics (for drawing volume as lines on main chart)
+        this.volumeLineGfx = new Graphics();
+        this.avgVolumeLineGfx = new Graphics();
+
         // Background watermark text
         const watermarkText = this.symbol || "hello world";
         this.backgroundText = new Text(
             watermarkText,
             new TextStyle({
                 fontFamily: "Arial",
-                fontSize: 72,
+                fontSize: this.mainChartContainerHeight / 2,
                 fontWeight: "bold",
-                fill: 0xffffff,
+                fill: 0xfff5ff,
                 align: "center",
-                alpha: 0.1,
             })
         );
+        this.backgroundText.alpha = 0.2;
+
         this.backgroundText.anchor.set(0.5, 0.5);
     }
     initTradeWindow() {
@@ -658,17 +740,14 @@ export default class GenericDataHandler {
         this.priceLabelAppendGfx = new Graphics();
         this.currentPriceLabelAppendGfx = new Graphics();
         this.darkTextStyle = (opts = {}) => {
-            const {
-                fontFamily = "Arial",
-                fontSize = 14,
-                fontWeight = "bold",
-                fill = 0x333333,
-                align = "center",
-                userEvents = "none",
-            } = opts;
+            const { fontFamily = "Arial", fontSize, fontWeight = "bold", fill = 0x333333, align = "center", userEvents = "none" } = opts;
+
+            // Calculate default font size based on margins if not provided
+            const defaultFontSize = fontSize || this.calculateCrosshairFontSize();
+
             return new TextStyle({
                 fontFamily,
-                fontSize,
+                fontSize: defaultFontSize,
                 fontWeight,
                 fill,
                 align,
@@ -680,7 +759,7 @@ export default class GenericDataHandler {
         this.dateTxtLabel.anchor.x = 0.5;
         this.priceTxtLabel = new Text("", this.darkTextStyle());
         this.priceTxtLabel.anchor.y = 0.5;
-        this.percentTxtLabel = new Text("", this.darkTextStyle({ fontSize: 14 }));
+        this.percentTxtLabel = new Text("", this.darkTextStyle());
         this.percentTxtLabel.anchor.y = 0.5;
         this.currentPriceTxtLabel = new Text("", this.darkTextStyle());
         this.currentPriceTxtLabel.anchor.y = 0.5;
@@ -756,7 +835,62 @@ export default class GenericDataHandler {
             let yLabel, yScale, yPercentLabel;
             if (this.crossHairYScale) {
                 yScale = this.crossHairYScale;
-                yLabel = Math.floor(yScale.invert(this.mouseY - this.yMouseOffset + this.margin.top)).toString();
+                const rawValue = yScale.invert(this.mouseY - this.yMouseOffset + this.margin.top);
+
+                // Determine appropriate decimal places based on scale range
+                const [domainMin, domainMax] = yScale.domain();
+                const range = Math.abs(domainMax - domainMin);
+
+                let decimalPlaces;
+                if (range < 1) {
+                    decimalPlaces = 3; // Small values like 0.3-0.6
+                } else if (range < 10) {
+                    decimalPlaces = 2; // Medium small values
+                } else if (range < 100) {
+                    decimalPlaces = 1; // Medium values
+                } else {
+                    decimalPlaces = 0; // Large values like volume or prices
+                }
+
+                const value = Number(rawValue.toFixed(decimalPlaces));
+                yLabel = value.toLocaleString(undefined, {
+                    minimumFractionDigits: decimalPlaces,
+                    maximumFractionDigits: decimalPlaces,
+                });
+
+                // Check if this is the volume indicator and has a current average
+                const volumeIndicator = this.lowerIndicatorsData?.volume;
+                if (volumeIndicator && volumeIndicator.currentAverage && volumeIndicator.currentAverage > 0) {
+                    const percentFromAvg = ((value - volumeIndicator.currentAverage) / volumeIndicator.currentAverage) * 100;
+                    yPercentLabel = `${percentFromAvg.toFixed(1)}%`;
+                }
+            } else if (this.options.volumeOverlay && this.volumeScale) {
+                // Check if mouse is in upper half (volume overlay) or lower half (price)
+                const chartMidpoint = this.mainChartContainerHeight / 2;
+
+                if (this.mouseY < chartMidpoint) {
+                    // Upper half - show volume with percentage from 20-period average
+                    yScale = this.volumeScale;
+                    const volumeValue = Math.floor(yScale.invert(this.mouseY));
+                    yLabel = volumeValue.toLocaleString(); // Format with commas
+
+                    // Calculate 20-period average for last visible bar
+                    const avgPeriod = this.options.volumeAvgPeriod || 20;
+                    const avgVolumes = calculateMovingAverage(this.slicedData, avgPeriod, "volume");
+                    const lastAvgVolume = avgVolumes[avgVolumes.length - 1];
+
+                    if (lastAvgVolume && lastAvgVolume > 0) {
+                        const percentFromAvg = ((volumeValue - lastAvgVolume) / lastAvgVolume) * 100;
+                        yPercentLabel = `${percentFromAvg.toFixed(1)}%`;
+                    }
+                } else {
+                    // Lower half - show price with percentage from current price
+                    yScale = this.priceScale;
+                    const value = roundTick(yScale.invert(this.mouseY), this.tickSize);
+                    yLabel = currencyFormatter.format(value);
+                    const { difference, percent, formatted } = this.calcPriceDiff(this.lastPrice, value);
+                    yPercentLabel = formatted;
+                }
             } else {
                 yScale = this.priceScale;
                 const value = roundTick(yScale.invert(this.mouseY), this.tickSize);
@@ -797,7 +931,7 @@ export default class GenericDataHandler {
 
                 this.dateLabelAppendGfx.lineStyle(1, 0x333333, 1);
 
-                const padding = 5;
+                const padding = this.calculateLabelPadding();
                 const y = this.height - (this.margin.bottom + this.margin.top - padding);
                 this.dateTxtLabel.position.y = y + padding;
                 const coords = bottomAxisMarkerTagLine({
@@ -841,6 +975,12 @@ export default class GenericDataHandler {
                 //add axis
             }
         });
+
+        // If there are no lower indicators, set the height to just the main chart + margins
+        if (this.chartContainerOrder.length === 0) {
+            this.height = this.mainChartContainerHeight + this.margin.top + this.margin.bottom;
+            this.pixiApp.renderer.resize(this.width, this.height);
+        }
     }
 
     setHitArea() {
@@ -897,6 +1037,9 @@ export default class GenericDataHandler {
         this.slicedLowest = null;
         this.slicedHighestIdx = null;
         this.slicedLowestIdx = null;
+
+        // Calculate volume moving average on initialization
+        this.calculateVolumeMovingAverage();
 
         this.initDataViewable();
         this.initScales();
@@ -1070,7 +1213,7 @@ export default class GenericDataHandler {
         } else if (!this.crosshair && this.mouseX > 0 && this.mouseX < this.width - (right + left)) {
             this.showCrosshair();
         }
-        const spread = 6;
+        const spread = this.calculateLabelPadding();
         this.crossHairYGfx.position.x = this.mouseX;
         this.crossHairXGfx.position.y = this.mouseY;
         this.priceLabelAppendGfx.position.y = this.mouseY;
@@ -1392,6 +1535,28 @@ export default class GenericDataHandler {
                 data: this.slicedData,
                 chartData: this,
                 gfx: this.candleStickGfx,
+            });
+        } else if (this.options.chartType === "OHLC") {
+            drawOHLC({
+                chart: this,
+                gfx: this.candleStickGfx,
+                wickGfx: this.candleStickWickGfx,
+            });
+        }
+
+        // Draw volume overlay if enabled
+        if (this.options.volumeOverlay && this.volumeScale) {
+            drawVolumeLines({
+                volumeColor: this.options.volumeColor || 0x00ffff,
+                avgVolumeColor: this.options.avgVolumeColor || 0xff6600,
+                lineWidth: this.options.volumeLineWidth || 1.5,
+                avgPeriod: this.options.volumeAvgPeriod || 20,
+                xScale: this.xScale,
+                yScale: this.volumeScale,
+                data: this.slicedData,
+                chartData: this,
+                volumeGfx: this.volumeLineGfx,
+                avgVolumeGfx: this.avgVolumeLineGfx,
             });
         }
 
