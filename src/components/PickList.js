@@ -61,12 +61,42 @@ const TickerItem = styled.div`
     color: #ffffff;
     cursor: pointer;
     transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
 
     &:hover {
         background-color: #404040;
         border-color: #525252;
         transform: translateY(-1px);
     }
+`;
+
+const TickerSymbol = styled.div`
+    font-weight: 600;
+    font-size: 0.875rem;
+`;
+
+const ScoreBadge = styled.div`
+    font-size: 0.65rem;
+    padding: 0.15rem 0.3rem;
+    border-radius: 0.2rem;
+    background-color: ${(props) => {
+        if (props.strength === "exceptional") return "#16a34a";
+        if (props.strength === "strong") return "#22c55e";
+        if (props.strength === "moderate") return "#84cc16";
+        if (props.severity === "critical") return "#dc2626";
+        if (props.severity === "high") return "#ef4444";
+        if (props.severity === "warning") return "#f59e0b";
+        return "#6b7280";
+    }};
+    color: #ffffff;
+    font-weight: 500;
+`;
+
+const SignalCount = styled.div`
+    font-size: 0.65rem;
+    color: #9ca3af;
 `;
 
 const LoadingContainer = styled.div`
@@ -107,6 +137,10 @@ const categoryNames = {
     momentumGrowthTickers: "Momentum Growth",
     turnaroundTickers: "Turnaround",
     cashFlowTickers: "Cash Flow",
+    financialDistress: "Financial Distress",
+    deteriorating: "Deteriorating",
+    zombieCompanies: "Zombie Companies",
+    valueTraps: "Value Traps",
 };
 
 export default function PickList() {
@@ -128,7 +162,7 @@ export default function PickList() {
 
     const fetchPickLists = async () => {
         try {
-            const data = await API.getPickLists();
+            const data = await API.getEnhancedPickLists();
 
             setPickLists(data);
             setError(null);
@@ -137,6 +171,37 @@ export default function PickList() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const renderTickerWithAnalysis = (tickerData) => {
+        // If it's just a string (no analysis data), render simple ticker
+        if (typeof tickerData === "string") {
+            return (
+                <TickerItem key={tickerData}>
+                    <TickerSymbol>{tickerData}</TickerSymbol>
+                </TickerItem>
+            );
+        }
+
+        // Render ticker with analysis data
+        const { ticker, score, strength, severity, signalCount } = tickerData;
+        const displayLabel = strength || severity || "low";
+
+        return (
+            <TickerItem key={ticker}>
+                <TickerSymbol>{ticker}</TickerSymbol>
+                {score !== undefined && (
+                    <>
+                        <ScoreBadge strength={strength} severity={severity}>
+                            {score} - {displayLabel}
+                        </ScoreBadge>
+                        {signalCount > 0 && (
+                            <SignalCount>{signalCount} signals</SignalCount>
+                        )}
+                    </>
+                )}
+            </TickerItem>
+        );
     };
 
     if (loading) {
@@ -155,18 +220,30 @@ export default function PickList() {
         <Container>
             <Title>Stock Pick Lists</Title>
             <ListContainer>
-                {Object.entries(pickLists).map(([category, tickers]) => (
-                    <CategorySection key={category}>
-                        <CategoryHeader>
-                            <CategoryTitle>{categoryNames[category]}</CategoryTitle>
-                        </CategoryHeader>
-                        <TickerGrid>
-                            {tickers.map((ticker) => (
-                                <TickerItem key={ticker}>{ticker}</TickerItem>
-                            ))}
-                        </TickerGrid>
-                    </CategorySection>
-                ))}
+                {Object.entries(pickLists).map(([category, categoryData]) => {
+                    // Handle both old format (array of strings) and new format (object with tickers + analysis)
+                    const tickers = Array.isArray(categoryData) ? categoryData : categoryData.tickers || [];
+                    const topByScore = categoryData.topByScore || [];
+
+                    return (
+                        <CategorySection key={category}>
+                            <CategoryHeader>
+                                <CategoryTitle>
+                                    {categoryNames[category] || category}
+                                    {categoryData.count && ` (${categoryData.count} stocks)`}
+                                </CategoryTitle>
+                            </CategoryHeader>
+                            <TickerGrid>
+                                {/* Show top scored tickers first if available */}
+                                {topByScore.length > 0 ? (
+                                    topByScore.map((tickerData) => renderTickerWithAnalysis(tickerData))
+                                ) : (
+                                    tickers.map((ticker) => renderTickerWithAnalysis(ticker))
+                                )}
+                            </TickerGrid>
+                        </CategorySection>
+                    );
+                })}
             </ListContainer>
         </Container>
     );

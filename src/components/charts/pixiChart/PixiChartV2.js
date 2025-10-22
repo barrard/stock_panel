@@ -12,7 +12,9 @@ import { symbolOptions } from "./components/utils";
 import { useIndicator } from "../hooks/useIndicator";
 import { useToggleIndicator } from "../hooks/useToggleIndicator";
 import { useLiquidityData } from "../hooks/useLiquidityData";
+import { useLiquidityRatios } from "../hooks/useLiquidityRatios";
 import { TICKS } from "../../../indicators/indicatorHelpers/TICKS";
+import { drawLine, drawIndicatorCandlestick } from "./components/drawFns";
 // import { liquidityHeatMapConfig } from "./components/indicatorConfigs";
 // import drawStrikes from "./drawStrikes";
 // import MonteCarloCone from "./monteCarloSimulation";
@@ -192,6 +194,16 @@ const PixiChartV2 = (props) => {
         fetchLiveDataAndUpdate, // Pass for OHLC bar fetching when needed
     });
 
+    // Use the liquidity ratios hook for real-time ratio data (always enabled)
+    useLiquidityRatios({
+        symbol: symbol.value,
+        Socket,
+        pixiDataRef,
+        enabled: true, // Always enabled
+        timeframe,
+        ohlcData,
+    });
+
     // Draw orders when indicator is enabled or orders change
     useEffect(() => {
         const ordersInstance = ordersIndicator?.instanceRef;
@@ -299,6 +311,60 @@ const PixiChartV2 = (props) => {
         return filtered;
     }, [ordersFromParent, symbol.value]);
 
+    // Create lower indicators array - always visible
+    const lowerIndicators = useMemo(() => {
+        return [
+            {
+                name: "Delta",
+                height: 100,
+                type: "candlestick",
+                accessors: "deltaClose", // For scale calculation
+                drawFn: (opts) => drawIndicatorCandlestick({
+                    ...opts,
+                    openField: "deltaOpen",
+                    highField: "deltaHigh",
+                    lowField: "deltaLow",
+                    closeField: "deltaClose",
+                    upColor: 0x00ff00,
+                    downColor: 0xff0000,
+                }),
+                canGoNegative: true,
+            },
+            {
+                name: "Near Price Ratio",
+                height: 100,
+                type: "candlestick",
+                accessors: "nearPriceRatioClose",
+                drawFn: (opts) => drawIndicatorCandlestick({
+                    ...opts,
+                    openField: "nearPriceRatioOpen",
+                    highField: "nearPriceRatioHigh",
+                    lowField: "nearPriceRatioLow",
+                    closeField: "nearPriceRatioClose",
+                    upColor: 0x00aa00, // Darker green
+                    downColor: 0xaa0000, // Darker red
+                }),
+                canGoNegative: false,
+            },
+            {
+                name: "Full Book Ratio",
+                height: 100,
+                type: "candlestick",
+                accessors: "fullBookRatioClose",
+                drawFn: (opts) => drawIndicatorCandlestick({
+                    ...opts,
+                    openField: "fullBookRatioOpen",
+                    highField: "fullBookRatioHigh",
+                    lowField: "fullBookRatioLow",
+                    closeField: "fullBookRatioClose",
+                    upColor: 0x0088ff, // Bright blue
+                    downColor: 0xff6600, // Orange
+                }),
+                canGoNegative: false,
+            },
+        ];
+    }, []);
+
     return (
         <>
             <div className="row g-0">
@@ -340,6 +406,7 @@ const PixiChartV2 = (props) => {
                     barTypePeriod={barTypePeriod}
                     // loadData={loadData}
                     pixiDataRef={pixiDataRef}
+                    lowerIndicators={lowerIndicators}
                     // tickSize={tickSize}
                 />
             )}

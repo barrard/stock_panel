@@ -89,59 +89,29 @@ const MarketBreadth = (props) => {
     };
 
     useEffect(() => {
-        if (!tick || !pixiDataRef.current) return;
-        // const lastBar = pixiDataRef.current.ohlcDatas.slice(-1)[0];
-        const lastVolume = lastTotalVolumeRef.current || tick.totalVolume;
-        tick.volume = tick.totalVolume - lastVolume;
-        tick.totalVol = tick.totalVolume;
-        tick.lastPrice = tick.last;
-
-        pixiDataRef.current.setNewBar(tick);
-        pixiDataRef.current.updateCurrentPriceLabel(tick.lastPrice);
-        lastTotalVolumeRef.current = tick.totalVolume;
-
-        if (candleData && pixiDataRef.current) {
-            // const monteCarlo = new MonteCarloCone(pixiDataRef, candleData);
-            // const results = monteCarlo.updateSimulation();
-            // monteCarlo.drawHistogramHeatmap();
-
-            // Register for redraws
-            // pixiDataRef.current.registerDrawFn("drawHistogramHeatmap", monteCarlo.drawHistogramHeatmap.bind(monteCarlo));
-
-            return () => {
-                // pixiDataRef.current?.unregisterDrawFn("drawHistogramHeatmap");
-                // monteCarlo.cleanup();
-            };
-        }
-    }, [tick, pixiDataRef.current]);
-
-    // useEffect(() => {
-    //     if (!pixiDataRef.current || !spyLevelOne) return;
-    //     // pixiDataRef.current.newTick(spyLevelOne);
-    //     // setLastSpyLevelOne(spyLevelOne);
-    // }, [spyLevelOne, pixiDataRef.current]);
-
-    //     useEffect(() => {
-    //     if (!pixiDataRef.current || !spyLevelOne) return;
-    //     // pixiDataRef.current.newTick(spyLevelOne);
-    //     setLastSpyLevelOne(spyLevelOne);
-    // }, [tick, pixiDataRef.current]);
-
-    useEffect(() => {
         console.log("MarketBreadth loaded");
         fetchData({ limit: 2000, sort: { _id: -1 }, filter: {} });
 
         Socket.on("market-breadth", (data) => {
-            debugger;
             console.log("market-breadth", data);
+            if (!pixiDataRef.current) return;
+
             const datetime = new Date().getTime();
-            // Object.keys(breadthKeys).forEach((key) => {
-            //     const tick = { datetime, value: data[key] };
-            //     candleData[key].push(tick);
-            //     pixiDataRef.current.setNewBar(tick);
-            //     pixiDataRef.current.updateCurrentPriceLabel(tick.value);
-            // });
-            // setCandleData({ ...candleData });
+
+            // Create a new data point with all breadth values
+            const newDataPoint = {
+                datetime,
+                ...data, // Spread all the breadth data ($SPX, $NDX, etc.)
+            };
+
+            // Update the chart with the new data point
+            // The setNewBar method adds the data point to pixiDataRef.current.ohlcDatas
+            pixiDataRef.current.setNewBar(newDataPoint);
+
+            // Update the current price label with the main symbol value
+            if (data[key]) {
+                pixiDataRef.current.updateCurrentPriceLabel(data[key]);
+            }
         });
 
         return () => {
@@ -170,16 +140,23 @@ const MarketBreadth = (props) => {
                         pixiDataRef={pixiDataRef}
                         tickSize={1}
                         lowerIndicators={[
-                            ...Object.keys(breadthKeys).map((key) => ({
-                                lineColor: breadthKeys[key].color,
-                                name: key,
-                                type: "line",
-                                lineKey: key,
-                                xKey: "datetime",
-                            })),
-                            // { lineColor: 0x44ef44, name: "$NDX", type: "line", lineKey: "$NDX", xKey: "datetime" },
-                            // { lineColor: 0x11ff11, name: "$TRIN", type: "line", lineKey: "$TRIN", xKey: "datetime" },
-                            // { lineColor: 0xff1111, name: "avgTRIN", type: "line", lineKey: "avgTRIN", xKey: "datetime" },
+                            ...Object.keys(breadthKeys)
+                                .filter((key) => key !== "$DVOL" && key !== "$UVOL" && key !== "$GDMOC") // Exclude these from individual indicators
+                                .map((key) => ({
+                                    lineColor: breadthKeys[key].color,
+                                    name: key,
+                                    type: "line",
+                                    lineKey: key,
+                                    xKey: "datetime",
+                                })),
+                            {
+                                name: "Volume",
+                                type: "multi-line",
+                                lines: [
+                                    { lineColor: breadthKeys.$DVOL.color, lineKey: "$DVOL", lineWidth: 2 },
+                                    { lineColor: breadthKeys.$UVOL.color, lineKey: "$UVOL", lineWidth: 2 },
+                                ],
+                            },
                             {
                                 name: "TICK",
                                 type: "multi-line",

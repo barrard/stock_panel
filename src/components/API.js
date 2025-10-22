@@ -68,6 +68,7 @@ const API = {
     getFrontMonthSymbols,
     getFromRedis,
     getOrderFlow,
+    getLiquidityMetrics,
     getTicks,
     getCustomTicks,
     getBacktestDay,
@@ -76,6 +77,7 @@ const API = {
     getBacktestData,
     getOrders,
     getPickLists,
+    getEnhancedPickLists,
     fetchOptionContractData,
     getSchwabAccountDetails,
     fetchMarketBreadth,
@@ -92,6 +94,10 @@ async function fetchOptionContractData({ symbol = "SPY", putCall = "CALL", strik
 }
 async function getPickLists() {
     return await GET(`/API/get-pick-lists`);
+}
+
+async function getEnhancedPickLists() {
+    return await GET(`/API/filing-analysis/enhanced-pick-lists`);
 }
 
 async function fetchMarketBreadth(opts = {}) {
@@ -159,6 +165,10 @@ async function getTicks() {
 
 async function getOrderFlow({ start, end, symbol = "ES", compiled = false }) {
     return await GET(`/API/getOrderFlow/${start}/${end}/${symbol}/${compiled}`);
+}
+
+async function getLiquidityMetrics({ start, end, symbol = "ES", timeframe = "1m" }) {
+    return await GET(`/API/getLiquidityMetrics/${start}/${end}/${symbol}/${timeframe}`);
 }
 
 async function GET(url, opts = {}) {

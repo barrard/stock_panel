@@ -239,3 +239,125 @@ export function drawOHLC(opts = {}) {
         gfx.lineTo(x + tickWidth, close);
     });
 }
+
+/**
+ * Draw candlestick representation for indicator data (like ratio OHLC)
+ * @param {Object} opts - Drawing options
+ * @param {string} opts.openField - Field name for open value (e.g., 'deltaOpen')
+ * @param {string} opts.highField - Field name for high value (e.g., 'deltaHigh')
+ * @param {string} opts.lowField - Field name for low value (e.g., 'deltaLow')
+ * @param {string} opts.closeField - Field name for close value (e.g., 'deltaClose')
+ * @param {number} opts.upColor - Color for up candles (default: 0x00ff00)
+ * @param {number} opts.downColor - Color for down candles (default: 0xff0000)
+ * @param {Function} opts.xScale - D3 scale for x-axis
+ * @param {Function} opts.yScale - D3 scale for y-axis
+ * @param {Array} opts.data - Array of sliced data
+ * @param {Object} opts.chartData - Indicator instance
+ * @param {Graphics} opts.gfx - Pixi Graphics for candle bodies
+ * @param {Graphics} opts.wickGfx - Pixi Graphics for wicks (optional, uses gfx if not provided)
+ */
+export function drawIndicatorCandlestick(opts = {}) {
+    const {
+        openField,
+        highField,
+        lowField,
+        closeField,
+        upColor = 0x00ff00,
+        downColor = 0xff0000,
+        xScale,
+        yScale,
+        data,
+        chartData,
+        gfx,
+        wickGfx = null,
+    } = opts;
+
+    console.log(`[drawIndicatorCandlestick] Called with fields: ${openField}, ${highField}, ${lowField}, ${closeField}`);
+    console.log(`[drawIndicatorCandlestick] Data length: ${data?.length}, gfx: ${!!gfx}`);
+
+    if (!data.length || !gfx) {
+        console.log(`[drawIndicatorCandlestick] Early return - no data or gfx`);
+        return;
+    }
+
+    try {
+        gfx.clear();
+        if (wickGfx) wickGfx.clear();
+    } catch (err) {
+        console.error(`[drawIndicatorCandlestick] Error clearing graphics:`, err);
+        return err;
+    }
+
+    const candleWidth = xScale(1) - xScale(0); // Width per bar
+    const bodyWidth = candleWidth * 0.8;
+    const halfBodyWidth = bodyWidth / 2;
+    const wickWidth = Math.max(1, candleWidth * 0.1);
+
+    let drawnCount = 0;
+    let skippedCount = 0;
+
+    data.forEach((bar, i) => {
+        const open = bar[openField];
+        const high = bar[highField];
+        const low = bar[lowField];
+        const close = bar[closeField];
+
+        // Skip if any OHLC value is missing
+        if (open === undefined || open === null || high === undefined || high === null ||
+            low === undefined || low === null || close === undefined || close === null) {
+            skippedCount++;
+            return;
+        }
+
+        drawnCount++;
+
+        const x = xScale(i);
+        const yOpen = yScale(open);
+        const yClose = yScale(close);
+        const yHigh = yScale(high);
+        const yLow = yScale(low);
+
+        const isUp = close >= open;
+        const color = isUp ? upColor : downColor;
+
+        // Draw wick (high to low line)
+        const targetGfx = wickGfx || gfx;
+        targetGfx.lineStyle(wickWidth, color, 0.9);
+        targetGfx.moveTo(x, yHigh);
+        targetGfx.lineTo(x, yLow);
+
+        // Draw body (open to close rectangle)
+        const bodyHeight = Math.abs(yClose - yOpen);
+        const bodyTop = Math.min(yOpen, yClose);
+
+        if (bodyHeight > 0) {
+            // Regular candle with body
+            gfx.beginFill(color, 0.9);
+            gfx.drawRect(x - halfBodyWidth, bodyTop, bodyWidth, bodyHeight);
+            gfx.endFill();
+        } else {
+            // Doji - draw a horizontal line
+            gfx.lineStyle(wickWidth, color, 0.9);
+            gfx.moveTo(x - halfBodyWidth, yOpen);
+            gfx.lineTo(x + halfBodyWidth, yOpen);
+        }
+    });
+
+    console.log(`[drawIndicatorCandlestick] Finished - Drawn: ${drawnCount}, Skipped: ${skippedCount}`);
+
+    // Sample the first bar with data
+    if (drawnCount > 0) {
+        const sampleBar = data.find(bar =>
+            bar[openField] !== undefined && bar[openField] !== null &&
+            bar[closeField] !== undefined && bar[closeField] !== null
+        );
+        if (sampleBar) {
+            console.log(`[drawIndicatorCandlestick] Sample bar data:`, {
+                open: sampleBar[openField],
+                high: sampleBar[highField],
+                low: sampleBar[lowField],
+                close: sampleBar[closeField]
+            });
+        }
+    }
+}
