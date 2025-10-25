@@ -72,6 +72,73 @@ export default class GenericDataHandler {
         this.isVerticalZooming = value;
     }
 
+    isMarketHours(timestamp) {
+        // Check if timestamp is during regular market hours (9:30 AM - 4:00 PM EST)
+        const date = new Date(timestamp);
+
+        // Convert to EST/EDT (UTC-5 or UTC-4 depending on DST)
+        // Using America/New_York timezone
+        const estDate = new Date(date.toLocaleString("en-US", { timeZone: "America/New_York" }));
+
+        const hours = estDate.getHours();
+        const minutes = estDate.getMinutes();
+        const day = estDate.getDay(); // 0 = Sunday, 6 = Saturday
+
+        // Check if weekend
+        if (day === 0 || day === 6) return false;
+
+        // Check if between 9:30 AM and 4:00 PM EST
+        const timeInMinutes = hours * 60 + minutes;
+        const marketOpen = 9 * 60 + 30; // 9:30 AM
+        const marketClose = 16 * 60; // 4:00 PM
+
+        return timeInMinutes >= marketOpen && timeInMinutes < marketClose;
+    }
+
+    // Pre-calculate market hour sessions from the full dataset
+    calculateMarketHourSessions() {
+        if (!this.ohlcDatas || this.ohlcDatas.length === 0) {
+            this.marketHourSessions = [];
+            return;
+        }
+
+        const sessions = [];
+        let currentSessionType = null;
+        let sessionStartIndex = 0;
+
+        this.ohlcDatas.forEach((candle, i) => {
+            const timestamp = candle.timestamp || candle.datetime;
+            const isMarket = this.isMarketHours(timestamp);
+            const sessionType = isMarket ? "market" : "afterhours";
+
+            // Session changed
+            if (sessionType !== currentSessionType) {
+                // Save previous session
+                if (currentSessionType !== null) {
+                    sessions.push({
+                        type: currentSessionType,
+                        startIndex: sessionStartIndex,
+                        endIndex: i - 1,
+                    });
+                }
+                // Start new session
+                currentSessionType = sessionType;
+                sessionStartIndex = i;
+            }
+
+            // Last bar - close the session
+            if (i === this.ohlcDatas.length - 1) {
+                sessions.push({
+                    type: currentSessionType,
+                    startIndex: sessionStartIndex,
+                    endIndex: i,
+                });
+            }
+        });
+
+        this.marketHourSessions = sessions;
+    }
+
     calculateVolumeMovingAverage(period = 20) {
         // Calculate moving average for the entire dataset and store on each bar
         for (let i = 0; i < this.ohlcDatas.length; i++) {
@@ -205,7 +272,37 @@ export default class GenericDataHandler {
         // Recalculate volume moving average for new bar
         this.calculateVolumeMovingAverage();
 
+        // Update market hour sessions incrementally (only check new bar)
+        this.updateMarketHourSessionsForNewBar(bar);
+
         this.draw();
+    }
+
+    // Efficiently update sessions when a single new bar is added
+    updateMarketHourSessionsForNewBar(bar) {
+        if (!this.marketHourSessions || this.marketHourSessions.length === 0) {
+            this.calculateMarketHourSessions();
+            return;
+        }
+
+        const newBarIndex = this.ohlcDatas.length - 1;
+        const timestamp = bar.timestamp || bar.datetime;
+        const isMarket = this.isMarketHours(timestamp);
+        const newBarType = isMarket ? "market" : "afterhours";
+
+        const lastSession = this.marketHourSessions[this.marketHourSessions.length - 1];
+
+        if (lastSession.type === newBarType) {
+            // Extend current session
+            lastSession.endIndex = newBarIndex;
+        } else {
+            // Start new session
+            this.marketHourSessions.push({
+                type: newBarType,
+                startIndex: newBarIndex,
+                endIndex: newBarIndex,
+            });
+        }
     }
 
     newTick(tick) {
@@ -596,6 +693,9 @@ export default class GenericDataHandler {
         this.indicatorContainer = new Container();
         this.tradeWindowContainer = new Container();
 
+        // Add market hours background directly to main container FIRST (bottom-most layer)
+        this.mainChartContainer.addChild(this.marketHoursGfx);
+
         this.layer0Container = new Container();
         this.layer1Container = new Container();
         this.layer2Container = new Container();
@@ -661,6 +761,9 @@ export default class GenericDataHandler {
         this.crossHairYGfx = new Graphics();
         this.crossHairXGfx = new Graphics();
         this.borderGfx = new Graphics();
+
+        // Market hours background graphics
+        this.marketHoursGfx = new Graphics();
 
         // Volume overlay graphics (for drawing volume as lines on main chart)
         this.volumeLineGfx = new Graphics();
@@ -1040,6 +1143,9 @@ export default class GenericDataHandler {
 
         // Calculate volume moving average on initialization
         this.calculateVolumeMovingAverage();
+
+        // Pre-calculate market hour sessions
+        this.calculateMarketHourSessions();
 
         this.initDataViewable();
         this.initScales();
@@ -1437,6 +1543,57 @@ export default class GenericDataHandler {
         return { takeFromLeft, takeFromRight, amountToZoom };
     }
 
+    drawMarketHoursBackground() {
+        if (!this.slicedData.length || !this.marketHoursGfx || !this.marketHourSessions) {
+            return;
+        }
+
+        // Cache key to avoid redrawing when nothing changed
+        const cacheKey = `${this.sliceStart}-${this.sliceEnd}-${this.width}-${this.mainChartContainerHeight}`;
+        if (this._lastMarketHoursCacheKey === cacheKey) {
+            return; // Nothing changed, skip redraw
+        }
+        this._lastMarketHoursCacheKey = cacheKey;
+
+        this.marketHoursGfx.clear();
+
+        // Default colors - light grey for market hours, darker for after hours
+        const marketHoursColor = this.options.marketHoursColor || 0x2a2a2a; // Light grey
+        const afterHoursColor = this.options.afterHoursColor || 0x0a0a0a; // Darker grey/black
+        const marketHoursAlpha = this.options.marketHoursAlpha || 0.4;
+        const afterHoursAlpha = this.options.afterHoursAlpha || 0.6;
+
+        const chartHeight = this.mainChartContainerHeight;
+        this.candleWidth = (this.width - (this.margin.left + this.margin.right)) / this.slicedData.length;
+
+        // Only draw sessions that overlap with the visible range
+        this.marketHourSessions.forEach((session) => {
+            // Skip sessions completely outside visible range
+            if (session.endIndex < this.sliceStart || session.startIndex >= this.sliceEnd) {
+                return;
+            }
+
+            // Calculate visible portion of this session
+            const visibleStart = Math.max(session.startIndex, this.sliceStart);
+            const visibleEnd = Math.min(session.endIndex, this.sliceEnd - 1);
+
+            // Convert to sliced data coordinates (0-indexed relative to slicedData)
+            const slicedStartIdx = visibleStart - this.sliceStart;
+            const slicedEndIdx = visibleEnd - this.sliceStart;
+
+            const startX = this.xScale(slicedStartIdx);
+            const endX = this.xScale(slicedEndIdx);
+            const width = endX - startX + this.candleWidth;
+
+            const color = session.type === "market" ? marketHoursColor : afterHoursColor;
+            const alpha = session.type === "market" ? marketHoursAlpha : afterHoursAlpha;
+
+            this.marketHoursGfx.beginFill(color, alpha);
+            this.marketHoursGfx.drawRect(startX - this.candleWidth / 2, 0, width, chartHeight);
+            this.marketHoursGfx.endFill();
+        });
+    }
+
     drawAllCandles() {
         if (!this.slicedData.length) {
             return;
@@ -1568,6 +1725,9 @@ export default class GenericDataHandler {
 
         this.initLowerIndicators();
 
+        // Draw market hours background (this should be drawn first, before candles)
+        this.drawMarketHoursBackground();
+
         // this.setupTickVolumeScales();
         // this.drawPriceLine();
         // this.drawTickVolumeLine();
@@ -1681,6 +1841,7 @@ export default class GenericDataHandler {
         this.ohlcDatas = newData;
         this.slicedHighestIdx = null; // Invalidate cache
         this.calculateVolumeMovingAverage();
+        this.calculateMarketHourSessions(); // Recalculate sessions when data changes
         this.draw();
     }
 

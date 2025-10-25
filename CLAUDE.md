@@ -180,3 +180,260 @@ When adding new indicators or graphical overlays to any chart that utilizes the 
     *   Use this relative index with the `xScale` to get the correct position on the chart.
 
 This ensures that as the user pans and zooms (which changes `slicedData` and the `xScale` domain within `GenericPixiChart`), the indicator's position is recalculated correctly relative to the visible data.
+
+## Chart Background Patterns
+
+`GenericPixiChart` supports drawing custom background patterns to visually distinguish different time periods or market conditions. This is implemented through a session-based pre-calculation pattern for optimal performance.
+
+### Built-in Market Hours Background
+
+By default, charts automatically display different background colors for market hours (9:30 AM - 4:00 PM EST, weekdays) vs. after-hours/weekends:
+
+- **Market Hours**: Light grey (`0x2a2a2a`) at 40% opacity
+- **After Hours**: Dark grey/black (`0x0a0a0a`) at 60% opacity
+
+**Customizing colors:**
+
+```jsx
+<GenericPixiChart
+    options={{
+        marketHoursColor: 0x2a2a2a,      // Hex color for market hours
+        afterHoursColor: 0x0a0a0a,       // Hex color for after hours
+        marketHoursAlpha: 0.4,           // Transparency (0-1)
+        afterHoursAlpha: 0.6             // Transparency (0-1)
+    }}
+    ...
+/>
+```
+
+**Disabling market hours background:**
+
+To disable this feature, you can set both alpha values to 0:
+
+```jsx
+options={{ marketHoursAlpha: 0, afterHoursAlpha: 0 }}
+```
+
+### Performance Pattern: Session Pre-calculation
+
+The market hours background uses a highly optimized pattern that should be followed for any similar background features:
+
+**Key Principles:**
+
+1. **Pre-calculate sessions once**: When data loads, scan through all bars ONCE and create an array of session objects:
+   ```javascript
+   // In GenericDataHandler
+   this.marketHourSessions = [
+       { type: "market", startIndex: 0, endIndex: 150 },
+       { type: "afterhours", startIndex: 151, endIndex: 890 },
+       { type: "market", startIndex: 891, endIndex: 1200 }
+   ]
+   ```
+
+2. **Fast lookup during draw**: Instead of checking every bar on every draw, iterate through sessions and only draw rectangles for sessions overlapping the visible range.
+
+3. **Incremental updates**: When new bars arrive, extend the last session or add a new one - no full recalculation needed.
+
+4. **Smart caching**: Use a cache key to skip drawing if nothing changed:
+   ```javascript
+   const cacheKey = `${this.sliceStart}-${this.sliceEnd}-${this.width}-${this.mainChartContainerHeight}`;
+   if (this._lastCacheKey === cacheKey) return;
+   ```
+
+### Implementing Custom Background Patterns
+
+To add your own background pattern (e.g., highlighting specific sessions, earnings periods, or custom market conditions):
+
+**1. Add calculation function in `GenericDataHandler.js`:**
+
+```javascript
+calculateCustomSessions() {
+    if (!this.ohlcDatas || this.ohlcDatas.length === 0) {
+        this.customSessions = [];
+        return;
+    }
+
+    const sessions = [];
+    let currentType = null;
+    let sessionStart = 0;
+
+    this.ohlcDatas.forEach((candle, i) => {
+        // Your custom logic to determine session type
+        const sessionType = yourCustomLogic(candle);
+
+        if (sessionType !== currentType) {
+            if (currentType !== null) {
+                sessions.push({
+                    type: currentType,
+                    startIndex: sessionStart,
+                    endIndex: i - 1,
+                });
+            }
+            currentType = sessionType;
+            sessionStart = i;
+        }
+
+        if (i === this.ohlcDatas.length - 1) {
+            sessions.push({
+                type: currentType,
+                startIndex: sessionStart,
+                endIndex: i,
+            });
+        }
+    });
+
+    this.customSessions = sessions;
+}
+```
+
+**2. Add draw function:**
+
+```javascript
+drawCustomBackground() {
+    if (!this.slicedData.length || !this.customGfx || !this.customSessions) {
+        return;
+    }
+
+    // Cache to avoid redrawing unnecessarily
+    const cacheKey = `${this.sliceStart}-${this.sliceEnd}-${this.width}-${this.mainChartContainerHeight}`;
+    if (this._lastCustomCacheKey === cacheKey) return;
+    this._lastCustomCacheKey = cacheKey;
+
+    this.customGfx.clear();
+
+    this.customSessions.forEach((session) => {
+        // Skip sessions outside visible range
+        if (session.endIndex < this.sliceStart || session.startIndex >= this.sliceEnd) {
+            return;
+        }
+
+        // Calculate visible portion
+        const visibleStart = Math.max(session.startIndex, this.sliceStart);
+        const visibleEnd = Math.min(session.endIndex, this.sliceEnd - 1);
+
+        // Convert to sliced coordinates
+        const slicedStartIdx = visibleStart - this.sliceStart;
+        const slicedEndIdx = visibleEnd - this.sliceStart;
+
+        const startX = this.xScale(slicedStartIdx);
+        const endX = this.xScale(slicedEndIdx);
+        const width = endX - startX + this.candleWidth;
+
+        // Draw based on session type
+        const color = session.type === "typeA" ? 0xFF0000 : 0x0000FF;
+        const alpha = 0.3;
+
+        this.customGfx.beginFill(color, alpha);
+        this.customGfx.drawRect(startX - this.candleWidth / 2, 0, width, this.mainChartContainerHeight);
+        this.customGfx.endFill();
+    });
+}
+```
+
+**3. Initialize graphics in `initGraphics()`:**
+
+```javascript
+this.customGfx = new Graphics();
+```
+
+**4. Add to container in `initContainers()` (BEFORE layers):**
+
+```javascript
+this.mainChartContainer.addChild(this.customGfx);
+```
+
+**5. Call calculation in `init()` and `updateData()`:**
+
+```javascript
+this.calculateCustomSessions();
+```
+
+**6. Call draw function in `draw()`:**
+
+```javascript
+this.drawCustomBackground();
+```
+
+**7. Handle incremental updates in `setNewBar()`:**
+
+```javascript
+updateCustomSessionsForNewBar(bar) {
+    if (!this.customSessions || this.customSessions.length === 0) {
+        this.calculateCustomSessions();
+        return;
+    }
+
+    const newBarIndex = this.ohlcDatas.length - 1;
+    const newType = yourCustomLogic(bar);
+    const lastSession = this.customSessions[this.customSessions.length - 1];
+
+    if (lastSession.type === newType) {
+        lastSession.endIndex = newBarIndex;
+    } else {
+        this.customSessions.push({
+            type: newType,
+            startIndex: newBarIndex,
+            endIndex: newBarIndex,
+        });
+    }
+}
+```
+
+### Alternative: Calculation-Based Backgrounds
+
+For simpler cases where background changes can be determined by a pure calculation (without scanning data), you can calculate session types directly during draw:
+
+```javascript
+drawCalculatedBackground() {
+    if (!this.slicedData.length || !this.customGfx) return;
+
+    const cacheKey = `${this.sliceStart}-${this.sliceEnd}`;
+    if (this._lastCalcCacheKey === cacheKey) return;
+    this._lastCalcCacheKey = cacheKey;
+
+    this.customGfx.clear();
+
+    let currentType = null;
+    let sessionStart = 0;
+
+    this.slicedData.forEach((candle, i) => {
+        // Simple calculation (e.g., based on volume threshold)
+        const type = candle.volume > 1000000 ? "high" : "low";
+
+        if (type !== currentType) {
+            if (currentType !== null) {
+                // Draw previous session
+                const startX = this.xScale(sessionStart);
+                const endX = this.xScale(i);
+                const color = currentType === "high" ? 0x00FF00 : 0xFF0000;
+                this.customGfx.beginFill(color, 0.2);
+                this.customGfx.drawRect(startX, 0, endX - startX, this.mainChartContainerHeight);
+                this.customGfx.endFill();
+            }
+            currentType = type;
+            sessionStart = i;
+        }
+
+        // Handle last bar
+        if (i === this.slicedData.length - 1) {
+            const startX = this.xScale(sessionStart);
+            const endX = this.xScale(i) + this.candleWidth;
+            const color = currentType === "high" ? 0x00FF00 : 0xFF0000;
+            this.customGfx.beginFill(color, 0.2);
+            this.customGfx.drawRect(startX, 0, endX - startX, this.mainChartContainerHeight);
+            this.customGfx.endFill();
+        }
+    });
+}
+```
+
+This calculation-based approach works well when:
+- The logic is simple (e.g., threshold checks)
+- Sessions change frequently
+- The performance impact is acceptable (still cached by slice range)
+
+**When to use pre-calculation vs. calculation-based:**
+- **Pre-calculation**: Best for expensive operations (timezone conversions, complex lookups) or stable sessions
+- **Calculation-based**: Best for simple thresholds or frequently changing conditions
+
+Both approaches use caching to ensure they only redraw when the visible data range changes.
