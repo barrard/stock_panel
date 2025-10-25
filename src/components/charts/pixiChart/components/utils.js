@@ -414,6 +414,44 @@ export function parseBarTypeTimeFrame({ barType, barTypePeriod }) {
     }
     return timeBerBar * barTypePeriod * 500;
 }
+
+/**
+ * Converts barType and barTypePeriod to timeframe string format
+ * Only supports: 1s, 1m, 5m, 30m, 60m, 4h
+ * @param {Object} params
+ * @param {number} params.barType - 1=seconds, 2=minutes, 3=hours, 4=days
+ * @param {number} params.barTypePeriod - Number of barType units
+ * @returns {string} Timeframe string like "1m", "5m", "1s"
+ * @throws {Error} If the timeframe combination is not supported
+ * @example
+ * barTypeToTimeframe({ barType: 2, barTypePeriod: 1 }) // "1m"
+ * barTypeToTimeframe({ barType: 2, barTypePeriod: 5 }) // "5m"
+ * barTypeToTimeframe({ barType: 1, barTypePeriod: 1 }) // "1s"
+ */
+export function barTypeToTimeframe({ barType, barTypePeriod }) {
+    const SUPPORTED_TIMEFRAMES = ["1s", "1m", "5m", "30m", "60m", "4h"];
+
+    let timeframeStr;
+
+    if (barType === 1) {
+        // Seconds
+        timeframeStr = `${barTypePeriod}s`;
+    } else if (barType === 2) {
+        // Minutes
+        timeframeStr = `${barTypePeriod}m`;
+    } else if (barType === 3) {
+        // Hours
+        timeframeStr = `${barTypePeriod}h`;
+    } else {
+        throw new Error(`Invalid barType: ${barType}. Only barType 1 (seconds), 2 (minutes), and 3 (hours) are supported.`);
+    }
+
+    if (!SUPPORTED_TIMEFRAMES.includes(timeframeStr)) {
+        throw new Error(`Unsupported timeframe: ${timeframeStr}. Supported timeframes are: ${SUPPORTED_TIMEFRAMES.join(", ")}`);
+    }
+
+    return timeframeStr;
+}
 export function formatTimeWithMicroSeconds({ ssboe, usecs }) {
     const totalMilliseconds = combineTimestampsMicroSeconds({ ssboe, usecs });
     const date = new Date(totalMilliseconds);

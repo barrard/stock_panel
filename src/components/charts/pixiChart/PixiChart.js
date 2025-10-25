@@ -69,6 +69,7 @@ export default function PixiChart({ Socket }) {
     const tickSizeRef = useRef({});
     //Full Symbol
     const fullSymbolRef = useRef();
+    const [fullSymbolValue, setFullSymbolValue] = useState(null);
 
     const [rerender, setRerender] = useState({});
 
@@ -176,6 +177,11 @@ export default function PixiChart({ Socket }) {
             .then(async (_ohlcDatas) => {
                 setLoading(false);
 
+                if (!Array.isArray(_ohlcDatas)) {
+                    const message = _ohlcDatas?.error || _ohlcDatas?.message || "Unexpected response while loading historical bars.";
+                    throw new Error(message);
+                }
+
                 if (_ohlcDatas?.length < 2) {
                     // setOhlcDatas([]);
                     // setPixiData([]);
@@ -194,8 +200,8 @@ export default function PixiChart({ Socket }) {
                 // console.log(_ohlcDatas);
                 //pre  process the data
                 _ohlcDatas.forEach((d) => {
-                    if (d.askVolume.high || d.bidVolume.high) {
-                        alert("high");
+                    if (d.askVolume?.high || d.bidVolume?.high) {
+                        console.warn("Encountered aggregated volume bucket", d);
                     } else {
                         d.volume = d.askVolume.low + d.bidVolume.low;
                     }
@@ -227,7 +233,10 @@ export default function PixiChart({ Socket }) {
                     }
                     setPixiData((pixiData) => {
                         // setSymbolInputDisabled(false);
-                        if (!pixiData?.init) return alert("WHY??"); //WHY???
+                        if (!pixiData?.init) {
+                            console.error("PixiData instance missing init during loadData.");
+                            return pixiData;
+                        } //WHY???
                         if (isNew) {
                             pixiData.ohlcDatas = [];
                         }
@@ -241,7 +250,9 @@ export default function PixiChart({ Socket }) {
             .catch((e) => {
                 setLoading(false);
 
-                alert(e);
+                console.error("Failed to load historical bars", e);
+                const message = e?.message || e?.toString?.() || "Unable to load historical bars.";
+                toastr.error("Pixi Chart", message);
             });
     };
 
@@ -268,8 +279,8 @@ export default function PixiChart({ Socket }) {
         if (!data || !pixiData || !ohlcDatas?.length) return;
         data.timestamp = data.datetime = data.datetime * 1000;
 
-        if (data.askVolume.high || data.bidVolume.high) {
-            alert("high");
+        if (data.askVolume?.high || data.bidVolume?.high) {
+            console.warn("Encountered aggregated volume bucket on real-time update", data);
         } else {
             data.volume = data.askVolume.low + data.bidVolume.low;
         }
@@ -300,7 +311,6 @@ export default function PixiChart({ Socket }) {
     }, [currentTimeBar]);
 
     useEffect(() => {
-        // debugger;
         if (!pixiData?.disableIndicator) return;
         pixiData?.disableIndicator("orders", toggleOrders);
         return () => {
@@ -359,7 +369,7 @@ export default function PixiChart({ Socket }) {
                     barTypePeriod: barTypePeriodInput,
                 });
             } else {
-                alert(`Not loading ${symbol.name}`);
+                console.info(`Skipping duplicate load for ${symbol.name}`);
             }
         }, 1000);
 
@@ -384,17 +394,37 @@ export default function PixiChart({ Socket }) {
             setSymbol({ ...symbolInput });
         }
 
-        const baseSymbol = fullSymbols.find((d) => d.baseSymbol === symbolInput.value);
-        fullSymbolRef.current = baseSymbol;
-
         return () => {
             // Socket.off("timeBarUpdate");
         };
     }, [barTypeInput, barTypePeriodInput, symbolInput]);
+
     useEffect(() => {
-        const baseSymbol = fullSymbols.find((d) => d.baseSymbol === symbolInput.value);
-        fullSymbolRef.current = baseSymbol;
-    }, [fullSymbols]);
+        console.log(symbolInput.value);
+        setSymbol(symbolInput);
+
+        if (fullSymbols?.length) {
+            const fullSymbol = fullSymbols.find((d) => d.baseSymbol === symbolInput.value);
+            const nextFullSymbol = fullSymbol?.fullSymbol || null;
+            console.log("[PixiChart] fullSymbol lookup", { symbol: symbolInput.value, nextFullSymbol, previous: fullSymbolRef.current });
+            if (fullSymbolRef.current !== nextFullSymbol) {
+                fullSymbolRef.current = nextFullSymbol;
+            }
+            setFullSymbolValue((prev) => {
+                if (prev === nextFullSymbol) {
+                    console.log("[PixiChart] fullSymbolValue unchanged", { prev, nextFullSymbol });
+                    return prev;
+                }
+                console.log("[PixiChart] fullSymbolValue updating", { prev, nextFullSymbol });
+                return nextFullSymbol;
+            });
+        }
+    }, [symbolInput.value, fullSymbols]);
+
+    // useEffect(() => {
+    //     const baseSymbol = fullSymbols.find((d) => d.baseSymbol === symbolInput.value);
+    //     fullSymbolRef.current = baseSymbol;
+    // }, [fullSymbols]);
 
     //on load get data
     useEffect(() => {
@@ -427,6 +457,7 @@ export default function PixiChart({ Socket }) {
             },
             { passive: false }
         );
+
         const pixiData = new PixiData({
             ohlcDatas,
             // viewPort: viewportRef.current,
@@ -597,9 +628,10 @@ export default function PixiChart({ Socket }) {
                     // alert("Missing full symbols");
                 }
                 setFullSymbols([...d]);
-                const baseSymbol = d.find((d) => d.baseSymbol === symbolInput.value);
-
-                fullSymbolRef.current = baseSymbol;
+                const fullSymbol = d.find((d) => d.baseSymbol === symbolInput.value);
+                if (fullSymbol?.fullSymbol) {
+                    fullSymbolRef.current = fullSymbol.fullSymbol;
+                }
             })
             .catch((e) => {
                 console.error(e);
@@ -609,7 +641,6 @@ export default function PixiChart({ Socket }) {
 
     async function getOrders() {
         const _orders = await API.getOrders();
-        // debugger;
         function reduceByBasketId(acc, order) {
             if (!order.basketId) return acc;
             if (!acc[order.basketId]) {
@@ -619,7 +650,6 @@ export default function PixiChart({ Socket }) {
             return acc;
         }
         const compiledOrders = Object.values(_orders).reduce(reduceByBasketId, orders);
-        // debugger;
         setOrders({ ...compiledOrders });
         pixiData?.setOrders(_orders);
     }
@@ -678,12 +708,21 @@ export default function PixiChart({ Socket }) {
         [barType, barTypePeriod, symbolInput]
     );
 
+    const BetterTickChartMemo = useMemo(() => {
+        console.log("[PixiChart] Rendering BetterTickChart memo", {
+            symbol: symbol.value,
+            fullSymbol: fullSymbolValue,
+        });
+        return <BetterTickChart height={400} symbol={symbol.value} fullSymbol={fullSymbolValue} timeframe="tick" Socket={Socket} />;
+    }, [Socket, symbol.value, fullSymbolValue]);
+
     const mainChartProps = {
         // candleData: candleData.spy1MinData,
         height: 400,
         // width: 600,
         // spyLevelOne,
         Socket,
+        symbol: symbol.value,
         orders, // Pass orders to PixiChartV2
         // getCurrentStrikeData,
         // callsOrPuts,
@@ -691,6 +730,8 @@ export default function PixiChart({ Socket }) {
         // putsData,
         // underlyingData,
         // lvl2Data,
+        withTimeFrameBtns: true,
+        withSymbolBtns: false,
     };
 
     // console.log("das render");
@@ -712,9 +753,6 @@ export default function PixiChart({ Socket }) {
                         {/* {MarketBreadthMemo} */}
                         <MarketBreadth Socket={Socket} />
                     </div>
-                </div>
-                <div className="row flex_center">
-                    <BetterTickChart height={400} symbol={"ES"} Socket={Socket} />
                 </div>
                 {/* <div className="col-12">
                     <div className="row">
@@ -762,6 +800,8 @@ export default function PixiChart({ Socket }) {
                     </div>
                 </div>
             </div>
+            <div className="row flex_center">{BetterTickChartMemo}</div>
+
             <div className="col-10">
                 <PixiChartV2 {...mainChartProps} />
             </div>

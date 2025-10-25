@@ -199,6 +199,29 @@ export default class PixiData {
         this.init(ohlcDatas);
     }
 
+    calculateCrosshairFontSize() {
+        const margin = this.margin || {};
+        const rightMargin = margin.right || 100;
+        const bottomMargin = margin.bottom || 40;
+
+        const rightScale = rightMargin / 100;
+        const bottomScale = bottomMargin / 40;
+        const avgScale = (rightScale + bottomScale) / 2;
+
+        const scaledSize = 14 * avgScale;
+        return Math.max(10, Math.min(16, scaledSize));
+    }
+
+    calculateLabelPadding() {
+        const margin = this.margin || {};
+        const rightMargin = margin.right || 100;
+        const bottomMargin = margin.bottom || 40;
+        const avgMargin = (rightMargin + bottomMargin) / 1.5;
+
+        const scaledPadding = (avgMargin / 70) * 5;
+        return Math.max(2, Math.min(10, scaledPadding));
+    }
+
     init(ohlcDatas) {
         const { volProfileData, pixiApp } = this;
 
@@ -532,6 +555,7 @@ export default class PixiData {
             const indicator = this.lowerIndicatorsData[lowerIndicatorName];
             if (!indicator.initialized) {
                 indicator.init();
+                indicator.setupScales?.();
                 let { container, name, scale, gfx, initialized, height } = indicator;
 
                 const yPos = this.mainChartContainerHeight - this.margin.bottom + this.getIndicatorTopPos(index);
@@ -556,7 +580,7 @@ export default class PixiData {
                 this.xAxis.container.position.y = this.height - this.margin.bottom;
             } else {
                 //setup the scales
-                indicator.setupScales();
+                indicator.setupScales?.();
 
                 //add axis
             }

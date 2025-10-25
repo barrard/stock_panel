@@ -68,6 +68,7 @@ const MarketBreadth = (props) => {
     const barType = { value: 2, name: "Minutes" };
     const barTypePeriod = 1;
     const tickSize = 0.01;
+    let key = "$SPX";
 
     // const pixiApplicationRef = useRef();
     const pixiDataRef = useRef();
@@ -122,18 +123,19 @@ const MarketBreadth = (props) => {
     if (!candleData?.length) {
         return <div>Loading... </div>;
     }
-    let key = "$SPX";
     return (
         <>
             <div className="row w-100 ">
                 {/* {Object.keys(breadthKeys).map((key) => ( */}
                 <div style={{ border: "1px solid white" }} className="col-12  border-white" key={key}>
                     <GenericPixiChart
+                        name="MarketBreadth"
+                        key={key}
                         ohlcDatas={candleData}
                         // width={100}
                         height={50}
                         symbol={key}
-                        fullSymbolRef={fullSymbolRef}
+                        // fullSymbolRef={fullSymbolRef}
                         barType={barType}
                         barTypePeriod={barTypePeriod}
                         // loadData={loadData}

@@ -1,6 +1,33 @@
 import { useEffect, useRef } from "react";
 import API from "../../API";
 
+const timeframeToMs = (timeframe) => {
+    if (typeof timeframe !== "string") {
+        return 60 * 1000;
+    }
+
+    if (timeframe === "tick") {
+        return 1000;
+    }
+
+    const match = timeframe.match(/^(\d+)([smhd])$/i);
+    if (!match) {
+        return 60 * 1000;
+    }
+
+    const value = parseInt(match[1], 10);
+    const unit = match[2].toLowerCase();
+
+    const unitMs = {
+        s: 1000,
+        m: 60 * 1000,
+        h: 60 * 60 * 1000,
+        d: 24 * 60 * 60 * 1000,
+    };
+
+    return value * (unitMs[unit] || 60 * 1000);
+};
+
 /**
  * Custom hook to capture liquidity ratios from socket data
  *
@@ -20,6 +47,13 @@ import API from "../../API";
 export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true, timeframe, ohlcData }) => {
     const latestDataRef = useRef(null);
     const hasLoadedHistoricalRef = useRef(false);
+    const fetchedRangeRef = useRef({
+        symbol: null,
+        timeframe: null,
+        start: null,
+        end: null,
+    });
+    const isFetchingHistoricalRef = useRef(false);
 
     // Track snapshots for current bar to build OHLC
     const currentBarSnapshotsRef = useRef({
@@ -32,20 +66,77 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
         },
     });
 
-    // Fetch historical compiled data from API
+    // Fetch historical compiled data from API when the requested range changes meaningfully
     useEffect(() => {
-        // console.log(`[useLiquidityRatios] useEffect triggered - enabled: ${enabled}, ohlcData length: ${ohlcData?.length}, symbol: ${symbol}, timeframe: ${timeframe}`);
-
         if (!enabled || !ohlcData?.length || !symbol || !timeframe) {
             console.log(`[useLiquidityRatios] Skipping - conditions not met`);
             return;
         }
 
-        // Reset flag when symbol/timeframe changes
-        hasLoadedHistoricalRef.current = false;
+        const currentStart = ohlcData[0].timestamp || ohlcData[0].datetime;
+        const currentEnd = ohlcData[ohlcData.length - 1].timestamp || ohlcData[ohlcData.length - 1].datetime;
+
+        if (!currentStart || !currentEnd) {
+            console.log("[useLiquidityRatios] Skipping - missing start/end timestamps");
+            return;
+        }
+
+        const timeframeMs = timeframeToMs(timeframe);
+        const rangeBuffer = Math.max(timeframeMs * 2, 2000); // treat +/- two bars as no-op
+
+        const previousRange = fetchedRangeRef.current;
+        const symbolChanged = previousRange.symbol !== symbol;
+        const timeframeChanged = previousRange.timeframe !== timeframe;
+
+        if (symbolChanged || timeframeChanged) {
+            hasLoadedHistoricalRef.current = false;
+        } else {
+            if (previousRange.start !== null) {
+                const startAdvance = currentStart - previousRange.start;
+                if (startAdvance > 0 && startAdvance <= rangeBuffer) {
+                    fetchedRangeRef.current.start = currentStart;
+                }
+            }
+            if (previousRange.end !== null) {
+                const endAdvance = currentEnd - previousRange.end;
+                if (endAdvance > 0 && endAdvance <= rangeBuffer) {
+                    fetchedRangeRef.current.end = currentEnd;
+                } else if (endAdvance < 0 && Math.abs(endAdvance) <= rangeBuffer) {
+                    fetchedRangeRef.current.end = currentEnd;
+                }
+            }
+        }
+
+        const expandedEarlier = previousRange.start === null || currentStart < previousRange.start;
+        const movedForward =
+            previousRange.start !== null && currentStart > previousRange.start + rangeBuffer;
+        const extendedForward =
+            previousRange.end === null || currentEnd > previousRange.end + rangeBuffer;
+        const contractedForward =
+            previousRange.end !== null && currentEnd < previousRange.end - rangeBuffer;
+        const outsidePreviousRange =
+            previousRange.start !== null &&
+            previousRange.end !== null &&
+            (currentEnd < previousRange.start || currentStart > previousRange.end);
+
+        const shouldFetch =
+            !hasLoadedHistoricalRef.current ||
+            symbolChanged ||
+            timeframeChanged ||
+            expandedEarlier ||
+            movedForward ||
+            extendedForward ||
+            contractedForward ||
+            outsidePreviousRange;
+
+        if (!shouldFetch || isFetchingHistoricalRef.current) {
+            return;
+        }
 
         const fetchHistoricalRatios = async () => {
             try {
+                isFetchingHistoricalRef.current = true;
+
                 if (!pixiDataRef?.current?.ohlcDatas) {
                     console.log(`[useLiquidityRatios] pixiDataRef.current.ohlcDatas not ready yet, will retry in 100ms`);
                     // Retry after a short delay
@@ -129,6 +220,12 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
 
                     // console.log(`[useLiquidityRatios] Populated ${matchedCount} bars with ratio data`);
                     hasLoadedHistoricalRef.current = true;
+                    fetchedRangeRef.current = {
+                        symbol,
+                        timeframe,
+                        start: startTime,
+                        end: endTime,
+                    };
 
                     // Log a sample bar to verify data structure
                     const sampleBar = pixiDataRef.current.ohlcDatas.find((bar) => bar.deltaClose !== undefined);
@@ -148,13 +245,13 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
                 }
             } catch (error) {
                 console.error(`[useLiquidityRatios] Failed to fetch historical data:`, error);
+            } finally {
+                isFetchingHistoricalRef.current = false;
             }
         };
 
-        if (!hasLoadedHistoricalRef.current) {
-            fetchHistoricalRatios();
-        }
-    }, [enabled, symbol, timeframe, ohlcData?.length]);
+        fetchHistoricalRatios();
+    }, [enabled, symbol, timeframe, ohlcData]);
 
     // Helper function to calculate OHLC from array of values
     const calculateOHLC = (values) => {
@@ -274,6 +371,14 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
 
                     // Trigger redraw
                     pixiDataRef.current.draw();
+
+                    // Track range coverage provided by live data to avoid redundant historical fetches
+                    fetchedRangeRef.current.symbol = symbol;
+                    fetchedRangeRef.current.timeframe = timeframe;
+                    if (fetchedRangeRef.current.start === null) {
+                        fetchedRangeRef.current.start = barTime;
+                    }
+                    fetchedRangeRef.current.end = Math.max(fetchedRangeRef.current.end || 0, barTime);
                 }
             }
         };

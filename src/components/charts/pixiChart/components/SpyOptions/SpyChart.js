@@ -177,6 +177,7 @@ const SpyChart = (props) => {
                 <div>Loading... {timeframe}</div>
             ) : (
                 <GenericPixiChart
+                    name="SpyChart"
                     key={timeframe}
                     ohlcDatas={candleData[timeframe]}
                     height={height}

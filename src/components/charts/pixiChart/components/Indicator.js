@@ -154,13 +154,17 @@ export default class Indicator {
     }
 
     updateCurrentPriceLabel(value) {
-        if (!value || !this.currentPriceLabelAppendGfx || !this.currentPriceTxtLabel) return;
+        if (value == null || !this.currentPriceLabelAppendGfx || !this.currentPriceTxtLabel) return;
+
+        // Ensure value is a number
+        const numericValue = typeof value === "number" ? value : Number(value);
+        if (isNaN(numericValue)) return;
 
         if (!this.lastValue) {
-            this.lastValue = value;
+            this.lastValue = numericValue;
         }
 
-        const y = this.scale(value);
+        const y = this.scale(numericValue);
 
         // Determine appropriate decimal places based on scale range
         const [domainMin, domainMax] = this.scale.domain();
@@ -177,12 +181,12 @@ export default class Indicator {
             decimalPlaces = 0;
         }
 
-        const formattedValue = Number(value.toFixed(decimalPlaces)).toLocaleString(undefined, {
+        const formattedValue = Number(numericValue.toFixed(decimalPlaces)).toLocaleString(undefined, {
             minimumFractionDigits: decimalPlaces,
             maximumFractionDigits: decimalPlaces,
         });
 
-        const color = value > this.lastValue ? 0x00ff00 : value < this.lastValue ? 0xff0000 : 0xaaaaaa;
+        const color = numericValue > this.lastValue ? 0x00ff00 : numericValue < this.lastValue ? 0xff0000 : 0xaaaaaa;
 
         this.currentPriceTxtLabel.y = y;
         this.currentPriceLabelAppendGfx.position.y = y;
@@ -209,14 +213,24 @@ export default class Indicator {
             { x: 0 - padding, y: 0 },
         ];
 
-        this.currentPriceLabelAppendGfx.drawPolygon(coords.flatMap(c => [c.x, c.y]));
+        this.currentPriceLabelAppendGfx.drawPolygon(coords.flatMap((c) => [c.x, c.y]));
         this.currentPriceLabelAppendGfx.endFill();
 
-        this.lastValue = value;
+        this.lastValue = numericValue;
     }
 
     setupScales() {
-        console.log(`[Indicator.setupScales] ${this.name} - type: ${this.type}, accessor: ${this.accessors}`);
+        if (!this.yAxis || !this.chart) {
+            console.warn(`[Indicator.setupScales] Missing yAxis or chart for ${this.name}, skipping.`);
+            return;
+        }
+
+        if (!this.chart.slicedData || this.chart.slicedData.length === 0) {
+            this.gfx?.clear();
+            return;
+        }
+
+        // console.log(`[Indicator.setupScales] ${this.name} - type: ${this.type}, accessor: ${this.accessors}`);
 
         // Clear graphics for redraw
         this.gfx?.clear();
@@ -231,6 +245,11 @@ export default class Indicator {
                 const lineData = this.chart.slicedData.map((ohlc) => ohlc[lineConfig.lineKey]);
                 allValues = allValues.concat(lineData.filter((v) => v != null && !isNaN(v)));
             });
+
+            if (!allValues.length) {
+                console.warn(`[Indicator.setupScales] No valid values for ${this.name}, skipping draw.`);
+                return;
+            }
 
             [lowest, highest] = extent(allValues);
 
@@ -277,7 +296,7 @@ export default class Indicator {
                 const lowField = this.accessors.replace("Close", "Low");
                 const closeField = this.accessors;
 
-                console.log(`[Indicator.setupScales] Candlestick fields:`, { openField, highField, lowField, closeField });
+                // console.log(`[Indicator.setupScales] Candlestick fields:`, { openField, highField, lowField, closeField });
 
                 let allValues = [];
                 this.chart.slicedData.forEach((bar, idx) => {
@@ -292,17 +311,17 @@ export default class Indicator {
                             open: bar[openField],
                             high: bar[highField],
                             low: bar[lowField],
-                            close: bar[closeField]
+                            close: bar[closeField],
                         });
                     }
                 });
 
-                console.log(`[Indicator.setupScales] Candlestick values collected: ${allValues.length}`);
+                // console.log(`[Indicator.setupScales] Candlestick values collected: ${allValues.length}`);
 
                 [lowest, highest] = extent(allValues);
                 this.data = this.chart.slicedData.map((bar) => bar[closeField]); // For reference
 
-                console.log(`[Indicator.setupScales] Scale domain: [${lowest}, ${highest}]`);
+                // console.log(`[Indicator.setupScales] Scale domain: [${lowest}, ${highest}]`);
             } else {
                 // Line or volume
                 this.data = this.chart.slicedData.map((ohlc) => ohlc[this.accessors]);
@@ -343,7 +362,7 @@ export default class Indicator {
                     }
                 }
             } else if (this.type === "candlestick") {
-                console.log(`[Indicator.setupScales] Calling candlestick drawFn for ${this.name}`);
+                // console.log(`[Indicator.setupScales] Calling candlestick drawFn for ${this.name}`);
                 this.drawFn({
                     xScale: this.chart.xScale,
                     yScale: this.scale,

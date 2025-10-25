@@ -272,8 +272,8 @@ export function drawIndicatorCandlestick(opts = {}) {
         wickGfx = null,
     } = opts;
 
-    console.log(`[drawIndicatorCandlestick] Called with fields: ${openField}, ${highField}, ${lowField}, ${closeField}`);
-    console.log(`[drawIndicatorCandlestick] Data length: ${data?.length}, gfx: ${!!gfx}`);
+    // console.log(`[drawIndicatorCandlestick] Called with fields: ${openField}, ${highField}, ${lowField}, ${closeField}`);
+    // console.log(`[drawIndicatorCandlestick] Data length: ${data?.length}, gfx: ${!!gfx}`);
 
     if (!data.length || !gfx) {
         console.log(`[drawIndicatorCandlestick] Early return - no data or gfx`);
@@ -303,8 +303,16 @@ export function drawIndicatorCandlestick(opts = {}) {
         const close = bar[closeField];
 
         // Skip if any OHLC value is missing
-        if (open === undefined || open === null || high === undefined || high === null ||
-            low === undefined || low === null || close === undefined || close === null) {
+        if (
+            open === undefined ||
+            open === null ||
+            high === undefined ||
+            high === null ||
+            low === undefined ||
+            low === null ||
+            close === undefined ||
+            close === null
+        ) {
             skippedCount++;
             return;
         }
@@ -343,21 +351,20 @@ export function drawIndicatorCandlestick(opts = {}) {
         }
     });
 
-    console.log(`[drawIndicatorCandlestick] Finished - Drawn: ${drawnCount}, Skipped: ${skippedCount}`);
+    // console.log(`[drawIndicatorCandlestick] Finished - Drawn: ${drawnCount}, Skipped: ${skippedCount}`);
 
     // Sample the first bar with data
-    if (drawnCount > 0) {
-        const sampleBar = data.find(bar =>
-            bar[openField] !== undefined && bar[openField] !== null &&
-            bar[closeField] !== undefined && bar[closeField] !== null
-        );
-        if (sampleBar) {
-            console.log(`[drawIndicatorCandlestick] Sample bar data:`, {
-                open: sampleBar[openField],
-                high: sampleBar[highField],
-                low: sampleBar[lowField],
-                close: sampleBar[closeField]
-            });
-        }
-    }
+    // if (drawnCount > 0) {
+    //     const sampleBar = data.find(
+    //         (bar) => bar[openField] !== undefined && bar[openField] !== null && bar[closeField] !== undefined && bar[closeField] !== null
+    //     );
+    //     if (sampleBar) {
+    //         console.log(`[drawIndicatorCandlestick] Sample bar data:`, {
+    //             open: sampleBar[openField],
+    //             high: sampleBar[highField],
+    //             low: sampleBar[lowField],
+    //             close: sampleBar[closeField],
+    //         });
+    //     }
+    // }
 }

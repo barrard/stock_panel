@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import API from "./API";
 import styled from "styled-components";
 import Socket from "./Socket.js";
+import { useHistory } from "react-router-dom";
 
 const Container = styled.div`
     padding: 1rem;
@@ -21,6 +22,118 @@ const ListContainer = styled.div`
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+`;
+
+const HighlightSection = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.25rem;
+    border: 1px solid #333333;
+    border-radius: 0.5rem;
+    background: #202020;
+`;
+
+const HighlightHeader = styled.div`
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 1rem;
+`;
+
+const HighlightTitle = styled.h2`
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+    color: #ffffff;
+`;
+
+const SummaryRow = styled.div`
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+`;
+
+const SummaryStat = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.65rem 0.9rem;
+    border: 1px solid #2f2f2f;
+    border-radius: 0.4rem;
+    background: #252525;
+`;
+
+const SummaryValue = styled.span`
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: ${(props) => props.color || "#ffffff"};
+`;
+
+const SummaryLabel = styled.span`
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #9ca3af;
+`;
+
+const WinnerLoserGrid = styled.div`
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+`;
+
+const HighlightCard = styled.div`
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #333333;
+    background: #1e1e1e;
+    border-left: 4px solid ${(props) => (props.type === "winner" ? "#16a34a" : "#dc2626")};
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+
+    &:hover {
+        transform: translateY(-2px);
+        border-color: ${(props) => (props.type === "winner" ? "#22c55e" : "#ef4444")};
+    }
+`;
+
+const HighlightCardHeader = styled.div`
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+`;
+
+const HighlightTicker = styled.span`
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #ffffff;
+`;
+
+const HighlightScore = styled.span`
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.4rem;
+    background: ${(props) => (props.type === "winner" ? "rgba(34, 197, 94, 0.15)" : "rgba(239, 68, 68, 0.15)")};
+    color: ${(props) => (props.type === "winner" ? "#22c55e" : "#f87171")};
+`;
+
+const HighlightMeta = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    color: #9ca3af;
+`;
+
+const HighlightBadge = styled.span`
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: ${(props) => (props.type === "winner" ? "#34d399" : "#fca5a5")};
 `;
 
 const CategorySection = styled.div`
@@ -147,9 +260,12 @@ export default function PickList() {
     const [pickLists, setPickLists] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [winnersLosers, setWinnersLosers] = useState(null);
+    const [winnersLosersError, setWinnersLosersError] = useState(null);
+    const history = useHistory();
 
     useEffect(() => {
-        fetchPickLists();
+        fetchData();
 
         Socket.on("scannerMovers", (data) => {
             console.log(data);
@@ -160,12 +276,29 @@ export default function PickList() {
         };
     }, []);
 
-    const fetchPickLists = async () => {
+    const fetchData = async () => {
+        setLoading(true);
         try {
-            const data = await API.getEnhancedPickLists();
+            const [pickListResult, winnersLosersResult] = await Promise.allSettled([
+                API.getEnhancedPickLists(),
+                API.getTopWinnersLosers({ topN: 8, bottomN: 8 }),
+            ]);
 
-            setPickLists(data);
-            setError(null);
+            if (pickListResult.status === "fulfilled") {
+                setPickLists(pickListResult.value);
+                setError(null);
+            } else {
+                setPickLists({});
+                setError(pickListResult.reason?.message || "Failed to load pick lists");
+            }
+
+            if (winnersLosersResult.status === "fulfilled") {
+                setWinnersLosers(winnersLosersResult.value);
+                setWinnersLosersError(null);
+            } else {
+                setWinnersLosers(null);
+                setWinnersLosersError("Unable to load top winners/losers right now.");
+            }
         } catch (err) {
             setError(err.message);
         } finally {
@@ -173,11 +306,15 @@ export default function PickList() {
         }
     };
 
+    const handleTickerClick = (ticker) => {
+        history.push(`/filing-analysis/${ticker}`);
+    };
+
     const renderTickerWithAnalysis = (tickerData) => {
         // If it's just a string (no analysis data), render simple ticker
         if (typeof tickerData === "string") {
             return (
-                <TickerItem key={tickerData}>
+                <TickerItem key={tickerData} onClick={() => handleTickerClick(tickerData)}>
                     <TickerSymbol>{tickerData}</TickerSymbol>
                 </TickerItem>
             );
@@ -188,7 +325,7 @@ export default function PickList() {
         const displayLabel = strength || severity || "low";
 
         return (
-            <TickerItem key={ticker}>
+            <TickerItem key={ticker} onClick={() => handleTickerClick(ticker)}>
                 <TickerSymbol>{ticker}</TickerSymbol>
                 {score !== undefined && (
                     <>
@@ -219,6 +356,64 @@ export default function PickList() {
     return (
         <Container>
             <Title>Stock Pick Lists</Title>
+            {winnersLosersError && <Alert>{winnersLosersError}</Alert>}
+            {winnersLosers && (
+                <HighlightSection>
+                    <HighlightHeader>
+                        <HighlightTitle>Top Winners &amp; Losers</HighlightTitle>
+                        {winnersLosers.summary && (
+                            <SummaryRow>
+                                <SummaryStat>
+                                    <SummaryValue>{winnersLosers.summary.totalAnalyzed}</SummaryValue>
+                                    <SummaryLabel>Analyzed</SummaryLabel>
+                                </SummaryStat>
+                                <SummaryStat>
+                                    <SummaryValue color="#34d399">{winnersLosers.summary.totalWinners}</SummaryValue>
+                                    <SummaryLabel>Winners</SummaryLabel>
+                                </SummaryStat>
+                                <SummaryStat>
+                                    <SummaryValue color="#f87171">{winnersLosers.summary.totalLosers}</SummaryValue>
+                                    <SummaryLabel>Losers</SummaryLabel>
+                                </SummaryStat>
+                            </SummaryRow>
+                        )}
+                    </HighlightHeader>
+                    <WinnerLoserGrid>
+                        {winnersLosers.topWinners?.map((stock) => (
+                            <HighlightCard key={`winner-${stock.ticker}`} type="winner" onClick={() => handleTickerClick(stock.ticker)}>
+                                <HighlightCardHeader>
+                                    <HighlightTicker>{stock.ticker}</HighlightTicker>
+                                    <HighlightScore type="winner">{stock.score}</HighlightScore>
+                                </HighlightCardHeader>
+                                <HighlightMeta>
+                                    <HighlightBadge type="winner">
+                                        Winner{stock.strength ? ` • ${stock.strength.toUpperCase()}` : ""}
+                                    </HighlightBadge>
+                                    <span>
+                                        {stock.signalCount} signals • {stock.quarter}
+                                    </span>
+                                </HighlightMeta>
+                            </HighlightCard>
+                        ))}
+                        {winnersLosers.topLosers?.map((stock) => (
+                            <HighlightCard key={`loser-${stock.ticker}`} type="loser" onClick={() => handleTickerClick(stock.ticker)}>
+                                <HighlightCardHeader>
+                                    <HighlightTicker>{stock.ticker}</HighlightTicker>
+                                    <HighlightScore type="loser">{stock.score}</HighlightScore>
+                                </HighlightCardHeader>
+                                <HighlightMeta>
+                                    <HighlightBadge type="loser">
+                                        Loser{stock.severity ? ` • ${stock.severity.toUpperCase()}` : ""}
+                                    </HighlightBadge>
+                                    <span>
+                                        {stock.signalCount} signals • {stock.quarter}
+                                    </span>
+                                </HighlightMeta>
+                            </HighlightCard>
+                        ))}
+                    </WinnerLoserGrid>
+                </HighlightSection>
+            )}
             <ListContainer>
                 {Object.entries(pickLists).map(([category, categoryData]) => {
                     // Handle both old format (array of strings) and new format (object with tickers + analysis)

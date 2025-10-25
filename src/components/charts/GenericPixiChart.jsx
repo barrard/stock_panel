@@ -17,7 +17,7 @@ export default function GenericPixiChart({
     width = 1200,
     height = 600,
     symbol,
-    fullSymbolRef: fullSymbolRefProp,
+    fullSymbol = null,
     barType,
     barTypePeriod,
     loadData,
@@ -37,11 +37,13 @@ export default function GenericPixiChart({
     lowerIndicators = [],
     margin = { top: 50, right: 100, left: 0, bottom: 40 },
     loadMoreData = () => {},
+    onTimeRangeChange = null, // Optional callback for time range changes
+    isLoading = false, // Loading state for data fetching
+    name = "GenericPixiChart", // Name for logging purposes
     ...rest
 }) {
-    if (symbol == "$SPX") {
-        // debugger;
-        console.log(symbol);
+    if (!fullSymbol) {
+        fullSymbol = symbol;
     }
     tickSize = tickSize || TICKS()[symbol];
     mainChartContainerHeight = mainChartContainerHeight || height;
@@ -56,7 +58,7 @@ export default function GenericPixiChart({
     // const loadDataRef = useRef(loadDataRefProp);
     // const lastTradesRef = useRef(lastTradesRefProp || {});
     const tickSizeRef = useRef(tickSize);
-    // const fullSymbolRef = useRef(fullSymbolRefProp);
+
     const [currentTimeBar, setCurrentTimeBar] = useState();
 
     // Mouse enter state for crosshair
@@ -71,6 +73,12 @@ export default function GenericPixiChart({
     const [zoomGesture, setZoomGesture] = useState(false);
     const [openTradeWindow, setOpenTradeWindow] = useState(false);
     const [showResetButton, setShowResetButton] = useState(false);
+
+    // Time range inputs - only used when onTimeRangeChange is provided
+    const [startTime, setStartTime] = useState("");
+    const [endTime, setEndTime] = useState("");
+    const [numDays, setNumDays] = useState("");
+    const [useNumDays, setUseNumDays] = useState(true); // Toggle between numDays and endTime
 
     const clearLongPress = () => {
         clearInterval(longPressTimer);
@@ -109,10 +117,7 @@ export default function GenericPixiChart({
 
         let { width, height } = rect;
 
-        console.log("GenericPixiChart init");
-        console.log({ width: rect.width, height: rect.height });
-        console.log({ width: rect.width, height: rect.height });
-        console.log({ width: rect.width, height: rect.height });
+        console.log(`GenericPixiChart init - ${name}`);
 
         PixiAppRef.current = new PIXI.Application({
             width,
@@ -145,6 +150,7 @@ export default function GenericPixiChart({
             },
             { passive: false }
         );
+        debugger;
 
         pixiDataRef.current = new GenericDataHandler({
             ohlcDatas,
@@ -153,6 +159,7 @@ export default function GenericPixiChart({
             width,
             height,
             symbol,
+            fullSymbol,
             margin,
             options,
             mainChartContainerHeight,
@@ -195,12 +202,15 @@ export default function GenericPixiChart({
         const resizeObserver = new ResizeObserver(resizeCanvas);
         resizeObserver.observe(PixiChartRef.current);
 
-        if (Socket) {
-            Socket.on("timeBarUpdate", (data) => {
-                if (data.symbol !== pixiDataRef.current.symbol.value) return;
-                setCurrentTimeBar(data);
-            });
-        }
+        // NOTE: Socket listeners moved to individual chart implementations
+        // This prevents conflicts when multiple charts are open with different symbols/timeframes
+        // Each chart component (BetterTickChart, PixiChartV2, etc.) should handle their own socket events
+        // if (Socket) {
+        //     Socket.on("timeBarUpdate", (data) => {
+        //         if (data.symbol !== pixiDataRef.current.symbol.value) return;
+        //         setCurrentTimeBar(data);
+        //     });
+        // }
 
         return () => {
             console.log("DESTROY PIXI CHART");
@@ -292,6 +302,46 @@ export default function GenericPixiChart({
         }
     }, [mouseEnter]);
 
+    // Track previous ohlcDatas reference to detect when parent passes new array
+    const prevOhlcDatasRef = useRef(ohlcDatas);
+
+    // Update data handler when parent component provides completely new ohlcDatas array
+    // This happens for: initial load, join changes, loadMoreData, etc.
+    // This does NOT fire for real-time updates via setNewBar (which mutate the array directly)
+    useEffect(() => {
+        if (!pixiDataRef.current) return;
+
+        // Check if this is a new array reference (parent set new state)
+        const isNewArray = prevOhlcDatasRef.current !== ohlcDatas;
+
+        if (isNewArray) {
+            if (ohlcDatas) {
+                console.log("[GenericPixiChart] New ohlcDatas array detected, updating chart");
+                pixiDataRef.current.updateData(ohlcDatas);
+            }
+        }
+
+        prevOhlcDatasRef.current = ohlcDatas;
+    }, [ohlcDatas]);
+
+    // Handle loading state overlay
+    useEffect(() => {
+        if (!pixiDataRef.current) return;
+
+        if (isLoading) {
+            pixiDataRef.current.drawLoadingOverlay?.();
+        } else {
+            pixiDataRef.current.clearLoadingOverlay?.();
+        }
+
+        // Cleanup on unmount
+        return () => {
+            if (pixiDataRef.current?.clearLoadingOverlay) {
+                pixiDataRef.current.clearLoadingOverlay();
+            }
+        };
+    }, [isLoading]);
+
     useEffect(() => {
         let touch1MoveDiff;
         const touch1X = TouchGesture1.current?.clientX;
@@ -328,8 +378,150 @@ export default function GenericPixiChart({
         }
     };
 
+    const handleTimeRangeSubmit = () => {
+        if (!onTimeRangeChange || !startTime) {
+            alert("Please provide a start date");
+            return;
+        }
+
+        // Convert date string (YYYY-MM-DD) to timestamp at start of day (midnight)
+        const startTimestamp = new Date(startTime + "T00:00:00").getTime();
+
+        if (useNumDays) {
+            // Using numDays mode
+            if (!numDays || numDays <= 0) {
+                alert("Please provide a valid number of days");
+                return;
+            }
+            onTimeRangeChange({
+                startTime: startTimestamp,
+                numDays: parseInt(numDays),
+            });
+        } else {
+            // Using endTime mode
+            if (!endTime) {
+                alert("Please provide an end date");
+                return;
+            }
+            // Convert date string to timestamp at end of day (23:59:59.999)
+            const endTimestamp = new Date(endTime + "T23:59:59.999").getTime();
+
+            if (startTimestamp >= endTimestamp) {
+                alert("Start date must be before end date");
+                return;
+            }
+
+            onTimeRangeChange({
+                startTime: startTimestamp,
+                endTime: endTimestamp,
+            });
+        }
+    };
+
     return (
         <div style={{ position: "relative", width: "100%" }}>
+            {onTimeRangeChange && (
+                <div
+                    style={{
+                        position: "absolute",
+                        top: "10px",
+                        left: "10px",
+                        zIndex: 1000,
+                        display: "flex",
+                        gap: "8px",
+                        alignItems: "center",
+                        background: "rgba(0, 0, 0, 0.7)",
+                        padding: "8px",
+                        borderRadius: "4px",
+                        border: "1px solid #666",
+                        flexWrap: "wrap",
+                    }}
+                >
+                    <label style={{ color: "white", fontSize: "12px" }}>
+                        Start Date:
+                        <input
+                            type="date"
+                            value={startTime}
+                            onChange={(e) => setStartTime(e.target.value)}
+                            style={{
+                                marginLeft: "4px",
+                                padding: "4px",
+                                background: "#222",
+                                color: "white",
+                                border: "1px solid #666",
+                                borderRadius: "4px",
+                                fontSize: "12px",
+                            }}
+                        />
+                    </label>
+
+                    <label style={{ color: "white", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
+                        <input
+                            type="checkbox"
+                            checked={useNumDays}
+                            onChange={(e) => setUseNumDays(e.target.checked)}
+                            style={{ cursor: "pointer" }}
+                        />
+                        Days:
+                        <input
+                            type="number"
+                            min="1"
+                            value={numDays}
+                            onChange={(e) => setNumDays(e.target.value)}
+                            disabled={!useNumDays}
+                            placeholder="# days"
+                            style={{
+                                width: "60px",
+                                padding: "4px",
+                                background: useNumDays ? "#222" : "#111",
+                                color: useNumDays ? "white" : "#666",
+                                border: "1px solid #666",
+                                borderRadius: "4px",
+                                fontSize: "12px",
+                            }}
+                        />
+                    </label>
+
+                    <label style={{ color: "white", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
+                        <input
+                            type="checkbox"
+                            checked={!useNumDays}
+                            onChange={(e) => setUseNumDays(!e.target.checked)}
+                            style={{ cursor: "pointer" }}
+                        />
+                        End Date:
+                        <input
+                            type="date"
+                            value={endTime}
+                            onChange={(e) => setEndTime(e.target.value)}
+                            disabled={useNumDays}
+                            style={{
+                                padding: "4px",
+                                background: useNumDays ? "#111" : "#222",
+                                color: useNumDays ? "#666" : "white",
+                                border: "1px solid #666",
+                                borderRadius: "4px",
+                                fontSize: "12px",
+                            }}
+                        />
+                    </label>
+
+                    <button
+                        onClick={handleTimeRangeSubmit}
+                        style={{
+                            padding: "4px 12px",
+                            background: "#0066cc",
+                            color: "white",
+                            border: "1px solid #0052a3",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                        }}
+                    >
+                        Load
+                    </button>
+                </div>
+            )}
             {showResetButton && (
                 <button
                     onClick={handleResetScale}

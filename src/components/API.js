@@ -78,9 +78,12 @@ const API = {
     getOrders,
     getPickLists,
     getEnhancedPickLists,
+    getFilingAnalysisFull,
     fetchOptionContractData,
     getSchwabAccountDetails,
     fetchMarketBreadth,
+    getTopWinnersLosers,
+    rapi_requestBarsTimeRange,
 };
 
 export default API;
@@ -98,6 +101,14 @@ async function getPickLists() {
 
 async function getEnhancedPickLists() {
     return await GET(`/API/filing-analysis/enhanced-pick-lists`);
+}
+
+async function getTopWinnersLosers({ topN = 10, bottomN = 10 } = {}) {
+    return await GET(`/API/filing-analysis/top-winners-losers?topN=${topN}&bottomN=${bottomN}`);
+}
+
+async function getFilingAnalysisFull(ticker) {
+    return await GET(`/API/filing-analysis/full/${ticker}`);
 }
 
 async function fetchMarketBreadth(opts = {}) {
@@ -200,6 +211,29 @@ async function rapi_cancelOrder({ basketId }) {
 
 async function rapi_requestBars({ symbol, exchange, barType, barTypePeriod, startIndex, finishIndex }) {
     return await GET(`/API/rapi/requestBars/${symbol}/${exchange}/${barType}/${barTypePeriod}/${startIndex}/${finishIndex}`);
+}
+
+async function rapi_requestBarsTimeRange({ symbol, exchange, timeframe, startDate, numDays }) {
+    // startDate should be in format: MM/DD/YYYY
+    // timeframe should be like: "1m", "5m", "30m", etc.
+    // endpoint format: /API/rapi/rth-bars/ES/CME/1m/03/12/2025?days=3
+
+    if (!symbol || !exchange || !timeframe || !startDate) {
+        throw new Error("Missing required parameters: symbol, exchange, timeframe, and startDate are required");
+    }
+
+    // Parse the date (expects MM/DD/YYYY format from Date input conversion)
+    const [month, day, year] = startDate.split("/");
+
+    // Build URL path
+    let url = `/API/rapi/rth-bars/${symbol}/${exchange}/${timeframe}/${month}/${day}/${year}`;
+
+    // Add optional query params
+    if (numDays !== undefined) {
+        url += `?days=${numDays}`;
+    }
+
+    return await GET(url);
 }
 
 async function rapi_requestLiveBars({ symbol, timeframe = "30m" }) {

@@ -8,7 +8,7 @@ import SymbolBtns from "./components/SymbolBtns";
 import TimeFrameBtns from "./components/TimeFrameBtns";
 import Select from "./components/Select";
 import OrdersList from "./components/OrdersList";
-import { symbolOptions } from "./components/utils";
+import { symbolOptions, barTypeToTimeframe } from "./components/utils";
 import { useIndicator } from "../hooks/useIndicator";
 import { useToggleIndicator } from "../hooks/useToggleIndicator";
 import { useLiquidityData } from "../hooks/useLiquidityData";
@@ -253,6 +253,57 @@ const PixiChartV2 = (props) => {
         setOhlcData(mergedBars);
     }
 
+    // Handler for time range changes from GenericPixiChart
+    const handleTimeRangeChange = async ({ startTime, endTime, numDays }) => {
+        console.log(`[PixiChartV2] Loading data for time range:`, { startTime, endTime, numDays });
+
+        try {
+            // Convert barType/barTypePeriod to timeframe string (e.g., "1m", "5m")
+            const timeframeStr = barTypeToTimeframe({
+                barType: barType.value,
+                barTypePeriod: barTypePeriod,
+            });
+
+            // Convert timestamp to MM/DD/YYYY format
+            const startDate = new Date(startTime);
+            const month = String(startDate.getMonth() + 1).padStart(2, "0");
+            const day = String(startDate.getDate()).padStart(2, "0");
+            const year = startDate.getFullYear();
+            const formattedDate = `${month}/${day}/${year}`;
+
+            console.log(`[PixiChartV2] Requesting: ${symbol.value}/${symbol.exchange}/${timeframeStr} from ${formattedDate}`);
+
+            const data = await API.rapi_requestBarsTimeRange({
+                symbol: symbol.value,
+                exchange: symbol.exchange,
+                timeframe: timeframeStr,
+                startDate: formattedDate,
+                numDays: numDays || undefined,
+            });
+
+            if (data && data.length > 0) {
+                console.log(`[PixiChartV2] Loaded ${data.length} bars for time range`);
+
+                // Process the data
+                data.forEach((d) => {
+                    d.datetime = d.datetime * 1000;
+                    if (d.volume?.low !== undefined) {
+                        d.volume = d.volume.low;
+                    }
+                });
+
+                // Replace current data with time range data
+                setOhlcData(data);
+            } else {
+                console.log("[PixiChartV2] No data available for selected time range");
+                alert("No data available for selected time range");
+            }
+        } catch (error) {
+            console.error("[PixiChartV2] Failed to load time range data:", error);
+            alert(`Failed to load data: ${error.message}`);
+        }
+    };
+
     const addBar = (newBar) => {
         newBar.datetime = newBar.datetime * 1000;
         newBar.volume = newBar.volume.low;
@@ -291,7 +342,7 @@ const PixiChartV2 = (props) => {
             Socket.off(liveBarNew, handleLiveBarNew);
             Socket.off(liveBarUpdate, handleLiveBarUpdate);
         };
-    }, [symbol, timeframe]); // Socket intentionally omitted to prevent re-registrations
+    }, [symbol.value, timeframe]); // Socket intentionally omitted to prevent re-registrations
 
     // Filter orders by current symbol
     const symbolFilteredOrders = useMemo(() => {
@@ -319,15 +370,16 @@ const PixiChartV2 = (props) => {
                 height: 100,
                 type: "candlestick",
                 accessors: "deltaClose", // For scale calculation
-                drawFn: (opts) => drawIndicatorCandlestick({
-                    ...opts,
-                    openField: "deltaOpen",
-                    highField: "deltaHigh",
-                    lowField: "deltaLow",
-                    closeField: "deltaClose",
-                    upColor: 0x00ff00,
-                    downColor: 0xff0000,
-                }),
+                drawFn: (opts) =>
+                    drawIndicatorCandlestick({
+                        ...opts,
+                        openField: "deltaOpen",
+                        highField: "deltaHigh",
+                        lowField: "deltaLow",
+                        closeField: "deltaClose",
+                        upColor: 0x00ff00,
+                        downColor: 0xff0000,
+                    }),
                 canGoNegative: true,
             },
             {
@@ -335,15 +387,16 @@ const PixiChartV2 = (props) => {
                 height: 100,
                 type: "candlestick",
                 accessors: "nearPriceRatioClose",
-                drawFn: (opts) => drawIndicatorCandlestick({
-                    ...opts,
-                    openField: "nearPriceRatioOpen",
-                    highField: "nearPriceRatioHigh",
-                    lowField: "nearPriceRatioLow",
-                    closeField: "nearPriceRatioClose",
-                    upColor: 0x00aa00, // Darker green
-                    downColor: 0xaa0000, // Darker red
-                }),
+                drawFn: (opts) =>
+                    drawIndicatorCandlestick({
+                        ...opts,
+                        openField: "nearPriceRatioOpen",
+                        highField: "nearPriceRatioHigh",
+                        lowField: "nearPriceRatioLow",
+                        closeField: "nearPriceRatioClose",
+                        upColor: 0x00aa00, // Darker green
+                        downColor: 0xaa0000, // Darker red
+                    }),
                 canGoNegative: false,
             },
             {
@@ -351,15 +404,16 @@ const PixiChartV2 = (props) => {
                 height: 100,
                 type: "candlestick",
                 accessors: "fullBookRatioClose",
-                drawFn: (opts) => drawIndicatorCandlestick({
-                    ...opts,
-                    openField: "fullBookRatioOpen",
-                    highField: "fullBookRatioHigh",
-                    lowField: "fullBookRatioLow",
-                    closeField: "fullBookRatioClose",
-                    upColor: 0x0088ff, // Bright blue
-                    downColor: 0xff6600, // Orange
-                }),
+                drawFn: (opts) =>
+                    drawIndicatorCandlestick({
+                        ...opts,
+                        openField: "fullBookRatioOpen",
+                        highField: "fullBookRatioHigh",
+                        lowField: "fullBookRatioLow",
+                        closeField: "fullBookRatioClose",
+                        upColor: 0x0088ff, // Bright blue
+                        downColor: 0xff6600, // Orange
+                    }),
                 canGoNegative: false,
             },
         ];
@@ -376,25 +430,32 @@ const PixiChartV2 = (props) => {
                         updateIndicatorOptions={updateIndicatorOptions}
                     />
                 </div>
-                <div className="col-auto">
-                    <TimeFrameBtns
-                        barType={barType}
-                        barTypePeriod={barTypePeriod}
-                        setBarType={setBarType}
-                        setBarTypePeriod={setBarTypePeriod}
-                    />
-                </div>
-                <div className="col-auto">
-                    <SymbolBtns symbolOptions={symbolOptions} symbol={symbol} setSymbol={setSymbol} />
-                </div>
-                <div className="col-auto">
-                    <Select value={symbol} setValue={setSymbol} options={symbolOptions} />
-                </div>
+                {props.withTimeFrameBtns && (
+                    <div className="col-auto">
+                        <TimeFrameBtns
+                            barType={barType}
+                            barTypePeriod={barTypePeriod}
+                            setBarType={setBarType}
+                            setBarTypePeriod={setBarTypePeriod}
+                        />
+                    </div>
+                )}
+                {props.withSymbolBtns && (
+                    <>
+                        <div className="col-auto">
+                            <SymbolBtns symbolOptions={symbolOptions} symbol={symbol} setSymbol={setSymbol} />
+                        </div>
+                        <div className="col-auto">
+                            <Select value={symbol} setValue={setSymbol} options={symbolOptions} />
+                        </div>
+                    </>
+                )}
             </div>
             {!ohlcData?.length ? (
                 <div>Loading... {symbol.value}</div>
             ) : (
                 <GenericPixiChart
+                    name="PixiChartV2"
                     //always add a unique key to force remount on changes to important props
                     key={symbol.value} //symbol works well for as the key
                     ohlcDatas={ohlcData}
@@ -407,6 +468,7 @@ const PixiChartV2 = (props) => {
                     // loadData={loadData}
                     pixiDataRef={pixiDataRef}
                     lowerIndicators={lowerIndicators}
+                    onTimeRangeChange={handleTimeRangeChange}
                     // tickSize={tickSize}
                 />
             )}

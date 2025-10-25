@@ -39,7 +39,7 @@ export default class PixiAxis {
     calculateFontSize(margin) {
         // Scale font size based on the relevant margin dimension
         // Y-axis uses right margin, X-axis uses bottom margin
-        const relevantMargin = this.type === "y" ? (margin.right || 100) : (margin.bottom || 40);
+        const relevantMargin = this.type === "y" ? margin.right || 100 : margin.bottom || 40;
 
         // Base calculation: scale proportionally
         // Default: right: 100 -> fontSize: 16, bottom: 40 -> fontSize: 16
@@ -60,7 +60,7 @@ export default class PixiAxis {
 
         if (this.dragScale || true) {
             this.container.interactive = true;
-            console.log("adddd eveentss");
+            // console.log("adddd eveentss");
             this.setHitArea();
             this.backgroundGfx
                 .on("mousewheel", (e) => {
@@ -265,7 +265,7 @@ export default class PixiAxis {
             this.container.hitArea = new Rectangle(-10, -10, width - (left + right) + 20, bottom + 20);
         }
 
-        console.log("setting hit area axis");
+        // console.log("setting hit area axis");
     }
 
     onDragStart(e) {

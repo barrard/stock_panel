@@ -22,10 +22,6 @@ export default class GenericDataHandler {
         options = { chartType: "candlestick" },
         lowerIndicators = [],
     }) {
-        if (symbol == "$SPX") {
-            console.log(ohlcDatas);
-            // debugger;
-        }
         this.lowerIndicators = lowerIndicators;
         this.options = options;
         this.loadMoreData = loadMoreData;
@@ -64,6 +60,10 @@ export default class GenericDataHandler {
         this.horizontalPanOffset = 0; // Number of bars to offset from the right
         this.maxHorizontalPanOffset = 50000000000; // Maximum bars that can be panned
         this.fakeBars = []; // Generated fake bars for padding
+
+        this.loadingOverlay = null;
+        this.loadingOverlayBackground = null;
+        this.loadingOverlayText = null;
 
         this.init();
     }
@@ -1505,6 +1505,57 @@ export default class GenericDataHandler {
         delete this.customDrawFns[name];
     }
 
+    drawLoadingOverlay(message = "Loading...") {
+        if (!this.layer7Container) return;
+
+        if (!this.loadingOverlay) {
+            this.loadingOverlay = new Container();
+            this.loadingOverlayBackground = new Graphics();
+            this.loadingOverlayText = new Text(
+                message,
+                new TextStyle({
+                    fontFamily: "Arial",
+                    fontSize: 24,
+                    fontWeight: "bold",
+                    fill: 0xffffff,
+                    align: "center",
+                })
+            );
+
+            this.loadingOverlay.addChild(this.loadingOverlayBackground);
+            this.loadingOverlay.addChild(this.loadingOverlayText);
+        }
+
+        if (message && this.loadingOverlayText) {
+            this.loadingOverlayText.text = message;
+        }
+
+        const width = this.width || 0;
+        const height = this.height || 0;
+
+        if (this.loadingOverlayBackground) {
+            this.loadingOverlayBackground.clear();
+            this.loadingOverlayBackground.beginFill(0x000000, 0.45);
+            this.loadingOverlayBackground.drawRect(0, 0, width, height);
+            this.loadingOverlayBackground.endFill();
+        }
+
+        if (this.loadingOverlayText) {
+            this.loadingOverlayText.x = width / 2 - this.loadingOverlayText.width / 2;
+            this.loadingOverlayText.y = height / 2 - this.loadingOverlayText.height / 2;
+        }
+
+        if (!this.layer7Container.children.includes(this.loadingOverlay)) {
+            this.layer7Container.addChild(this.loadingOverlay);
+        }
+    }
+
+    clearLoadingOverlay() {
+        if (this.loadingOverlay && this.loadingOverlay.parent) {
+            this.loadingOverlay.parent.removeChild(this.loadingOverlay);
+        }
+    }
+
     draw() {
         const drawStart = performance.now();
         let totalLoops = 0;
@@ -1629,6 +1680,7 @@ export default class GenericDataHandler {
     updateData(newData) {
         this.ohlcDatas = newData;
         this.slicedHighestIdx = null; // Invalidate cache
+        this.calculateVolumeMovingAverage();
         this.draw();
     }
 
@@ -1665,6 +1717,10 @@ export default class GenericDataHandler {
     destroy() {
         console.log("destroy");
         // this.ohlcDatas.length = 0;
+        this.clearLoadingOverlay();
+        this.loadingOverlay = null;
+        this.loadingOverlayBackground = null;
+        this.loadingOverlayText = null;
         this.initialized = false;
     }
 

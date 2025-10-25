@@ -199,6 +199,7 @@ const BackTestChartGeneric = (props) => {
                 <div>Loading... {symbol}</div>
             ) : (
                 <GenericPixiChart
+                    name="BackTestChartGeneric"
                     key={symbol}
                     ohlcDatas={candleData.bars}
                     width={width}

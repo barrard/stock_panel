@@ -113,6 +113,8 @@ const OptionContractChart = (props) => {
     }
     return (
         <GenericPixiChart
+            name="OptionContractChart"
+            key={`${symbol}-${strike}-${exp}-${putCall}`}
             ohlcDatas={candleData[timeframe]}
             // width={width}
             height={height}

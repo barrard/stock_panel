@@ -12,9 +12,9 @@ To use the chart, you need to provide it with data and, most importantly, a `ref
 
 **1. Essential Props:**
 
--   `ohlcDatas` (Array): The array of OHLC data points to be rendered.
--   `symbol` (String): The ticker symbol for the chart (e.g., "SPY").
--   `pixiDataRef` (React.RefObject): A ref created in the parent component. `GenericPixiChart` populates this ref with its `GenericDataHandler` instance, which is the primary API for interacting with the chart.
+*   `ohlcDatas` (Array): The array of OHLC data points to be rendered.
+*   `symbol` (String): The ticker symbol for the chart (e.g., "SPY").
+*   `pixiDataRef` (React.RefObject): A ref created in the parent component. `GenericPixiChart` populates this ref with its `GenericDataHandler` instance, which is the primary API for interacting with the chart.
 
 **2. Creating the Chart:**
 
@@ -41,6 +41,7 @@ const MyChartComponent = () => {
         }
     }, [newBar]);
 
+
     return (
         <GenericPixiChart
             key={symbol} // Important! See note below.
@@ -50,26 +51,25 @@ const MyChartComponent = () => {
             height={500}
         />
     );
-};
+}
 ```
 
 ### Interacting with the Chart via `pixiDataRef`
 
 The `pixiDataRef` is your gateway to controlling the chart after it has been rendered.
 
--   **Adding a new bar/data point:** `pixiDataRef.current.setNewBar(barObject)`
+*   **Adding a new bar/data point:** `pixiDataRef.current.setNewBar(barObject)`
     This adds a complete new data point to the chart and redraws. This is the standard method for adding a new candlestick or a new point to a line chart.
 
--   **Updating the current bar with a tick:** `pixiDataRef.current.newTick(tickObject)`
+*   **Updating the current bar with a tick:** `pixiDataRef.current.newTick(tickObject)`
     This is used for real-time candlestick charts where you want to update the `high`, `low`, and `close` of the last bar as new trades (ticks) come in, without creating a new bar each time.
 
--   **Updating the Price Label:** `pixiDataRef.current.updateCurrentPriceLabel(price)`
+*   **Updating the Price Label:** `pixiDataRef.current.updateCurrentPriceLabel(price)`
     This method explicitly updates the current price label shown on the Y-axis. This is useful in cases where the data update mechanism doesn't trigger it automatically (e.g., for line charts based on snapshots).
 
 ### Configuration and Customization
 
--   **Chart Type (`options` prop):** By default, the chart is a candlestick chart. You can change this via the `options` prop.
-
+*   **Chart Type (`options` prop):** By default, the chart is a candlestick chart. You can change this via the `options` prop.
     ```jsx
     // Renders a line chart using the 'last' property of the data objects
     <GenericPixiChart
@@ -78,9 +78,9 @@ The `pixiDataRef` is your gateway to controlling the chart after it has been ren
     />
     ```
 
--   **Lower Indicators (`lowerIndicators` prop):** You can add standard indicators below the main chart (like Volume, RSI) by passing an array of configuration objects.
+*   **Lower Indicators (`lowerIndicators` prop):** You can add standard indicators below the main chart (like Volume, RSI) by passing an array of configuration objects.
 
--   **Custom Overlays (`registerDrawFn`):** For complex graphical overlays (e.g., drawing strike prices or a Monte Carlo cone), you can use the `registerDrawFn('unique_name', drawingFunction)` method on the `pixiDataRef.current` instance. This allows you to inject custom PIXI.js drawing logic that will be executed on every chart render. See `SpyChart.js` for an example implementation.
+*   **Custom Overlays (`registerDrawFn`):** For complex graphical overlays (e.g., drawing strike prices or a Monte Carlo cone), you can use the `registerDrawFn('unique_name', drawingFunction)` method on the `pixiDataRef.current` instance. This allows you to inject custom PIXI.js drawing logic that will be executed on every chart render. See `SpyChart.js` for an example implementation.
 
 ### Important: Forcing Re-mounts with `key`
 
@@ -119,7 +119,6 @@ When your chart needs to aggregate data in the parent component (e.g., combining
 **Use Case:** `BetterTickChart` receives 100-tick bars from the server but allows users to view combined bars (e.g., 5×100 = 500-tick bars).
 
 **Pattern:**
-
 1. **Raw Data Ref**: Maintain a ref with the "atomic" data as received from the server
 2. **Derived State**: Compute aggregated/combined data from the raw ref and pass it to `GenericPixiChart`
 3. **Reversible Transform**: Keep raw data so you can regenerate different aggregations without re-fetching
@@ -156,11 +155,10 @@ useEffect(() => {
 ```
 
 **Why this pattern works:**
-
--   GenericPixiChart remains agnostic to aggregation logic
--   Raw data is preserved for reversible transformations
--   No need to re-fetch from API when changing aggregation
--   Clear separation between data source (raw) and view (combined)
+- GenericPixiChart remains agnostic to aggregation logic
+- Raw data is preserved for reversible transformations
+- No need to re-fetch from API when changing aggregation
+- Clear separation between data source (raw) and view (combined)
 
 ## Chart Indicators with GenericPixiChart
 
@@ -177,8 +175,8 @@ When adding new indicators or graphical overlays to any chart that utilizes the 
 2.  **Accessing `slicedData`:** The `GenericPixiChart` component makes the `slicedData` available via the `pixiDataRef.current` object that is passed to it. The drawing methods within the indicator class should access it via `this.pixiDataRef.current.slicedData`. This `slicedData` might be an object containing the visible bars and a `startIndex` pointing to where the slice begins in the original `ohlcData`.
 
 3.  **Coordinate Calculation:**
-    -   Find the absolute index of a data point (e.g., where a pivot line should start) in the full `ohlcData`.
-    -   Translate this absolute index to a relative index within the `slicedData`. This can be done by subtracting the `startIndex` of the slice.
-    -   Use this relative index with the `xScale` to get the correct position on the chart.
+    *   Find the absolute index of a data point (e.g., where a pivot line should start) in the full `ohlcData`.
+    *   Translate this absolute index to a relative index within the `slicedData`. This can be done by subtracting the `startIndex` of the slice.
+    *   Use this relative index with the `xScale` to get the correct position on the chart.
 
 This ensures that as the user pans and zooms (which changes `slicedData` and the `xScale` domain within `GenericPixiChart`), the indicator's position is recalculated correctly relative to the visible data.

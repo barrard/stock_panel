@@ -28,6 +28,7 @@ import SpyOptionsPage from "./components/SpyOptionsPage";
 import MarketBreadth from "./components/charts/pixiChart/components/MarketBreadth/MarketBreadth.jsx";
 import OptionContractChartPage from "./components/OptionContractChartPage";
 import PickList from "./components/PickList.js";
+import FilingAnalysisDetail from "./components/FilingAnalysisDetail";
 
 import BidAskStats from "./components/charts/BidAskStats";
 import BetterTickChart from "./components/charts/BetterTickChart";
@@ -38,10 +39,8 @@ import defaultFilterList from "./components/QuoteComponents/DefaultFilterList.js
 import Main_Nav from "./components/Main_Nav.js";
 import { addOptionAlert } from "./redux/actions/opActions.js";
 import {
-    updateCommodityData,
     addCommodityTrade,
     // updateCommodityTrade,
-    updateStockData,
 } from "./redux/actions/stock_actions.js";
 import UpdateToastsWithRedirect from "./components/smallComponents/RedirrectToastrUpdates.js";
 // import TradeBot from "./components/TradeBot/TradeBot.js";
@@ -66,8 +65,6 @@ class App extends React.Component {
         let { dispatch } = this.props;
         //check if logged in?
         API.isLoggedIn(dispatch);
-
-        // Socket.on("new_minutley_data", (newTickData)=>dispatch(updateCommodityData(newTickData, 'minute')));
 
         Socket.on("err", (err) => {
             console.log(err);
@@ -124,6 +121,7 @@ class App extends React.Component {
                     <Route path="/pixi-backtest" render={(props) => <BacktestChart {...props} Socket={Socket} />} />
                     <Route path="/backtest-results" render={(props) => <BacktestResults {...props} Socket={Socket} />} />
                     <Route path="/pick-list" render={(props) => <PickList {...props} Socket={Socket} />} />
+                    <Route path="/filing-analysis/:ticker" render={(props) => <FilingAnalysisDetail {...props} />} />
                     <Route path="/marketBreadth" render={(props) => <MarketBreadth {...props} Socket={Socket} />} />
                     <Route path="/SpyOptionsPage" render={(props) => <SpyOptionsPage {...props} Socket={Socket} />} />
                     <Route path="/OptionContractChartPage" render={(props) => <OptionContractChartPage {...props} Socket={Socket} />} />
