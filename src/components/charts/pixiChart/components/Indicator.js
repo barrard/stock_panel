@@ -230,6 +230,13 @@ export default class Indicator {
             return;
         }
 
+        // Cache check to avoid unnecessary recalculations
+        const cacheKey = `${this.chart.sliceStart}-${this.chart.sliceEnd}-${this.chart.slicedData.length}`;
+        if (this._lastCacheKey === cacheKey) {
+            return; // Skip redraw if nothing changed
+        }
+        this._lastCacheKey = cacheKey;
+
         // console.log(`[Indicator.setupScales] ${this.name} - type: ${this.type}, accessor: ${this.accessors}`);
 
         // Clear graphics for redraw
@@ -304,16 +311,6 @@ export default class Indicator {
                     if (bar[highField] !== undefined && bar[highField] !== null) allValues.push(bar[highField]);
                     if (bar[lowField] !== undefined && bar[lowField] !== null) allValues.push(bar[lowField]);
                     if (bar[closeField] !== undefined && bar[closeField] !== null) allValues.push(bar[closeField]);
-
-                    // Log first bar with data
-                    if (idx === 0 && bar[closeField] !== undefined) {
-                        console.log(`[Indicator.setupScales] First bar with data:`, {
-                            open: bar[openField],
-                            high: bar[highField],
-                            low: bar[lowField],
-                            close: bar[closeField],
-                        });
-                    }
                 });
 
                 // console.log(`[Indicator.setupScales] Candlestick values collected: ${allValues.length}`);

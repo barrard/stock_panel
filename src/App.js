@@ -27,7 +27,7 @@ import BacktestResults from "./components/charts/BacktestResults";
 import SpyOptionsPage from "./components/SpyOptionsPage";
 import MarketBreadth from "./components/charts/pixiChart/components/MarketBreadth/MarketBreadth.jsx";
 import OptionContractChartPage from "./components/OptionContractChartPage";
-import PickList from "./components/PickList.js";
+import PickList from "./components/PickListPage";
 import FilingAnalysisDetail from "./components/FilingAnalysisDetail";
 
 import BidAskStats from "./components/charts/BidAskStats";

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import API from "./API";
+import API from "../API";
 import styled from "styled-components";
-import Socket from "./Socket.js";
+import Socket from "../Socket.js";
 import { useHistory } from "react-router-dom";
 
 const Container = styled.div`
@@ -332,9 +332,7 @@ export default function PickList() {
                         <ScoreBadge strength={strength} severity={severity}>
                             {score} - {displayLabel}
                         </ScoreBadge>
-                        {signalCount > 0 && (
-                            <SignalCount>{signalCount} signals</SignalCount>
-                        )}
+                        {signalCount > 0 && <SignalCount>{signalCount} signals</SignalCount>}
                     </>
                 )}
             </TickerItem>
@@ -430,11 +428,9 @@ export default function PickList() {
                             </CategoryHeader>
                             <TickerGrid>
                                 {/* Show top scored tickers first if available */}
-                                {topByScore.length > 0 ? (
-                                    topByScore.map((tickerData) => renderTickerWithAnalysis(tickerData))
-                                ) : (
-                                    tickers.map((ticker) => renderTickerWithAnalysis(ticker))
-                                )}
+                                {topByScore.length > 0
+                                    ? topByScore.map((tickerData) => renderTickerWithAnalysis(tickerData))
+                                    : tickers.map((ticker) => renderTickerWithAnalysis(ticker))}
                             </TickerGrid>
                         </CategorySection>
                     );

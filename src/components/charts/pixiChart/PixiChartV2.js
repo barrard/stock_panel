@@ -15,6 +15,7 @@ import { useLiquidityData } from "../hooks/useLiquidityData";
 import { useLiquidityRatios } from "../hooks/useLiquidityRatios";
 import { TICKS } from "../../../indicators/indicatorHelpers/TICKS";
 import { drawLine, drawIndicatorCandlestick } from "./components/drawFns";
+import handleTimeRangeChange from "./components/handleTimeRangeChange";
 // import { liquidityHeatMapConfig } from "./components/indicatorConfigs";
 // import drawStrikes from "./drawStrikes";
 // import MonteCarloCone from "./monteCarloSimulation";
@@ -23,7 +24,7 @@ import { drawLine, drawIndicatorCandlestick } from "./components/drawFns";
 const ticks = TICKS();
 
 const PixiChartV2 = (props) => {
-    const { Socket, height = 500, orders: ordersFromParent = {} } = props;
+    const { Socket, height = 500, orders: ordersFromParent = {}, fullSymbol } = props;
 
     // always need to make a ref for pixiDataRef
     const pixiDataRef = useRef();
@@ -38,6 +39,9 @@ const PixiChartV2 = (props) => {
 
     //place to store ohlc data
     const [ohlcData, setOhlcData] = useState([]);
+
+    // Loading state for data fetching
+    const [isLoading, setIsLoading] = useState(false);
 
     // the symbol of the chart
     const [symbol, setSymbol] = useState({
@@ -135,6 +139,7 @@ const PixiChartV2 = (props) => {
             "[PixiChartV2] Indicators:",
             indicators.map((ind) => ({ id: ind.id, enabled: ind.enabled }))
         );
+
         console.log("[PixiChartV2] Orders from parent:", Object.keys(ordersFromParent).length, "baskets");
     }, []);
 
@@ -183,6 +188,44 @@ const PixiChartV2 = (props) => {
         dependencies: [],
     });
 
+    //function to get Data
+    const fetchLiveDataAndUpdate = useCallback(
+        async (replaceData = false) => {
+            try {
+                setIsLoading(true);
+                console.log(`[PixiChartV2] Fetching live data for ${symbol.value} ${timeframe}`);
+
+                const liveData = await API.rapi_requestLiveBars({
+                    // barType,
+                    // barTypePeriod,
+                    timeframe,
+                    symbol: symbol.value,
+                    // exchange: getExchangeFromSymbol(symbol),
+                });
+
+                if (replaceData) {
+                    // Replace data completely (for timeframe changes)
+                    setOhlcData(liveData);
+                    console.log(`[PixiChartV2] Replaced data with ${liveData.length} bars`);
+                } else {
+                    // Use functional update to avoid dependency on ohlcData
+                    setOhlcData((prevOhlcData) => {
+                        const result = Array.from(new Map([...prevOhlcData, ...liveData].map((b) => [b.datetime, b])).values()).sort(
+                            (a, b) => a.datetime - b.datetime
+                        );
+                        console.log(`[PixiChartV2] Merged to ${result.length} total bars`);
+                        return result;
+                    });
+                }
+            } catch (error) {
+                console.error(`[PixiChartV2] Failed to fetch live data:`, error);
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        [symbol.value, timeframe] // Removed ohlcData - use functional update instead
+    );
+
     // Use the liquidity data hook for fetching and caching
     useLiquidityData({
         liquidityHeatmapIndicator,
@@ -203,6 +246,25 @@ const PixiChartV2 = (props) => {
         timeframe,
         ohlcData,
     });
+
+    // Update timeframe state when barType or barTypePeriod changes
+    useEffect(() => {
+        const newTimeframe = barTypeToTimeframe({
+            barType: barType.value,
+            barTypePeriod: barTypePeriod,
+        });
+        console.log(`[useEffect] barType/barTypePeriod changed - updating timeframe from "${timeframe}" to "${newTimeframe}"`);
+
+        // Don't clear ohlcData here - let the chart show loading overlay instead
+        // The data will be cleared when new data is fetched
+        if (newTimeframe !== timeframe) {
+            console.log(`[useEffect] Timeframe changed - will fetch new data`);
+            // Set loading state to show overlay
+            setIsLoading(true);
+        }
+
+        setTimeframe(newTimeframe);
+    }, [barType.value, barTypePeriod, timeframe]);
 
     // Draw orders when indicator is enabled or orders change
     useEffect(() => {
@@ -226,133 +288,105 @@ const PixiChartV2 = (props) => {
         ordersInstance.draw(ordersFromParent);
     }, [ordersFromParent, ordersIndicator?.enabled, ordersIndicator?.instanceRef]);
 
-    //function to get Data
-    async function fetchLiveDataAndUpdate() {
-        const liveData = await API.rapi_requestLiveBars({
-            // barType,
-            // barTypePeriod,
-            timeframe,
-            symbol: symbol.value,
-            // exchange: getExchangeFromSymbol(symbol),
-        });
-        // console.log(liveData);
-        liveData.forEach((d) => {
-            d.datetime = d.datetime * 1000;
-            if (d.volume.low) {
-                d.volume = d.volume.low;
-            }
-        });
-
-        //merge and remove duplicate datetime with data.bars
-        const mergedBars = [...ohlcData, ...liveData].reduce((acc, bar) => {
-            if (!acc.find((b) => b.datetime === bar.datetime)) {
-                acc.push(bar);
-            }
-            return acc;
-        }, []);
-        setOhlcData(mergedBars);
-    }
-
     // Handler for time range changes from GenericPixiChart
-    const handleTimeRangeChange = async ({ startTime, endTime, numDays }) => {
-        console.log(`[PixiChartV2] Loading data for time range:`, { startTime, endTime, numDays });
+    // const handleTimeRangeChange = async ({ startTime, endTime, numDays }) => {
+    //     console.log(`[PixiChartV2] Loading data for time range:`, { startTime, endTime, numDays });
 
-        try {
-            // Convert barType/barTypePeriod to timeframe string (e.g., "1m", "5m")
-            const timeframeStr = barTypeToTimeframe({
-                barType: barType.value,
-                barTypePeriod: barTypePeriod,
-            });
+    //     try {
+    //         setIsLoading(true);
 
-            // Convert timestamp to MM/DD/YYYY format
-            const startDate = new Date(startTime);
-            const month = String(startDate.getMonth() + 1).padStart(2, "0");
-            const day = String(startDate.getDate()).padStart(2, "0");
-            const year = startDate.getFullYear();
-            const formattedDate = `${month}/${day}/${year}`;
+    //         // Convert barType/barTypePeriod to timeframe string (e.g., "1m", "5m")
+    //         const timeframeStr = barTypeToTimeframe({
+    //             barType: barType.value,
+    //             barTypePeriod: barTypePeriod,
+    //         });
 
-            console.log(`[PixiChartV2] Requesting: ${symbol.value}/${symbol.exchange}/${timeframeStr} from ${formattedDate}`);
+    //         // Convert timestamp to MM/DD/YYYY format
+    //         const startDate = new Date(startTime);
+    //         const month = String(startDate.getMonth() + 1).padStart(2, "0");
+    //         const day = String(startDate.getDate()).padStart(2, "0");
+    //         const year = startDate.getFullYear();
+    //         const formattedDate = `${month}/${day}/${year}`;
 
-            const data = await API.rapi_requestBarsTimeRange({
-                symbol: symbol.value,
-                exchange: symbol.exchange,
-                timeframe: timeframeStr,
-                startDate: formattedDate,
-                numDays: numDays || undefined,
-            });
+    //         console.log(`[PixiChartV2] Requesting: ${symbol.value}/${symbol.exchange}/${timeframeStr} from ${formattedDate}`);
 
-            if (data && data.length > 0) {
-                console.log(`[PixiChartV2] Loaded ${data.length} bars for time range`);
+    //         const data = await API.rapi_requestBarsTimeRange({
+    //             symbol: symbol.value,
+    //             exchange: symbol.exchange,
+    //             timeframe: timeframeStr,
+    //             startDate: formattedDate,
+    //             numDays: numDays || undefined,
+    //         });
 
-                // Process the data
-                data.forEach((d) => {
-                    d.datetime = d.datetime * 1000;
-                    if (d.volume?.low !== undefined) {
-                        d.volume = d.volume.low;
-                    }
-                });
+    //         if (data && data.length > 0) {
+    //             console.log(`[PixiChartV2] Loaded ${data.length} bars for time range`);
 
-                // Replace current data with time range data
-                setOhlcData(data);
-            } else {
-                console.log("[PixiChartV2] No data available for selected time range");
-                alert("No data available for selected time range");
-            }
-        } catch (error) {
-            console.error("[PixiChartV2] Failed to load time range data:", error);
-            alert(`Failed to load data: ${error.message}`);
-        }
-    };
+    //             // Process the data
+    //             data.forEach((d) => {
+    //                 d.datetime = d.datetime * 1000;
+    //                 if (d.volume?.low !== undefined) {
+    //                     d.volume = d.volume.low;
+    //                 }
+    //             });
 
-    const addBar = (newBar) => {
-        newBar.datetime = newBar.datetime * 1000;
-        newBar.volume = newBar.volume.low;
-        pixiDataRef?.current?.setNewBar(newBar);
-    };
-    const updateBar = (tick) => {
-        tick.datetime = tick.datetime * 1000;
-        tick.volume = tick.volume.low;
-        pixiDataRef?.current?.newTick(tick);
-    };
+    //             // Replace current data with time range data
+    //             setOhlcData(data);
+    //         } else {
+    //             console.log("[PixiChartV2] No data available for selected time range");
+    //             alert("No data available for selected time range");
+    //         }
+    //     } catch (error) {
+    //         console.error("[PixiChartV2] Failed to load time range data:", error);
+    //         alert(`Failed to load data: ${error.message}`);
+    //     } finally {
+    //         setIsLoading(false);
+    //     }
+    // };
+
     //main on load to get data
     useEffect(() => {
         console.log(`[useEffect] Socket setup running - symbol: ${symbol.value}, timeframe: ${timeframe}`);
 
-        //get data from OHLC_Compiler thing
-        fetchLiveDataAndUpdate();
+        //get data from OHLC_Compiler thing - replace data on timeframe/symbol change
+        fetchLiveDataAndUpdate(true);
 
+        // Listen for COMPLETE bars for this timeframe (replaces temporary bar)
         const liveBarNew = `${timeframe}-${symbol.value}-LiveBarNew`;
         const handleLiveBarNew = (newBar) => {
-            // setNewSpyMinuteBar(d);
-            //add this to ohlcData
-            console.log("new live bar", newBar);
-            addBar(newBar);
+            console.log(`[PixiChartV2] Complete ${timeframe} bar received`, newBar);
+
+            // Replace temporary bar with complete bar
+            pixiDataRef?.current?.setCompleteBar(newBar);
         };
         Socket.on(liveBarNew, handleLiveBarNew);
 
+        // Listen for 1s updates (updates temporary bar)
         const liveBarUpdate = `1s-${symbol.value}-LiveBarUpdate`;
         const handleLiveBarUpdate = (tick) => {
-            //update last ohlcBar
-            // console.log("tick", tick);
-            updateBar(tick);
+            // console.log(`[PixiChartV2] 1s tick update`, tick);
+
+            // Update temporary bar
+            pixiDataRef?.current?.newTick(tick);
         };
+
         Socket.on(liveBarUpdate, handleLiveBarUpdate);
 
         return () => {
             Socket.off(liveBarNew, handleLiveBarNew);
             Socket.off(liveBarUpdate, handleLiveBarUpdate);
         };
-    }, [symbol.value, timeframe]); // Socket intentionally omitted to prevent re-registrations
+    }, [symbol.value, timeframe, Socket, fetchLiveDataAndUpdate]); // Socket intentionally omitted to prevent re-registrations
 
     // Filter orders by current symbol
     const symbolFilteredOrders = useMemo(() => {
         const filtered = {};
+
         Object.keys(ordersFromParent).forEach((basketId) => {
             const orderArray = ordersFromParent[basketId];
             // Check if any order in this basket matches the current symbol
             if (orderArray && orderArray.length > 0) {
                 const firstOrder = orderArray[0];
-                if (firstOrder.symbol === symbol.value) {
+                if (firstOrder.symbol === fullSymbol) {
                     filtered[basketId] = orderArray;
                 }
             }
@@ -360,7 +394,7 @@ const PixiChartV2 = (props) => {
 
         console.log("[Orders] Filtered orders for", symbol.value, ":", Object.keys(filtered).length, "baskets");
         return filtered;
-    }, [ordersFromParent, symbol.value]);
+    }, [ordersFromParent, symbol.value, fullSymbol]);
 
     // Create lower indicators array - always visible
     const lowerIndicators = useMemo(() => {
@@ -457,7 +491,7 @@ const PixiChartV2 = (props) => {
                 <GenericPixiChart
                     name="PixiChartV2"
                     //always add a unique key to force remount on changes to important props
-                    key={symbol.value} //symbol works well for as the key
+                    key={`${symbol.value}-${timeframe}`} //include both symbol and timeframe in key to force remount
                     ohlcDatas={ohlcData}
                     // width={width}
                     height={height}
@@ -469,6 +503,7 @@ const PixiChartV2 = (props) => {
                     pixiDataRef={pixiDataRef}
                     lowerIndicators={lowerIndicators}
                     onTimeRangeChange={handleTimeRangeChange}
+                    isLoading={isLoading}
                     // tickSize={tickSize}
                 />
             )}
@@ -484,4 +519,4 @@ const PixiChartV2 = (props) => {
     );
 };
 
-export default PixiChartV2;
+export default React.memo(PixiChartV2);

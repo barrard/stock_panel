@@ -94,7 +94,6 @@ const MarketBreadth = (props) => {
         fetchData({ limit: 2000, sort: { _id: -1 }, filter: {} });
 
         Socket.on("market-breadth", (data) => {
-            console.log("market-breadth", data);
             if (!pixiDataRef.current) return;
 
             const datetime = new Date().getTime();
@@ -194,4 +193,4 @@ const MarketBreadth = (props) => {
     );
 };
 
-export default MarketBreadth;
+export default React.memo(MarketBreadth);

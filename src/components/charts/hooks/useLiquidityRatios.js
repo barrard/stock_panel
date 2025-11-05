@@ -45,6 +45,8 @@ const timeframeToMs = (timeframe) => {
  * @param {Array} params.ohlcData - OHLC data for date range
  */
 export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true, timeframe, ohlcData }) => {
+    // Stores the most recent liquidity snapshot from socket
+    // Currently unused but available for future features (e.g., displaying current values in UI)
     const latestDataRef = useRef(null);
     const hasLoadedHistoricalRef = useRef(false);
     const fetchedRangeRef = useRef({
@@ -54,6 +56,9 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
         end: null,
     });
     const isFetchingHistoricalRef = useRef(false);
+
+    // Track the earliest timestamp we've seen to detect scrolling left
+    const earliestSeenRef = useRef(null);
 
     // Track snapshots for current bar to build OHLC
     const currentBarSnapshotsRef = useRef({
@@ -65,73 +70,36 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
             bidSizeToAskSizeRatio: [],
         },
     });
-
-    // Fetch historical compiled data from API when the requested range changes meaningfully
+    // Fetch historical compiled data on symbol/timeframe change or initial load
+    // Scrolling detection happens in a separate effect below
     useEffect(() => {
-        if (!enabled || !ohlcData?.length || !symbol || !timeframe) {
-            console.log(`[useLiquidityRatios] Skipping - conditions not met`);
+        if (!enabled || !symbol || !timeframe) {
             return;
         }
-
-        const currentStart = ohlcData[0].timestamp || ohlcData[0].datetime;
-        const currentEnd = ohlcData[ohlcData.length - 1].timestamp || ohlcData[ohlcData.length - 1].datetime;
-
-        if (!currentStart || !currentEnd) {
-            console.log("[useLiquidityRatios] Skipping - missing start/end timestamps");
-            return;
-        }
-
-        const timeframeMs = timeframeToMs(timeframe);
-        const rangeBuffer = Math.max(timeframeMs * 2, 2000); // treat +/- two bars as no-op
 
         const previousRange = fetchedRangeRef.current;
         const symbolChanged = previousRange.symbol !== symbol;
         const timeframeChanged = previousRange.timeframe !== timeframe;
 
         if (symbolChanged || timeframeChanged) {
+            // Context changed - clear all tracking and fetch
+            console.log(`[useLiquidityRatios] Context changed - clearing and fetching`);
+            fetchedRangeRef.current = {
+                symbol: null,
+                timeframe: null,
+                start: null,
+                end: null,
+            };
             hasLoadedHistoricalRef.current = false;
-        } else {
-            if (previousRange.start !== null) {
-                const startAdvance = currentStart - previousRange.start;
-                if (startAdvance > 0 && startAdvance <= rangeBuffer) {
-                    fetchedRangeRef.current.start = currentStart;
-                }
-            }
-            if (previousRange.end !== null) {
-                const endAdvance = currentEnd - previousRange.end;
-                if (endAdvance > 0 && endAdvance <= rangeBuffer) {
-                    fetchedRangeRef.current.end = currentEnd;
-                } else if (endAdvance < 0 && Math.abs(endAdvance) <= rangeBuffer) {
-                    fetchedRangeRef.current.end = currentEnd;
-                }
-            }
+            earliestSeenRef.current = null;
         }
 
-        const expandedEarlier = previousRange.start === null || currentStart < previousRange.start;
-        const movedForward =
-            previousRange.start !== null && currentStart > previousRange.start + rangeBuffer;
-        const extendedForward =
-            previousRange.end === null || currentEnd > previousRange.end + rangeBuffer;
-        const contractedForward =
-            previousRange.end !== null && currentEnd < previousRange.end - rangeBuffer;
-        const outsidePreviousRange =
-            previousRange.start !== null &&
-            previousRange.end !== null &&
-            (currentEnd < previousRange.start || currentStart > previousRange.end);
-
-        const shouldFetch =
-            !hasLoadedHistoricalRef.current ||
-            symbolChanged ||
-            timeframeChanged ||
-            expandedEarlier ||
-            movedForward ||
-            extendedForward ||
-            contractedForward ||
-            outsidePreviousRange;
-
-        if (!shouldFetch || isFetchingHistoricalRef.current) {
+        // Only fetch if we haven't loaded data for this context yet
+        if (hasLoadedHistoricalRef.current || isFetchingHistoricalRef.current || !ohlcData?.length) {
             return;
         }
+
+        console.log(`[useLiquidityRatios] Initial load for ${symbol} ${timeframe}`);
 
         const fetchHistoricalRatios = async () => {
             try {
@@ -208,37 +176,41 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
                     });
 
                     // Populate all OHLC bars with matching metrics
-                    let matchedCount = 0;
+                    // let matchedCount = 0;
                     pixiDataRef.current.ohlcDatas.forEach((bar) => {
                         const barTime = bar.timestamp || bar.datetime;
                         const metrics = metricsMap.get(barTime);
                         if (metrics) {
                             Object.assign(bar, metrics);
-                            matchedCount++;
+                            // matchedCount++;
                         }
                     });
 
                     // console.log(`[useLiquidityRatios] Populated ${matchedCount} bars with ratio data`);
                     hasLoadedHistoricalRef.current = true;
+
+                    // Update tracking - expand to include newly fetched range
+                    // Note: Socket updates will extend the end time, so we only track start here
+                    const prevRange = fetchedRangeRef.current;
                     fetchedRangeRef.current = {
                         symbol,
                         timeframe,
-                        start: startTime,
-                        end: endTime,
+                        start: prevRange.start === null ? startTime : Math.min(prevRange.start, startTime),
+                        end: Math.max(prevRange.end || 0, endTime),
                     };
 
                     // Log a sample bar to verify data structure
-                    const sampleBar = pixiDataRef.current.ohlcDatas.find((bar) => bar.deltaClose !== undefined);
-                    if (sampleBar) {
-                        // console.log(`[useLiquidityRatios] Sample bar after population:`, {
-                        //     deltaOpen: sampleBar.deltaOpen,
-                        //     deltaHigh: sampleBar.deltaHigh,
-                        //     deltaLow: sampleBar.deltaLow,
-                        //     deltaClose: sampleBar.deltaClose,
-                        //     nearPriceRatioClose: sampleBar.nearPriceRatioClose,
-                        //     fullBookRatioClose: sampleBar.fullBookRatioClose,
-                        // });
-                    }
+                    // const sampleBar = pixiDataRef.current.ohlcDatas.find((bar) => bar.deltaClose !== undefined);
+                    // if (sampleBar) {
+                    // console.log(`[useLiquidityRatios] Sample bar after population:`, {
+                    //     deltaOpen: sampleBar.deltaOpen,
+                    //     deltaHigh: sampleBar.deltaHigh,
+                    //     deltaLow: sampleBar.deltaLow,
+                    //     deltaClose: sampleBar.deltaClose,
+                    //     nearPriceRatioClose: sampleBar.nearPriceRatioClose,
+                    //     fullBookRatioClose: sampleBar.fullBookRatioClose,
+                    // });
+                    // }
 
                     // Trigger redraw
                     pixiDataRef.current.draw();
@@ -251,7 +223,40 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
         };
 
         fetchHistoricalRatios();
-    }, [enabled, symbol, timeframe, ohlcData]);
+    }, [enabled, symbol, timeframe, ohlcData?.length]); // Include length to trigger when data loads
+
+    // Separate effect to detect when user scrolls left to load earlier data
+    // This uses a ref to track earliest timestamp, avoiding dependency on ohlcData
+    useEffect(() => {
+        if (!enabled || !ohlcData?.length || !hasLoadedHistoricalRef.current) {
+            return;
+        }
+
+        const currentStart = ohlcData[0].timestamp || ohlcData[0].datetime;
+        if (!currentStart) return;
+
+        // Track earliest timestamp we've seen
+        if (earliestSeenRef.current === null) {
+            earliestSeenRef.current = currentStart;
+            return;
+        }
+
+        // If current start is earlier than what we've seen, user scrolled left
+        if (currentStart < earliestSeenRef.current) {
+            console.log(`[useLiquidityRatios] User scrolled left: ${currentStart} < ${earliestSeenRef.current}`);
+            earliestSeenRef.current = currentStart;
+
+            // Check if we need to fetch more data
+            const previousRange = fetchedRangeRef.current;
+            if (previousRange.start === null || currentStart < previousRange.start) {
+                console.log(`[useLiquidityRatios] Need to fetch earlier liquidity data`);
+
+                // Trigger fetch by temporarily setting hasLoadedHistoricalRef to false
+                // This will cause the main effect to run
+                hasLoadedHistoricalRef.current = false;
+            }
+        }
+    }, [enabled, ohlcData?.length, ohlcData?.[0]?.datetime, ohlcData?.[0]?.timestamp]);
 
     // Helper function to calculate OHLC from array of values
     const calculateOHLC = (values) => {
@@ -277,7 +282,7 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
                 return;
             }
 
-            // Store the latest data
+            // Store the latest snapshot (available for future use)
             latestDataRef.current = {
                 delta: liquidityData.delta,
                 nearPriceBidSizeToAskSizeRatioMA: liquidityData.nearPriceBidSizeToAskSizeRatioMA,
@@ -291,95 +296,98 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
             };
 
             // Update the last bar in the chart with the ratio data
-            if (pixiDataRef?.current?.ohlcDatas) {
+            if (pixiDataRef?.current?.ohlcDatas?.length > 0) {
                 const lastIndex = pixiDataRef.current.ohlcDatas.length - 1;
-                if (lastIndex >= 0) {
-                    const lastBar = pixiDataRef.current.ohlcDatas[lastIndex];
-                    const barTime = lastBar.timestamp || lastBar.datetime;
+                // if (lastIndex >= 0) {
+                const lastBar = pixiDataRef.current.ohlcDatas[lastIndex];
+                const barTime = lastBar.timestamp || lastBar.datetime;
 
-                    // Check if we're on a new bar
-                    const currentBarSnapshots = currentBarSnapshotsRef.current;
-                    if (currentBarSnapshots.datetime !== barTime) {
-                        // New bar - reset snapshots
-                        currentBarSnapshots.datetime = barTime;
-                        currentBarSnapshots.snapshots = {
-                            delta: [],
-                            nearPriceBidSizeToAskSizeRatioMA: [],
-                            bidSizeToAskSizeRatioMA: [],
-                            bidSizeToAskSizeRatio: [],
-                        };
+                // Check if we're on a new bar
+                const currentBarSnapshots = currentBarSnapshotsRef.current;
+                if (currentBarSnapshots.datetime !== barTime) {
+                    // New bar - reset snapshots
+                    currentBarSnapshots.datetime = barTime;
+                    currentBarSnapshots.snapshots = {
+                        delta: [],
+                        nearPriceBidSizeToAskSizeRatioMA: [],
+                        bidSizeToAskSizeRatioMA: [],
+                        bidSizeToAskSizeRatio: [],
+                    };
+                }
+
+                // Add current values to snapshot arrays
+                if (liquidityData.delta !== undefined && liquidityData.delta !== null) {
+                    currentBarSnapshots.snapshots.delta.push(liquidityData.delta);
+                }
+                if (
+                    liquidityData.nearPriceBidSizeToAskSizeRatioMA !== undefined &&
+                    liquidityData.nearPriceBidSizeToAskSizeRatioMA !== null
+                ) {
+                    currentBarSnapshots.snapshots.nearPriceBidSizeToAskSizeRatioMA.push(liquidityData.nearPriceBidSizeToAskSizeRatioMA);
+                }
+                if (liquidityData.bidSizeToAskSizeRatioMA !== undefined && liquidityData.bidSizeToAskSizeRatioMA !== null) {
+                    currentBarSnapshots.snapshots.bidSizeToAskSizeRatioMA.push(liquidityData.bidSizeToAskSizeRatioMA);
+                }
+                if (liquidityData.bidSizeToAskSizeRatio !== undefined && liquidityData.bidSizeToAskSizeRatio !== null) {
+                    currentBarSnapshots.snapshots.bidSizeToAskSizeRatio.push(liquidityData.bidSizeToAskSizeRatio);
+                }
+
+                // Calculate OHLC for delta
+                const deltaOHLC = calculateOHLC(currentBarSnapshots.snapshots.delta);
+                if (deltaOHLC) {
+                    lastBar.deltaOpen = deltaOHLC.open;
+                    lastBar.deltaHigh = deltaOHLC.high;
+                    lastBar.deltaLow = deltaOHLC.low;
+                    lastBar.deltaClose = deltaOHLC.close;
+                    lastBar.delta = deltaOHLC.close; // Keep for backward compatibility
+
+                    // Debug log
+                    if (Math.random() < 0.05) {
+                        console.log(
+                            `[useLiquidityRatios] Delta OHLC: O=${deltaOHLC.open} H=${deltaOHLC.high} L=${deltaOHLC.low} C=${deltaOHLC.close}, snapshots=${currentBarSnapshots.snapshots.delta.length}`
+                        );
                     }
+                }
 
-                    // Add current values to snapshot arrays
-                    if (liquidityData.delta !== undefined && liquidityData.delta !== null) {
-                        currentBarSnapshots.snapshots.delta.push(liquidityData.delta);
-                    }
-                    if (
-                        liquidityData.nearPriceBidSizeToAskSizeRatioMA !== undefined &&
-                        liquidityData.nearPriceBidSizeToAskSizeRatioMA !== null
-                    ) {
-                        currentBarSnapshots.snapshots.nearPriceBidSizeToAskSizeRatioMA.push(liquidityData.nearPriceBidSizeToAskSizeRatioMA);
-                    }
-                    if (liquidityData.bidSizeToAskSizeRatioMA !== undefined && liquidityData.bidSizeToAskSizeRatioMA !== null) {
-                        currentBarSnapshots.snapshots.bidSizeToAskSizeRatioMA.push(liquidityData.bidSizeToAskSizeRatioMA);
-                    }
-                    if (liquidityData.bidSizeToAskSizeRatio !== undefined && liquidityData.bidSizeToAskSizeRatio !== null) {
-                        currentBarSnapshots.snapshots.bidSizeToAskSizeRatio.push(liquidityData.bidSizeToAskSizeRatio);
-                    }
+                // Calculate OHLC for nearPriceBidSizeToAskSizeRatioMA
+                const nearPriceOHLC = calculateOHLC(currentBarSnapshots.snapshots.nearPriceBidSizeToAskSizeRatioMA);
+                if (nearPriceOHLC) {
+                    lastBar.nearPriceRatioOpen = nearPriceOHLC.open;
+                    lastBar.nearPriceRatioHigh = nearPriceOHLC.high;
+                    lastBar.nearPriceRatioLow = nearPriceOHLC.low;
+                    lastBar.nearPriceRatioClose = nearPriceOHLC.close;
+                    lastBar.nearPriceBidSizeToAskSizeRatioMA = nearPriceOHLC.close; // Line fallback
+                }
 
-                    // Calculate OHLC for delta
-                    const deltaOHLC = calculateOHLC(currentBarSnapshots.snapshots.delta);
-                    if (deltaOHLC) {
-                        lastBar.deltaOpen = deltaOHLC.open;
-                        lastBar.deltaHigh = deltaOHLC.high;
-                        lastBar.deltaLow = deltaOHLC.low;
-                        lastBar.deltaClose = deltaOHLC.close;
-                        lastBar.delta = deltaOHLC.close; // Keep for backward compatibility
+                // Calculate OHLC for bidSizeToAskSizeRatioMA
+                const fullBookOHLC = calculateOHLC(currentBarSnapshots.snapshots.bidSizeToAskSizeRatioMA);
+                if (fullBookOHLC) {
+                    lastBar.fullBookRatioOpen = fullBookOHLC.open;
+                    lastBar.fullBookRatioHigh = fullBookOHLC.high;
+                    lastBar.fullBookRatioLow = fullBookOHLC.low;
+                    lastBar.fullBookRatioClose = fullBookOHLC.close;
+                    lastBar.bidSizeToAskSizeRatioMA = fullBookOHLC.close; // Line fallback
+                }
 
-                        // Debug log
-                        if (Math.random() < 0.05) {
-                            console.log(
-                                `[useLiquidityRatios] Delta OHLC: O=${deltaOHLC.open} H=${deltaOHLC.high} L=${deltaOHLC.low} C=${deltaOHLC.close}, snapshots=${currentBarSnapshots.snapshots.delta.length}`
-                            );
-                        }
-                    }
+                // Store other fields
+                lastBar.bidSizeToAskSizeRatio = liquidityData.bidSizeToAskSizeRatio;
+                lastBar.nearPriceBidSizeToAskSizeRatio = liquidityData.nearPriceBidSizeToAskSizeRatio;
+                lastBar.bidOrderToAskOrderRatio = liquidityData.bidOrderToAskOrderRatio;
 
-                    // Calculate OHLC for nearPriceBidSizeToAskSizeRatioMA
-                    const nearPriceOHLC = calculateOHLC(currentBarSnapshots.snapshots.nearPriceBidSizeToAskSizeRatioMA);
-                    if (nearPriceOHLC) {
-                        lastBar.nearPriceRatioOpen = nearPriceOHLC.open;
-                        lastBar.nearPriceRatioHigh = nearPriceOHLC.high;
-                        lastBar.nearPriceRatioLow = nearPriceOHLC.low;
-                        lastBar.nearPriceRatioClose = nearPriceOHLC.close;
-                        lastBar.nearPriceBidSizeToAskSizeRatioMA = nearPriceOHLC.close; // Line fallback
-                    }
+                // Trigger redraw
+                pixiDataRef.current.draw();
 
-                    // Calculate OHLC for bidSizeToAskSizeRatioMA
-                    const fullBookOHLC = calculateOHLC(currentBarSnapshots.snapshots.bidSizeToAskSizeRatioMA);
-                    if (fullBookOHLC) {
-                        lastBar.fullBookRatioOpen = fullBookOHLC.open;
-                        lastBar.fullBookRatioHigh = fullBookOHLC.high;
-                        lastBar.fullBookRatioLow = fullBookOHLC.low;
-                        lastBar.fullBookRatioClose = fullBookOHLC.close;
-                        lastBar.bidSizeToAskSizeRatioMA = fullBookOHLC.close; // Line fallback
-                    }
-
-                    // Store other fields
-                    lastBar.bidSizeToAskSizeRatio = liquidityData.bidSizeToAskSizeRatio;
-                    lastBar.nearPriceBidSizeToAskSizeRatio = liquidityData.nearPriceBidSizeToAskSizeRatio;
-                    lastBar.bidOrderToAskOrderRatio = liquidityData.bidOrderToAskOrderRatio;
-
-                    // Trigger redraw
-                    pixiDataRef.current.draw();
-
-                    // Track range coverage provided by live data to avoid redundant historical fetches
+                // Update fetched range with live data
+                // Socket data primarily extends the end time (real-time updates)
+                // Only set start if this is the first data point
+                if (fetchedRangeRef.current.start === null) {
                     fetchedRangeRef.current.symbol = symbol;
                     fetchedRangeRef.current.timeframe = timeframe;
-                    if (fetchedRangeRef.current.start === null) {
-                        fetchedRangeRef.current.start = barTime;
-                    }
-                    fetchedRangeRef.current.end = Math.max(fetchedRangeRef.current.end || 0, barTime);
+                    fetchedRangeRef.current.start = barTime;
                 }
+                // Always extend end time to latest bar
+                fetchedRangeRef.current.end = Math.max(fetchedRangeRef.current.end || 0, barTime);
+                // }
             }
         };
 
@@ -391,5 +399,6 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
         };
     }, [symbol, Socket, pixiDataRef, enabled]);
 
+    // Return ref for potential future use (e.g., displaying current values)
     return latestDataRef;
 };

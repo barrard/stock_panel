@@ -79,6 +79,9 @@ const API = {
     getPickLists,
     getEnhancedPickLists,
     getFilingAnalysisFull,
+    gatherFilings,
+    getStockDatas,
+    getTickerData,
     fetchOptionContractData,
     getSchwabAccountDetails,
     fetchMarketBreadth,
@@ -109,6 +112,35 @@ async function getTopWinnersLosers({ topN = 10, bottomN = 10 } = {}) {
 
 async function getFilingAnalysisFull(ticker) {
     return await GET(`/API/filing-analysis/full/${ticker}`);
+}
+
+async function gatherFilings(symbol) {
+    return await GET(`/API/edgar/gather-filings/${symbol}`);
+}
+
+async function getStockDatas({ query, project = {}, sort = { _id: -1 }, limit = 0 }) {
+    const response = await fetch(`${REACT_APP_API_SERVER}/API/get-stock-datas`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            query,
+            project,
+            sort,
+            limit,
+        }),
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch stock data: ${response.statusText}`);
+    }
+
+    return await response.json();
+}
+
+async function getTickerData(symbol) {
+    return await GET(`/API/ticker/${symbol}`);
 }
 
 async function fetchMarketBreadth(opts = {}) {

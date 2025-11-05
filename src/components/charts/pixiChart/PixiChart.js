@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useMemo } from "react";
+import React, { useRef, useEffect, useState, useMemo, useCallback } from "react";
 import { toastr } from "react-redux-toastr";
 
 import API from "../../../components/API";
@@ -70,6 +70,8 @@ export default function PixiChart({ Socket }) {
     //Full Symbol
     const fullSymbolRef = useRef();
     const [fullSymbolValue, setFullSymbolValue] = useState(null);
+    // Track if orders have been loaded for the current symbol
+    const ordersLoadedRef = useRef(false);
 
     const [rerender, setRerender] = useState({});
 
@@ -256,17 +258,55 @@ export default function PixiChart({ Socket }) {
             });
     };
 
+    // Define getOrders before the useEffects that use it
+    const getOrders = useCallback(async () => {
+        console.log("[getOrders] Called");
+        const _orders = await API.getOrders();
+        function reduceByBasketId(acc, order) {
+            if (!order.basketId) return acc;
+            if (!acc[order.basketId]) {
+                acc[order.basketId] = [];
+            }
+            acc[order.basketId].push(order);
+            return acc;
+        }
+        // Use functional update to avoid dependency on 'orders'
+        setOrders((prevOrders) => {
+            const compiledOrders = Object.values(_orders).reduce(reduceByBasketId, prevOrders);
+            return { ...compiledOrders };
+        });
+        pixiData?.setOrders(_orders);
+    }, [pixiData]);
+
+    // Separate useEffect for trade window - depends on openTradeWindow
+    useEffect(() => {
+        if (!pixiData) return;
+        pixiData.showTradeWindow(openTradeWindow, fullSymbolRef.current);
+    }, [openTradeWindow, pixiData]);
+
+    // Separate useEffect for loading orders - only runs on mount and when symbol changes
     useEffect(() => {
         if (!pixiData) return;
 
-        // if (openTradeWindow) {
-        pixiData.showTradeWindow(openTradeWindow, fullSymbolRef.current);
-        // }
+        console.log(
+            "[useEffect] Checking if orders need to be loaded for symbol:",
+            symbol.value,
+            "Already loaded:",
+            ordersLoadedRef.current
+        );
 
-        if (!Object.keys(pixiData.orders).length) {
+        // Only load orders once when component mounts or symbol changes
+        if (!ordersLoadedRef.current) {
+            ordersLoadedRef.current = true;
             getOrders();
         }
-    }, [openTradeWindow, pixiData, fullSymbolRef.current]);
+    }, [pixiData, symbol.value, getOrders]);
+
+    // Reset orders loaded flag when symbol changes
+    useEffect(() => {
+        console.log("[useEffect] Symbol changed to:", symbol.value, "- resetting orders loaded flag");
+        ordersLoadedRef.current = false;
+    }, [symbol.value]);
 
     useEffect(() => {
         if (!pixiData) return;
@@ -410,6 +450,7 @@ export default function PixiChart({ Socket }) {
             if (fullSymbolRef.current !== nextFullSymbol) {
                 fullSymbolRef.current = nextFullSymbol;
             }
+
             setFullSymbolValue((prev) => {
                 if (prev === nextFullSymbol) {
                     console.log("[PixiChart] fullSymbolValue unchanged", { prev, nextFullSymbol });
@@ -639,21 +680,6 @@ export default function PixiChart({ Socket }) {
             });
     }, []);
 
-    async function getOrders() {
-        const _orders = await API.getOrders();
-        function reduceByBasketId(acc, order) {
-            if (!order.basketId) return acc;
-            if (!acc[order.basketId]) {
-                acc[order.basketId] = [];
-            }
-            acc[order.basketId].push(order);
-            return acc;
-        }
-        const compiledOrders = Object.values(_orders).reduce(reduceByBasketId, orders);
-        setOrders({ ...compiledOrders });
-        pixiData?.setOrders(_orders);
-    }
-
     const clearLongPress = () => {
         clearInterval(longPressTimer);
         setLongPressTimer(false);
@@ -712,30 +738,42 @@ export default function PixiChart({ Socket }) {
         console.log("[PixiChart] Rendering BetterTickChart memo", {
             symbol: symbol.value,
             fullSymbol: fullSymbolValue,
+            exchange: symbolInput.exchange,
         });
-        return <BetterTickChart height={400} symbol={symbol.value} fullSymbol={fullSymbolValue} timeframe="tick" Socket={Socket} />;
-    }, [Socket, symbol.value, fullSymbolValue]);
+        return (
+            <BetterTickChart
+                height={400}
+                symbol={symbol.value}
+                fullSymbol={fullSymbolValue}
+                exchange={symbolInput.exchange}
+                timeframe="tick"
+                Socket={Socket}
+            />
+        );
+    }, [Socket, symbol.value, fullSymbolValue, symbolInput.exchange]);
 
-    const mainChartProps = {
-        // candleData: candleData.spy1MinData,
-        height: 400,
-        // width: 600,
-        // spyLevelOne,
-        Socket,
-        symbol: symbol.value,
-        orders, // Pass orders to PixiChartV2
-        // getCurrentStrikeData,
-        // callsOrPuts,
-        // callsData,
-        // putsData,
-        // underlyingData,
-        // lvl2Data,
-        withTimeFrameBtns: true,
-        withSymbolBtns: false,
-    };
+    const mainChartProps = useMemo(
+        () => ({
+            // candleData: candleData.spy1MinData,
+            height: 400,
+            // width: 600,
+            // spyLevelOne,
+            Socket,
+            symbol: symbol.value,
+            orders, // Pass orders to PixiChartV2
+            fullSymbol: fullSymbolValue,
+            // getCurrentStrikeData,
+            // callsOrPuts,
+            // callsData,
+            // putsData,
+            // underlyingData,
+            // lvl2Data,
+            withTimeFrameBtns: true,
+            withSymbolBtns: false,
+        }),
+        [Socket, symbol.value, orders, fullSymbolValue]
+    );
 
-    // console.log("das render");
-    // const MarketBreadthMemo = useMemo(() => <MarketBreadth Socket={Socket} />, [Socket]);
     return (
         <>
             <div className="row g-0 relative">
@@ -750,7 +788,7 @@ export default function PixiChart({ Socket }) {
                         <MarketOverview Socket={Socket} lastTradesRef={lastTradesRef} fullSymbols={fullSymbols} />
                     </div>
                     <div className="col-6">
-                        {/* {MarketBreadthMemo} */}
+                        {" "}
                         <MarketBreadth Socket={Socket} />
                     </div>
                 </div>
@@ -803,7 +841,8 @@ export default function PixiChart({ Socket }) {
             <div className="row flex_center">{BetterTickChartMemo}</div>
 
             <div className="col-10">
-                <PixiChartV2 {...mainChartProps} />
+                {" "}
+                <PixiChartV2 {...mainChartProps} />{" "}
             </div>
             <div
                 className="col-10"

@@ -202,8 +202,9 @@ export function timeScaleValues({ values }) {
     if (typeof startTime === "string") startTime = new Date(startTime).getTime();
     if (typeof endTime === "string") endTime = new Date(endTime).getTime();
     const totalDuration = endTime - startTime;
+    const daysSpan = totalDuration / (1000 * 60 * 60 * 24);
 
-    // Expanded time intervals with more options
+    // Expanded time intervals with more options, including monthly and yearly
     const timeIntervals = [
         { interval: 1000 * 1, name: "1sec" }, // 1 second
         { interval: 1000 * 5, name: "5sec" }, // 5 seconds
@@ -226,6 +227,12 @@ export function timeScaleValues({ values }) {
         { interval: 1000 * 60 * 60 * 24, name: "1day" }, // 1 day
         { interval: 1000 * 60 * 60 * 24 * 2, name: "2day" }, // 2 days
         { interval: 1000 * 60 * 60 * 24 * 7, name: "1week" }, // 1 week
+        { interval: 1000 * 60 * 60 * 24 * 14, name: "2week" }, // 2 weeks
+        { interval: 1000 * 60 * 60 * 24 * 30, name: "1month" }, // ~1 month
+        { interval: 1000 * 60 * 60 * 24 * 60, name: "2month" }, // ~2 months
+        { interval: 1000 * 60 * 60 * 24 * 90, name: "3month" }, // ~3 months
+        { interval: 1000 * 60 * 60 * 24 * 180, name: "6month" }, // ~6 months
+        { interval: 1000 * 60 * 60 * 24 * 365, name: "1year" }, // ~1 year
     ];
 
     // Calculate target interval based on duration and max ticks
@@ -261,6 +268,17 @@ function findBestTimeInterval(targetInterval, timeIntervals) {
 
 function generateTimeTicks(startTime, endTime, intervalMs, maxTicks) {
     const ticks = [];
+    const totalDuration = endTime - startTime;
+
+    // Calculate how many ticks we'd get with this interval across the full range
+    const potentialTickCount = Math.floor(totalDuration / intervalMs);
+
+    // If the interval would give us way more ticks than maxTicks, we need to skip some
+    // to distribute them evenly across the range
+    let skipFactor = 1;
+    if (potentialTickCount > maxTicks * 2) {
+        skipFactor = Math.ceil(potentialTickCount / maxTicks);
+    }
 
     // Find the first nice time that's >= startTime
     let currentTime = Math.ceil(startTime / intervalMs) * intervalMs;
@@ -270,21 +288,29 @@ function generateTimeTicks(startTime, endTime, intervalMs, maxTicks) {
         currentTime += intervalMs;
     }
 
-    // Generate ticks until we reach the end or max ticks
-    while (currentTime <= endTime && ticks.length < maxTicks) {
-        ticks.push(currentTime);
+    // Generate ticks, potentially skipping some to spread them out
+    let tickCounter = 0;
+    while (currentTime <= endTime) {
+        if (tickCounter % skipFactor === 0 && ticks.length < maxTicks) {
+            ticks.push(currentTime);
+        }
         currentTime += intervalMs;
+        tickCounter++;
     }
 
-    // If we have too few ticks, try to include more
-    if (ticks.length < maxTicks / 2) {
-        const smallerInterval = intervalMs / 2;
-        currentTime = Math.ceil(startTime / smallerInterval) * smallerInterval;
+    // If we have too few ticks, try to include more by reducing skip factor
+    if (ticks.length < maxTicks / 2 && skipFactor > 1) {
+        const newSkipFactor = Math.max(1, Math.floor(skipFactor / 2));
+        currentTime = Math.ceil(startTime / intervalMs) * intervalMs;
         ticks.length = 0; // Reset
+        tickCounter = 0;
 
-        while (currentTime <= endTime && ticks.length < maxTicks) {
-            ticks.push(currentTime);
-            currentTime += smallerInterval;
+        while (currentTime <= endTime) {
+            if (tickCounter % newSkipFactor === 0 && ticks.length < maxTicks) {
+                ticks.push(currentTime);
+            }
+            currentTime += intervalMs;
+            tickCounter++;
         }
     }
 
@@ -427,6 +453,7 @@ export function parseBarTypeTimeFrame({ barType, barTypePeriod }) {
  * barTypeToTimeframe({ barType: 2, barTypePeriod: 1 }) // "1m"
  * barTypeToTimeframe({ barType: 2, barTypePeriod: 5 }) // "5m"
  * barTypeToTimeframe({ barType: 1, barTypePeriod: 1 }) // "1s"
+ * barTypeToTimeframe({ barType: 1, barTypePeriod: 60 }) // "1m" (60 seconds = 1 minute)
  */
 export function barTypeToTimeframe({ barType, barTypePeriod }) {
     const SUPPORTED_TIMEFRAMES = ["1s", "1m", "5m", "30m", "60m", "4h"];
@@ -434,8 +461,12 @@ export function barTypeToTimeframe({ barType, barTypePeriod }) {
     let timeframeStr;
 
     if (barType === 1) {
-        // Seconds
-        timeframeStr = `${barTypePeriod}s`;
+        // Seconds - handle edge case where 60 seconds should be "1m"
+        if (barTypePeriod === 60) {
+            timeframeStr = "1m";
+        } else {
+            timeframeStr = `${barTypePeriod}s`;
+        }
     } else if (barType === 2) {
         // Minutes
         timeframeStr = `${barTypePeriod}m`;

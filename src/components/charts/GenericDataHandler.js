@@ -18,10 +18,13 @@ export default class GenericDataHandler {
         symbol = null,
         margin = {},
         tickSize,
+        fullSymbol = null,
         //chartType: "line", lineKey: "last", xKey: "timestamp"
         options = { chartType: "candlestick" },
         lowerIndicators = [],
+        name = "unnamed chart",
     }) {
+        this.name = name;
         this.lowerIndicators = lowerIndicators;
         this.options = options;
         this.loadMoreData = loadMoreData;
@@ -31,6 +34,7 @@ export default class GenericDataHandler {
         this.width = width;
         this.height = height;
         this.symbol = symbol;
+        this.fullSymbol = fullSymbol;
         this.margin = margin;
         this.initialized = false;
         this.mainChartContainerHeight = mainChartContainerHeight;
@@ -231,6 +235,8 @@ export default class GenericDataHandler {
         }
     }
 
+    // Add a new complete bar (appends to end)
+    // Use this for historical data or when you know there's no temporary bar
     setNewBar(bar) {
         const lastBar = this.ohlcDatas.slice(-1)[0];
         const lastSlicedData = this.slicedData.slice(-1)[0];
@@ -278,6 +284,58 @@ export default class GenericDataHandler {
         this.draw();
     }
 
+    // Replace temporary bar with complete bar, then start new temporary bar
+    // Use this when server sends LiveBarNew event (completed bar for your timeframe)
+    setCompleteBar(completeBar) {
+        console.log("[GenericDataHandler] setCompleteBar called", {
+            hasCurrentBar: !!this.currentBar,
+            completeBar,
+            lastBarInData: this.ohlcDatas[this.ohlcDatas.length - 1],
+        });
+
+        if (this.currentBar) {
+            // Replace the temporary bar with the complete bar
+            console.log("[GenericDataHandler] Replacing temporary bar with complete bar");
+            this.ohlcDatas[this.ohlcDatas.length - 1] = { ...this.currentBar, ...completeBar };
+
+            // Clear the temporary bar flag
+            this.currentBar = null;
+        } else {
+            // No temporary bar exists, just append
+            console.log("[GenericDataHandler] No temporary bar, appending complete bar");
+            this.ohlcDatas.push(completeBar);
+
+            // Update sliceEnd if needed
+            if (this.slicedData.length > 0) {
+                const lastSlicedData = this.slicedData[this.slicedData.length - 1];
+                const lastBar = this.ohlcDatas[this.ohlcDatas.length - 2] || {};
+                if (lastSlicedData.datetime === lastBar.datetime) {
+                    this.sliceEnd++;
+                }
+            }
+        }
+
+        // Update domain cache for the complete bar
+        const newBarIndex = this.ohlcDatas.length - 1;
+        if (this.slicedHighest === null || completeBar.high > this.slicedHighest) {
+            this.slicedHighest = completeBar.high;
+            this.slicedHighestIdx = newBarIndex;
+        }
+        if (this.slicedLowest === null || completeBar.low < this.slicedLowest) {
+            this.slicedLowest = completeBar.low;
+            this.slicedLowestIdx = newBarIndex;
+        }
+
+        // Recalculate volume moving average
+        this.calculateVolumeMovingAverage();
+
+        // Update market hour sessions
+        this.updateMarketHourSessionsForNewBar(completeBar);
+
+        console.log("[GenericDataHandler] Complete bar set, preparing for new temporary bar");
+        this.draw();
+    }
+
     // Efficiently update sessions when a single new bar is added
     updateMarketHourSessionsForNewBar(bar) {
         if (!this.marketHourSessions || this.marketHourSessions.length === 0) {
@@ -305,61 +363,70 @@ export default class GenericDataHandler {
         }
     }
 
+    // Update temporary bar with tick data (price/volume updates)
+    // Use this for high-frequency updates (1s bars, tick bars) that update the current incomplete bar
     newTick(tick) {
         if (!tick) return;
-        // if (!this.lastTick) {
-        //     this.lastTick = tick;
-        // }
 
-        const volume = tick.totalVol || tick.volume?.low || tick.volume || 0;
-        // const totalVol = tick.totalVol || tick.volume?.low || tick.volume || 0;
-        // const totalNewVol = totalVol - volume;
-        // add this tick to the "currentBar"
+        const volume = tick.volume?.low || tick.volume || 0;
+        const lastPrice = tick.lastPrice || tick.close || tick.last;
+
+        // Create temporary bar if it doesn't exist
         if (!this.currentBar) {
-            if (tick.datetime < new Date().getTime()) {
-                this.currentBar = this.ohlcDatas.slice(-1)[0];
-            } else {
-                let newDateTime;
-                if (new Date().getTime() < tick.datetime) {
-                    const bar1 = this.ohlcDatas.slice(-1)[0];
-                    const bar2 = this.ohlcDatas.slice(-2)[0];
-                    newDateTime = bar1.datetime + (bar2.datetime - bar1.datetime);
-                } else {
-                    newDateTime = new Date().getTime();
-                }
-                //mock a new candlestick
-                this.currentBar = {
-                    datetime: newDateTime,
-                    open: tick.lastPrice || tick.open,
-                    close: tick.lastPrice || tick.close,
-                    low: tick.lastPrice || tick.low,
-                    high: tick.lastPrice || tick.high,
-                    volume: volume || 0,
-                };
-                this.ohlcDatas.push(this.currentBar);
-                this.lastTick = tick;
-                this.sliceEnd++;
-            }
+            const lastCompleteBar = this.ohlcDatas[this.ohlcDatas.length - 1];
+            const basePrice = lastCompleteBar?.close || lastPrice;
+
+            console.log("[GenericDataHandler] Creating new temporary bar from tick", {
+                basePrice,
+                tickPrice: lastPrice,
+            });
+
+            // Create a new temporary bar
+            this.currentBar = {
+                datetime: tick.datetime || Date.now(),
+                timestamp: tick.timestamp || Date.now(),
+                open: basePrice,
+                high: Math.max(basePrice, lastPrice),
+                low: Math.min(basePrice, lastPrice),
+                close: lastPrice,
+                volume: 0,
+                symbol: this.symbol,
+                isTemporary: true, // Mark as temporary
+                //data from rithmic
+                ...(tick.askVolume && { askVolume: 0 }),
+                ...(tick.bidVolume && { bidVolume: 0 }),
+                ...(tick.numTrades && { numTrades: 0 }),
+            };
+
+            this.ohlcDatas.push(this.currentBar);
+            this.sliceEnd++;
         }
-        // else {
-        const lastBar = this.ohlcDatas.slice(-1)[0];
+
+        // Update the temporary bar (which is the last bar in the array)
+        const lastBar = this.ohlcDatas[this.ohlcDatas.length - 1];
         const lastBarIndex = this.ohlcDatas.length - 1;
 
         if (!lastBar.open) {
-            lastBar.open = tick.lastPrice || tick.open || tick.close || tick.lastPrice;
+            lastBar.open = lastPrice;
         }
 
-        lastBar.close = tick.lastPrice || tick.close;
-        if (lastBar.high < (tick.lastPrice || tick.high)) {
-            lastBar.high = tick.lastPrice || tick.high;
-        }
-
-        if (lastBar.low > (tick.lastPrice || tick.low)) {
-            lastBar.low = tick.lastPrice || tick.low;
-        }
-        // const volume = this.lastTick.totalVol || this.lastTick.volume || 0;
-
+        lastBar.close = lastPrice;
+        lastBar.high = Math.max(lastBar.high, lastPrice);
+        lastBar.low = Math.min(lastBar.low, lastPrice);
         lastBar.volume += volume;
+        //data from rithmic
+        if (tick.askVolume) {
+            lastBar.askVolume += tick.askVolume;
+        }
+        if (tick.bidVolume) {
+            lastBar.bidVolume += tick.bidVolume;
+        }
+        if (tick.numTrades) {
+            lastBar.numTrades += tick.numTrades;
+        }
+
+        lastBar.datetime = tick.datetime || Date.now();
+        // lastBar.timestamp = tick.timestamp || Date.now();
 
         // Incremental domain update
         if (lastBar.high > this.slicedHighest) {
@@ -378,23 +445,40 @@ export default class GenericDataHandler {
             this.slicedLowestIdx = null; // Invalidate cache
         }
 
-        this.updateCurrentPriceLabel(tick.lastPrice || tick.close);
-
+        this.updateCurrentPriceLabel(lastPrice);
         this.draw();
-        this.lastTick = tick;
-        // }
     }
 
     //Methods
     getTime(dateIndex) {
         // const dateIndex = Math.floor(this.xScale.invert(x));
-        let date = this.slicedData[dateIndex]
-            ? new Date(this.slicedData[dateIndex].timestamp || this.slicedData[dateIndex].datetime).toLocaleString("en-US", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-              })
-            : null;
-        return date;
+        if (!this.slicedData[dateIndex]) return null;
+
+        const datetime = this.slicedData[dateIndex].datetime;
+
+        // Determine if we should show year based on timeframe
+        // If timeframe spans more than 60 days, show year
+        if (this.slicedData.length > 1) {
+            const firstTimestamp = this.slicedData[0].datetime;
+            const lastTimestamp = this.slicedData[this.slicedData.length - 1].datetime;
+            const timeSpan = lastTimestamp - firstTimestamp;
+            const daysSpan = timeSpan / (1000 * 60 * 60 * 24);
+
+            // For spans > 60 days (like weekly charts), show year
+            if (daysSpan > 60) {
+                return new Date(datetime).toLocaleString("en-US", {
+                    month: "2-digit",
+                    day: "2-digit",
+                    year: "numeric",
+                });
+            }
+        }
+
+        // Default: show time for intraday charts
+        return new Date(datetime).toLocaleString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+        });
     }
 
     getIndicatorTopPos(index) {
@@ -770,7 +854,7 @@ export default class GenericDataHandler {
         this.avgVolumeLineGfx = new Graphics();
 
         // Background watermark text
-        const watermarkText = this.symbol || "hello world";
+        const watermarkText = this.fullSymbol || "hello world";
         this.backgroundText = new Text(
             watermarkText,
             new TextStyle({
@@ -798,7 +882,7 @@ export default class GenericDataHandler {
 
             const priceType = this.TW_BUY.text === "LIMIT" ? 1 : 4;
 
-            this.sendOrder({ transactionType: 1, limitPrice: this.TW_Price, priceType, symbolData: this.fullSymbol?.current });
+            this.sendOrder({ transactionType: 1, limitPrice: this.TW_Price, priceType, symbolData: this.fullSymbol });
             // console.log(`Buy ${this.TW_BUY.text} Button clicked!`);
         };
         this.TW_BuyButtonGfx.on("click", this.BuyButtonClick);
@@ -814,7 +898,7 @@ export default class GenericDataHandler {
             const priceType = this.TW_SELL.text === "LIMIT" ? 1 : 4;
 
             // console.log(`Sell ${this.TW_SELL.text} Button clicked!`);
-            this.sendOrder({ transactionType: 2, limitPrice: this.TW_Price, priceType, symbolData: this.fullSymbol?.current });
+            this.sendOrder({ transactionType: 2, limitPrice: this.TW_Price, priceType, symbolData: this.fullSymbol });
         };
         this.TW_SellButtonGfx.on("click", this.SellButtonClick);
         this.tradeWindowContainer.addChild(this.tradeWindowGfx);
@@ -923,15 +1007,36 @@ export default class GenericDataHandler {
         };
         this.getDate = (x) => {
             const dateIndex = Math.floor(this.xScale.invert(x));
-            let date = this.slicedData[dateIndex]
-                ? new Date(this.slicedData[dateIndex].timestamp || this.slicedData[dateIndex].datetime).toLocaleString("en-US", {
-                      month: "2-digit",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                  })
-                : null;
-            return date;
+            if (!this.slicedData[dateIndex]) return null;
+
+            const timestamp = this.slicedData[dateIndex].timestamp || this.slicedData[dateIndex].datetime;
+
+            // Determine if we should show year based on timeframe
+            // If timeframe spans more than 60 days, show year without time
+            if (this.slicedData.length > 1) {
+                const firstTimestamp = this.slicedData[0].timestamp || this.slicedData[0].datetime;
+                const lastTimestamp =
+                    this.slicedData[this.slicedData.length - 1].timestamp || this.slicedData[this.slicedData.length - 1].datetime;
+                const timeSpan = lastTimestamp - firstTimestamp;
+                const daysSpan = timeSpan / (1000 * 60 * 60 * 24);
+
+                // For spans > 60 days (like weekly/monthly charts), show year without time
+                if (daysSpan > 60) {
+                    return new Date(timestamp).toLocaleString("en-US", {
+                        month: "2-digit",
+                        day: "2-digit",
+                        year: "numeric",
+                    });
+                }
+            }
+
+            // Default: show date and time for intraday/daily charts
+            return new Date(timestamp).toLocaleString("en-US", {
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+            });
         };
         this.updatePriceCrossHairLabel = () => {
             if (!this.crosshair) return;
@@ -1095,7 +1200,7 @@ export default class GenericDataHandler {
         this.hitArea = new Rectangle(0, 0, this.width, this.mainChartContainerHeight);
 
         this.mainChartContainer.hitArea = this.hitArea;
-        console.log("setting hit area");
+        // console.log("setting hit area");
 
         // Add mask to clip graphics within the main chart area (excluding margins and volume indicator)
         // Apply mask only to layers 0, 1, 2 (chart graphics), not to layer 1 (which has axes)
@@ -1163,7 +1268,7 @@ export default class GenericDataHandler {
         this.initialized = true;
         // Example: this.graphics = new PIXI.Graphics();
         // if (this.pixiApp) this.pixiApp.stage.addChild(this.graphics);
-        console.log("INITIALIZED");
+        console.log("INITIALIZED " + this.name);
         this.draw();
     }
 
@@ -1663,24 +1768,37 @@ export default class GenericDataHandler {
     }
 
     drawLoadingOverlay(message = "Loading...") {
-        if (!this.layer7Container) return;
+        if (!this.layer7Container) {
+            console.warn("[drawLoadingOverlay] layer7Container not available");
+            return;
+        }
 
-        if (!this.loadingOverlay) {
-            this.loadingOverlay = new Container();
-            this.loadingOverlayBackground = new Graphics();
-            this.loadingOverlayText = new Text(
-                message,
-                new TextStyle({
-                    fontFamily: "Arial",
-                    fontSize: 24,
-                    fontWeight: "bold",
-                    fill: 0xffffff,
-                    align: "center",
-                })
-            );
+        // Recreate if overlay doesn't exist or if background was destroyed
+        if (!this.loadingOverlay || !this.loadingOverlayBackground) {
+            try {
+                this.loadingOverlay = new Container();
+                this.loadingOverlayBackground = new Graphics();
+                this.loadingOverlayText = new Text(
+                    message,
+                    new TextStyle({
+                        fontFamily: "Arial",
+                        fontSize: 24,
+                        fontWeight: "bold",
+                        fill: 0xffffff,
+                        align: "center",
+                    })
+                );
 
-            this.loadingOverlay.addChild(this.loadingOverlayBackground);
-            this.loadingOverlay.addChild(this.loadingOverlayText);
+                this.loadingOverlay.addChild(this.loadingOverlayBackground);
+                this.loadingOverlay.addChild(this.loadingOverlayText);
+            } catch (error) {
+                console.error("[drawLoadingOverlay] Failed to create loading overlay:", error);
+                // Clean up any partially created objects
+                this.loadingOverlay = null;
+                this.loadingOverlayBackground = null;
+                this.loadingOverlayText = null;
+                return;
+            }
         }
 
         if (message && this.loadingOverlayText) {
@@ -1691,18 +1809,31 @@ export default class GenericDataHandler {
         const height = this.height || 0;
 
         if (this.loadingOverlayBackground) {
-            this.loadingOverlayBackground.clear();
-            this.loadingOverlayBackground.beginFill(0x000000, 0.45);
-            this.loadingOverlayBackground.drawRect(0, 0, width, height);
-            this.loadingOverlayBackground.endFill();
+            try {
+                this.loadingOverlayBackground.clear();
+                this.loadingOverlayBackground.beginFill(0x000000, 0.45);
+                this.loadingOverlayBackground.drawRect(0, 0, width, height);
+                this.loadingOverlayBackground.endFill();
+            } catch (error) {
+                console.warn("Failed to draw loading overlay background:", error);
+                // Reset to null to trigger recreation on next call
+                this.loadingOverlayBackground = null;
+            }
         }
 
         if (this.loadingOverlayText) {
-            this.loadingOverlayText.x = width / 2 - this.loadingOverlayText.width / 2;
-            this.loadingOverlayText.y = height / 2 - this.loadingOverlayText.height / 2;
+            try {
+                this.loadingOverlayText.x = width / 2 - this.loadingOverlayText.width / 2;
+                this.loadingOverlayText.y = height / 2 - this.loadingOverlayText.height / 2;
+            } catch (error) {
+                console.warn("Failed to position loading overlay text:", error);
+                // Reset to null to trigger recreation on next call
+                this.loadingOverlayText = null;
+            }
         }
 
-        if (!this.layer7Container.children.includes(this.loadingOverlay)) {
+        // Only add to container if overlay was successfully created
+        if (this.loadingOverlay && !this.layer7Container.children.includes(this.loadingOverlay)) {
             this.layer7Container.addChild(this.loadingOverlay);
         }
     }
@@ -1804,7 +1935,7 @@ export default class GenericDataHandler {
         if (this._perfLogCount % 30 === 0) {
             const scanInfo = this._scanLoops > 0 ? `| Scanned: ${this._scanLoops} loops` : "";
             console.log(
-                `[PERF] Draw: ${drawTime}ms | Setup: ${setupTime}ms | Manual Y: ${this.manualYScale} | Slice: ${
+                `[PERF] Chart ${this.name} Draw: ${drawTime}ms | Setup: ${setupTime}ms | Manual Y: ${this.manualYScale} | Slice: ${
                     this.sliceEnd - this.sliceStart
                 } bars ${scanInfo}`
             );

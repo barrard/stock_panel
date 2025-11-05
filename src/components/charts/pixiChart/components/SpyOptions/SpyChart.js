@@ -49,9 +49,6 @@ const SpyChart = (props) => {
         const monteCarloIndicator = indicators.find((ind) => ind.id === "monteCarlo");
         if (!monteCarloIndicator) return; // Should not happen if initialized correctly
 
-        if (!newSpyMinuteBar || !pixiDataRef.current) return;
-        pixiDataRef.current.setNewBar(newSpyMinuteBar);
-
         if (monteCarloIndicator.enabled && candleData && pixiDataRef.current) {
             const monteCarlo = new MonteCarloCone(pixiDataRef, candleData);
             const results = monteCarlo.updateSimulation();
@@ -89,25 +86,47 @@ const SpyChart = (props) => {
     }, [newSpyMinuteBar, pixiDataRef.current, candleData]);
 
     useEffect(() => {
+        if (!newSpyMinuteBar || !pixiDataRef.current) return;
+
+        // Replace temporary bar with complete 1m bar
+        pixiDataRef.current.setCompleteBar(newSpyMinuteBar);
+    }, [newSpyMinuteBar]);
+
+    // Handle live price updates (updates temporary bar)
+    useEffect(() => {
         if (!pixiDataRef.current || !spyLevelOne) return;
+
         const volume = spyLevelOne.totalVol - (lastSpyLevelOne ? lastSpyLevelOne.totalVol : 0);
-        spyLevelOne.volume = volume;
-        pixiDataRef.current.newTick(spyLevelOne);
+
+        // Update temporary bar with new tick
+        pixiDataRef.current.newTick({
+            lastPrice: spyLevelOne.lastPrice || spyLevelOne.close,
+            volume: volume,
+            datetime: spyLevelOne.datetime || Date.now(),
+            timestamp: spyLevelOne.timestamp || Date.now(),
+        });
+
         setLastSpyLevelOne(spyLevelOne);
     }, [spyLevelOne, pixiDataRef.current]);
 
+    // Load initial data and set up socket listeners
     useEffect(() => {
         console.log("spychart loaded");
         Socket.emit("getSpyCandles");
+
+        // Receive initial historical data
         Socket.on("spyCandles", (d) => {
             console.log("first spyCandles", d);
             // d[timeframe] = d[timeframe].slice(0, -418); // Drop last 400
             setCandleData(d);
         });
 
-        Socket.on("newSpyMinuteBar", (d) => {
-            setNewSpyMinuteBar(d);
+        // Receive complete 1-minute bars (replaces temporary bar)
+        Socket.on("newSpyMinuteBar", (completeBar) => {
+            console.log("[SpyChart] Complete 1m bar received", completeBar);
+            setNewSpyMinuteBar(completeBar);
         });
+
         return () => {
             Socket.off("spyCandles");
             Socket.off("newSpyMinuteBar");
@@ -182,7 +201,7 @@ const SpyChart = (props) => {
                     ohlcDatas={candleData[timeframe]}
                     height={height}
                     symbol={symbol}
-                    fullSymbolRef={fullSymbolRef}
+                    // fullSymbolRef={fullSymbolRef}
                     barType={barType}
                     barTypePeriod={barTypePeriod}
                     // loadData={loadData}

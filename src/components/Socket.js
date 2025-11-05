@@ -55,7 +55,7 @@ const Socket = {
         }
     },
     off: (event, fn) => {
-        console.log(`[Socket.off] Removing handler from event: ${event}, exists: ${!!Events[event]}`);
+        // console.log(`[Socket.off] Removing handler from event: ${event}, exists: ${!!Events[event]}`);
 
         if (!Events[event] || !Array.isArray(Events[event])) {
             console.log(`[Socket.off] Event not found: ${event}`);
@@ -67,11 +67,11 @@ const Socket = {
             const index = Events[event].indexOf(fn);
             if (index > -1) {
                 Events[event].splice(index, 1);
-                console.log(`[Socket.off] Removed specific handler, ${Events[event].length} handlers remaining for: ${event}`);
+                // console.log(`[Socket.off] Removed specific handler, ${Events[event].length} handlers remaining for: ${event}`);
             }
         } else {
             // Remove all handlers (legacy behavior for backwards compatibility)
-            console.log(`[Socket.off] Removing all handlers for: ${event}`);
+            // console.log(`[Socket.off] Removing all handlers for: ${event}`);
             Events[event] = [];
         }
 
@@ -83,7 +83,7 @@ const Socket = {
                 Socket.socket.off(event);
             }
             delete Events[event];
-            console.log(`[Socket.off] Event fully unregistered: ${event}`);
+            // console.log(`[Socket.off] Event fully unregistered: ${event}`);
         }
     },
     onConnect: {},

@@ -10,18 +10,33 @@ import { LiquidityHeatmap, liquidityHeatMapConfig } from "../indicatorDrawFuncti
 // import { liquidityHeatMapConfig } from "../indicatorConfigs";
 
 const BetterTickChart = (props) => {
-    const { height = 400, symbol = "SPY", timeframe = "tick", Socket, contractSymbol, fullSymbol: propFullSymbol } = props;
+    const {
+        height = 400,
+        symbol = "SPY",
+        timeframe = "tick",
+        Socket,
+        contractSymbol,
+        fullSymbol: propFullSymbol,
+        exchange = "CME",
+    } = props;
 
     // Use provided fullSymbol or fallback to symbol
     const fullSymbol = propFullSymbol || symbol;
 
-    console.log("[BetterTickChart] render", { symbol, fullSymbol });
+    console.log("[BetterTickChart] COMPONENT RENDER", {
+        symbol,
+        fullSymbol,
+        exchange,
+        timestamp: Date.now(),
+        stack: new Error().stack.split("\n").slice(1, 4).join("\n"),
+    });
 
     const pixiDataRef = useRef();
     const loadingRef = useRef(false);
+
     // Chart data state
-        const [candleData, setCandleData] = useState([]);
-        const [dataSymbol, setDataSymbol] = useState(null);
+    const [candleData, setCandleData] = useState([]);
+    // const [dataSymbol, setDataSymbol] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [join, setJoin] = useState(1);
     const rawDataRef = useRef([]);
@@ -151,29 +166,23 @@ const BetterTickChart = (props) => {
     };
 
     const fetchData = async (opts = {}) => {
+        const { symbol, limit = 2000 } = opts;
         console.log("[BetterTickChart] fetchData called", {
-            opts,
-            loadingRefCurrent: loadingRef.current,
-            isLoading,
-            fullSymbol,
-            symbol
+            symbol,
         });
 
-        if (loadingRef.current) {
-            console.log("[BetterTickChart] fetchData skipped - already loading");
-            return;
-        }
-
+        // Mark this request as active
         loadingRef.current = true;
         setIsLoading(true);
 
         try {
             console.log("[BetterTickChart] Calling API.getCustomTicks with:", opts);
             const data = await API.getCustomTicks(opts);
+
             console.log("[BetterTickChart] API.getCustomTicks returned:", {
                 dataLength: data?.length,
                 firstItem: data?.[0],
-                lastItem: data?.[data?.length - 1]
+                lastItem: data?.[data?.length - 1],
             });
 
             rawDataRef.current = data;
@@ -183,16 +192,18 @@ const BetterTickChart = (props) => {
                 combinedLength: combined.length,
                 join,
                 firstCombined: combined[0],
-                lastCombined: combined[combined.length - 1]
+                lastCombined: combined[combined.length - 1],
             });
 
             setCandleData(combined);
-            setDataSymbol(symbol);
+            // setDataSymbol(symbol);
             console.log("[BetterTickChart] State updated - candleData and dataSymbol set");
         } catch (error) {
             console.error("[BetterTickChart] fetchData error:", error);
         } finally {
-            console.log("[BetterTickChart] fetchData end - clearing loading flags");
+            // Only clear loading if this is still the active request
+
+            console.log("[BetterTickChart] fetchData end - NOT clearing flags (superseded)");
             loadingRef.current = false;
             setIsLoading(false);
         }
@@ -220,7 +231,7 @@ const BetterTickChart = (props) => {
                 const combined = combineBars(data, join);
                 debugger;
                 setCandleData(combined);
-                setDataSymbol(symbol);
+                // setDataSymbol(symbol);
             } else {
                 console.log("[BetterTickChart] No data available for selected time range");
                 alert("No data available for selected time range");
@@ -293,22 +304,21 @@ const BetterTickChart = (props) => {
     };
 
     useEffect(() => {
-        console.log("[BetterTickChart] Symbol/fullSymbol effect triggered", {
-            symbol,
-            fullSymbol,
-            currentCandleDataLength: candleData.length,
-            currentDataSymbol: dataSymbol
-        });
-
+        // Create an abort controller for this effect
+        const requestKey = `${symbol}-${Date.now()}`;
         rawDataRef.current = [];
         setCandleData([]);
-        setDataSymbol(null);
         tempBarRef.current = null;
         loadingRef.current = false;
 
         console.log("[BetterTickChart] State cleared, calling fetchData");
         fetchData({ symbol: symbol, limit: 2000 });
-    }, [symbol, fullSymbol]);
+
+        // Cleanup function - abort the fetch if component unmounts or deps change
+        return () => {
+            console.log("[BetterTickChart] Effect cleanup - aborting fetch", { requestKey });
+        };
+    }, [symbol]);
 
     // Separate effect for socket listeners that depends on pixiDataRef being ready
     useEffect(() => {
@@ -318,42 +328,40 @@ const BetterTickChart = (props) => {
             return;
         }
 
-        console.log("[BetterTickChart] Setting up socket listeners for symbol:", { fullSymbol, symbol });
+        // Register with server to receive tick bar updates
+        Socket.emit("requestTickBarUpdate", {
+            symbol: fullSymbol,
+            // fullSymbol: fullSymbol,
+            exchange: exchange,
+        });
 
-        // Listen for new 100-tick bar events from server
-        // Pattern for TICK bars: new-100-{symbol}-tickBar
+        // Listen for new COMPLETE 100-tick bars from server
+        // Server emits: new-100-${fullSymbol}-tickBar (e.g., "new-100-ESZ5-tickBar")
         const tickBarEvent = `new-100-${fullSymbol}-tickBar`;
-        debugger;
-        const handleNew100TickBar = (data) => {
-            console.log(`${tickBarEvent} received`, data);
-            if (data.symbol !== symbol) return;
-            debugger;
-            // Add new bar to raw data
-            rawDataRef.current.push(data);
+        console.log(`[BetterTickChart] Listening for event: "${tickBarEvent}"`);
 
-            // Reset temp bar based on this new tick bar's close price
-            tempBarRef.current = {
-                open: data.close,
-                high: data.close,
-                low: data.close,
-                close: data.close,
-                volume: 0,
-                datetime: Date.now(),
-                timestamp: Date.now(),
-                symbol: data.symbol,
-                isTemp: true,
-            };
+        const handleNew100TickBar = (data) => {
+            // Check symbol match - data.symbol should match the short symbol (e.g., "ES" === "ES")
+            if (data.symbol !== fullSymbol) {
+                console.warn(`[BetterTickChart] ❌ Symbol mismatch - data.symbol="${data.symbol}" !== symbol="${fullSymbol}" - ignoring`);
+                return;
+            }
+
+            // Add new complete 100-tick bar to raw data
+            rawDataRef.current.push(data);
+            console.log(data);
 
             if (join === 1) {
-                debugger;
-                // No joining needed, just add the bar directly
+                // No combining - use the complete 100-tick bar directly
                 setCandleData((prev) => [...prev, data]);
+
                 if (pixiDataRef.current) {
-                    pixiDataRef.current.setNewBar(data);
+                    // This is a complete bar for our chart (no combining)
+                    pixiDataRef.current.setCompleteBar(data);
                     pixiDataRef.current.updateCurrentPriceLabel(data.close);
                 }
             } else {
-                // Determine which bars should be in the last combined bar
+                // Combining multiple 100-tick bars
                 const totalBars = rawDataRef.current.length;
                 const lastCombinedStartIndex = Math.floor((totalBars - 1) / join) * join;
                 const barsForLastCombined = rawDataRef.current.slice(lastCombinedStartIndex);
@@ -373,68 +381,58 @@ const BetterTickChart = (props) => {
                 };
 
                 if (isNewCombinedBar) {
-                    // Add new combined bar
-                    debugger;
+                    // Starting a new combined bar - this is a complete bar
+                    console.log("[BetterTickChart] New combined bar starting", lastCombinedBar);
                     setCandleData((prev) => [...prev, lastCombinedBar]);
+
+                    if (pixiDataRef.current) {
+                        pixiDataRef.current.setCompleteBar(lastCombinedBar);
+                        pixiDataRef.current.updateCurrentPriceLabel(lastCombinedBar.close);
+                    }
                 } else {
-                    // Update existing combined bar
-                    debugger;
+                    // Still building the current combined bar - update it
+                    console.log("[BetterTickChart] Updating combined bar", lastCombinedBar);
                     setCandleData((prev) => {
                         const newData = [...prev];
                         newData[newData.length - 1] = lastCombinedBar;
                         return newData;
                     });
-                }
 
-                if (pixiDataRef.current) {
-                    pixiDataRef.current.setNewBar(lastCombinedBar);
-                    pixiDataRef.current.updateCurrentPriceLabel(lastCombinedBar.close);
+                    if (pixiDataRef.current) {
+                        // Update the temporary combined bar
+                        pixiDataRef.current.newTick({
+                            lastPrice: lastCombinedBar.close,
+                            high: lastCombinedBar.high,
+                            low: lastCombinedBar.low,
+                            volume: 0, // Already included in combined bar
+                            datetime: lastCombinedBar.datetime,
+                            timestamp: lastCombinedBar.timestamp,
+                        });
+                        pixiDataRef.current.updateCurrentPriceLabel(lastCombinedBar.close);
+                    }
                 }
             }
+
+            // Clear temp bar reference - we'll create a new one on next live update
+            tempBarRef.current = null;
         };
 
-        // Listen for 1-second price updates - creates/updates temporary bar
+        // Listen for 1-second price updates - updates temporary bar
         // Pattern: 1s-{symbol}-LiveBarUpdate (separate from time bars)
         const liveBarUpdateEvent = `1s-${fullSymbol}-LiveBarUpdate`;
         const handleLiveBarUpdate = (tick) => {
-            console.log(`${liveBarUpdateEvent} received`, tick);
+            // console.log(`[BetterTickChart] ${liveBarUpdateEvent} received`, tick);
             if (!pixiDataRef.current) return;
 
             const lastPrice = tick.lastPrice || tick.close || tick.last;
             if (!lastPrice) return;
 
-            // Initialize temp bar if it doesn't exist (use last real bar's close)
-            if (!tempBarRef.current) {
-                const lastRealBar = rawDataRef.current[rawDataRef.current.length - 1];
-                if (!lastRealBar) return;
-
-                tempBarRef.current = {
-                    open: lastRealBar.close,
-                    high: lastRealBar.close,
-                    low: lastRealBar.close,
-                    close: lastRealBar.close,
-                    volume: 0,
-                    datetime: Date.now(),
-                    timestamp: Date.now(),
-                    symbol: symbol,
-                    isTemp: true,
-                };
-            }
-
-            // Update temp bar with new price data
-            tempBarRef.current.close = lastPrice;
-            tempBarRef.current.high = Math.max(tempBarRef.current.high, lastPrice);
-            tempBarRef.current.low = Math.min(tempBarRef.current.low, lastPrice);
-            tempBarRef.current.datetime = Date.now();
-            tempBarRef.current.timestamp = Date.now();
-
-            // Use newTick to update the visual representation without altering stored data
+            // newTick will automatically create/update the temporary bar
             pixiDataRef.current.newTick({
                 lastPrice: lastPrice,
-                high: tempBarRef.current.high,
-                low: tempBarRef.current.low,
-                close: lastPrice,
-                datetime: Date.now(),
+                volume: tick.volume || 0,
+                datetime: tick.datetime || Date.now(),
+                timestamp: tick.timestamp || Date.now(),
             });
         };
 
@@ -447,9 +445,10 @@ const BetterTickChart = (props) => {
         };
     }, [symbol, fullSymbol, join, Socket]);
 
-    // Note: Time-based charts use pattern: new-${timeframe}-${symbol}-timeBar
-    // Example: new-1m-YMZ5-timeBar, new-5m-YMZ5-timeBar
-    // This tick chart uses: new-100-${symbol}-tickBar
+    // Note: Server event patterns
+    // Time-based charts: ${timeframe}-${symbol}-LiveBarNew (e.g., "1m-ES-LiveBarNew", "5m-YMZ5-LiveBarNew")
+    // Tick charts: new-100-${fullSymbol}-tickBar (e.g., "new-100-ESZ5-tickBar", "new-100-NQZ5-tickBar")
+    // Live updates: 1s-${fullSymbol}-LiveBarUpdate (e.g., "1s-ESZ5-LiveBarUpdate")
 
     // Effect to recombine bars when join value changes
     useEffect(() => {
@@ -468,16 +467,8 @@ const BetterTickChart = (props) => {
         </div>
     );
 
-    const canRenderChart = dataSymbol === symbol && candleData.length > 0;
-
-    console.log("[BetterTickChart] Render decision", {
-        canRenderChart,
-        dataSymbol,
-        symbol,
-        candleDataLength: candleData.length,
-        isLoading,
-        loadingRefCurrent: loadingRef.current
-    });
+    // const canRenderChart = dataSymbol === symbol && candleData.length > 0;
+    const canRenderChart = candleData.length > 0;
 
     return (
         <div style={{ width: "100%" }}>
@@ -516,9 +507,7 @@ const BetterTickChart = (props) => {
                         margin={{ top: 50, right: 100, left: 0, bottom: 40 }}
                     />
                 ) : (
-                    <div className="d-flex align-items-center justify-content-center h-100 text-muted">
-                        Loading {symbol} tick data...
-                    </div>
+                    <div className="d-flex align-items-center justify-content-center h-100 text-muted">Loading {symbol} tick data...</div>
                 )}
             </div>
         </div>

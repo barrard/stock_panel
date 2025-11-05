@@ -144,7 +144,7 @@ export default function SpyOptions({ Socket }) {
             Socket.off("spyOptionSnaps");
             Socket.off("spyLevelOne");
         };
-    }, []);
+    }, [Socket]);
 
     useEffect(() => {
         // Set first expiration as default if not already set

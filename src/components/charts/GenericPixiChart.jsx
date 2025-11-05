@@ -45,12 +45,17 @@ export default function GenericPixiChart({
     if (!fullSymbol) {
         fullSymbol = symbol;
     }
-    tickSize = tickSize || TICKS()[symbol];
+
+    const tickLookup = TICKS();
+    const resolvedTickSize = tickSize ?? tickLookup?.[symbol];
+    tickSize = resolvedTickSize && resolvedTickSize > 0 ? resolvedTickSize : 0.01;
     mainChartContainerHeight = mainChartContainerHeight || height;
     // Use provided refs or create them if not provided
     const PixiAppRef = useRef();
     const PixiChartRef = useRef();
-    // const pixiDataRef = useRef(pixiDataRef);
+    // Create internal ref if pixiDataRef not provided
+    const internalPixiDataRef = useRef();
+    const effectivePixiDataRef = pixiDataRef || internalPixiDataRef;
     const TouchGesture1 = useRef(TouchGesture1Prop);
     const TouchGesture2 = useRef(TouchGesture2Prop);
     const currentBarRef = useRef(currentBarRefProp);
@@ -88,7 +93,7 @@ export default function GenericPixiChart({
     };
 
     const clearGesture = () => {
-        pixiDataRef.current.gesture = false;
+        effectivePixiDataRef.current.gesture = false;
 
         setIsGesture(false);
     };
@@ -99,7 +104,7 @@ export default function GenericPixiChart({
             TouchGesture2.current = e.touches[1];
             setIsGesture(true);
             clearLongPress();
-            pixiDataRef.current.gesture = true;
+            effectivePixiDataRef.current.gesture = true;
             return true;
         }
     };
@@ -150,9 +155,8 @@ export default function GenericPixiChart({
             },
             { passive: false }
         );
-        debugger;
 
-        pixiDataRef.current = new GenericDataHandler({
+        effectivePixiDataRef.current = new GenericDataHandler({
             ohlcDatas,
             pixiApp: PixiAppRef.current,
             currentBarRef,
@@ -166,10 +170,11 @@ export default function GenericPixiChart({
             tickSize: tickSizeRef.current,
             lowerIndicators,
             loadMoreData,
+            name,
         });
 
         // Set up callback for manual scale changes
-        pixiDataRef.current.onManualScaleChange = setShowResetButton;
+        effectivePixiDataRef.current.onManualScaleChange = setShowResetButton;
         // setPixiData(_pixiData);
 
         let lastWidth = width;
@@ -190,7 +195,7 @@ export default function GenericPixiChart({
                 PixiAppRef.current.renderer.resize(width, height);
 
                 // update your data handler scales / redraw
-                pixiDataRef.current?.resize(width, height);
+                effectivePixiDataRef.current?.resize(width, height);
                 lastWidth = width;
                 lastHeight = height;
             }
@@ -207,7 +212,7 @@ export default function GenericPixiChart({
         // Each chart component (BetterTickChart, PixiChartV2, etc.) should handle their own socket events
         // if (Socket) {
         //     Socket.on("timeBarUpdate", (data) => {
-        //         if (data.symbol !== pixiDataRef.current.symbol.value) return;
+        //         if (data.symbol !== effectivePixiDataRef.current.symbol.value) return;
         //         setCurrentTimeBar(data);
         //     });
         // }
@@ -221,10 +226,10 @@ export default function GenericPixiChart({
                 PixiAppRef.current.destroy(true, true);
                 PixiAppRef.current = null;
             }
-            if (pixiDataRef.current) {
-                pixiDataRef.current.destroy();
+            if (effectivePixiDataRef.current) {
+                effectivePixiDataRef.current.destroy();
                 // setPixiData(null);
-                pixiDataRef.current = null;
+                effectivePixiDataRef.current = null;
             }
             if (Socket) {
                 Socket.off("timeBarUpdate");
@@ -234,8 +239,8 @@ export default function GenericPixiChart({
 
     useEffect(() => {
         const data = currentTimeBar;
-        // if (!data || !ohlcDatas.length || !pixiDataRef.current) return;
-        if (!data || !pixiDataRef.current || !ohlcDatas?.length) return;
+        // if (!data || !ohlcDatas.length || !effectivePixiDataRef.current) return;
+        if (!data || !effectivePixiDataRef.current || !ohlcDatas?.length) return;
         data.timestamp = data.datetime = data.datetime * 1000;
 
         if (data.askVolume.high || data.bidVolume.high) {
@@ -254,7 +259,7 @@ export default function GenericPixiChart({
 
         const lastBar = ohlcDatas.slice(-1)[0];
         const nextTimeBar = getNextTimeBar(data);
-        pixiDataRef.current.updateCurrentPriceLabel(data.close);
+        effectivePixiDataRef.current.updateCurrentPriceLabel(data.close);
 
         const newBar = {
             open: data.close,
@@ -272,15 +277,15 @@ export default function GenericPixiChart({
         //     lastBar.low = lastBar.low < data.low ? data.low : lastBar.low;
         //     lastBar.close = lastBar.close;
 
-        //     pixiDataRef.current.replaceLast(lastBar);
+        //     effectivePixiDataRef.current.replaceLast(lastBar);
 
         //     setOhlcDatas((ohlcDatas) => {
         //         ohlcDatas[0] = lastBar;
         //         return [...ohlcDatas];
         //     });
         // } else {
-        pixiDataRef.current.replaceLast(data);
-        pixiDataRef.current.prependData(newBar);
+        effectivePixiDataRef.current.replaceLast(data);
+        effectivePixiDataRef.current.prependData(newBar);
 
         // setOhlcDatas((ohlcDatas) => {
         //     ohlcDatas[0] = lastBar;
@@ -291,14 +296,14 @@ export default function GenericPixiChart({
 
     // CROSSHAIR
     useEffect(() => {
-        if (!pixiDataRef.current || !pixiDataRef.current.showCrosshair || !pixiDataRef.current.hideCrosshair) {
+        if (!effectivePixiDataRef.current || !effectivePixiDataRef.current.showCrosshair || !effectivePixiDataRef.current.hideCrosshair) {
             debugger;
             return console.log("no pixidata?");
         }
         if (mouseEnter) {
-            pixiDataRef.current.showCrosshair();
+            effectivePixiDataRef.current.showCrosshair();
         } else {
-            pixiDataRef.current.hideCrosshair();
+            effectivePixiDataRef.current.hideCrosshair();
         }
     }, [mouseEnter]);
 
@@ -309,7 +314,7 @@ export default function GenericPixiChart({
     // This happens for: initial load, join changes, loadMoreData, etc.
     // This does NOT fire for real-time updates via setNewBar (which mutate the array directly)
     useEffect(() => {
-        if (!pixiDataRef.current) return;
+        if (!effectivePixiDataRef.current) return;
 
         // Check if this is a new array reference (parent set new state)
         const isNewArray = prevOhlcDatasRef.current !== ohlcDatas;
@@ -317,7 +322,7 @@ export default function GenericPixiChart({
         if (isNewArray) {
             if (ohlcDatas) {
                 console.log("[GenericPixiChart] New ohlcDatas array detected, updating chart");
-                pixiDataRef.current.updateData(ohlcDatas);
+                effectivePixiDataRef.current.updateData(ohlcDatas);
             }
         }
 
@@ -326,18 +331,18 @@ export default function GenericPixiChart({
 
     // Handle loading state overlay
     useEffect(() => {
-        if (!pixiDataRef.current) return;
+        if (!effectivePixiDataRef.current) return;
 
         if (isLoading) {
-            pixiDataRef.current.drawLoadingOverlay?.();
+            effectivePixiDataRef.current.drawLoadingOverlay?.();
         } else {
-            pixiDataRef.current.clearLoadingOverlay?.();
+            effectivePixiDataRef.current.clearLoadingOverlay?.();
         }
 
         // Cleanup on unmount
         return () => {
-            if (pixiDataRef.current?.clearLoadingOverlay) {
-                pixiDataRef.current.clearLoadingOverlay();
+            if (effectivePixiDataRef.current?.clearLoadingOverlay) {
+                effectivePixiDataRef.current.clearLoadingOverlay();
             }
         };
     }, [isLoading]);
@@ -350,9 +355,9 @@ export default function GenericPixiChart({
             const before = Math.abs(touch1 - touch2);
             const after = Math.abs(touch1X - touch2X);
             if (before > after) {
-                pixiDataRef.current.zoomOut(before - after);
+                effectivePixiDataRef.current.zoomOut(before - after);
             } else if (before < after) {
-                pixiDataRef.current.zoomIn(after - before);
+                effectivePixiDataRef.current.zoomIn(after - before);
             }
         }
         setTouch1(touch1X);
@@ -372,9 +377,9 @@ export default function GenericPixiChart({
     }
 
     const handleResetScale = () => {
-        if (pixiDataRef.current && pixiDataRef.current.yAxis) {
-            pixiDataRef.current.yAxis.resetScale();
-            pixiDataRef.current.draw();
+        if (effectivePixiDataRef.current && effectivePixiDataRef.current.yAxis) {
+            effectivePixiDataRef.current.yAxis.resetScale();
+            effectivePixiDataRef.current.draw();
         }
     };
 
@@ -565,7 +570,7 @@ export default function GenericPixiChart({
                     checkGesture(e);
                     setTouch(true);
                     setMouseEnter(false);
-                    pixiDataRef.current.touches++;
+                    effectivePixiDataRef.current.touches++;
 
                     if (!longPressTimer) {
                         const _longPressTimer = setTimeout(() => {
@@ -585,7 +590,7 @@ export default function GenericPixiChart({
                     setTouch2(false);
                     setZoomGesture(false);
                     clearLongPress();
-                    pixiDataRef.current.touches--;
+                    effectivePixiDataRef.current.touches--;
                 }}
                 onMouseLeave={() => {
                     // console.log("onMouseLeave");
@@ -599,10 +604,10 @@ export default function GenericPixiChart({
                 onWheel={(e) => {
                     if (e.deltaY > 0) {
                         // console.log("The user scrolled up");
-                        pixiDataRef.current.zoomOut("scroll");
+                        effectivePixiDataRef.current.zoomOut("scroll");
                     } else {
                         // console.log("The user scrolled down");
-                        pixiDataRef.current.zoomIn("scroll");
+                        effectivePixiDataRef.current.zoomIn("scroll");
                     }
                 }}
                 {...rest}
