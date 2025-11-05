@@ -231,7 +231,10 @@ export default class Indicator {
         }
 
         // Cache check to avoid unnecessary recalculations
-        const cacheKey = `${this.chart.sliceStart}-${this.chart.sliceEnd}-${this.chart.slicedData.length}`;
+        // Include last bar's timestamp to detect temp bar updates
+        const lastBar = this.chart.slicedData[this.chart.slicedData.length - 1];
+        const lastBarKey = lastBar ? `${lastBar.datetime || lastBar.timestamp}-${lastBar[this.accessors]}` : '';
+        const cacheKey = `${this.chart.sliceStart}-${this.chart.sliceEnd}-${this.chart.slicedData.length}-${lastBarKey}`;
         if (this._lastCacheKey === cacheKey) {
             return; // Skip redraw if nothing changed
         }
