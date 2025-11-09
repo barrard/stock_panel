@@ -641,7 +641,7 @@ export default function PixiChart({ Socket }) {
         ////////////////////////////////////////////////////
         return () => {
             Socket.off("lastTrade", handleLastTrade);
-            Socket.off("lastTickBar");
+            // Socket.off("lastTickBar");
             Socket.off(liquidityEventName, handleLiquidity);
         };
     }, [ohlcDatas, PixiAppRef.current, pixiData, setOhlcDatas, setLastTrade, symbol]);
@@ -731,7 +731,7 @@ export default function PixiChart({ Socket }) {
     );
     const SymbolBtnsMemo = useMemo(
         () => <SymbolBtns symbolOptions={symbolOptions} symbol={symbolInput} setSymbol={setSymbolInput} />,
-        [barType, barTypePeriod, symbolInput]
+        [symbolInput]
     );
 
     const BetterTickChartMemo = useMemo(() => {

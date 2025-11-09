@@ -287,7 +287,7 @@ export default class GenericDataHandler {
     // Replace temporary bar with complete bar, then start new temporary bar
     // Use this when server sends LiveBarNew event (completed bar for your timeframe)
     setCompleteBar(completeBar) {
-        console.log("[GenericDataHandler] setCompleteBar called", {
+        console.log(`[GenericDataHandler ${this.name}] setCompleteBar called`, {
             hasCurrentBar: !!this.currentBar,
             completeBar,
             lastBarInData: this.ohlcDatas[this.ohlcDatas.length - 1],
@@ -295,14 +295,14 @@ export default class GenericDataHandler {
 
         if (this.currentBar) {
             // Replace the temporary bar with the complete bar
-            console.log("[GenericDataHandler] Replacing temporary bar with complete bar");
+            console.log(`[GenericDataHandler ${this.name}] Replacing temporary bar with complete bar`);
             this.ohlcDatas[this.ohlcDatas.length - 1] = { ...this.currentBar, ...completeBar };
 
             // Clear the temporary bar flag
             this.currentBar = null;
         } else {
             // No temporary bar exists, just append
-            console.log("[GenericDataHandler] No temporary bar, appending complete bar");
+            console.log(`[GenericDataHandler ${this.name}] No temporary bar, appending complete bar`);
             this.ohlcDatas.push(completeBar);
 
             // Update sliceEnd if needed
@@ -332,7 +332,7 @@ export default class GenericDataHandler {
         // Update market hour sessions
         this.updateMarketHourSessionsForNewBar(completeBar);
 
-        console.log("[GenericDataHandler] Complete bar set, preparing for new temporary bar");
+        console.log(`[GenericDataHandler ${this.name}] Complete bar set, preparing for new temporary bar`);
         this.draw();
     }
 
@@ -376,7 +376,7 @@ export default class GenericDataHandler {
             const lastCompleteBar = this.ohlcDatas[this.ohlcDatas.length - 1];
             const basePrice = lastCompleteBar?.close || lastPrice;
 
-            console.log("[GenericDataHandler] Creating new temporary bar from tick", {
+            console.log(`[GenericDataHandler ${this.name}] Creating new temporary bar from tick`, {
                 basePrice,
                 tickPrice: lastPrice,
             });

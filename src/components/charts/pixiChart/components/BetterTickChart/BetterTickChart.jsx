@@ -13,15 +13,15 @@ const BetterTickChart = (props) => {
     const {
         height = 400,
         symbol = "SPY",
-        timeframe = "tick",
+        // timeframe = "tick",
         Socket,
-        contractSymbol,
-        fullSymbol: propFullSymbol,
+        // contractSymbol,
+        fullSymbol,
         exchange = "CME",
     } = props;
 
     // Use provided fullSymbol or fallback to symbol
-    const fullSymbol = propFullSymbol || symbol;
+    // const fullSymbol = propFullSymbol || symbol;
 
     console.log("[BetterTickChart] COMPONENT RENDER", {
         symbol,
@@ -36,11 +36,9 @@ const BetterTickChart = (props) => {
 
     // Chart data state
     const [candleData, setCandleData] = useState([]);
-    // const [dataSymbol, setDataSymbol] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [join, setJoin] = useState(1);
-    const rawDataRef = useRef([]);
-    const tempBarRef = useRef(null); // Temporary bar created from 1s updates
+    const rawDataRef = useRef([]); // Raw 100-tick bars from server (used for combining)
 
     // Indicators configuration
     const [indicators, setIndicators] = useState([
@@ -308,7 +306,6 @@ const BetterTickChart = (props) => {
         const requestKey = `${symbol}-${Date.now()}`;
         rawDataRef.current = [];
         setCandleData([]);
-        tempBarRef.current = null;
         loadingRef.current = false;
 
         console.log("[BetterTickChart] State cleared, calling fetchData");
@@ -320,20 +317,23 @@ const BetterTickChart = (props) => {
         };
     }, [symbol]);
 
-    // Separate effect for socket listeners that depends on pixiDataRef being ready
+    // Separate effect for socket listeners
     useEffect(() => {
-        // Wait for pixiDataRef to be initialized before setting up socket listeners
-        if (!pixiDataRef.current) {
-            console.log("[BetterTickChart] Waiting for pixiDataRef to initialize");
-            return;
-        }
-
+        if (!fullSymbol) return;
+        console.log("[BetterTickChart] Setting up socket listeners", {
+            symbol,
+            fullSymbol,
+            exchange,
+            hasPixiDataRef: !!pixiDataRef.current,
+        });
+        debugger;
         // Register with server to receive tick bar updates
         Socket.emit("requestTickBarUpdate", {
             symbol: fullSymbol,
-            // fullSymbol: fullSymbol,
+            barTypeSpecifier: 100,
             exchange: exchange,
         });
+        console.log("[BetterTickChart] Emitted requestTickBarUpdate", { symbol: fullSymbol, exchange });
 
         // Listen for new COMPLETE 100-tick bars from server
         // Server emits: new-100-${fullSymbol}-tickBar (e.g., "new-100-ESZ5-tickBar")
@@ -341,25 +341,37 @@ const BetterTickChart = (props) => {
         console.log(`[BetterTickChart] Listening for event: "${tickBarEvent}"`);
 
         const handleNew100TickBar = (data) => {
-            // Check symbol match - data.symbol should match the short symbol (e.g., "ES" === "ES")
+            console.log("[BetterTickChart] handleNew100TickBar called", {
+                dataSymbol: data.symbol,
+                symbol,
+                fullSymbol,
+                hasPixiDataRef: !!pixiDataRef.current,
+            });
+
+            // Check symbol match - data.symbol from server uses FULL symbol (e.g., "ESZ5")
             if (data.symbol !== fullSymbol) {
-                console.warn(`[BetterTickChart] ❌ Symbol mismatch - data.symbol="${data.symbol}" !== symbol="${fullSymbol}" - ignoring`);
+                console.warn(
+                    `[BetterTickChart] ❌ Symbol mismatch - data.symbol="${data.symbol}" !== fullSymbol="${fullSymbol}" - ignoring`
+                );
                 return;
             }
 
-            // Add new complete 100-tick bar to raw data
-            rawDataRef.current.push(data);
-            console.log(data);
+            if (!pixiDataRef.current) {
+                console.warn("[BetterTickChart] ❌ pixiDataRef.current not initialized - ignoring update");
+                return;
+            }
+
+            // Add new complete 100-tick bar to raw data (used for combining when join > 1)
+            // rawDataRef.current.push(data);
+            console.log("[BetterTickChart] New 100-tick bar received:", data);
 
             if (join === 1) {
                 // No combining - use the complete 100-tick bar directly
-                setCandleData((prev) => [...prev, data]);
-
-                if (pixiDataRef.current) {
-                    // This is a complete bar for our chart (no combining)
-                    pixiDataRef.current.setCompleteBar(data);
-                    pixiDataRef.current.updateCurrentPriceLabel(data.close);
-                }
+                // setCompleteBar handles adding/replacing the bar in the chart's internal data
+                // No need to call setCandleData - chart manages its own data after init
+                console.log("[BetterTickChart] Processing complete 100-tick bar (join=1)");
+                pixiDataRef.current.setCompleteBar(data);
+                pixiDataRef.current.updateCurrentPriceLabel(data.close);
             } else {
                 // Combining multiple 100-tick bars
                 const totalBars = rawDataRef.current.length;
@@ -383,45 +395,31 @@ const BetterTickChart = (props) => {
                 if (isNewCombinedBar) {
                     // Starting a new combined bar - this is a complete bar
                     console.log("[BetterTickChart] New combined bar starting", lastCombinedBar);
-                    setCandleData((prev) => [...prev, lastCombinedBar]);
-
-                    if (pixiDataRef.current) {
-                        pixiDataRef.current.setCompleteBar(lastCombinedBar);
-                        pixiDataRef.current.updateCurrentPriceLabel(lastCombinedBar.close);
-                    }
+                    // setCompleteBar handles adding the bar - no setCandleData needed
+                    pixiDataRef.current.setCompleteBar(lastCombinedBar);
+                    pixiDataRef.current.updateCurrentPriceLabel(lastCombinedBar.close);
                 } else {
-                    // Still building the current combined bar - update it
+                    // Still building the current combined bar - update it with newTick
                     console.log("[BetterTickChart] Updating combined bar", lastCombinedBar);
-                    setCandleData((prev) => {
-                        const newData = [...prev];
-                        newData[newData.length - 1] = lastCombinedBar;
-                        return newData;
+                    // newTick updates the existing temp bar in place - no setCandleData needed
+                    pixiDataRef.current.newTick({
+                        lastPrice: lastCombinedBar.close,
+                        high: lastCombinedBar.high,
+                        low: lastCombinedBar.low,
+                        volume: 0, // Already included in combined bar
+                        datetime: lastCombinedBar.datetime,
+                        timestamp: lastCombinedBar.timestamp,
                     });
-
-                    if (pixiDataRef.current) {
-                        // Update the temporary combined bar
-                        pixiDataRef.current.newTick({
-                            lastPrice: lastCombinedBar.close,
-                            high: lastCombinedBar.high,
-                            low: lastCombinedBar.low,
-                            volume: 0, // Already included in combined bar
-                            datetime: lastCombinedBar.datetime,
-                            timestamp: lastCombinedBar.timestamp,
-                        });
-                        pixiDataRef.current.updateCurrentPriceLabel(lastCombinedBar.close);
-                    }
+                    pixiDataRef.current.updateCurrentPriceLabel(lastCombinedBar.close);
                 }
             }
-
-            // Clear temp bar reference - we'll create a new one on next live update
-            tempBarRef.current = null;
         };
 
         // Listen for 1-second price updates - updates temporary bar
         // Pattern: 1s-{symbol}-LiveBarUpdate (separate from time bars)
-        const liveBarUpdateEvent = `1s-${fullSymbol}-LiveBarUpdate`;
+        const liveBarUpdateEvent = `1s-${symbol}-LiveBarUpdate`;
         const handleLiveBarUpdate = (tick) => {
-            // console.log(`[BetterTickChart] ${liveBarUpdateEvent} received`, tick);
+            console.log(`[BetterTickChart] ${liveBarUpdateEvent} received`, { tick, hasPixiDataRef: !!pixiDataRef.current });
             if (!pixiDataRef.current) return;
 
             const lastPrice = tick.lastPrice || tick.close || tick.last;
@@ -440,10 +438,11 @@ const BetterTickChart = (props) => {
         Socket.on(liveBarUpdateEvent, handleLiveBarUpdate);
 
         return () => {
+            console.log("[BetterTickChart] Cleaning up socket listeners", { tickBarEvent, liveBarUpdateEvent });
             Socket.off(tickBarEvent, handleNew100TickBar);
             Socket.off(liveBarUpdateEvent, handleLiveBarUpdate);
         };
-    }, [symbol, fullSymbol, join, Socket]);
+    }, [symbol, fullSymbol, join, Socket, exchange]); // IMPORTANT: Don't include pixiDataRef.current!
 
     // Note: Server event patterns
     // Time-based charts: ${timeframe}-${symbol}-LiveBarNew (e.g., "1m-ES-LiveBarNew", "5m-YMZ5-LiveBarNew")
@@ -451,10 +450,15 @@ const BetterTickChart = (props) => {
     // Live updates: 1s-${fullSymbol}-LiveBarUpdate (e.g., "1s-ESZ5-LiveBarUpdate")
 
     // Effect to recombine bars when join value changes
+    // This triggers a chart remount (via key change) with the newly combined data
     useEffect(() => {
         if (rawDataRef.current.length > 0) {
+            console.log("[BetterTickChart] Join value changed, recombining bars", {
+                join,
+                rawBarsCount: rawDataRef.current.length,
+            });
             const combined = combineBars(rawDataRef.current, join);
-            debugger;
+            console.log("[BetterTickChart] Recombined into", combined.length, "bars");
             setCandleData(combined);
         }
     }, [join]);
