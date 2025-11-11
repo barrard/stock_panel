@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import GenericPixiChart from "../../../GenericPixiChart";
 import API from "../../../../API";
 import { IconButton } from "../../../../StratBuilder/components";
@@ -7,6 +7,7 @@ import { useToggleIndicator } from "../../../hooks/useToggleIndicator";
 import { useIndicator } from "../../../hooks/useIndicator";
 import { useLiquidityData } from "../../../hooks/useLiquidityData";
 import { LiquidityHeatmap, liquidityHeatMapConfig } from "../indicatorDrawFunctions";
+import DrawOrdersV2 from "../DrawOrdersV2";
 // import { liquidityHeatMapConfig } from "../indicatorConfigs";
 
 const BetterTickChart = (props) => {
@@ -18,6 +19,7 @@ const BetterTickChart = (props) => {
         // contractSymbol,
         fullSymbol,
         exchange = "CME",
+        orders: ordersFromParent = {},
     } = props;
 
     // Use provided fullSymbol or fallback to symbol
@@ -98,6 +100,31 @@ const BetterTickChart = (props) => {
 
     // Get indicator configs
     const liquidityHeatmapIndicator = indicators.find((ind) => ind.id === "liquidityHeatmap");
+    const ordersIndicator = indicators.find((ind) => ind.id === "orders");
+
+    const symbolFilteredOrders = useMemo(() => {
+        if (!ordersFromParent || !fullSymbol) return {};
+        const filtered = {};
+        Object.keys(ordersFromParent).forEach((basketId) => {
+            const orderArray = ordersFromParent[basketId];
+            if (!Array.isArray(orderArray) || orderArray.length === 0) return;
+
+            const matchesSymbol = orderArray.some((orderEvent) => {
+                const eventSymbol = orderEvent?.symbol || orderEvent?.fullSymbol;
+                return eventSymbol && eventSymbol === fullSymbol;
+            });
+
+            if (matchesSymbol) {
+                filtered[basketId] = orderArray;
+            }
+        });
+        console.log("[BetterTickChart] Filtered orders", {
+            total: Object.keys(ordersFromParent).length,
+            filtered: Object.keys(filtered).length,
+            fullSymbol,
+        });
+        return filtered;
+    }, [ordersFromParent, fullSymbol]);
 
     // Keep a ref to indicators to avoid stale closures in socket handlers
     const indicatorsRef = useRef(indicators);
@@ -128,6 +155,35 @@ const BetterTickChart = (props) => {
         setIndicators,
         dependencies: [],
     });
+
+    // Orders indicator hook
+    useIndicator({
+        indicator: ordersIndicator,
+        pixiDataRef,
+        createInstance: (pixiData) => {
+            if (!pixiData) {
+                console.warn("[BetterTickChart] Cannot create DrawOrdersV2 instance - pixiData missing");
+                return null;
+            }
+            console.log("[BetterTickChart] Creating DrawOrdersV2 instance", {
+                chartName: pixiData?.name,
+            });
+            return new DrawOrdersV2(pixiData);
+        },
+        setIndicators,
+        dependencies: [],
+    });
+
+    useEffect(() => {
+        const ordersInstance = ordersIndicator?.instanceRef;
+        if (!ordersInstance || !ordersIndicator?.enabled) return;
+
+        console.log("[BetterTickChart] Drawing orders on chart", {
+            baskets: Object.keys(symbolFilteredOrders).length,
+            fullSymbol,
+        });
+        ordersInstance.draw(symbolFilteredOrders);
+    }, [ordersIndicator?.enabled, ordersIndicator?.instanceRef, symbolFilteredOrders, fullSymbol]);
 
     // Use the liquidity data hook for fetching and caching
     useLiquidityData({
@@ -341,12 +397,12 @@ const BetterTickChart = (props) => {
         console.log(`[BetterTickChart] Listening for event: "${tickBarEvent}"`);
 
         const handleNew100TickBar = (data) => {
-            console.log("[BetterTickChart] handleNew100TickBar called", {
-                dataSymbol: data.symbol,
-                symbol,
-                fullSymbol,
-                hasPixiDataRef: !!pixiDataRef.current,
-            });
+            // console.log("[BetterTickChart] handleNew100TickBar called", {
+            //     dataSymbol: data.symbol,
+            //     symbol,
+            //     fullSymbol,
+            //     hasPixiDataRef: !!pixiDataRef.current,
+            // });
 
             // Check symbol match - data.symbol from server uses FULL symbol (e.g., "ESZ5")
             if (data.symbol !== fullSymbol) {
@@ -363,13 +419,13 @@ const BetterTickChart = (props) => {
 
             // Add new complete 100-tick bar to raw data (used for combining when join > 1)
             // rawDataRef.current.push(data);
-            console.log("[BetterTickChart] New 100-tick bar received:", data);
+            // console.log("[BetterTickChart] New 100-tick bar received:", data);
 
             if (join === 1) {
                 // No combining - use the complete 100-tick bar directly
                 // setCompleteBar handles adding/replacing the bar in the chart's internal data
                 // No need to call setCandleData - chart manages its own data after init
-                console.log("[BetterTickChart] Processing complete 100-tick bar (join=1)");
+                // console.log("[BetterTickChart] Processing complete 100-tick bar (join=1)");
                 pixiDataRef.current.setCompleteBar(data);
                 pixiDataRef.current.updateCurrentPriceLabel(data.close);
             } else {
@@ -419,7 +475,7 @@ const BetterTickChart = (props) => {
         // Pattern: 1s-{symbol}-LiveBarUpdate (separate from time bars)
         const liveBarUpdateEvent = `1s-${symbol}-LiveBarUpdate`;
         const handleLiveBarUpdate = (tick) => {
-            console.log(`[BetterTickChart] ${liveBarUpdateEvent} received`, { tick, hasPixiDataRef: !!pixiDataRef.current });
+            // console.log(`[BetterTickChart] ${liveBarUpdateEvent} received`, { tick, hasPixiDataRef: !!pixiDataRef.current });
             if (!pixiDataRef.current) return;
 
             const lastPrice = tick.lastPrice || tick.close || tick.last;

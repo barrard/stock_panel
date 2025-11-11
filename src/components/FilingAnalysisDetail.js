@@ -1008,19 +1008,20 @@ export default function FilingAnalysisDetail() {
             )}
 
             {/* Stock Price Chart */}
-            <ChartSection>
-                <ChartTitle>
-                    {ticker?.toUpperCase()} - {tickerData.description} Stock Price - Weekly
-                </ChartTitle>
-                <StockPriceChart timeframe="weekly" symbol={ticker} height={400} />
-                <ChartTitle>
-                    {ticker?.toUpperCase()} - {tickerData.description} Stock Price - Daily
-                </ChartTitle>
-                <StockPriceChart timeframe="daily" symbol={ticker} height={400} />
-                {/*
+            {tickerData && (
+                <ChartSection>
+                    <ChartTitle>
+                        {ticker?.toUpperCase()} - {tickerData.description} Stock Price - Weekly
+                    </ChartTitle>
+                    <StockPriceChart timeframe="weekly" symbol={ticker} height={400} />
+                    <ChartTitle>
+                        {ticker?.toUpperCase()} - {tickerData.description} Stock Price - Daily
+                    </ChartTitle>
+                    <StockPriceChart timeframe="daily" symbol={ticker} height={400} />
+                    {/*
                 <StockPriceChart timeframe="30Min" symbol={ticker} height={400} /> */}
-            </ChartSection>
-
+                </ChartSection>
+            )}
             <ScoreGrid>
                 <ScoreCard variant="positive">
                     <ScoreHeading>Acceleration Score</ScoreHeading>

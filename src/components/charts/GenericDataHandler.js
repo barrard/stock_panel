@@ -287,15 +287,15 @@ export default class GenericDataHandler {
     // Replace temporary bar with complete bar, then start new temporary bar
     // Use this when server sends LiveBarNew event (completed bar for your timeframe)
     setCompleteBar(completeBar) {
-        console.log(`[GenericDataHandler ${this.name}] setCompleteBar called`, {
-            hasCurrentBar: !!this.currentBar,
-            completeBar,
-            lastBarInData: this.ohlcDatas[this.ohlcDatas.length - 1],
-        });
+        // console.log(`[GenericDataHandler ${this.name}] setCompleteBar called`, {
+        //     hasCurrentBar: !!this.currentBar,
+        //     completeBar,
+        //     lastBarInData: this.ohlcDatas[this.ohlcDatas.length - 1],
+        // });
 
         if (this.currentBar) {
             // Replace the temporary bar with the complete bar
-            console.log(`[GenericDataHandler ${this.name}] Replacing temporary bar with complete bar`);
+            // console.log(`[GenericDataHandler ${this.name}] Replacing temporary bar with complete bar`);
             this.ohlcDatas[this.ohlcDatas.length - 1] = { ...this.currentBar, ...completeBar };
 
             // Clear the temporary bar flag
@@ -332,7 +332,7 @@ export default class GenericDataHandler {
         // Update market hour sessions
         this.updateMarketHourSessionsForNewBar(completeBar);
 
-        console.log(`[GenericDataHandler ${this.name}] Complete bar set, preparing for new temporary bar`);
+        // console.log(`[GenericDataHandler ${this.name}] Complete bar set, preparing for new temporary bar`);
         this.draw();
     }
 
@@ -376,10 +376,10 @@ export default class GenericDataHandler {
             const lastCompleteBar = this.ohlcDatas[this.ohlcDatas.length - 1];
             const basePrice = lastCompleteBar?.close || lastPrice;
 
-            console.log(`[GenericDataHandler ${this.name}] Creating new temporary bar from tick`, {
-                basePrice,
-                tickPrice: lastPrice,
-            });
+            // console.log(`[GenericDataHandler ${this.name}] Creating new temporary bar from tick`, {
+            //     basePrice,
+            //     tickPrice: lastPrice,
+            // });
 
             // Create a new temporary bar
             this.currentBar = {
@@ -1237,6 +1237,9 @@ export default class GenericDataHandler {
                     child.destroy({ children: true, texture: true, baseTexture: true });
                 }
             });
+
+            // Make sure we don't keep stale references to destroyed overlay instances
+            this.resetLoadingOverlay();
         }
     }
 
@@ -1767,6 +1770,24 @@ export default class GenericDataHandler {
         delete this.customDrawFns[name];
     }
 
+    resetLoadingOverlay(destroyObjects = false) {
+        if (destroyObjects) {
+            if (this.loadingOverlay && !this.loadingOverlay.destroyed) {
+                this.loadingOverlay.destroy({ children: true });
+            }
+            if (this.loadingOverlayBackground && !this.loadingOverlayBackground.destroyed) {
+                this.loadingOverlayBackground.destroy();
+            }
+            if (this.loadingOverlayText && !this.loadingOverlayText.destroyed) {
+                this.loadingOverlayText.destroy();
+            }
+        }
+
+        this.loadingOverlay = null;
+        this.loadingOverlayBackground = null;
+        this.loadingOverlayText = null;
+    }
+
     drawLoadingOverlay(message = "Loading...") {
         if (!this.layer7Container) {
             console.warn("[drawLoadingOverlay] layer7Container not available");
@@ -1774,7 +1795,16 @@ export default class GenericDataHandler {
         }
 
         // Recreate if overlay doesn't exist or if background was destroyed
-        if (!this.loadingOverlay || !this.loadingOverlayBackground) {
+        const overlayInvalid =
+            !this.loadingOverlay ||
+            !this.loadingOverlayBackground ||
+            !this.loadingOverlayText ||
+            this.loadingOverlay?.destroyed ||
+            this.loadingOverlayBackground?.destroyed ||
+            this.loadingOverlayText?.destroyed;
+
+        if (overlayInvalid) {
+            this.resetLoadingOverlay(true);
             try {
                 this.loadingOverlay = new Container();
                 this.loadingOverlayBackground = new Graphics();
@@ -1794,9 +1824,7 @@ export default class GenericDataHandler {
             } catch (error) {
                 console.error("[drawLoadingOverlay] Failed to create loading overlay:", error);
                 // Clean up any partially created objects
-                this.loadingOverlay = null;
-                this.loadingOverlayBackground = null;
-                this.loadingOverlayText = null;
+                this.resetLoadingOverlay();
                 return;
             }
         }
@@ -2010,9 +2038,7 @@ export default class GenericDataHandler {
         console.log("destroy");
         // this.ohlcDatas.length = 0;
         this.clearLoadingOverlay();
-        this.loadingOverlay = null;
-        this.loadingOverlayBackground = null;
-        this.loadingOverlayText = null;
+        this.resetLoadingOverlay(true);
         this.initialized = false;
     }
 
