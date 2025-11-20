@@ -748,9 +748,10 @@ export default function PixiChart({ Socket }) {
                 exchange={symbolInput.exchange}
                 timeframe="tick"
                 Socket={Socket}
+                orders={orders}
             />
         );
-    }, [Socket, symbol.value, fullSymbolValue, symbolInput.exchange]);
+    }, [Socket, symbol.value, fullSymbolValue, symbolInput.exchange, orders]);
 
     const mainChartProps = useMemo(
         () => ({

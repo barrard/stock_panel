@@ -7,8 +7,8 @@ import IndicatorsBtns from "./components/IndicatorsBtns";
 import SymbolBtns from "./components/SymbolBtns";
 import TimeFrameBtns from "./components/TimeFrameBtns";
 import Select from "./components/Select";
-import OrdersList from "./components/OrdersList";
-import { symbolOptions, barTypeToTimeframe } from "./components/utils";
+// import OrdersList from "./components/OrdersList";
+import { symbolOptions, barTypeToTimeframe, parseBarTypeTimeFrame, normalizeBarData } from "./components/utils";
 import { useIndicator } from "../hooks/useIndicator";
 import { useToggleIndicator } from "../hooks/useToggleIndicator";
 import { useLiquidityData } from "../hooks/useLiquidityData";
@@ -28,6 +28,9 @@ const PixiChartV2 = (props) => {
 
     // always need to make a ref for pixiDataRef
     const pixiDataRef = useRef();
+    const ohlcDataRef = useRef([]);
+    const loadingMoreRef = useRef(false);
+    const isLoadingRef = useRef(true);
 
     //most charts handle timeframe with barType and barTypePeriod
     // barType 1 = seconds, 2 = minutes, 3 = hours, 4 = days
@@ -41,7 +44,15 @@ const PixiChartV2 = (props) => {
     const [ohlcData, setOhlcData] = useState([]);
 
     // Loading state for data fetching
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        ohlcDataRef.current = ohlcData;
+    }, [ohlcData]);
+
+    useEffect(() => {
+        isLoadingRef.current = isLoading;
+    }, [isLoading]);
 
     // the symbol of the chart
     const [symbol, setSymbol] = useState({
@@ -226,6 +237,96 @@ const PixiChartV2 = (props) => {
         [symbol.value, timeframe] // Removed ohlcData - use functional update instead
     );
 
+    const fetchHistoricalWindow = useCallback(
+        async (finishIndex) => {
+            const lookbackWindow = parseBarTypeTimeFrame({
+                barType: barType.value,
+                barTypePeriod,
+            });
+
+            const exchange = symbol.exchange || "CME";
+            const maxAttempts = 10;
+            let attempt = 0;
+            let normalized = [];
+            let nextFinish = finishIndex;
+
+            while (attempt < maxAttempts && nextFinish > 0) {
+                const nextStart = Math.max(0, nextFinish - lookbackWindow);
+                console.log(
+                    `[PixiChartV2] loadMore attempt ${attempt + 1} (${new Date(nextStart).toLocaleString()} -> ${new Date(
+                        nextFinish
+                    ).toLocaleString()})`
+                );
+
+                const olderData = await API.rapi_requestBars({
+                    symbol: symbol.value,
+                    exchange,
+                    barType: barType.value,
+                    barTypePeriod,
+                    startIndex: nextStart,
+                    finishIndex: nextFinish,
+                });
+
+                normalized = normalizeBarData(olderData);
+                if (normalized.length) {
+                    break;
+                }
+
+                attempt += 1;
+                nextFinish = nextStart;
+            }
+
+            return normalized;
+        },
+        [barType.value, barTypePeriod, normalizeBarData, symbol.exchange, symbol.value]
+    );
+
+    const loadMoreData = useCallback(async () => {
+        if (loadingMoreRef.current || isLoadingRef.current) {
+            return;
+        }
+
+        const currentData = ohlcDataRef.current;
+        if (!currentData.length) {
+            return;
+        }
+
+        const earliestBar = currentData[0];
+        const finishIndex = Math.floor(earliestBar?.datetime ?? earliestBar?.timestamp ?? 0);
+
+        if (!finishIndex) {
+            console.warn("[PixiChartV2] Cannot load more data - missing finishIndex");
+            return;
+        }
+
+        try {
+            loadingMoreRef.current = true;
+            setIsLoading(true);
+
+            console.log(
+                `[PixiChartV2] Loading older data for ${symbol.value} ${timeframe} before ${new Date(finishIndex).toLocaleString()}`
+            );
+
+            const normalized = await fetchHistoricalWindow(finishIndex);
+
+            if (normalized.length) {
+                setOhlcData((prevOhlcData) => {
+                    const merged = [...normalized, ...prevOhlcData];
+                    return Array.from(new Map(merged.map((bar) => [bar.datetime, bar])).values()).sort(
+                        (a, b) => a.datetime - b.datetime
+                    );
+                });
+            } else {
+                console.log("[PixiChartV2] No additional historical data returned after multiple attempts.");
+            }
+        } catch (error) {
+            console.error("[PixiChartV2] Failed to load more data:", error);
+        } finally {
+            loadingMoreRef.current = false;
+            setIsLoading(false);
+        }
+    }, [fetchHistoricalWindow, timeframe]);
+
     // Use the liquidity data hook for fetching and caching
     useLiquidityData({
         liquidityHeatmapIndicator,
@@ -383,12 +484,15 @@ const PixiChartV2 = (props) => {
 
         Object.keys(ordersFromParent).forEach((basketId) => {
             const orderArray = ordersFromParent[basketId];
-            // Check if any order in this basket matches the current symbol
-            if (orderArray && orderArray.length > 0) {
-                const firstOrder = orderArray[0];
-                if (firstOrder.symbol === fullSymbol) {
-                    filtered[basketId] = orderArray;
-                }
+            if (!Array.isArray(orderArray) || orderArray.length === 0) return;
+
+            const matchesSymbol = orderArray.some((orderEvent) => {
+                const eventSymbol = orderEvent?.symbol || orderEvent?.fullSymbol;
+                return eventSymbol && eventSymbol === fullSymbol;
+            });
+
+            if (matchesSymbol) {
+                filtered[basketId] = orderArray;
             }
         });
 
@@ -485,36 +589,33 @@ const PixiChartV2 = (props) => {
                     </>
                 )}
             </div>
-            {!ohlcData?.length ? (
-                <div>Loading... {symbol.value}</div>
-            ) : (
-                <GenericPixiChart
-                    name="PixiChartV2"
-                    //always add a unique key to force remount on changes to important props
-                    key={`${symbol.value}-${timeframe}`} //include both symbol and timeframe in key to force remount
-                    ohlcDatas={ohlcData}
-                    // width={width}
-                    height={height}
-                    symbol={symbol.value}
-                    // fullSymbolRef={fullSymbolRef}
-                    barType={barType.value}
-                    barTypePeriod={barTypePeriod}
-                    // loadData={loadData}
-                    pixiDataRef={pixiDataRef}
-                    lowerIndicators={lowerIndicators}
-                    onTimeRangeChange={handleTimeRangeChange}
-                    isLoading={isLoading}
-                    // tickSize={tickSize}
-                />
-            )}
+            <GenericPixiChart
+                name="PixiChartV2"
+                //always add a unique key to force remount on changes to important props
+                key={`${symbol.value}-${timeframe}`} //include both symbol and timeframe in key to force remount
+                ohlcDatas={ohlcData}
+                // width={width}
+                height={height}
+                symbol={symbol.value}
+                // fullSymbolRef={fullSymbolRef}
+                barType={barType.value}
+                barTypePeriod={barTypePeriod}
+                // loadData={loadData}
+                pixiDataRef={pixiDataRef}
+                lowerIndicators={lowerIndicators}
+                loadMoreData={loadMoreData}
+                onTimeRangeChange={handleTimeRangeChange}
+                isLoading={isLoading}
+                // tickSize={tickSize}
+            />
 
             {/* Symbol-filtered orders list */}
-            {Object.keys(symbolFilteredOrders).length > 0 && (
+            {/* {Object.keys(symbolFilteredOrders).length > 0 && (
                 <div className="mt-3">
                     <h5>Orders for {symbol.value}</h5>
                     <OrdersList orders={symbolFilteredOrders} />
                 </div>
-            )}
+            )} */}
         </>
     );
 };

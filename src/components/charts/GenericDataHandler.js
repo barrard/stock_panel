@@ -1997,8 +1997,29 @@ export default class GenericDataHandler {
     }
 
     updateData(newData) {
-        this.ohlcDatas = newData;
+        const previousLength = Array.isArray(this.ohlcDatas) ? this.ohlcDatas.length : 0;
+        const hadData = previousLength > 0;
+
+        this.ohlcDatas = newData || [];
+        const newLength = this.ohlcDatas.length;
+
         this.slicedHighestIdx = null; // Invalidate cache
+
+        if (!hadData || previousLength === 0) {
+            // First time we have data – show entire dataset
+            this.initDataViewable();
+        } else {
+            const addedBars = Math.max(0, newLength - previousLength);
+
+            if (addedBars > 0) {
+                // Preserve the current viewport by shifting the slice window forward
+                this.sliceStart += addedBars;
+                this.sliceEnd += addedBars;
+            }
+
+            this.fixSliceValues();
+        }
+
         this.calculateVolumeMovingAverage();
         this.calculateMarketHourSessions(); // Recalculate sessions when data changes
         this.draw();

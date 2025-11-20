@@ -178,9 +178,6 @@ const BackTestChartGeneric = (props) => {
             symbol: symbol,
             // exchange: getExchangeFromSymbol(symbol),
         });
-        console.log(liveData);
-        liveData.forEach((d) => (d.datetime = d.datetime * 1000));
-        debugger;
         //merge and remove duplicate datetime with data.bars
         const mergedBars = [...data.bars, ...liveData].reduce((acc, bar) => {
             if (!acc.find((b) => b.datetime === bar.datetime)) {

@@ -42,7 +42,6 @@ export default class DrawMinMax {
         if (!this.weeklyTrendLines || !this.weeklyTrendLines.length || !this.pixiDataRef.current) {
             return;
         }
-        debugger;
 
         this.xScale = this.pixiDataRef.current.xScale;
         this.priceScale = this.pixiDataRef.current.priceScale;
@@ -99,7 +98,6 @@ export default class DrawMinMax {
             this.drawLine(this.minMaxRegressionGfx, line);
         });
 
-        debugger;
         // FIB REGRESSION ZIGZAGSS
         zigZagFibs?.forEach((line) => {
             const { color, opacity = 1 } = line;

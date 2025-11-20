@@ -38,7 +38,7 @@ const BetterTickChart = (props) => {
 
     // Chart data state
     const [candleData, setCandleData] = useState([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const [join, setJoin] = useState(1);
     const rawDataRef = useRef([]); // Raw 100-tick bars from server (used for combining)
 
@@ -528,8 +528,6 @@ const BetterTickChart = (props) => {
     );
 
     // const canRenderChart = dataSymbol === symbol && candleData.length > 0;
-    const canRenderChart = candleData.length > 0;
-
     return (
         <div style={{ width: "100%" }}>
             <div className="row g-0">
@@ -546,29 +544,25 @@ const BetterTickChart = (props) => {
                 ))}
             </div>
             <div style={{ border: "1px solid white", width: "100%", minHeight: `${height}px` }}>
-                {canRenderChart ? (
-                    <GenericPixiChart
-                        name="BetterTickChart"
-                        key={`${symbol}-${join}`}
-                        ohlcDatas={candleData}
-                        height={height}
-                        symbol={symbol}
-                        fullSymbol={fullSymbol}
-                        pixiDataRef={pixiDataRef}
-                        tickSize={0.01}
-                        Socket={Socket}
-                        loadMoreData={loadMoreData}
-                        onTimeRangeChange={handleTimeRangeChange}
-                        isLoading={isLoading}
-                        options={{
-                            withoutVolume: false,
-                            chartType: "OHLC",
-                        }}
-                        margin={{ top: 50, right: 100, left: 0, bottom: 40 }}
-                    />
-                ) : (
-                    <div className="d-flex align-items-center justify-content-center h-100 text-muted">Loading {symbol} tick data...</div>
-                )}
+                <GenericPixiChart
+                    name="BetterTickChart"
+                    key={`${symbol}-${join}`}
+                    ohlcDatas={candleData}
+                    height={height}
+                    symbol={symbol}
+                    fullSymbol={fullSymbol}
+                    pixiDataRef={pixiDataRef}
+                    tickSize={0.01}
+                    Socket={Socket}
+                    loadMoreData={loadMoreData}
+                    onTimeRangeChange={handleTimeRangeChange}
+                    isLoading={isLoading}
+                    options={{
+                        withoutVolume: false,
+                        chartType: "OHLC",
+                    }}
+                    margin={{ top: 50, right: 100, left: 0, bottom: 40 }}
+                />
             </div>
         </div>
     );

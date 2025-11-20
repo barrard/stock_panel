@@ -441,6 +441,35 @@ export function parseBarTypeTimeFrame({ barType, barTypePeriod }) {
     return timeBerBar * barTypePeriod * 500;
 }
 
+export function normalizeBarData(bars = []) {
+    if (!Array.isArray(bars)) return [];
+
+    return bars
+        .map((bar) => {
+            if (!bar) return null;
+            const normalized = { ...bar };
+
+            if (normalized.volume?.low !== undefined) {
+                normalized.volume = normalized.volume.low;
+            } else if (normalized.askVolume || normalized.bidVolume) {
+                const askVolume = normalized.askVolume?.low ?? 0;
+                const bidVolume = normalized.bidVolume?.low ?? 0;
+                normalized.volume = askVolume + bidVolume;
+            }
+
+            if (typeof normalized.datetime === "number" && normalized.datetime < 1e12) {
+                normalized.datetime = normalized.datetime * 1000;
+            }
+
+            if (!normalized.timestamp && typeof normalized.datetime === "number") {
+                normalized.timestamp = normalized.datetime;
+            }
+
+            return normalized;
+        })
+        .filter(Boolean);
+}
+
 /**
  * Converts barType and barTypePeriod to timeframe string format
  * Only supports: 1s, 1m, 5m, 30m, 60m, 4h

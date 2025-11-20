@@ -12,10 +12,10 @@ export default function GptChart({ Socket }) {
     function startBackTest() {
         alert("not yet implemented");
         return;
-        Socket.emit("to-backtester", {
-            type: "start-backtest",
-            time: 0,
-        });
+        // Socket.emit("to-backtester", {
+        //     type: "start-backtest",
+        //     time: 0,
+        // });
     }
 
     useEffect(() => {
@@ -38,7 +38,7 @@ export default function GptChart({ Socket }) {
             Socket.off("backtester-bars");
             Socket.off("backtester-bar-update");
         };
-    }, []);
+    }, [Socket]);
 
     async function getBacktestData(symbol) {
         setData(null);
@@ -84,114 +84,9 @@ export default function GptChart({ Socket }) {
                     <GetSymbolBtn enabled={symbol == "YM"} setSymbol={setSymbol} getData={getBacktestData} symbol="YM" />
                 </div>
             </div>
-            {/* <div className="col">
-                <SetIndicatorBtn
-                    onClick={() => setEnableCombinedKeyLevels(!enableCombinedKeyLevels)}
-                    indicatorName="CombinedKeyLevels"
-                    enabled={enableCombinedKeyLevels}
-                />
-                <SetIndicatorBtn onClick={() => setEnableMinMax(!enableMinMax)} indicatorName="MinMax" enabled={enableMinMax} />
-                <SetIndicatorBtn onClick={() => setEnablePivots(!enablePivots)} indicatorName="Pivots" enabled={enablePivots} />
-            </div> */}
-            <div className="row">
-                {/* <div className="col">
-                    <div ref={OldPixiChartRef}></div>
-                </div> */}
-                {symbol && data && <BacktestChartGeneric {...backTestChartData} />}
-            </div>
-            <div>
-                {/* <h3>stats</h3> */}
-                {/* <div className="row">{viewportEvents}</div> */}
-                {/* {DisplayEvent(events)} */}
-                {/* {events.name} */}
-            </div>
-        </div>
-    );
-}
 
-function DisplayEvent(data) {
-    const [name, setName] = useState(data.name);
-
-    console.log(name);
-    if (data.eventData) {
-        console.log(data.eventData);
-        console.log("viewport.scale.x", data.eventData?.viewport?.scale?.x);
-        console.log("viewport.scale.y", data.eventData?.viewport?.scale?.y);
-        console.log("viewport.x", data.eventData?.viewport?.x);
-        console.log("viewport.y", data.eventData?.viewport?.y);
-        if (data.eventData?.screen?.scale) {
-            console.log("screen.scale.x", data.eventData?.screen?.scale?.x);
-            console.log("screen.scale.y", data.eventData?.screen?.scale?.y);
-        }
-        console.log("screen.x", data.eventData?.screen?.x);
-        console.log("screen.y", data.eventData?.screen?.y);
-        if (data.eventData?.world?.scale) {
-            console.log("world.scale.x", data.eventData?.world?.scale?.x);
-            console.log("world.scale.y", data.eventData?.world?.scale?.y);
-        }
-        console.log("world.x", data.eventData?.world?.x);
-        console.log("world.y", data.eventData?.world?.y);
-    }
-    return (
-        <div key={name} className="col">
-            {name}
-            <div
-                style={{
-                    opacity: data.eventData?.x ? 1 : 0.1,
-                }}
-            >
-                <h4>Event</h4>
-                <p>
-                    X: {Math.floor(data.eventData?.x)} Y: {Math.floor(data.eventData?.y)}
-                </p>
-                <p>
-                    Scale: x - {Math.floor(data.eventData?.scale?._x * 100) / 100} y - {Math.floor(data.eventData?.scale?._y * 100) / 100}
-                </p>
-            </div>
-
-            <div
-                style={{
-                    opacity: data.eventData?.screen ? 1 : 0.1,
-                }}
-            >
-                <h4>Screen</h4>
-                <p>
-                    X: {Math.floor(data.eventData?.screen?.x)} Y: {Math.floor(data.eventData?.screen?.y)}
-                </p>
-                <p>
-                    Scale: x - {Math.floor(data.eventData?.screen?.scale?._x * 100) / 100} y -{" "}
-                    {Math.floor(data.eventData?.screen?.scale?._y * 100) / 100}
-                </p>
-            </div>
-            <div
-                style={{
-                    opacity: data.eventData?.world ? 1 : 0.1,
-                }}
-            >
-                <h4>World</h4>
-                <p>
-                    X: {Math.floor(data.eventData?.world?.x)} Y: {Math.floor(data.eventData?.world?.y)}
-                </p>
-                <p>
-                    Scale: x - {Math.floor(data.eventData?.world?.scale?._x * 100) / 100} y -{" "}
-                    {Math.floor(data.eventData?.world?.scale?._y * 100) / 100}
-                </p>
-            </div>
-
-            <div
-                style={{
-                    opacity: data.eventData?.viewport ? 1 : 0.1,
-                }}
-            >
-                <h4>Viewport</h4>
-                <p>
-                    X: {Math.floor(data.eventData?.viewport?.x)} Y: {Math.floor(data.eventData?.viewport?.y)}
-                </p>
-                <p>
-                    Scale: x - {Math.floor(data.eventData?.viewport?.scale?._x * 100) / 100} y -{" "}
-                    {Math.floor(data.eventData?.viewport?.scale?._y * 100) / 100}
-                </p>
-            </div>
+            <div className="row">{symbol && data && <BacktestChartGeneric {...backTestChartData} />}</div>
+            <div></div>
         </div>
     );
 }

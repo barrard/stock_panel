@@ -1,10 +1,13 @@
 import { Graphics, Container } from "pixi.js";
+import { compileOrders, priceType } from "./utils";
 
 export default class DrawOrdersV2 {
     constructor(dataHandler) {
         this.data = dataHandler;
         this.orders = [];
         this.initialized = false;
+        this.missingPriceLogged = new Set();
+        this.debugPrefix = "[DrawOrdersV2]";
 
         this.container = new Container();
         this.ordersGfx = new Graphics();
@@ -35,42 +38,205 @@ export default class DrawOrdersV2 {
 
         // Clear data
         this.orders = [];
+        this.missingPriceLogged.clear();
 
         // Reset initialization flag so it can be re-initialized
         this.initialized = false;
     }
 
+    resolvePrice(order, context) {
+        const price =
+            order?.fillPrice ??
+            order?.avgFillPrice ??
+            order?.triggerPrice ??
+            order?.price ??
+            order?.entryPrice ??
+            order?.limitPrice ??
+            order?.stopPrice;
+
+        if (price === undefined) {
+            const key = order?.basketId || `${context}-${Math.random()}`;
+            if (!this.missingPriceLogged.has(key)) {
+                this.missingPriceLogged.add(key);
+                console.warn(`${this.debugPrefix} ${context} price missing`, {
+                    basketId: order?.basketId,
+                    status: order?.status,
+                    reportType: order?.reportType,
+                    completionReason: order?.completionReason,
+                    order,
+                });
+            }
+        }
+
+        return price;
+    }
+
+    getTimestamp(order, fields = []) {
+        for (const field of fields) {
+            if (order?.[field]) {
+                return Math.floor(order[field] * 1000);
+            }
+        }
+        return null;
+    }
+
+    getStartTime(order) {
+        return (
+            this.getTimestamp(order, [
+                "statusTime",
+                "openTime",
+                "triggerTime",
+                "orderReceivedFromClientTime",
+                "originalOrderReceivedFromClientTime",
+                "orderSentToExchTime",
+            ]) ?? (order?.ssboe ? Math.floor(order.ssboe * 1000) : null)
+        );
+    }
+
+    getEndTime(order) {
+        return this.getTimestamp(order, ["fillTime", "endTime", "cancelTime", "orderActiveTime", "statusTime", "triggerTime"]) ?? null;
+    }
+
     draw(data) {
-        this.orders = data;
-        if (!this.ordersGfx?._geometry || !this.orders) {
+        if (data) {
+            this.orders = data;
+        }
+
+        const ordersToDraw = this.orders;
+        const basketCount = ordersToDraw ? Object.keys(ordersToDraw).length : 0;
+        // console.log(`${this.debugPrefix} draw invoked`, {
+        //     basketCount,
+        //     hasGeometry: !!this.ordersGfx?._geometry,
+        //     slicedData: this.data?.slicedData?.length || 0,
+        // });
+
+        if (!this.ordersGfx?._geometry || !ordersToDraw) {
+            console.warn(`${this.debugPrefix} aborting draw - ordersGfx missing geometry or no orders object`);
             return;
         }
 
         this.ordersGfx.clear();
+        debugger;
+        Object.keys(ordersToDraw).forEach((basketId) => {
+            let order = ordersToDraw[basketId];
+            const originalOrder = [...order];
+            debugger;
+            if (Array.isArray(order)) {
+                const compiled = compileOrders(order, {});
+                order = compiled[basketId];
+                if (!order) {
+                    console.warn(`${this.debugPrefix} No compiled order for basket`, { basketId });
+                    return;
+                }
+            }
 
-        Object.keys(this.orders).forEach((basketId) => {
-            const order = this.orders[basketId];
+            const normalizedPriceType = priceType(order.priceType);
+            const IS_MARKET_ORDER = normalizedPriceType === "MARKET";
+            const IS_LIMIT_ORDER = normalizedPriceType === "LIMIT";
+            const IS_STOP_MARKET_ORDER = normalizedPriceType === "STOP_MARKET";
+            const IS_STOP_LIMIT_ORDER = normalizedPriceType === "STOP_LIMIT";
 
-            if (order.completionReason == "F" || order.fillTime) {
-                this.drawFilledMarker(order);
-            } else if (order.notifyType === "CANCEL" || order.completionReason === "C" || order.isCancelled) {
+            const status = (order.status || "").toLowerCase();
+            const reportType = (order.reportType || "").toLowerCase();
+            const completionReason = (order.completionReason || "").toUpperCase();
+
+            const hasFill =
+                Boolean(order.fillTime) ||
+                Boolean(order.fillPrice) ||
+                Boolean(order.avgFillPrice) ||
+                Boolean(order.totalFillSize) ||
+                reportType === "fill" ||
+                status === "complete" ||
+                order.isComplete ||
+                completionReason === "F";
+
+            const isCancelled =
+                order.notifyType === "CANCEL" ||
+                completionReason === "C" ||
+                order.isCancelled ||
+                reportType === "cancel" ||
+                status.includes("cancel");
+
+            const startTime = this.getStartTime(order);
+            const endTime = this.getEndTime(order);
+            const durationMs = startTime && endTime ? endTime - startTime : 0;
+            const shouldDrawInstantFill = IS_MARKET_ORDER && hasFill && (!durationMs || durationMs < 1000);
+
+            if (isCancelled) {
                 this.drawCancelledMarker(order);
+            } else if (hasFill) {
+                if (shouldDrawInstantFill) {
+                    this.drawInstantFillMarker(order);
+                } else {
+                    this.drawFilledMarker(order);
+                }
+            } else if (IS_LIMIT_ORDER || IS_STOP_MARKET_ORDER || IS_STOP_LIMIT_ORDER || IS_MARKET_ORDER) {
+                this.drawOpenMarker(order);
             } else {
+                console.warn(`${this.debugPrefix} Unhandled order type, defaulting to open marker`, {
+                    basketId: order?.basketId,
+                    priceType: order?.priceType,
+                    status: order?.status,
+                    completionReason: order?.completionReason,
+                    originalOrder,
+                });
                 this.drawOpenMarker(order);
             }
         });
     }
 
-    drawFilledMarker(order) {
+    drawInstantFillMarker(order) {
         if (!this.ordersGfx?._geometry || !this.data.slicedData.length) return;
 
-        const statusTime = Math.floor((order.statusTime || order.openTime) * 1000);
-        let startIndex = this.data.slicedData.findIndex((d) => (d.timestamp || d.datetime) >= statusTime);
-        if (startIndex < 0) return;
+        const fillTime = this.getEndTime(order) || this.getStartTime(order);
+        if (!fillTime) return;
+        let index = this.data.slicedData.findIndex((d) => (d.timestamp || d.datetime) >= fillTime);
+        if (index < 0) return;
+
+        const x = this.data.xScale(index);
+        const y = this.data.priceScale(this.resolvePrice(order, "drawInstantFillMarker"));
+        if (y === undefined) return;
+
+        const radius = 6;
+        const color = order.transactionType === "BUY" || order.transactionType === 1 ? 0x00ff00 : 0xff0000;
+        this.ordersGfx.lineStyle(2, color, 0.9);
+        this.ordersGfx.beginFill(color, 0.5);
+        this.ordersGfx.drawCircle(x, y, radius);
+    }
+
+    drawFilledMarker(order) {
+        if (!this.ordersGfx?._geometry || !this.data.slicedData.length) {
+            console.warn(`${this.debugPrefix} drawFilledMarker missing geometry or slicedData`);
+            return;
+        }
+
+        const startTime = this.getStartTime(order);
+        if (!startTime) {
+            console.warn(`${this.debugPrefix} drawFilledMarker missing start time`, { basketId: order?.basketId });
+            return;
+        }
+
+        let startIndex = this.data.slicedData.findIndex((d) => (d.timestamp || d.datetime) >= startTime);
+        if (startIndex < 0) {
+            console.warn(`${this.debugPrefix} drawFilledMarker could not find startIndex`, {
+                startTime,
+                firstBar: this.data.slicedData[0]?.timestamp || this.data.slicedData[0]?.datetime,
+                lastBar:
+                    this.data.slicedData[this.data.slicedData.length - 1]?.timestamp ||
+                    this.data.slicedData[this.data.slicedData.length - 1]?.datetime,
+            });
+            return;
+        }
 
         const startX = this.data.xScale(startIndex);
-        const y = this.data.priceScale(order.fillPrice || order.avgFillPrice || order.triggerPrice || order.price);
-        if (y === undefined) return;
+        const y = this.data.priceScale(this.resolvePrice(order, "drawFilledMarker"));
+        if (y === undefined) {
+            console.warn(`${this.debugPrefix} drawFilledMarker priceScale returned undefined`, {
+                price: this.resolvePrice(order, "drawFilledMarker"),
+                order,
+            });
+            return;
+        }
 
         const radius = 5;
         const color = order.transactionType === "BUY" || order.transactionType === 1 ? 0x00ff00 : 0xff0000;
@@ -80,10 +246,15 @@ export default class DrawOrdersV2 {
         this.ordersGfx.beginFill(color, 0.1);
         this.ordersGfx.drawCircle(startX, y, radius);
 
-        if (order.fillTime || order.endTime) {
-            const endTime = Math.floor((order.fillTime || order.endTime) * 1000);
+        const endTime = this.getEndTime(order);
+        if (endTime) {
             let endIndex = this.data.slicedData.findIndex((d) => (d.timestamp || d.datetime) >= endTime);
-            if (endIndex < 0) return;
+            if (endIndex < 0) {
+                console.warn(`${this.debugPrefix} drawFilledMarker could not find endIndex`, {
+                    endTime,
+                });
+                return;
+            }
 
             const endX = this.data.xScale(endIndex);
 
@@ -100,15 +271,30 @@ export default class DrawOrdersV2 {
     }
 
     drawCancelledMarker(order) {
-        if (!this.ordersGfx?._geometry || !this.data.slicedData.length) return;
+        if (!this.ordersGfx?._geometry || !this.data.slicedData.length) {
+            console.warn(`${this.debugPrefix} drawCancelledMarker missing geometry or slicedData`);
+            return;
+        }
 
-        const endTime = Math.floor(order.endTime * 1000);
+        const endTime = this.getEndTime(order);
+        if (!endTime) {
+            console.warn(`${this.debugPrefix} drawCancelledMarker missing end time`, { basketId: order?.basketId });
+            return;
+        }
         let endIndex = this.data.slicedData.findIndex((d) => (d.timestamp || d.datetime) >= endTime);
-        if (endIndex < 0) return;
+        if (endIndex < 0) {
+            console.warn(`${this.debugPrefix} drawCancelledMarker could not find endIndex`, { endTime });
+            return;
+        }
 
         const endX = this.data.xScale(endIndex);
-        const y = this.data.priceScale(order.price);
-        if (y === undefined) return;
+        const y = this.data.priceScale(this.resolvePrice(order, "drawCancelledMarker") ?? order.price);
+        if (y === undefined) {
+            console.warn(`${this.debugPrefix} drawCancelledMarker priceScale returned undefined`, {
+                price: this.resolvePrice(order, "drawCancelledMarker"),
+            });
+            return;
+        }
 
         const radius = 10;
         const color = order.transactionType === "BUY" || order.transactionType === 1 ? 0x00ff00 : 0xff0000;
@@ -121,29 +307,45 @@ export default class DrawOrdersV2 {
         this.ordersGfx.moveTo(endX - size, y + size);
         this.ordersGfx.lineTo(endX + size, y - size);
 
-        if (order.openTime) {
-            const openTime = Math.floor(order.openTime * 1000);
+        const openTime = this.getStartTime(order);
+        if (openTime) {
             let openIndex = this.data.slicedData.findIndex((d) => (d.timestamp || d.datetime) >= openTime);
-
-            const startX = this.data.xScale(openIndex);
-
-            // Draw connecting line
-            this.ordersGfx.lineStyle(3, color, 0.5);
-            this.ordersGfx.moveTo(startX, y);
-            this.ordersGfx.lineTo(endX, y);
+            if (openIndex >= 0) {
+                const startX = this.data.xScale(openIndex);
+                this.ordersGfx.lineStyle(3, color, 0.5);
+                this.ordersGfx.moveTo(startX, y);
+                this.ordersGfx.lineTo(endX, y);
+            }
         }
     }
 
     drawOpenMarker(order) {
-        if (!this.ordersGfx?._geometry || !this.data.slicedData.length) return;
+        if (!this.ordersGfx?._geometry || !this.data.slicedData.length) {
+            console.warn(`${this.debugPrefix} drawOpenMarker missing geometry or slicedData`);
+            return;
+        }
 
-        const startTime = Math.floor(order.statusTime * 1000);
+        const startTime = this.getStartTime(order);
+        if (!startTime) {
+            console.warn(`${this.debugPrefix} drawOpenMarker missing start time`, { orderId: order?.basketId || order?.id });
+            return;
+        }
+
         let startIndex = this.data.slicedData.findIndex((d) => (d.timestamp || d.datetime) >= startTime);
-        if (startIndex < 0) return;
+        if (startIndex < 0) {
+            console.warn(`${this.debugPrefix} drawOpenMarker could not find startIndex`, { startTime });
+            return;
+        }
 
         const startX = this.data.xScale(startIndex);
-        const y = this.data.priceScale(order.fillPrice || order.avgFillPrice || order.triggerPrice || order.price);
-        if (y === undefined) return;
+        const y = this.data.priceScale(this.resolvePrice(order, "drawOpenMarker"));
+        if (y === undefined) {
+            console.warn(`${this.debugPrefix} drawOpenMarker priceScale returned undefined`, {
+                price: this.resolvePrice(order, "drawOpenMarker"),
+                order,
+            });
+            return;
+        }
 
         const radius = 10;
         const color = order.transactionType === "BUY" || order.transactionType === 1 ? 0x00ff00 : 0xff0000;
