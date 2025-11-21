@@ -3,6 +3,7 @@ import GenericPixiChart from "../GenericPixiChart";
 import API from "../../API";
 import { LiquidityHeatmap, liquidityHeatMapConfig } from "./components/indicatorDrawFunctions";
 import DrawOrdersV2 from "./components/DrawOrdersV2";
+import DrawSuperTrend from "../drawFunctions/DrawSuperTrend";
 import IndicatorsBtns from "./components/IndicatorsBtns";
 import SymbolBtns from "./components/SymbolBtns";
 import TimeFrameBtns from "./components/TimeFrameBtns";
@@ -70,6 +71,13 @@ const PixiChartV2 = (props) => {
             name: "Orders",
             enabled: false,
             drawFunctionKey: "draw",
+            instanceRef: null,
+        },
+        {
+            id: "superTrend",
+            name: "Super Trend",
+            enabled: false,
+            drawFunctionKey: "drawAll",
             instanceRef: null,
         },
         // { id: "zigZag", name: "ZigZag", enabled: false, drawFunctionKey: "draw", instanceRef: null },
@@ -143,6 +151,7 @@ const PixiChartV2 = (props) => {
     // Get indicator configs
     const liquidityHeatmapIndicator = indicators.find((ind) => ind.id === "liquidityHeatmap");
     const ordersIndicator = indicators.find((ind) => ind.id === "orders");
+    const superTrendIndicator = indicators.find((ind) => ind.id === "superTrend");
 
     // Debug: Log indicators on mount
     useEffect(() => {
@@ -197,6 +206,20 @@ const PixiChartV2 = (props) => {
         },
         setIndicators,
         dependencies: [],
+    });
+
+    // Use the useIndicator hook for superTrend
+    useIndicator({
+        indicator: superTrendIndicator,
+        pixiDataRef,
+        createInstance: (pixiData) => {
+            if (!pixiData?.ohlcDatas || pixiData.ohlcDatas.length === 0) {
+                return null;
+            }
+            return new DrawSuperTrend(pixiData.ohlcDatas, { current: pixiData }, 0);
+        },
+        setIndicators,
+        dependencies: [ohlcData],
     });
 
     //function to get Data

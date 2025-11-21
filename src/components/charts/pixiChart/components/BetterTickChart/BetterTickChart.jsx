@@ -8,6 +8,7 @@ import { useIndicator } from "../../../hooks/useIndicator";
 import { useLiquidityData } from "../../../hooks/useLiquidityData";
 import { LiquidityHeatmap, liquidityHeatMapConfig } from "../indicatorDrawFunctions";
 import DrawOrdersV2 from "../DrawOrdersV2";
+import DrawSuperTrend from "../../../drawFunctions/DrawSuperTrend";
 // import { liquidityHeatMapConfig } from "../indicatorConfigs";
 
 const BetterTickChart = (props) => {
@@ -52,7 +53,13 @@ const BetterTickChart = (props) => {
             drawFunctionKey: "draw",
             instanceRef: null,
         },
-        // Add more indicators here as needed
+        {
+            id: "superTrend",
+            name: "Super Trend",
+            enabled: false,
+            drawFunctionKey: "drawAll",
+            instanceRef: null,
+        },
     ]);
 
     // Use custom hook for indicator toggling
@@ -101,6 +108,7 @@ const BetterTickChart = (props) => {
     // Get indicator configs
     const liquidityHeatmapIndicator = indicators.find((ind) => ind.id === "liquidityHeatmap");
     const ordersIndicator = indicators.find((ind) => ind.id === "orders");
+    const superTrendIndicator = indicators.find((ind) => ind.id === "superTrend");
 
     const symbolFilteredOrders = useMemo(() => {
         if (!ordersFromParent || !fullSymbol) return {};
@@ -172,6 +180,20 @@ const BetterTickChart = (props) => {
         },
         setIndicators,
         dependencies: [],
+    });
+
+    // SuperTrend indicator hook
+    useIndicator({
+        indicator: superTrendIndicator,
+        pixiDataRef,
+        createInstance: (pixiData) => {
+            if (!pixiData?.ohlcDatas || pixiData.ohlcDatas.length === 0) {
+                return null;
+            }
+            return new DrawSuperTrend(pixiData.ohlcDatas, { current: pixiData }, 0);
+        },
+        setIndicators,
+        dependencies: [candleData],
     });
 
     useEffect(() => {
