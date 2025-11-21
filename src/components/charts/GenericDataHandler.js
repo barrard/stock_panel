@@ -1124,7 +1124,11 @@ export default class GenericDataHandler {
         };
         this.updateDateCrossHairLabel = () => {
             if (!this.crosshair) return;
-            let date = this.getDate(this.mouseX);
+            const candleMargin = this.candleWidth * 0.1;
+            const halfWidth = this.candleWidth / 2;
+
+            const candleOffset = candleMargin - halfWidth;
+            let date = this.getDate(this.mouseX + candleOffset);
 
             if (!date) return;
             if (date === this.dateLabel) {
