@@ -367,6 +367,10 @@ export default class GenericDataHandler {
     // Use this for high-frequency updates (1s bars, tick bars) that update the current incomplete bar
     newTick(tick) {
         if (!tick) return;
+        if (!this.ohlcDatas.length) {
+            //could store this in a queue?
+            console.log("storing tick until get data", tick);
+        }
 
         const volume = tick.volume?.low || tick.volume || 0;
         const lastPrice = tick.lastPrice || tick.close || tick.last;
@@ -406,7 +410,7 @@ export default class GenericDataHandler {
         const lastBar = this.ohlcDatas[this.ohlcDatas.length - 1];
         const lastBarIndex = this.ohlcDatas.length - 1;
 
-        if (!lastBar.open) {
+        if (!lastBar?.open) {
             lastBar.open = lastPrice;
         }
 

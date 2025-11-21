@@ -404,7 +404,7 @@ const BetterTickChart = (props) => {
             exchange,
             hasPixiDataRef: !!pixiDataRef.current,
         });
-        debugger;
+
         // Register with server to receive tick bar updates
         Socket.emit("requestTickBarUpdate", {
             symbol: fullSymbol,

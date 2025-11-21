@@ -55,6 +55,9 @@ export default class DrawOrdersV2 {
             order?.stopPrice;
 
         if (price === undefined) {
+            if (order?.completionReason == "FA" || (order?.status == "open" && order?.priceType == "MARKET")) {
+                return;
+            }
             const key = order?.basketId || `${context}-${Math.random()}`;
             if (!this.missingPriceLogged.has(key)) {
                 this.missingPriceLogged.add(key);
@@ -94,7 +97,10 @@ export default class DrawOrdersV2 {
     }
 
     getEndTime(order) {
-        return this.getTimestamp(order, ["fillTime", "endTime", "cancelTime", "orderActiveTime", "statusTime", "triggerTime"]) ?? null;
+        return (
+            this.getTimestamp(order, ["openTime", "fillTime", "endTime", "cancelTime", "orderActiveTime", "statusTime", "triggerTime"]) ??
+            null
+        );
     }
 
     draw(data) {
@@ -116,11 +122,11 @@ export default class DrawOrdersV2 {
         }
 
         this.ordersGfx.clear();
-        debugger;
+
         Object.keys(ordersToDraw).forEach((basketId) => {
             let order = ordersToDraw[basketId];
             const originalOrder = [...order];
-            debugger;
+
             if (Array.isArray(order)) {
                 const compiled = compileOrders(order, {});
                 order = compiled[basketId];
@@ -340,6 +346,9 @@ export default class DrawOrdersV2 {
         const startX = this.data.xScale(startIndex);
         const y = this.data.priceScale(this.resolvePrice(order, "drawOpenMarker"));
         if (y === undefined) {
+            if (order.priceType == "MARKET") {
+                return; // we dont know the fill price yet
+            }
             console.warn(`${this.debugPrefix} drawOpenMarker priceScale returned undefined`, {
                 price: this.resolvePrice(order, "drawOpenMarker"),
                 order,

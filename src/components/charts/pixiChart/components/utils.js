@@ -572,6 +572,29 @@ export function combineTimestampsMicroSeconds({ ssboe, usecs = "" }) {
 export function compileOrders(orders, accumulator = {}) {
     const _priceType = priceType;
     let compiledOrders = orders.reduce((acc, order) => {
+        const isMarket = order.priceType === "MARKET";
+        if (!acc[order.basketId]) {
+            acc[order.basketId] = {};
+        }
+        if (order.reportText == "Rejected at RMS - Available margin exhausted") {
+            acc[order.basketId].marginExhausted = true;
+            acc[order.basketId].rejected = true;
+            acc[order.basketId].reportText = "Rejected at RMS - Available margin exhausted";
+            return acc;
+        }
+        if (order.userMsg?.[0] == "RequestCancelOrder") {
+            return acc;
+        }
+        if (order?.status == "open" && isMarket && order?.reportType != "fill") {
+            return acc;
+        }
+        order.priceType = _priceType(order.priceType);
+        // console.log(order);
+        const isBracket = order.bracketType ? order.bracketType : acc[order.basketId].bracketType ? acc[order.basketId].bracketType : null;
+        if (order.data) {
+            order = order.data;
+        }
+
         let {
             symbol,
             ssboe,
@@ -589,16 +612,7 @@ export function compileOrders(orders, accumulator = {}) {
             cancelledSize,
             transactionType,
         } = order;
-        if (!acc[basketId]) {
-            acc[basketId] = {};
-        }
-        order.priceType = _priceType(order.priceType);
-        // console.log(order);
-        const isBracket = bracketType ? bracketType : acc[basketId].bracketType ? acc[basketId].bracketType : null;
-        const isMarket = order.priceType === "MARKET";
-        if (order.data) {
-            order = order.data;
-        }
+
         if (isBracket) {
             // acc[basketId].bracketType = isBracket;
             acc[basketId].isBracketOrder = true;
