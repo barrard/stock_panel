@@ -7,6 +7,7 @@ import DrawTrendlines from "../../chartComponents/DrawTrendlines";
 // import DrawDailyTrendLines from "../../chartComponents/DrawDailyTrendLines";
 import DrawMovingAverages from "../../drawFunctions/DrawMovingAverages";
 import DrawSessionRangeZones from "../../drawFunctions/DrawSessionRangeZones";
+import DrawSuperTrend from "../../drawFunctions/DrawSuperTrend";
 import IndicatorSelector from "../../reusableChartComponents/IndicatorSelector";
 import API from "../../../API";
 // import { getExchangeFromSymbol } from "../../pixiChart/components/utils";
@@ -24,6 +25,7 @@ const BackTestChartGeneric = (props) => {
     const dailyTrendLinesRef = useRef(null);
     const movingAveragesRef = useRef(null);
     const sessionRangeZonesRef = useRef(null);
+    const superTrendRef = useRef(null);
 
     const [indicators, setIndicators] = useState([
         { id: "combinedKeyLevels", name: "CombinedKey Levels", enabled: false, drawFunctionKey: "drawAllCombinedLevels", layer: 0 },
@@ -33,6 +35,7 @@ const BackTestChartGeneric = (props) => {
         // { id: "dailyTrendLines", name: "Daily Trendlines", enabled: false, drawFunctionKey: "drawDailyTrendLines", layer: 0 },
         { id: "movingAverages", name: "Moving Averages", enabled: false, drawFunctionKey: "drawMovingAverages", layer: 0 },
         { id: "sessionRangeZones", name: "Session Range Zones", enabled: false, drawFunctionKey: "drawSessionRangeZones", layer: 0 },
+        { id: "superTrend", name: "Super Trend", enabled: false, drawFunctionKey: "drawSuperTrend", layer: 0 },
     ]);
 
     const toggleIndicator = (id) => {
@@ -224,6 +227,32 @@ const BackTestChartGeneric = (props) => {
             cleanup();
         }
     }, [candleData?.bars, data?.avgON_dailyRange, data?.avgRTH_dailyRange, indicators]);
+
+    // Super Trend
+    useEffect(() => {
+        const indicatorConfig = indicators.find((ind) => ind.id === "superTrend");
+        if (!indicatorConfig || !pixiDataRef.current) return;
+
+        const cleanup = () => {
+            if (superTrendRef.current) {
+                pixiDataRef.current?.unregisterDrawFn(indicatorConfig.drawFunctionKey);
+                superTrendRef.current.cleanup();
+                superTrendRef.current = null;
+            }
+        };
+
+        if (indicatorConfig.enabled && candleData?.bars?.length > 0) {
+            cleanup();
+
+            const instance = new DrawSuperTrend(candleData.bars, pixiDataRef, indicatorConfig.layer);
+            superTrendRef.current = instance;
+            instance.drawAll();
+
+            pixiDataRef.current.registerDrawFn(indicatorConfig.drawFunctionKey, instance.drawAll.bind(instance));
+        } else {
+            cleanup();
+        }
+    }, [candleData?.bars, indicators]);
 
     useEffect(() => {
         if (data?.bars?.length) {
