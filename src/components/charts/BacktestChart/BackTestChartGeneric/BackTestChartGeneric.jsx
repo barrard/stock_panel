@@ -5,6 +5,8 @@ import DrawPivots from "./DrawPivots";
 import DrawMinMax from "./DrawMinMax";
 import DrawTrendlines from "../../chartComponents/DrawTrendlines";
 // import DrawDailyTrendLines from "../../chartComponents/DrawDailyTrendLines";
+import DrawMovingAverages from "../../drawFunctions/DrawMovingAverages";
+import DrawSessionRangeZones from "../../drawFunctions/DrawSessionRangeZones";
 import IndicatorSelector from "../../reusableChartComponents/IndicatorSelector";
 import API from "../../../API";
 // import { getExchangeFromSymbol } from "../../pixiChart/components/utils";
@@ -20,13 +22,17 @@ const BackTestChartGeneric = (props) => {
     const minMaxRef = useRef(null);
     const trendlinesRef = useRef(null);
     const dailyTrendLinesRef = useRef(null);
+    const movingAveragesRef = useRef(null);
+    const sessionRangeZonesRef = useRef(null);
 
     const [indicators, setIndicators] = useState([
-        { id: "combinedKeyLevels", name: "CombinedKey Levels", enabled: true, drawFunctionKey: "drawAllCombinedLevels", layer: 0 },
-        { id: "pivots", name: "Pivots", enabled: true, drawFunctionKey: "drawAllPivots", layer: 0 },
-        { id: "minMax", name: "Min/Max", enabled: true, drawFunctionKey: "drawAllMinMax", layer: 0 },
-        { id: "trendlines", name: "Trendlines", enabled: true, drawFunctionKey: "drawTrendlines", layer: 0 },
-        // { id: "dailyTrendLines", name: "Daily Trendlines", enabled: true, drawFunctionKey: "drawDailyTrendLines", layer: 0 },
+        { id: "combinedKeyLevels", name: "CombinedKey Levels", enabled: false, drawFunctionKey: "drawAllCombinedLevels", layer: 0 },
+        { id: "pivots", name: "Pivots", enabled: false, drawFunctionKey: "drawAllPivots", layer: 0 },
+        { id: "minMax", name: "Min/Max", enabled: false, drawFunctionKey: "drawAllMinMax", layer: 0 },
+        { id: "trendlines", name: "Trendlines", enabled: false, drawFunctionKey: "drawTrendlines", layer: 0 },
+        // { id: "dailyTrendLines", name: "Daily Trendlines", enabled: false, drawFunctionKey: "drawDailyTrendLines", layer: 0 },
+        { id: "movingAverages", name: "Moving Averages", enabled: false, drawFunctionKey: "drawMovingAverages", layer: 0 },
+        { id: "sessionRangeZones", name: "Session Range Zones", enabled: false, drawFunctionKey: "drawSessionRangeZones", layer: 0 },
     ]);
 
     const toggleIndicator = (id) => {
@@ -160,6 +166,64 @@ const BackTestChartGeneric = (props) => {
     //         cleanup();
     //     }
     // }, [data?.dailyTrendLines, indicators]);
+
+    // Moving Averages (20, 50, 200)
+    useEffect(() => {
+        const indicatorConfig = indicators.find((ind) => ind.id === "movingAverages");
+        if (!indicatorConfig || !pixiDataRef.current) return;
+
+        const cleanup = () => {
+            if (movingAveragesRef.current) {
+                pixiDataRef.current?.unregisterDrawFn(indicatorConfig.drawFunctionKey);
+                movingAveragesRef.current.cleanup();
+                movingAveragesRef.current = null;
+            }
+        };
+
+        if (indicatorConfig.enabled && candleData?.bars?.length > 0) {
+            cleanup();
+
+            const instance = new DrawMovingAverages(candleData.bars, pixiDataRef, [20, 50, 200], indicatorConfig.layer);
+            movingAveragesRef.current = instance;
+            instance.drawAll();
+
+            pixiDataRef.current.registerDrawFn(indicatorConfig.drawFunctionKey, instance.drawAll.bind(instance));
+        } else {
+            cleanup();
+        }
+    }, [candleData?.bars, indicators]);
+
+    // Session Range Zones
+    useEffect(() => {
+        const indicatorConfig = indicators.find((ind) => ind.id === "sessionRangeZones");
+        if (!indicatorConfig || !pixiDataRef.current) return;
+
+        const cleanup = () => {
+            if (sessionRangeZonesRef.current) {
+                pixiDataRef.current?.unregisterDrawFn(indicatorConfig.drawFunctionKey);
+                sessionRangeZonesRef.current.cleanup();
+                sessionRangeZonesRef.current = null;
+            }
+        };
+
+        if (indicatorConfig.enabled && candleData?.bars?.length > 0 && data?.avgON_dailyRange && data?.avgRTH_dailyRange) {
+            cleanup();
+
+            const instance = new DrawSessionRangeZones(
+                candleData.bars,
+                data.avgON_dailyRange,
+                data.avgRTH_dailyRange,
+                pixiDataRef,
+                indicatorConfig.layer
+            );
+            sessionRangeZonesRef.current = instance;
+            instance.drawAll();
+
+            pixiDataRef.current.registerDrawFn(indicatorConfig.drawFunctionKey, instance.drawAll.bind(instance));
+        } else {
+            cleanup();
+        }
+    }, [candleData?.bars, data?.avgON_dailyRange, data?.avgRTH_dailyRange, indicators]);
 
     useEffect(() => {
         if (data?.bars?.length) {

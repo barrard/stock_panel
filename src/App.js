@@ -21,7 +21,6 @@ import OpAlerts from "./components/OpUnusualVolPage.js";
 import OptionContracts from "./components/OptionContracts.js";
 import OptionByDate from "./components/OptionByDate.js";
 import PixiChart from "./components/charts/pixiChart";
-import GptChart from "./components/charts/GptChart";
 import BacktestChart from "./components/charts/BacktestChart";
 import BacktestResults from "./components/charts/BacktestResults";
 import SpyOptionsPage from "./components/SpyOptionsPage";
@@ -117,7 +116,6 @@ class App extends React.Component {
                     <Route path="/strat-builder" render={(props) => <StratBuilder {...props} />} />
                     <Route path="/fundamentals" render={(props) => <Fundamentals {...props} />} />
                     <Route path="/pixi-chart" render={(props) => <PixiChart {...props} Socket={Socket} />} />
-                    <Route path="/gpt-chart" render={(props) => <GptChart {...props} Socket={Socket} />} />
                     <Route path="/pixi-backtest" render={(props) => <BacktestChart {...props} Socket={Socket} />} />
                     <Route path="/backtest-results" render={(props) => <BacktestResults {...props} Socket={Socket} />} />
                     <Route path="/pick-list" render={(props) => <PickList {...props} Socket={Socket} />} />
