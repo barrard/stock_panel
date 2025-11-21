@@ -181,6 +181,149 @@ When adding new indicators or graphical overlays to any chart that utilizes the 
 
 This ensures that as the user pans and zooms (which changes `slicedData` and the `xScale` domain within `GenericPixiChart`), the indicator's position is recalculated correctly relative to the visible data.
 
+### Creating Overlay Indicator Classes
+
+When creating indicator overlay classes (like `DrawSuperTrend`, `DrawMovingAverages`), follow these patterns:
+
+**1. Graphics Object Reuse (IMPORTANT):**
+
+Do NOT create new `Graphics` objects on every draw. This causes GC pressure and performance issues.
+
+```javascript
+// ❌ BAD - creates/destroys Graphics every draw
+drawAll() {
+    this.container.removeChildren().forEach(child => child.destroy());
+    const gfx = new Graphics();
+    // ... draw
+    this.container.addChild(gfx);
+}
+
+// ✅ GOOD - create once, clear and reuse
+initContainer() {
+    this.container = new Container();
+    this.gfx = new Graphics(); // Create ONCE
+    this.container.addChild(this.gfx);
+    this.pixiDataRef.current.addToLayer(this.layer, this.container);
+}
+
+drawAll() {
+    this.gfx.clear(); // Just clear, don't destroy
+    // ... draw using this.gfx
+}
+```
+
+**2. Self-Managing Data Updates:**
+
+Indicators should track data length and recalculate when it changes (handles both new bars and historical data loading):
+
+```javascript
+constructor(ohlcData, pixiDataRef, layer = 0) {
+    this.ohlcData = ohlcData;
+    this.lastDataLength = 0;
+    // ...
+}
+
+recalculateIndicators() {
+    // Calculate indicator values for all bars
+    // ...
+    this.lastDataLength = this.ohlcData.length;
+}
+
+drawAll() {
+    // Check if data length changed
+    if (this.ohlcData && this.ohlcData.length !== this.lastDataLength) {
+        this.recalculateIndicators();
+    }
+
+    this.gfx.clear();
+    // ... draw
+}
+```
+
+**3. Standard Class Structure:**
+
+```javascript
+import { Graphics, Container } from "pixi.js";
+
+export default class DrawMyIndicator {
+    constructor(ohlcData, pixiDataRef, layer = 0) {
+        this.ohlcData = ohlcData;
+        this.pixiDataRef = pixiDataRef;
+        this.layer = layer;
+        this.hasInit = false;
+        this.lastDataLength = 0;
+
+        this.init();
+    }
+
+    init() {
+        if (this.hasInit) return;
+        this.hasInit = true;
+        this.initContainer();
+        this.recalculateIndicators();
+    }
+
+    initContainer() {
+        this.container = new Container();
+        this.gfx = new Graphics();
+        this.container.addChild(this.gfx);
+        this.pixiDataRef.current.addToLayer(this.layer, this.container);
+    }
+
+    cleanup() {
+        if (this.container) {
+            this.pixiDataRef.current.removeFromLayer(this.layer, this.container);
+            this.container.destroy({ children: true });
+            this.container = null;
+        }
+    }
+
+    recalculateIndicators() {
+        if (!this.ohlcData || this.ohlcData.length === 0) {
+            this.lastDataLength = 0;
+            return;
+        }
+        // ... calculate indicator values
+        this.lastDataLength = this.ohlcData.length;
+    }
+
+    drawAll() {
+        if (!this.container || !this.gfx) return;
+
+        if (this.ohlcData && this.ohlcData.length !== this.lastDataLength) {
+            this.recalculateIndicators();
+        }
+
+        this.gfx.clear();
+
+        const slicedData = this.pixiDataRef.current.slicedData;
+        if (!slicedData || slicedData.length === 0) return;
+
+        // Update scales
+        this.xScale = this.pixiDataRef.current.xScale;
+        this.priceScale = this.pixiDataRef.current.priceScale;
+
+        // ... draw using slicedData and this.gfx
+    }
+}
+```
+
+**4. Registering with the Chart:**
+
+In parent components, use the indicator with `registerDrawFn`:
+
+```javascript
+const instance = new DrawMyIndicator(candleData.bars, pixiDataRef, layer);
+instance.drawAll();
+pixiDataRef.current.registerDrawFn('myIndicator', instance.drawAll.bind(instance));
+
+// Cleanup when disabling
+pixiDataRef.current.unregisterDrawFn('myIndicator');
+instance.cleanup();
+```
+
+See `DrawSuperTrend.js` for a complete example implementation.
+
 ## Chart Background Patterns
 
 `GenericPixiChart` supports drawing custom background patterns to visually distinguish different time periods or market conditions. This is implemented through a session-based pre-calculation pattern for optimal performance.
@@ -437,3 +580,112 @@ This calculation-based approach works well when:
 - **Calculation-based**: Best for simple thresholds or frequently changing conditions
 
 Both approaches use caching to ensure they only redraw when the visible data range changes.
+
+## Drawing Orders on Charts with DrawOrdersV2
+
+`DrawOrdersV2` is a class for rendering order markers (fills, cancellations, open orders) on `GenericPixiChart`. It handles various order states and displays them with appropriate visual markers.
+
+### Basic Usage
+
+```javascript
+import DrawOrdersV2 from "./components/DrawOrdersV2";
+
+// After chart is initialized
+const ordersDrawer = new DrawOrdersV2(pixiDataRef.current);
+
+// Draw orders (keyed by basketId)
+ordersDrawer.draw({
+    "basket123": orderData,
+    "basket456": orderData2
+});
+
+// Cleanup when done
+ordersDrawer.cleanup();
+```
+
+### Constructor
+
+Unlike indicator classes that take `ohlcData` and `pixiDataRef`, `DrawOrdersV2` takes the `dataHandler` directly:
+
+```javascript
+constructor(dataHandler) {
+    this.data = dataHandler;  // pixiDataRef.current
+    // ...
+}
+```
+
+It automatically adds itself to layer 2 (above candles, below crosshair).
+
+### Order Data Format
+
+Orders are passed as an object keyed by `basketId`. Each order can have these fields:
+
+**Price fields** (resolved in priority order):
+- `fillPrice`, `avgFillPrice`, `triggerPrice`, `price`, `entryPrice`, `limitPrice`, `stopPrice`
+
+**Time fields**:
+- Start: `statusTime`, `openTime`, `triggerTime`, `orderReceivedFromClientTime`, `ssboe`
+- End: `fillTime`, `endTime`, `cancelTime`, `orderActiveTime`
+
+**Status fields**:
+- `status` - Order status string (e.g., "complete", "cancelled")
+- `reportType` - e.g., "fill", "cancel"
+- `completionReason` - e.g., "F" (filled), "C" (cancelled)
+- `priceType` - Order type: "MARKET", "LIMIT", "STOP_MARKET", "STOP_LIMIT"
+- `transactionType` - "BUY" or 1 for buy (green), "SELL" or other for sell (red)
+
+### Visual Markers
+
+The class draws different markers based on order state:
+
+| Order State | Marker |
+|-------------|--------|
+| **Instant fill** (market order, <1s duration) | Filled circle at fill time |
+| **Filled order** | Open circle at start → line → filled circle at end |
+| **Cancelled order** | X marker at cancel time, with line from open time |
+| **Open order** | Open circle at start → line → arrow at chart end |
+
+Colors: Green (`0x00ff00`) for BUY, Red (`0xff0000`) for SELL.
+
+### Integration Pattern
+
+```javascript
+// In parent component
+const ordersRef = useRef(null);
+
+useEffect(() => {
+    if (pixiDataRef.current && !ordersRef.current) {
+        ordersRef.current = new DrawOrdersV2(pixiDataRef.current);
+
+        // Register draw function so it redraws on pan/zoom
+        pixiDataRef.current.registerDrawFn('orders', () => {
+            ordersRef.current.draw();
+        });
+    }
+
+    return () => {
+        if (ordersRef.current) {
+            pixiDataRef.current.unregisterDrawFn('orders');
+            ordersRef.current.cleanup();
+            ordersRef.current = null;
+        }
+    };
+}, [pixiDataRef.current]);
+
+// Update orders when data changes
+useEffect(() => {
+    if (ordersRef.current && orders) {
+        ordersRef.current.draw(orders);
+    }
+}, [orders]);
+```
+
+### Key Implementation Details
+
+1. **Uses `slicedData` for positioning**: Orders are positioned by finding the index in `slicedData` where the order's timestamp matches, ensuring correct pan/zoom behavior.
+
+2. **Time matching**: Uses `findIndex` to locate bars by comparing `timestamp` or `datetime` fields.
+
+3. **Graphics reuse**: Creates `ordersGfx` once and clears it on each draw (follows the standard pattern).
+
+4. **Order compilation**: If orders come as arrays, they are compiled using `compileOrders()` utility before drawing.
