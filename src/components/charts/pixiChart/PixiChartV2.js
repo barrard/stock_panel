@@ -10,6 +10,7 @@ import TimeFrameBtns from "./components/TimeFrameBtns";
 import Select from "./components/Select";
 // import OrdersList from "./components/OrdersList";
 import { symbolOptions, barTypeToTimeframe, parseBarTypeTimeFrame, normalizeBarData } from "./components/utils";
+import { sendFuturesOrder } from "./components/sendFuturesOrder";
 import { useIndicator } from "../hooks/useIndicator";
 import { useToggleIndicator } from "../hooks/useToggleIndicator";
 import { useLiquidityData } from "../hooks/useLiquidityData";
@@ -335,9 +336,7 @@ const PixiChartV2 = (props) => {
             if (normalized.length) {
                 setOhlcData((prevOhlcData) => {
                     const merged = [...normalized, ...prevOhlcData];
-                    return Array.from(new Map(merged.map((bar) => [bar.datetime, bar])).values()).sort(
-                        (a, b) => a.datetime - b.datetime
-                    );
+                    return Array.from(new Map(merged.map((bar) => [bar.datetime, bar])).values()).sort((a, b) => a.datetime - b.datetime);
                 });
             } else {
                 console.log("[PixiChartV2] No additional historical data returned after multiple attempts.");
@@ -620,7 +619,8 @@ const PixiChartV2 = (props) => {
                 // width={width}
                 height={height}
                 symbol={symbol.value}
-                // fullSymbolRef={fullSymbolRef}
+                fullSymbol={symbol.value}
+                exchange={symbol.exchange} // symbol.exchange
                 barType={barType.value}
                 barTypePeriod={barTypePeriod}
                 // loadData={loadData}
@@ -629,6 +629,7 @@ const PixiChartV2 = (props) => {
                 loadMoreData={loadMoreData}
                 onTimeRangeChange={handleTimeRangeChange}
                 isLoading={isLoading}
+                sendOrder={sendFuturesOrder}
                 // tickSize={tickSize}
             />
 

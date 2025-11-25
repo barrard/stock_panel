@@ -9,6 +9,7 @@ import { useLiquidityData } from "../../../hooks/useLiquidityData";
 import { LiquidityHeatmap, liquidityHeatMapConfig } from "../indicatorDrawFunctions";
 import DrawOrdersV2 from "../DrawOrdersV2";
 import DrawSuperTrend from "../../../drawFunctions/DrawSuperTrend";
+import { sendFuturesOrder } from "../sendFuturesOrder";
 // import { liquidityHeatMapConfig } from "../indicatorConfigs";
 
 const BetterTickChart = (props) => {
@@ -579,6 +580,7 @@ const BetterTickChart = (props) => {
                     loadMoreData={loadMoreData}
                     onTimeRangeChange={handleTimeRangeChange}
                     isLoading={isLoading}
+                    sendOrder={sendFuturesOrder}
                     options={{
                         withoutVolume: false,
                         chartType: "OHLC",

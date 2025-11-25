@@ -40,6 +40,7 @@ export default function GenericPixiChart({
     onTimeRangeChange = null, // Optional callback for time range changes
     isLoading = false, // Loading state for data fetching
     name = "GenericPixiChart", // Name for logging purposes
+    sendOrder = null, // Optional function to send orders - enables trade window when provided
     ...rest
 }) {
     if (!fullSymbol) {
@@ -171,6 +172,7 @@ export default function GenericPixiChart({
             lowerIndicators,
             loadMoreData,
             name,
+            sendOrder,
         });
 
         // Set up callback for manual scale changes
@@ -236,6 +238,12 @@ export default function GenericPixiChart({
             }
         };
     }, [symbol, barType?.value, barTypePeriod]);
+
+    // Trade window effect - call showTradeWindow when openTradeWindow state changes
+    useEffect(() => {
+        if (!effectivePixiDataRef.current || !sendOrder) return;
+        effectivePixiDataRef.current.showTradeWindow(openTradeWindow, fullSymbol);
+    }, [openTradeWindow, sendOrder, fullSymbol]);
 
     useEffect(() => {
         const data = currentTimeBar;
@@ -551,11 +559,14 @@ export default function GenericPixiChart({
                 // className="col-6"
                 ref={PixiChartRef}
                 // style={{ border: "2px solid red" }}
-                // onContextMenu={(e) => {
-                //     e.preventDefault();
-                //     console.log(`onContextMenu ${openTradeWindow}`);
-                //     setOpenTradeWindow((v) => !v);
-                // }}
+                onContextMenu={
+                    sendOrder
+                        ? (e) => {
+                              e.preventDefault();
+                              setOpenTradeWindow((v) => !v);
+                          }
+                        : undefined
+                }
                 onMouseEnter={(e) => {
                     // console.log("onMouseEnter");
                     setMouseEnter(true);

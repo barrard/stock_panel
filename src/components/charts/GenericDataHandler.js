@@ -23,6 +23,7 @@ export default class GenericDataHandler {
         options = { chartType: "candlestick" },
         lowerIndicators = [],
         name = "unnamed chart",
+        sendOrder = null,
     }) {
         this.name = name;
         this.lowerIndicators = lowerIndicators;
@@ -35,6 +36,7 @@ export default class GenericDataHandler {
         this.height = height;
         this.symbol = symbol;
         this.fullSymbol = fullSymbol;
+        this.sendOrder = sendOrder;
         this.margin = margin;
         this.initialized = false;
         this.mainChartContainerHeight = mainChartContainerHeight;
@@ -925,6 +927,78 @@ export default class GenericDataHandler {
         this.tradeWindowContainer.addChild(this.TW_BUY);
         this.tradeWindowContainer.addChild(this.TW_SELL);
     }
+
+    showTradeWindow(openTradeWindow, tradeData) {
+        // Only show trade window if sendOrder function is available
+        if (!this.sendOrder) return;
+
+        this.tradeData = tradeData;
+        this.openTradeWindow = openTradeWindow;
+
+        // If position is locked, don't update
+        if (this.setTradeWindowPosition) return;
+
+        try {
+            this.tradeWindowGfx?.clear();
+            if (!openTradeWindow) {
+                this.tradeWindowContainer.position.set(-1000, -1000);
+                return;
+            }
+        } catch (e) {
+            console.log(e);
+            return;
+        }
+
+        // Update symbol text
+        this.TW_symbol.text = this.fullSymbol?.fullSymbol || this.symbol?.symbol || "";
+        this.TW_exchange.text = this.fullSymbol?.exchange || this.symbol?.exchange || "";
+
+        // Position the trade window at mouse location
+        this.tradeWindowContainer.position.set(this.mouseX, this.mouseY);
+
+        // Draw background
+        this.tradeWindowGfx.beginFill(0xcccccc);
+        this.tradeWindowGfx.drawRect(0, 0, 200, 200);
+        this.tradeWindowGfx.endFill();
+
+        // Calculate price at cursor position
+        this.TW_Price = roundTick(this.priceScale.invert(this.mouseY), this.tickSize);
+        this.TW_value.text = priceFormatter.format(this.TW_Price);
+        this.TW_value.position.set(25, 25);
+        this.TW_symbol.position.set(25, 0);
+        this.TW_exchange.position.set(125, 0);
+
+        // Button positions
+        const buttonsY = 50;
+        const leftBtnX = 25;
+        const rightBtnX = 125;
+        const buttonWidth = 50;
+        const buttonHeight = 20;
+
+        // Draw sell button (red, left side)
+        this.TW_SellButtonGfx.clear();
+        this.TW_SellButtonGfx.beginFill(0xff0000);
+        this.TW_SellButtonGfx.drawRect(leftBtnX, buttonsY, buttonWidth, buttonHeight);
+        this.TW_SellButtonGfx.endFill();
+
+        // Draw buy button (green, right side)
+        this.TW_BuyButtonGfx.clear();
+        this.TW_BuyButtonGfx.beginFill(0x00ff00);
+        this.TW_BuyButtonGfx.drawRect(rightBtnX, buttonsY, buttonWidth, buttonHeight);
+        this.TW_BuyButtonGfx.endFill();
+
+        // Update button text based on price relative to last price
+        // If trade price > last price: BUY=STOP, SELL=LIMIT
+        // If trade price < last price: BUY=LIMIT, SELL=STOP
+        this.TW_BUY.position.set(rightBtnX, buttonsY);
+        const BUY_TXT = !this.lastPrice ? "" : this.TW_Price > this.lastPrice ? "STOP" : "LIMIT";
+        this.TW_BUY.text = BUY_TXT;
+
+        this.TW_SELL.position.set(leftBtnX, buttonsY);
+        const SELL_TXT = !this.lastPrice ? "" : this.TW_Price < this.lastPrice ? "STOP" : "LIMIT";
+        this.TW_SELL.text = SELL_TXT;
+    }
+
     initCrossHair() {
         //LABELS
         this.dateLabelAppendGfx = new Graphics();
@@ -1270,7 +1344,9 @@ export default class GenericDataHandler {
         this.initCrossHair();
         this.initGraphics();
         this.initContainers();
-        this.initTradeWindow();
+        if (this.sendOrder) {
+            this.initTradeWindow();
+        }
         this.initLowerIndicators();
         this.setHitArea();
         this.drawCrossHair();
@@ -2039,7 +2115,9 @@ export default class GenericDataHandler {
 
         this.addToLayer(3, this.crossHairXGfx);
         this.addToLayer(3, this.crossHairYGfx);
-        this.addToLayer(3, this.tradeWindowContainer);
+        if (this.sendOrder) {
+            this.addToLayer(3, this.tradeWindowContainer);
+        }
         //LABELS
         this.addToLayer(3, this.dateLabelAppendGfx);
         this.addToLayer(4, this.priceLabelAppendGfx);
@@ -2103,3 +2181,8 @@ function roundTick(number, tick) {
     const ticks = 1 / tick;
     return (Math.round(number * ticks) / ticks).toFixed(2);
 }
+
+const priceFormatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+});
