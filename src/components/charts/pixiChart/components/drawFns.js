@@ -110,8 +110,14 @@ export function drawLine(opts = {}) {
     let firstPoint = true;
 
     data.forEach((candle, i) => {
+        const value = candle[yField];
+        if (value === undefined || value === null || Number.isNaN(value)) {
+            firstPoint = true;
+            return;
+        }
+
         const x = xScale(i);
-        const y = yScale(candle[yField]) || 0;
+        const y = yScale(value);
 
         if (firstPoint) {
             gfx.moveTo(x, y);

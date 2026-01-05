@@ -9,6 +9,41 @@ import styled from "styled-components";
 import Input from "./Input";
 import ColorSchemeEditor from "./ColorSchemeEditor";
 
+const SineWavesIcon = ({ size = 24, stroke = "#fff" }) => (
+    <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        role="img"
+        aria-label="Moving averages icon"
+    >
+        <path
+            d="M2 15 C4 11 6 11 8 15 S12 19 14 15 18 11 20 15 22 19 24 15"
+            stroke={stroke}
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.6"
+        />
+        <path
+            d="M2 10 C4 6 6 6 8 10 S12 14 14 10 18 6 20 10 22 14 24 10"
+            stroke={stroke}
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+        <path
+            d="M2 5 C4 1 6 1 8 5 S12 9 14 5 18 1 20 5 22 9 24 5"
+            stroke={stroke}
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.4"
+        />
+    </svg>
+);
+
 // import Select from "./Select";
 
 function IndicatorsBtns(props) {
@@ -128,6 +163,7 @@ function IndicatorsBtns(props) {
         orders: <AiOutlineTransaction />,
         pivotLines: <IoIosReorder />,
         superTrend: <MdTrendingUp />,
+        movingAverages: <SineWavesIcon />,
     };
 
     // Render data-driven buttons

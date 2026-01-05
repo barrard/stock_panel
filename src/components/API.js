@@ -87,6 +87,10 @@ const API = {
     fetchMarketBreadth,
     getTopWinnersLosers,
     rapi_requestBarsTimeRange,
+    // Sectors API
+    getSectorData,
+    getSectorPerformance,
+    getSectorCorrelation,
 };
 
 export default API;
@@ -1191,4 +1195,70 @@ function settleSymbol(symbol) {
         default:
             return symbol;
     }
+}
+
+// ============ SECTORS API ============
+
+/**
+ * Get sector chart data for multiple timeframes and periods
+ * @param {Object} opts - Options object
+ * @param {string} opts.timeframe - Timeframe: "5m", "daily", "weekly"
+ * @param {string} opts.period - Period: "1d", "1w", "1m", "3m", "6m", "1y"
+ * @returns {Object} Object keyed by sector symbol with array of OHLCV data
+ */
+async function getSectorData(opts = {}) {
+    const { timeframe = "daily", period = "3m" } = opts;
+
+    const query = new URLSearchParams({
+        timeframe,
+        period,
+    });
+
+    return await GET(`/API/sectors/data?${query.toString()}`);
+}
+
+/**
+ * Get sector performance metrics for heat map visualization
+ * @param {Object} opts - Options object
+ * @param {string} opts.period - Period: "1d", "1w", "1m", "3m", "6m", "1y"
+ * @returns {Object} Object keyed by sector symbol with performance metrics
+ * Example response:
+ * {
+ *   XLE: { percentChange: 5.2, currentPrice: 85.43, startPrice: 81.21, high: 86.00, low: 80.50 },
+ *   XLF: { percentChange: -2.1, currentPrice: 38.92, startPrice: 39.76, high: 40.15, low: 38.50 },
+ *   ...
+ * }
+ */
+async function getSectorPerformance(opts = {}) {
+    const { period = "3m" } = opts;
+
+    const query = new URLSearchParams({
+        period,
+    });
+
+    return await GET(`/API/sectors/performance?${query.toString()}`);
+}
+
+/**
+ * Get sector correlation matrix
+ * @param {Object} opts - Options object
+ * @param {string} opts.timeframe - Timeframe: "5m", "daily", "weekly"
+ * @param {string} opts.period - Period: "1d", "1w", "1m", "3m", "6m", "1y"
+ * @returns {Object} 2D object with correlation values between -1 and 1
+ * Example response:
+ * {
+ *   XLE: { XLE: 1.00, XLF: 0.65, XLU: 0.32, ... },
+ *   XLF: { XLE: 0.65, XLF: 1.00, XLU: 0.45, ... },
+ *   ...
+ * }
+ */
+async function getSectorCorrelation(opts = {}) {
+    const { timeframe = "daily", period = "3m" } = opts;
+
+    const query = new URLSearchParams({
+        timeframe,
+        period,
+    });
+
+    return await GET(`/API/sectors/correlation?${query.toString()}`);
 }

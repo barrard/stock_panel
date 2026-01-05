@@ -52,7 +52,7 @@ export default function TimeFrameBtns(props) {
             </OptsWindowContainer>
         );
     };
-    let is_1m, is_5m, is_30m, is_60m, is_4h;
+    let is_1m, is_5m, is_30m, is_60m, is_4h, is_1d, is_1w;
 
     if (barType.name === "Seconds" && barTypePeriod === 60) {
         is_1m = true;
@@ -64,6 +64,10 @@ export default function TimeFrameBtns(props) {
         is_60m = true;
     } else if (barType.name === "Minute" && barTypePeriod === 60 * 4) {
         is_4h = true;
+    } else if (barType.name === "Minute" && barTypePeriod === 1440) {
+        is_1d = true;
+    } else if (barType.name === "Week" && barTypePeriod === 1) {
+        is_1w = true;
     }
 
     const TimeBtn = ({ isTime, barType, barPeriod, name }) => (
@@ -93,6 +97,8 @@ export default function TimeFrameBtns(props) {
             <TimeBtn isTime={is_30m} name="30m" barType={{ name: "Minute", value: 2 }} barPeriod={30} />
             <TimeBtn isTime={is_60m} name="60m" barType={{ name: "Minute", value: 2 }} barPeriod={60} />
             <TimeBtn isTime={is_4h} name="4h" barType={{ name: "Minute", value: 2 }} barPeriod={60 * 4} />
+            <TimeBtn isTime={is_1d} name="1d" barType={{ name: "Minute", value: 2 }} barPeriod={1440} />
+            <TimeBtn isTime={is_1w} name="1w" barType={{ name: "Week", value: 4 }} barPeriod={1} />
         </div>
     );
 }

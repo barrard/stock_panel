@@ -146,6 +146,9 @@ export default class GenericDataHandler {
     }
 
     calculateVolumeMovingAverage(period = 20) {
+        console.log(
+            `[GenericDataHandler] calculateVolumeMovingAverage period=${period} bars=${this.ohlcDatas?.length || 0}`
+        );
         // Calculate moving average for the entire dataset and store on each bar
         for (let i = 0; i < this.ohlcDatas.length; i++) {
             if (i < period - 1) {
@@ -600,58 +603,52 @@ export default class GenericDataHandler {
         this._scanLoops = 0;
 
         if (!this.manualYScale) {
-            // Check if the cached min/max indices are outside the current visible slice.
-            const isCacheInvalid =
-                this.slicedHighestIdx === null ||
-                this.slicedLowestIdx === null ||
-                this.slicedHighestIdx < this.sliceStart ||
-                this.slicedHighestIdx >= this.sliceEnd ||
-                this.slicedLowestIdx < this.sliceStart ||
-                this.slicedLowestIdx >= this.sliceEnd;
+            // this.hasNewData = this.prevSliceStart !== this.sliceStart || this.prevSliceEnd !== this.sliceEnd;
+            // // Check if the cached min/max indices are outside the current visible slice.
+            // const isCacheInvalid = this.slicedHighestIdx === null || this.slicedLowestIdx === null || this.hasNewData;
+            // if (isCacheInvalid) {
+            let lowestIdx = -1,
+                highestIdx = -1;
 
-            if (isCacheInvalid) {
-                let lowestIdx = -1,
-                    highestIdx = -1;
-
-                if (this.options.chartType === "line") {
-                    const lineKey = this.options.lineKey;
-                    highest = -Infinity;
-                    lowest = Infinity;
-                    for (let i = 0; i < sd.length; i++) {
-                        const val = sd[i][lineKey];
-                        if (val > highest) {
-                            highest = val;
-                            highestIdx = i;
-                        }
-                        if (val < lowest) {
-                            lowest = val;
-                            lowestIdx = i;
-                        }
-                        this._scanLoops++;
+            if (this.options.chartType === "line") {
+                const lineKey = this.options.lineKey;
+                highest = -Infinity;
+                lowest = Infinity;
+                for (let i = 0; i < sd.length; i++) {
+                    const val = sd[i][lineKey];
+                    if (val > highest) {
+                        highest = val;
+                        highestIdx = i;
                     }
-                } else {
-                    // Candlestick
-                    highest = -Infinity;
-                    lowest = Infinity;
-                    for (let i = 0; i < sd.length; i++) {
-                        if (sd[i].high > highest) {
-                            highest = sd[i].high;
-                            highestIdx = i;
-                        }
-                        if (sd[i].low < lowest) {
-                            lowest = sd[i].low;
-                            lowestIdx = i;
-                        }
-                        this._scanLoops++;
+                    if (val < lowest) {
+                        lowest = val;
+                        lowestIdx = i;
                     }
+                    this._scanLoops++;
                 }
-
-                // Update cache with new values and their absolute indices
-                this.slicedHighest = highest;
-                this.slicedLowest = lowest;
-                this.slicedHighestIdx = this.sliceStart + highestIdx;
-                this.slicedLowestIdx = this.sliceStart + lowestIdx;
+            } else {
+                // Candlestick
+                highest = -Infinity;
+                lowest = Infinity;
+                for (let i = 0; i < sd.length; i++) {
+                    if (sd[i].high > highest) {
+                        highest = sd[i].high;
+                        highestIdx = i;
+                    }
+                    if (sd[i].low < lowest) {
+                        lowest = sd[i].low;
+                        lowestIdx = i;
+                    }
+                    this._scanLoops++;
+                }
             }
+
+            // Update cache with new values and their absolute indices
+            this.slicedHighest = highest;
+            this.slicedLowest = lowest;
+            this.slicedHighestIdx = this.sliceStart + highestIdx;
+            this.slicedLowestIdx = this.sliceStart + lowestIdx;
+            // }
         }
 
         this.timestamps = sd.map(({ timestamp, datetime }) => timestamp || datetime);
@@ -1206,7 +1203,7 @@ export default class GenericDataHandler {
             const halfWidth = this.candleWidth / 2;
 
             const candleOffset = candleMargin - halfWidth;
-            let date = this.getDate(this.mouseX + candleOffset);
+            let date = this.getDate(this.mouseX - candleOffset);
 
             if (!date) return;
             if (date === this.dateLabel) {

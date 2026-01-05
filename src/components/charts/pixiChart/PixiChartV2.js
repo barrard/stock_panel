@@ -4,6 +4,7 @@ import API from "../../API";
 import { LiquidityHeatmap, liquidityHeatMapConfig } from "./components/indicatorDrawFunctions";
 import DrawOrdersV2 from "./components/DrawOrdersV2";
 import DrawSuperTrend from "../drawFunctions/DrawSuperTrend";
+import DrawMovingAverages from "../drawFunctions/DrawMovingAverages";
 import IndicatorsBtns from "./components/IndicatorsBtns";
 import SymbolBtns from "./components/SymbolBtns";
 import TimeFrameBtns from "./components/TimeFrameBtns";
@@ -24,6 +25,39 @@ import handleTimeRangeChange from "./components/handleTimeRangeChange";
 // import TimeframeSelector from "./spyOptionsComponents/TimeframeSelector";
 // import IndicatorSelector from "../../../reusableChartComponents/IndicatorSelector";
 const ticks = TICKS();
+const LIQUIDITY_MA_LINE_COLOR = 0xffd966;
+
+const createCandlesWithMovingAverageDrawFn = ({
+    openField,
+    highField,
+    lowField,
+    closeField,
+    upColor,
+    downColor,
+    maField,
+    maColor = LIQUIDITY_MA_LINE_COLOR,
+    maLineWidth = 2,
+}) => {
+    return (opts) => {
+        drawIndicatorCandlestick({
+            ...opts,
+            openField,
+            highField,
+            lowField,
+            closeField,
+            upColor,
+            downColor,
+        });
+
+        drawLine({
+            ...opts,
+            lineColor: maColor,
+            lineWidth: maLineWidth,
+            yField: maField,
+            skipClear: true,
+        });
+    };
+};
 
 const PixiChartV2 = (props) => {
     const { Socket, height = 500, orders: ordersFromParent = {}, fullSymbol } = props;
@@ -80,6 +114,17 @@ const PixiChartV2 = (props) => {
             enabled: false,
             drawFunctionKey: "drawAll",
             instanceRef: null,
+        },
+        {
+            id: "movingAverages",
+            name: "Moving Averages",
+            enabled: false,
+            drawFunctionKey: "drawMovingAverages",
+            instanceRef: null,
+            layer: 2,
+            options: {
+                periods: [20, 50, 200],
+            },
         },
         // { id: "zigZag", name: "ZigZag", enabled: false, drawFunctionKey: "draw", instanceRef: null },
         // { id: "marketProfile", name: "Market Profile", enabled: false, drawFunctionKey: "draw", instanceRef: null },
@@ -153,6 +198,7 @@ const PixiChartV2 = (props) => {
     const liquidityHeatmapIndicator = indicators.find((ind) => ind.id === "liquidityHeatmap");
     const ordersIndicator = indicators.find((ind) => ind.id === "orders");
     const superTrendIndicator = indicators.find((ind) => ind.id === "superTrend");
+    const movingAverageIndicator = indicators.find((ind) => ind.id === "movingAverages");
 
     // Debug: Log indicators on mount
     useEffect(() => {
@@ -221,6 +267,25 @@ const PixiChartV2 = (props) => {
         },
         setIndicators,
         dependencies: [ohlcData],
+    });
+
+    // Use the useIndicator hook for price moving averages
+    useIndicator({
+        indicator: movingAverageIndicator,
+        pixiDataRef,
+        createInstance: (pixiData) => {
+            if (!pixiData?.ohlcDatas || pixiData.ohlcDatas.length === 0) {
+                return null;
+            }
+            const periods = movingAverageIndicator?.options?.periods || [20, 50, 200];
+            const layer = movingAverageIndicator?.layer ?? 2;
+            const instance = new DrawMovingAverages(pixiData.ohlcDatas, pixiDataRef, periods, layer);
+            // Expose method expected by useIndicator (registers by drawFunctionKey)
+            instance.drawMovingAverages = instance.drawAll;
+            return instance;
+        },
+        setIndicators,
+        dependencies: [movingAverageIndicator?.options?.periods?.join("-") || ""],
     });
 
     //function to get Data
@@ -530,16 +595,15 @@ const PixiChartV2 = (props) => {
                 height: 100,
                 type: "candlestick",
                 accessors: "deltaClose", // For scale calculation
-                drawFn: (opts) =>
-                    drawIndicatorCandlestick({
-                        ...opts,
-                        openField: "deltaOpen",
-                        highField: "deltaHigh",
-                        lowField: "deltaLow",
-                        closeField: "deltaClose",
-                        upColor: 0x00ff00,
-                        downColor: 0xff0000,
-                    }),
+                drawFn: createCandlesWithMovingAverageDrawFn({
+                    openField: "deltaOpen",
+                    highField: "deltaHigh",
+                    lowField: "deltaLow",
+                    closeField: "deltaClose",
+                    upColor: 0x00ff00,
+                    downColor: 0xff0000,
+                    maField: "deltaMA20",
+                }),
                 canGoNegative: true,
             },
             {
@@ -547,16 +611,15 @@ const PixiChartV2 = (props) => {
                 height: 100,
                 type: "candlestick",
                 accessors: "nearPriceRatioClose",
-                drawFn: (opts) =>
-                    drawIndicatorCandlestick({
-                        ...opts,
-                        openField: "nearPriceRatioOpen",
-                        highField: "nearPriceRatioHigh",
-                        lowField: "nearPriceRatioLow",
-                        closeField: "nearPriceRatioClose",
-                        upColor: 0x00aa00, // Darker green
-                        downColor: 0xaa0000, // Darker red
-                    }),
+                drawFn: createCandlesWithMovingAverageDrawFn({
+                    openField: "nearPriceRatioOpen",
+                    highField: "nearPriceRatioHigh",
+                    lowField: "nearPriceRatioLow",
+                    closeField: "nearPriceRatioClose",
+                    upColor: 0x00aa00, // Darker green
+                    downColor: 0xaa0000, // Darker red
+                    maField: "nearPriceRatioMA20",
+                }),
                 canGoNegative: false,
             },
             {
@@ -564,16 +627,95 @@ const PixiChartV2 = (props) => {
                 height: 100,
                 type: "candlestick",
                 accessors: "fullBookRatioClose",
-                drawFn: (opts) =>
-                    drawIndicatorCandlestick({
-                        ...opts,
-                        openField: "fullBookRatioOpen",
-                        highField: "fullBookRatioHigh",
-                        lowField: "fullBookRatioLow",
-                        closeField: "fullBookRatioClose",
-                        upColor: 0x0088ff, // Bright blue
-                        downColor: 0xff6600, // Orange
-                    }),
+                drawFn: createCandlesWithMovingAverageDrawFn({
+                    openField: "fullBookRatioOpen",
+                    highField: "fullBookRatioHigh",
+                    lowField: "fullBookRatioLow",
+                    closeField: "fullBookRatioClose",
+                    upColor: 0x0088ff, // Bright blue
+                    downColor: 0xff6600, // Orange
+                    maField: "fullBookRatioMA20",
+                }),
+                canGoNegative: false,
+            },
+            {
+                name: "Bid/Ask Order Ratio",
+                height: 100,
+                type: "candlestick",
+                accessors: "bidOrderToAskOrderRatioClose",
+                drawFn: createCandlesWithMovingAverageDrawFn({
+                    openField: "bidOrderToAskOrderRatioOpen",
+                    highField: "bidOrderToAskOrderRatioHigh",
+                    lowField: "bidOrderToAskOrderRatioLow",
+                    closeField: "bidOrderToAskOrderRatioClose",
+                    upColor: 0x00ffaa, // Cyan-green
+                    downColor: 0xff00aa, // Magenta
+                    maField: "bidOrderToAskOrderRatioMA20",
+                }),
+                canGoNegative: false,
+            },
+            {
+                name: "Running Order Depth",
+                height: 100,
+                type: "candlestick",
+                accessors: "runningOrderDepthCountClose",
+                drawFn: createCandlesWithMovingAverageDrawFn({
+                    openField: "runningOrderDepthCountOpen",
+                    highField: "runningOrderDepthCountHigh",
+                    lowField: "runningOrderDepthCountLow",
+                    closeField: "runningOrderDepthCountClose",
+                    upColor: 0xaaff00, // Yellow-green
+                    downColor: 0xff0066, // Pink-red
+                    maField: "runningOrderDepthCountMA20",
+                }),
+                canGoNegative: true,
+            },
+            {
+                name: "Running Near Price Depth",
+                height: 100,
+                type: "candlestick",
+                accessors: "runningOrderDepthNearPriceCountClose",
+                drawFn: createCandlesWithMovingAverageDrawFn({
+                    openField: "runningOrderDepthNearPriceCountOpen",
+                    highField: "runningOrderDepthNearPriceCountHigh",
+                    lowField: "runningOrderDepthNearPriceCountLow",
+                    closeField: "runningOrderDepthNearPriceCountClose",
+                    upColor: 0xffaa00, // Orange-yellow
+                    downColor: 0x00aaff, // Light blue
+                    maField: "runningOrderDepthNearPriceCountMA20",
+                }),
+                canGoNegative: true,
+            },
+            {
+                name: "Bid Size/Order Ratio",
+                height: 100,
+                type: "candlestick",
+                accessors: "bidSizeOrderRatioClose",
+                drawFn: createCandlesWithMovingAverageDrawFn({
+                    openField: "bidSizeOrderRatioOpen",
+                    highField: "bidSizeOrderRatioHigh",
+                    lowField: "bidSizeOrderRatioLow",
+                    closeField: "bidSizeOrderRatioClose",
+                    upColor: 0x66ff66, // Light green
+                    downColor: 0xff6666, // Light red
+                    maField: "bidSizeOrderRatioMA20",
+                }),
+                canGoNegative: false,
+            },
+            {
+                name: "Ask Size/Order Ratio",
+                height: 100,
+                type: "candlestick",
+                accessors: "askSizeOrderRatioClose",
+                drawFn: createCandlesWithMovingAverageDrawFn({
+                    openField: "askSizeOrderRatioOpen",
+                    highField: "askSizeOrderRatioHigh",
+                    lowField: "askSizeOrderRatioLow",
+                    closeField: "askSizeOrderRatioClose",
+                    upColor: 0x66ffff, // Light cyan
+                    downColor: 0xffff66, // Light yellow
+                    maField: "askSizeOrderRatioMA20",
+                }),
                 canGoNegative: false,
             },
         ];

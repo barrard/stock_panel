@@ -5,10 +5,11 @@ export default class DrawMovingAverages {
     constructor(ohlcData, pixiDataRef, periods = [20, 50, 200], layer = 0) {
         this.ohlcData = ohlcData; // Full OHLC data
         this.pixiDataRef = pixiDataRef;
-        this.periods = periods; // Array of MA periods to calculate
+        this.periods = Array.isArray(periods) && periods.length ? periods : [20, 50, 200]; // Array of MA periods to calculate
         this.layer = layer;
         this.hasInit = false;
         this.fullMAData = {}; // Pre-calculated MA values for ALL data (calculated once)
+        this.lastDataLength = this.ohlcData?.length || 0;
 
         // Color mapping for different MA periods
         this.colors = {
@@ -52,12 +53,19 @@ export default class DrawMovingAverages {
      */
     calculateAllMAs() {
         if (!this.ohlcData || this.ohlcData.length === 0) {
+            this.fullMAData = {};
+            this.lastDataLength = 0;
             return;
+        }
+
+        // If pixiDataRef has fresher data array, adopt it
+        if (this.pixiDataRef?.current?.ohlcDatas && this.ohlcData !== this.pixiDataRef.current.ohlcDatas) {
+            this.ohlcData = this.pixiDataRef.current.ohlcDatas;
         }
 
         this.fullMAData = {};
 
-        this.periods.forEach(period => {
+        this.periods.forEach((period) => {
             // Use the existing makeEMA utility to calculate EMA on full dataset
             // makeEMA returns array of {x: timestamp, y: emaValue}
             const fullEMA = makeEMA(this.ohlcData, period);
@@ -70,6 +78,8 @@ export default class DrawMovingAverages {
             // Store the full EMA data
             this.fullMAData[period] = fullEMA;
         });
+
+        this.lastDataLength = this.ohlcData.length;
     }
 
     /**
@@ -140,6 +150,16 @@ export default class DrawMovingAverages {
             return;
         }
 
+        // Update local OHLC reference in case GenericDataHandler swapped arrays
+        if (this.pixiDataRef?.current?.ohlcDatas && this.ohlcData !== this.pixiDataRef.current.ohlcDatas) {
+            this.ohlcData = this.pixiDataRef.current.ohlcDatas;
+        }
+
+        // If data length changed (new bars), recalculate MA values
+        if ((this.ohlcData?.length || 0) !== this.lastDataLength) {
+            this.calculateAllMAs();
+        }
+
         // Clear previous drawings
         this.maContainer.removeChildren().forEach((child) => child.destroy());
 
@@ -148,7 +168,7 @@ export default class DrawMovingAverages {
         this.priceScale = this.pixiDataRef.current.priceScale;
 
         // Draw each MA line using pre-calculated data
-        this.periods.forEach(period => {
+        this.periods.forEach((period) => {
             this.drawMALine(period);
         });
     }

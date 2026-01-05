@@ -66,7 +66,7 @@ export default class DrawSessionRangeZones {
             const bar = this.ohlcData[i];
             const timestamp = bar.datetime || bar.timestamp;
             const barIsRTH = isRTH(timestamp);
-            const barType = barIsRTH ? 'RTH' : 'ON';
+            const barType = barIsRTH ? "RTH" : "ON";
 
             // Initialize on first bar
             if (currentSessionType === null) {
@@ -104,14 +104,14 @@ export default class DrawSessionRangeZones {
         for (let i = 0; i < sessions.length; i++) {
             const session = sessions[i];
 
-            if (session.type === 'RTH' && !this.latestRTHSession) {
+            if (session.type === "RTH" && !this.latestRTHSession) {
                 this.latestRTHSession = {
                     startIndex: session.startIndex,
                     endIndex: session.endIndex,
                 };
             }
 
-            if (session.type === 'ON' && !this.latestONSession && this.latestRTHSession) {
+            if (session.type === "ON" && !this.latestONSession && this.latestRTHSession) {
                 // This is the ON session right before the RTH we found
                 this.latestONSession = {
                     startIndex: session.startIndex,
@@ -130,7 +130,7 @@ export default class DrawSessionRangeZones {
         if (!sessionData || !this.ohlcData) {
             return null;
         }
-
+        debugger;
         const { startIndex, endIndex } = sessionData;
         const halfRange = avgRange / 2;
 

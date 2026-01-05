@@ -485,10 +485,10 @@ export function normalizeBarData(bars = []) {
  * barTypeToTimeframe({ barType: 1, barTypePeriod: 60 }) // "1m" (60 seconds = 1 minute)
  */
 export function barTypeToTimeframe({ barType, barTypePeriod }) {
-    const SUPPORTED_TIMEFRAMES = ["1s", "1m", "5m", "30m", "60m", "4h"];
+    const SUPPORTED_TIMEFRAMES = ["1s", "1m", "5m", "30m", "60m", "4h", "1d", "1w"];
 
     let timeframeStr;
-
+    debugger;
     if (barType === 1) {
         // Seconds - handle edge case where 60 seconds should be "1m"
         if (barTypePeriod === 60) {
@@ -499,9 +499,21 @@ export function barTypeToTimeframe({ barType, barTypePeriod }) {
     } else if (barType === 2) {
         // Minutes
         timeframeStr = `${barTypePeriod}m`;
+        if (barTypePeriod > 60) {
+            barTypePeriod = barTypePeriod / 60;
+            timeframeStr = `${barTypePeriod}h`;
+            //check for daily, minutes 1440
+            if (barTypePeriod >= 24) {
+                barTypePeriod = barTypePeriod / 24;
+                timeframeStr = `${barTypePeriod}d`;
+            }
+        }
     } else if (barType === 3) {
-        // Hours
-        timeframeStr = `${barTypePeriod}h`;
+        // days
+        timeframeStr = `${barTypePeriod}d`;
+    } else if (barType === 4) {
+        // weekly
+        timeframeStr = `${barTypePeriod}w`;
     } else {
         throw new Error(`Invalid barType: ${barType}. Only barType 1 (seconds), 2 (minutes), and 3 (hours) are supported.`);
     }
