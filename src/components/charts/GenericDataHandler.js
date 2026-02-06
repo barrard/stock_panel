@@ -999,6 +999,7 @@ export default class GenericDataHandler {
     initCrossHair() {
         //LABELS
         this.dateLabelAppendGfx = new Graphics();
+        this.dateLabelTopGfx = new Graphics();
         this.priceLabelAppendGfx = new Graphics();
         this.currentPriceLabelAppendGfx = new Graphics();
         this.darkTextStyle = (opts = {}) => {
@@ -1019,6 +1020,8 @@ export default class GenericDataHandler {
 
         this.dateTxtLabel = new Text("", this.darkTextStyle());
         this.dateTxtLabel.anchor.x = 0.5;
+        this.dateTxtTopLabel = new Text("", this.darkTextStyle());
+        this.dateTxtTopLabel.anchor.x = 0.5;
         this.priceTxtLabel = new Text("", this.darkTextStyle());
         this.priceTxtLabel.anchor.y = 0.5;
         this.percentTxtLabel = new Text("", this.darkTextStyle());
@@ -1232,6 +1235,26 @@ export default class GenericDataHandler {
                 this.dateLabelAppendGfx.drawPolygon(coords);
 
                 this.dateLabelAppendGfx.endFill();
+
+                // Top Date Label
+                this.dateLabelTopGfx.clear();
+                this.dateLabelTopGfx.beginFill(0x00ff00); // green
+                this.dateLabelTopGfx.lineStyle(1, 0x333333, 1);
+
+                const topY = 0;
+                this.dateTxtTopLabel.text = this.dateLabel;
+                this.dateTxtTopLabel.position.y = -(height + padding);
+
+                const topCoords = topAxisMarkerTagLine({
+                    x: 0,
+                    y: topY,
+                    w: width,
+                    h: height,
+                    padding,
+                });
+
+                this.dateLabelTopGfx.drawPolygon(topCoords);
+                this.dateLabelTopGfx.endFill();
             }
         };
     }
@@ -1513,7 +1536,9 @@ export default class GenericDataHandler {
         this.crossHairXGfx.position.y = this.mouseY;
         this.priceLabelAppendGfx.position.y = this.mouseY;
         this.dateLabelAppendGfx.position.x = this.mouseX;
+        this.dateLabelTopGfx.position.x = this.mouseX;
         this.dateTxtLabel.x = this.mouseX;
+        this.dateTxtTopLabel.x = this.mouseX;
         this.priceTxtLabel.y = this.mouseY - spread;
         this.percentTxtLabel.y = this.mouseY + spread;
     }
@@ -2117,9 +2142,11 @@ export default class GenericDataHandler {
         }
         //LABELS
         this.addToLayer(3, this.dateLabelAppendGfx);
+        this.addToLayer(3, this.dateLabelTopGfx);
         this.addToLayer(4, this.priceLabelAppendGfx);
         //TEXT
         this.addToLayer(3, this.dateTxtLabel);
+        this.addToLayer(3, this.dateTxtTopLabel);
         this.addToLayer(4, this.priceTxtLabel);
         this.addToLayer(4, this.percentTxtLabel);
     }
@@ -2131,9 +2158,11 @@ export default class GenericDataHandler {
         this.crossHairYGfx.parent?.removeChild(this.crossHairYGfx);
         //LABELS
         this.dateLabelAppendGfx.parent?.removeChild(this.dateLabelAppendGfx);
+        this.dateLabelTopGfx.parent?.removeChild(this.dateLabelTopGfx);
         this.priceLabelAppendGfx.parent?.removeChild(this.priceLabelAppendGfx);
         //TEXT
         this.dateTxtLabel.parent?.removeChild(this.dateTxtLabel);
+        this.dateTxtTopLabel.parent?.removeChild(this.dateTxtTopLabel);
         this.priceTxtLabel.parent?.removeChild(this.priceTxtLabel);
         this.percentTxtLabel.parent?.removeChild(this.percentTxtLabel);
     }
@@ -2163,6 +2192,16 @@ const bottomAxisMarkerTagLine = ({ x, y, w, h, padding }) => [
     { x: x + (w / 2 + padding), y: padding + h + y + padding },
     { x: x + (w / 2 + padding), y: y },
     { x: x + 0, y: 0 + y - padding },
+];
+
+const topAxisMarkerTagLine = ({ x, y, w, h, padding }) => [
+    { x: x + 0, y: 0 + y + padding },
+    { x: x - (w / 2 + padding), y: y },
+    { x: x - (w / 2 + padding), y: y - (h + padding * 2) },
+
+    { x: x + (w / 2 + padding), y: y - (h + padding * 2) },
+    { x: x + (w / 2 + padding), y: y },
+    { x: x + 0, y: 0 + y + padding },
 ];
 
 const rightAxisMarkerTagLine = ({ x, y, w, h, padding }) => [
