@@ -655,34 +655,66 @@ const PixiChartV2 = (props) => {
                 canGoNegative: false,
             },
             {
-                name: "Running Order Depth",
+                name: "Uber Near Above Cancellation",
                 height: 100,
                 type: "candlestick",
-                accessors: "runningOrderDepthCountClose",
+                accessors: "uberNearAbovePriceCancellationCountClose",
                 drawFn: createCandlesWithMovingAverageDrawFn({
-                    openField: "runningOrderDepthCountOpen",
-                    highField: "runningOrderDepthCountHigh",
-                    lowField: "runningOrderDepthCountLow",
-                    closeField: "runningOrderDepthCountClose",
+                    openField: "uberNearAbovePriceCancellationCountOpen",
+                    highField: "uberNearAbovePriceCancellationCountHigh",
+                    lowField: "uberNearAbovePriceCancellationCountLow",
+                    closeField: "uberNearAbovePriceCancellationCountClose",
                     upColor: 0xaaff00, // Yellow-green
                     downColor: 0xff0066, // Pink-red
-                    maField: "runningOrderDepthCountMA20",
+                    maField: "uberNearAbovePriceCancellationCountMA20",
                 }),
                 canGoNegative: true,
             },
             {
-                name: "Running Near Price Depth",
+                name: "Uber Near Below Cancellation",
                 height: 100,
                 type: "candlestick",
-                accessors: "runningOrderDepthNearPriceCountClose",
+                accessors: "uberNearBelowPriceCancellationCountClose",
                 drawFn: createCandlesWithMovingAverageDrawFn({
-                    openField: "runningOrderDepthNearPriceCountOpen",
-                    highField: "runningOrderDepthNearPriceCountHigh",
-                    lowField: "runningOrderDepthNearPriceCountLow",
-                    closeField: "runningOrderDepthNearPriceCountClose",
+                    openField: "uberNearBelowPriceCancellationCountOpen",
+                    highField: "uberNearBelowPriceCancellationCountHigh",
+                    lowField: "uberNearBelowPriceCancellationCountLow",
+                    closeField: "uberNearBelowPriceCancellationCountClose",
                     upColor: 0xffaa00, // Orange-yellow
                     downColor: 0x00aaff, // Light blue
-                    maField: "runningOrderDepthNearPriceCountMA20",
+                    maField: "uberNearBelowPriceCancellationCountMA20",
+                }),
+                canGoNegative: true,
+            },
+            {
+                name: "Majah Chasah",
+                height: 100,
+                type: "candlestick",
+                accessors: "majahChasahClose",
+                drawFn: createCandlesWithMovingAverageDrawFn({
+                    openField: "majahChasahOpen",
+                    highField: "majahChasahHigh",
+                    lowField: "majahChasahLow",
+                    closeField: "majahChasahClose",
+                    upColor: 0x00ffaa, // Cyan-green
+                    downColor: 0xff00aa, // Magenta
+                    maField: "majahChasahMA20",
+                }),
+                canGoNegative: true,
+            },
+            {
+                name: "Majah Runnah",
+                height: 100,
+                type: "candlestick",
+                accessors: "majahRunnahClose",
+                drawFn: createCandlesWithMovingAverageDrawFn({
+                    openField: "majahRunnahOpen",
+                    highField: "majahRunnahHigh",
+                    lowField: "majahRunnahLow",
+                    closeField: "majahRunnahClose",
+                    upColor: 0x66ff66, // Light green
+                    downColor: 0xff6666, // Light red
+                    maField: "majahRunnahMA20",
                 }),
                 canGoNegative: true,
             },
