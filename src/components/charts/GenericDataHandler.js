@@ -740,6 +740,8 @@ export default class GenericDataHandler {
                     chart: this,
                     accessors: indicator.accessors || indicator.name,
                     lines: indicator.lines || null, // Pass lines array for multi-line indicators
+                    candlestickSets: indicator.candlestickSets || null,
+                    extentFields: indicator.extentFields || null,
                 });
             });
         }

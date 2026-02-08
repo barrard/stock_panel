@@ -4,7 +4,20 @@ import PixiAxis from "./PixiAxis";
 import { priceScaleValues } from "./utils.js";
 
 export default class Indicator {
-    constructor({ name, height, data, drawFn, chart, accessors, type, lineColor = 0x3b82f6, canGoNegative = false, lines = null }) {
+    constructor({
+        name,
+        height,
+        data,
+        drawFn,
+        chart,
+        accessors,
+        type,
+        lineColor = 0x3b82f6,
+        canGoNegative = false,
+        lines = null,
+        candlestickSets = null,
+        extentFields = null,
+    }) {
         this.accessors = accessors;
         this.chart = chart;
         this.data = [];
@@ -19,6 +32,14 @@ export default class Indicator {
 
         // Multi-line support
         this.lines = lines; // Array of line configs: [{ name, lineColor, lineKey, xKey }]
+        this.candlestickSets = Array.isArray(candlestickSets) ? candlestickSets : null;
+        if (Array.isArray(extentFields)) {
+            this.extentFields = extentFields;
+        } else if (extentFields) {
+            this.extentFields = [extentFields];
+        } else {
+            this.extentFields = null;
+        }
 
         // console.log(this.name);
     }
@@ -301,31 +322,56 @@ export default class Indicator {
         else {
             // For candlestick type, calculate extent from all OHLC fields
             if (this.type === "candlestick") {
-                const openField = this.accessors.replace("Close", "Open");
-                const highField = this.accessors.replace("Close", "High");
-                const lowField = this.accessors.replace("Close", "Low");
-                const closeField = this.accessors;
-
-                // console.log(`[Indicator.setupScales] Candlestick fields:`, { openField, highField, lowField, closeField });
+                const candlestickDefinitions = this.candlestickSets?.length
+                    ? this.candlestickSets
+                    : [
+                          {
+                              openField: this.accessors.replace("Close", "Open"),
+                              highField: this.accessors.replace("Close", "High"),
+                              lowField: this.accessors.replace("Close", "Low"),
+                              closeField: this.accessors,
+                          },
+                      ];
 
                 let allValues = [];
-                this.chart.slicedData.forEach((bar, idx) => {
-                    if (bar[openField] !== undefined && bar[openField] !== null) allValues.push(bar[openField]);
-                    if (bar[highField] !== undefined && bar[highField] !== null) allValues.push(bar[highField]);
-                    if (bar[lowField] !== undefined && bar[lowField] !== null) allValues.push(bar[lowField]);
-                    if (bar[closeField] !== undefined && bar[closeField] !== null) allValues.push(bar[closeField]);
+                candlestickDefinitions.forEach(({ openField, highField, lowField, closeField }) => {
+                    this.chart.slicedData.forEach((bar) => {
+                        if (bar[openField] !== undefined && bar[openField] !== null) allValues.push(bar[openField]);
+                        if (bar[highField] !== undefined && bar[highField] !== null) allValues.push(bar[highField]);
+                        if (bar[lowField] !== undefined && bar[lowField] !== null) allValues.push(bar[lowField]);
+                        if (bar[closeField] !== undefined && bar[closeField] !== null) allValues.push(bar[closeField]);
+                    });
                 });
 
-                // console.log(`[Indicator.setupScales] Candlestick values collected: ${allValues.length}`);
+                if (!allValues.length) {
+                    console.warn(`[Indicator.setupScales] No candlestick data for ${this.name}`);
+                    return;
+                }
 
                 [lowest, highest] = extent(allValues);
-                this.data = this.chart.slicedData.map((bar) => bar[closeField]); // For reference
-
-                // console.log(`[Indicator.setupScales] Scale domain: [${lowest}, ${highest}]`);
+                // track first set close for reference/labels
+                const referenceCloseField = candlestickDefinitions[0]?.closeField || this.accessors;
+                this.data = this.chart.slicedData.map((bar) => bar[referenceCloseField]);
             } else {
                 // Line or volume
+                const extentFields = this.extentFields && this.extentFields.length ? this.extentFields : [this.accessors];
+                let allValues = [];
+                extentFields.forEach((field) => {
+                    this.chart.slicedData.forEach((ohlc) => {
+                        const value = ohlc[field];
+                        if (value !== undefined && value !== null) {
+                            allValues.push(value);
+                        }
+                    });
+                });
+
+                if (!allValues.length) {
+                    console.warn(`[Indicator.setupScales] No valid values for ${this.name}, skipping draw.`);
+                    return;
+                }
+
                 this.data = this.chart.slicedData.map((ohlc) => ohlc[this.accessors]);
-                let [low, high] = extent(this.data);
+                let [low, high] = extent(allValues);
                 lowest = low;
                 highest = high;
             }

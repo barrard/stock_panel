@@ -38,12 +38,25 @@ const LIQUIDITY_MA_CONFIGS = [
     { valueField: "runningOrderDepthNearPriceCountClose", targetField: "runningOrderDepthNearPriceCountMA20" },
     { valueField: "bidSizeOrderRatioClose", targetField: "bidSizeOrderRatioMA20" },
     { valueField: "askSizeOrderRatioClose", targetField: "askSizeOrderRatioMA20" },
+    { valueField: "uberNearAbovePriceCancellationCountClose", targetField: "uberNearAbovePriceCancellationCountMA20" },
+    { valueField: "uberNearBelowPriceCancellationCountClose", targetField: "uberNearBelowPriceCancellationCountMA20" },
+    { valueField: "majahChasahClose", targetField: "majahChasahMA20" },
+    { valueField: "majahRunnahClose", targetField: "majahRunnahMA20" },
+    { valueField: "nearAbovePriceCancellationCountClose", targetField: "nearAbovePriceCancellationCountMA20" },
+    { valueField: "nearBelowPriceCancellationCountClose", targetField: "nearBelowPriceCancellationCountMA20" },
+    { valueField: "farAbovePriceCancellationCountClose", targetField: "farAbovePriceCancellationCountMA20" },
+    { valueField: "farBelowPriceCancellationCountClose", targetField: "farBelowPriceCancellationCountMA20" },
 ];
 
 const toNumericValue = (value) => {
     if (value === null || value === undefined) return null;
     const numeric = typeof value === "number" ? value : Number(value);
     return Number.isFinite(numeric) ? numeric : null;
+};
+
+const toNegativeValue = (value) => {
+    const numeric = toNumericValue(value);
+    return numeric === null ? null : -Math.abs(numeric);
 };
 
 const recalculateMovingAveragesForAllBars = (bars) => {
@@ -101,6 +114,125 @@ const updateMovingAveragesForLatestBar = (bars) => {
     });
 };
 
+const mapCompiledLiquidityMetrics = (bar) => {
+    const datetime = bar.datetime || bar.createdAt || bar.timestamp;
+    if (!datetime) return null;
+
+    return {
+        // Delta OHLC
+        delta: bar.delta_close,
+        deltaOpen: bar.delta_open,
+        deltaHigh: bar.delta_high,
+        deltaLow: bar.delta_low,
+        deltaClose: bar.delta_close,
+
+        // Near Price Ratio OHLC (nearPriceBidSizeToAskSizeRatioMA from server)
+        nearPriceBidSizeToAskSizeRatioMA: bar.nearPriceBidSizeToAskSizeRatioMA_close,
+        nearPriceRatioOpen: bar.nearPriceBidSizeToAskSizeRatioMA_open,
+        nearPriceRatioHigh: bar.nearPriceBidSizeToAskSizeRatioMA_high,
+        nearPriceRatioLow: bar.nearPriceBidSizeToAskSizeRatioMA_low,
+        nearPriceRatioClose: bar.nearPriceBidSizeToAskSizeRatioMA_close,
+
+        // Full Book Ratio OHLC (bidSizeToAskSizeRatioMA from server)
+        bidSizeToAskSizeRatioMA: bar.bidSizeToAskSizeRatioMA_close,
+        fullBookRatioOpen: bar.bidSizeToAskSizeRatioMA_open,
+        fullBookRatioHigh: bar.bidSizeToAskSizeRatioMA_high,
+        fullBookRatioLow: bar.bidSizeToAskSizeRatioMA_low,
+        fullBookRatioClose: bar.bidSizeToAskSizeRatioMA_close,
+
+        // Other ratio fields with OHLC
+        bidSizeToAskSizeRatio: bar.bidSizeToAskSizeRatio_close,
+        nearPriceBidSizeToAskSizeRatio: bar.nearPriceBidSizeToAskSizeRatio_close,
+
+        // bidOrderToAskOrderRatio OHLC
+        bidOrderToAskOrderRatio: bar.bidOrderToAskOrderRatio_close,
+        bidOrderToAskOrderRatioOpen: bar.bidOrderToAskOrderRatio_open,
+        bidOrderToAskOrderRatioHigh: bar.bidOrderToAskOrderRatio_high,
+        bidOrderToAskOrderRatioLow: bar.bidOrderToAskOrderRatio_low,
+        bidOrderToAskOrderRatioClose: bar.bidOrderToAskOrderRatio_close,
+
+        // runningOrderDepthCount OHLC
+        runningOrderDepthCount: bar.runningOrderDepthCount_close,
+        runningOrderDepthCountOpen: bar.runningOrderDepthCount_open,
+        runningOrderDepthCountHigh: bar.runningOrderDepthCount_high,
+        runningOrderDepthCountLow: bar.runningOrderDepthCount_low,
+        runningOrderDepthCountClose: bar.runningOrderDepthCount_close,
+
+        // runningOrderDepthNearPriceCount OHLC
+        runningOrderDepthNearPriceCount: bar.runningOrderDepthNearPriceCount_close,
+        runningOrderDepthNearPriceCountOpen: bar.runningOrderDepthNearPriceCount_open,
+        runningOrderDepthNearPriceCountHigh: bar.runningOrderDepthNearPriceCount_high,
+        runningOrderDepthNearPriceCountLow: bar.runningOrderDepthNearPriceCount_low,
+        runningOrderDepthNearPriceCountClose: bar.runningOrderDepthNearPriceCount_close,
+
+        // bidSizeOrderRatio OHLC
+        bidSizeOrderRatio: bar.bidSizeOrderRatio_close,
+        bidSizeOrderRatioOpen: bar.bidSizeOrderRatio_open,
+        bidSizeOrderRatioHigh: bar.bidSizeOrderRatio_high,
+        bidSizeOrderRatioLow: bar.bidSizeOrderRatio_low,
+        bidSizeOrderRatioClose: bar.bidSizeOrderRatio_close,
+
+        // askSizeOrderRatio OHLC
+        askSizeOrderRatio: bar.askSizeOrderRatio_close,
+        askSizeOrderRatioOpen: bar.askSizeOrderRatio_open,
+        askSizeOrderRatioHigh: bar.askSizeOrderRatio_high,
+        askSizeOrderRatioLow: bar.askSizeOrderRatio_low,
+        askSizeOrderRatioClose: bar.askSizeOrderRatio_close,
+
+        // Uber & Majah event totals
+        uberNearAbovePriceCancellationCount: bar.uberNearAbovePriceCancellationCount,
+        uberNearAbovePriceCancellationCountClose: bar.uberNearAbovePriceCancellationCount,
+        uberNearBelowPriceCancellationCount: bar.uberNearBelowPriceCancellationCount,
+        uberNearBelowPriceCancellationCountClose: bar.uberNearBelowPriceCancellationCount,
+        uberNearBelowPriceCancellationCountNegative: toNegativeValue(bar.uberNearBelowPriceCancellationCount),
+        nearAbovePriceCancellationCount: bar.nearAbovePriceCancellationCount,
+        nearAbovePriceCancellationCountClose: bar.nearAbovePriceCancellationCount,
+        nearBelowPriceCancellationCount: bar.nearBelowPriceCancellationCount,
+        nearBelowPriceCancellationCountClose: bar.nearBelowPriceCancellationCount,
+        nearBelowPriceCancellationCountNegative: toNegativeValue(bar.nearBelowPriceCancellationCount),
+        farAbovePriceCancellationCount: bar.farAbovePriceCancellationCount,
+        farAbovePriceCancellationCountClose: bar.farAbovePriceCancellationCount,
+        farBelowPriceCancellationCount: bar.farBelowPriceCancellationCount,
+        farBelowPriceCancellationCountClose: bar.farBelowPriceCancellationCount,
+        farBelowPriceCancellationCountNegative: toNegativeValue(bar.farBelowPriceCancellationCount),
+        majahChasah: bar.majahChasah,
+        majahChasahClose: bar.majahChasah,
+        majahRunnah: bar.majahRunnah,
+        majahRunnahClose: bar.majahRunnah,
+    };
+};
+
+const mapTickLiquidityMetrics = (bar) => {
+    const datetime = bar.datetime || bar.createdAt || bar.timestamp;
+    if (!datetime) return null;
+
+    const uberBelow = toNegativeValue(bar.uberNearBelowPriceCancellationCount);
+    const nearBelow = toNegativeValue(bar.nearBelowPriceCancellationCount);
+    const farBelow = toNegativeValue(bar.farBelowPriceCancellationCount);
+
+    return {
+        uberNearAbovePriceCancellationCount: bar.uberNearAbovePriceCancellationCount,
+        uberNearAbovePriceCancellationCountClose: bar.uberNearAbovePriceCancellationCount,
+        uberNearBelowPriceCancellationCount: bar.uberNearBelowPriceCancellationCount,
+        uberNearBelowPriceCancellationCountClose: bar.uberNearBelowPriceCancellationCount,
+        uberNearBelowPriceCancellationCountNegative: uberBelow,
+        nearAbovePriceCancellationCount: bar.nearAbovePriceCancellationCount,
+        nearAbovePriceCancellationCountClose: bar.nearAbovePriceCancellationCount,
+        nearBelowPriceCancellationCount: bar.nearBelowPriceCancellationCount,
+        nearBelowPriceCancellationCountClose: bar.nearBelowPriceCancellationCount,
+        nearBelowPriceCancellationCountNegative: nearBelow,
+        farAbovePriceCancellationCount: bar.farAbovePriceCancellationCount,
+        farAbovePriceCancellationCountClose: bar.farAbovePriceCancellationCount,
+        farBelowPriceCancellationCount: bar.farBelowPriceCancellationCount,
+        farBelowPriceCancellationCountClose: bar.farBelowPriceCancellationCount,
+        farBelowPriceCancellationCountNegative: farBelow,
+        uberNearAbovePriceGenerationCount: bar.uberNearAbovePriceGenerationCount,
+        uberNearBelowPriceGenerationCount: bar.uberNearBelowPriceGenerationCount,
+        nearAbovePriceGenerationCount: bar.nearAbovePriceGenerationCount,
+        nearBelowPriceGenerationCount: bar.nearBelowPriceGenerationCount,
+    };
+};
+
 /**
  * Custom hook to capture liquidity ratios from socket data
  *
@@ -148,6 +280,11 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
             askSizeOrderRatio: [],
         },
     });
+    const firstBarTimestamp = ohlcData?.length ? ohlcData[0].timestamp || ohlcData[0].datetime : null;
+    const lastBarTimestamp = ohlcData?.length
+        ? ohlcData[ohlcData.length - 1].timestamp || ohlcData[ohlcData.length - 1].datetime
+        : null;
+
     // Fetch historical compiled data on symbol/timeframe change or initial load
     // Scrolling detection happens in a separate effect below
     useEffect(() => {
@@ -170,6 +307,41 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
             };
             hasLoadedHistoricalRef.current = false;
             earliestSeenRef.current = null;
+        }
+
+        const currentStart = firstBarTimestamp;
+        const currentEnd = lastBarTimestamp;
+        const cachedRange = fetchedRangeRef.current;
+        if (
+            hasLoadedHistoricalRef.current &&
+            currentStart &&
+            currentEnd &&
+            cachedRange.symbol === symbol &&
+            cachedRange.timeframe === timeframe
+        ) {
+            const outsideKnownRange =
+                cachedRange.start === null ||
+                cachedRange.end === null ||
+                currentStart < cachedRange.start ||
+                currentEnd > cachedRange.end ||
+                currentStart > cachedRange.end ||
+                currentEnd < cachedRange.start;
+
+            if (outsideKnownRange) {
+                console.log("[useLiquidityRatios] Data range outside cached metrics - scheduling refetch", {
+                    currentStart,
+                    currentEnd,
+                    cached: previousRange,
+                });
+                hasLoadedHistoricalRef.current = false;
+                fetchedRangeRef.current = {
+                    symbol,
+                    timeframe,
+                    start: null,
+                    end: null,
+                };
+                earliestSeenRef.current = currentStart;
+            }
         }
 
         // Only fetch if we haven't loaded data for this context yet
@@ -198,92 +370,38 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
                 //     `[useLiquidityRatios] pixiDataRef.current.ohlcDatas is ready with ${pixiDataRef.current.ohlcDatas.length} bars`
                 // );
 
-                const startTime = ohlcData[0].timestamp || ohlcData[0].datetime;
-                const endTime = ohlcData[ohlcData.length - 1].timestamp || ohlcData[ohlcData.length - 1].datetime;
+                const startTime = currentStart;
+                const endTime = currentEnd;
 
                 // console.log(
                 //     `[useLiquidityRatios] Fetching historical ratio data for ${symbol} (${timeframe}), date range: ${new Date(
                 //         startTime
                 //     ).toLocaleString()} to ${new Date(endTime).toLocaleString()}`
                 // );
-                const liquidityData = await API.getLiquidityMetrics({
-                    start: startTime,
-                    end: endTime,
-                    symbol: symbol,
-                    timeframe: timeframe, // Get compiled OHLC data per timeframe
-                });
+                const liquidityData =
+                    timeframe === "tick"
+                        ? await API.getTickbarLiquidity({ start: startTime, finish: endTime, symbol })
+                        : await API.getLiquidityMetrics({
+                              start: startTime,
+                              end: endTime,
+                              symbol: symbol,
+                              timeframe: timeframe,
+                          });
 
                 if (liquidityData && Array.isArray(liquidityData) && pixiDataRef?.current?.ohlcDatas) {
                     console.log(`[useLiquidityRatios] Received ${liquidityData.length} historical bars`);
 
                     // Create a map of datetime -> metrics for fast lookup
                     const metricsMap = new Map();
+                    const mapFn = timeframe === "tick" ? mapTickLiquidityMetrics : mapCompiledLiquidityMetrics;
                     liquidityData.forEach((bar) => {
                         const datetime = bar.datetime || bar.createdAt || bar.timestamp;
-                        if (datetime) {
-                            // Server returns OHLC with _open, _high, _low, _close suffixes
-                            metricsMap.set(new Date(datetime).getTime(), {
-                                // Delta OHLC
-                                delta: bar.delta_close,
-                                deltaOpen: bar.delta_open,
-                                deltaHigh: bar.delta_high,
-                                deltaLow: bar.delta_low,
-                                deltaClose: bar.delta_close,
+                        if (!datetime) return;
 
-                                // Near Price Ratio OHLC (nearPriceBidSizeToAskSizeRatioMA from server)
-                                nearPriceBidSizeToAskSizeRatioMA: bar.nearPriceBidSizeToAskSizeRatioMA_close,
-                                nearPriceRatioOpen: bar.nearPriceBidSizeToAskSizeRatioMA_open,
-                                nearPriceRatioHigh: bar.nearPriceBidSizeToAskSizeRatioMA_high,
-                                nearPriceRatioLow: bar.nearPriceBidSizeToAskSizeRatioMA_low,
-                                nearPriceRatioClose: bar.nearPriceBidSizeToAskSizeRatioMA_close,
+                        const mappedMetrics = mapFn(bar);
+                        if (!mappedMetrics) return;
 
-                                // Full Book Ratio OHLC (bidSizeToAskSizeRatioMA from server)
-                                bidSizeToAskSizeRatioMA: bar.bidSizeToAskSizeRatioMA_close,
-                                fullBookRatioOpen: bar.bidSizeToAskSizeRatioMA_open,
-                                fullBookRatioHigh: bar.bidSizeToAskSizeRatioMA_high,
-                                fullBookRatioLow: bar.bidSizeToAskSizeRatioMA_low,
-                                fullBookRatioClose: bar.bidSizeToAskSizeRatioMA_close,
-
-                                // Other ratio fields with OHLC
-                                bidSizeToAskSizeRatio: bar.bidSizeToAskSizeRatio_close,
-                                nearPriceBidSizeToAskSizeRatio: bar.nearPriceBidSizeToAskSizeRatio_close,
-
-                                // bidOrderToAskOrderRatio OHLC
-                                bidOrderToAskOrderRatio: bar.bidOrderToAskOrderRatio_close,
-                                bidOrderToAskOrderRatioOpen: bar.bidOrderToAskOrderRatio_open,
-                                bidOrderToAskOrderRatioHigh: bar.bidOrderToAskOrderRatio_high,
-                                bidOrderToAskOrderRatioLow: bar.bidOrderToAskOrderRatio_low,
-                                bidOrderToAskOrderRatioClose: bar.bidOrderToAskOrderRatio_close,
-
-                                // runningOrderDepthCount OHLC
-                                runningOrderDepthCount: bar.runningOrderDepthCount_close,
-                                runningOrderDepthCountOpen: bar.runningOrderDepthCount_open,
-                                runningOrderDepthCountHigh: bar.runningOrderDepthCount_high,
-                                runningOrderDepthCountLow: bar.runningOrderDepthCount_low,
-                                runningOrderDepthCountClose: bar.runningOrderDepthCount_close,
-
-                                // runningOrderDepthNearPriceCount OHLC
-                                runningOrderDepthNearPriceCount: bar.runningOrderDepthNearPriceCount_close,
-                                runningOrderDepthNearPriceCountOpen: bar.runningOrderDepthNearPriceCount_open,
-                                runningOrderDepthNearPriceCountHigh: bar.runningOrderDepthNearPriceCount_high,
-                                runningOrderDepthNearPriceCountLow: bar.runningOrderDepthNearPriceCount_low,
-                                runningOrderDepthNearPriceCountClose: bar.runningOrderDepthNearPriceCount_close,
-
-                                // bidSizeOrderRatio OHLC
-                                bidSizeOrderRatio: bar.bidSizeOrderRatio_close,
-                                bidSizeOrderRatioOpen: bar.bidSizeOrderRatio_open,
-                                bidSizeOrderRatioHigh: bar.bidSizeOrderRatio_high,
-                                bidSizeOrderRatioLow: bar.bidSizeOrderRatio_low,
-                                bidSizeOrderRatioClose: bar.bidSizeOrderRatio_close,
-
-                                // askSizeOrderRatio OHLC
-                                askSizeOrderRatio: bar.askSizeOrderRatio_close,
-                                askSizeOrderRatioOpen: bar.askSizeOrderRatio_open,
-                                askSizeOrderRatioHigh: bar.askSizeOrderRatio_high,
-                                askSizeOrderRatioLow: bar.askSizeOrderRatio_low,
-                                askSizeOrderRatioClose: bar.askSizeOrderRatio_close,
-                            });
-                        }
+                        metricsMap.set(new Date(datetime).getTime(), mappedMetrics);
                     });
 
                     // Populate all OHLC bars with matching metrics
@@ -335,7 +453,7 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
         };
 
         fetchHistoricalRatios();
-    }, [enabled, symbol, timeframe, ohlcData?.length]); // Include length to trigger when data loads
+    }, [enabled, symbol, timeframe, ohlcData?.length, firstBarTimestamp, lastBarTimestamp]); // Include timestamps for range changes
 
     // Separate effect to detect when user scrolls left to load earlier data
     // This uses a ref to track earliest timestamp, avoiding dependency on ohlcData
@@ -368,7 +486,7 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
                 hasLoadedHistoricalRef.current = false;
             }
         }
-    }, [enabled, ohlcData?.length, ohlcData?.[0]?.datetime, ohlcData?.[0]?.timestamp]);
+    }, [enabled, ohlcData?.length, firstBarTimestamp]);
 
     // Helper function to calculate OHLC from array of values
     const calculateOHLC = (values) => {
@@ -406,6 +524,14 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
                 askSizeOrderRatio: liquidityData.askSizeOrderRatio,
                 runningOrderDepthCount: liquidityData.runningOrderDepthCount,
                 runningOrderDepthNearPriceCount: liquidityData.runningOrderDepthNearPriceCount,
+                uberNearAbovePriceCancellationCount: liquidityData.uberNearAbovePriceCancellationCount,
+                uberNearBelowPriceCancellationCount: liquidityData.uberNearBelowPriceCancellationCount,
+                nearAbovePriceCancellationCount: liquidityData.nearAbovePriceCancellationCount,
+                nearBelowPriceCancellationCount: liquidityData.nearBelowPriceCancellationCount,
+                farAbovePriceCancellationCount: liquidityData.farAbovePriceCancellationCount,
+                farBelowPriceCancellationCount: liquidityData.farBelowPriceCancellationCount,
+                majahChasah: liquidityData.majahChasah,
+                majahRunnah: liquidityData.majahRunnah,
                 timestamp: Date.now(),
             };
 
@@ -551,6 +677,50 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
                     lastBar.askSizeOrderRatioLow = askSizeOrderRatioOHLC.low;
                     lastBar.askSizeOrderRatioClose = askSizeOrderRatioOHLC.close;
                     lastBar.askSizeOrderRatio = askSizeOrderRatioOHLC.close; // Line fallback
+                }
+
+                if (
+                    liquidityData.uberNearAbovePriceCancellationCount !== undefined &&
+                    liquidityData.uberNearAbovePriceCancellationCount !== null
+                ) {
+                    const total = liquidityData.uberNearAbovePriceCancellationCount;
+                    lastBar.uberNearAbovePriceCancellationCount = total;
+                    lastBar.uberNearAbovePriceCancellationCountClose = total;
+                }
+                if (
+                    liquidityData.uberNearBelowPriceCancellationCount !== undefined &&
+                    liquidityData.uberNearBelowPriceCancellationCount !== null
+                ) {
+                    const total = liquidityData.uberNearBelowPriceCancellationCount;
+                    lastBar.uberNearBelowPriceCancellationCount = total;
+                    lastBar.uberNearBelowPriceCancellationCountClose = total;
+                    lastBar.uberNearBelowPriceCancellationCountNegative = toNegativeValue(total);
+                }
+                if (liquidityData.majahChasah !== undefined && liquidityData.majahChasah !== null) {
+                    lastBar.majahChasah = liquidityData.majahChasah;
+                    lastBar.majahChasahClose = liquidityData.majahChasah;
+                }
+                if (liquidityData.majahRunnah !== undefined && liquidityData.majahRunnah !== null) {
+                    lastBar.majahRunnah = liquidityData.majahRunnah;
+                    lastBar.majahRunnahClose = liquidityData.majahRunnah;
+                }
+                if (liquidityData.nearAbovePriceCancellationCount !== undefined && liquidityData.nearAbovePriceCancellationCount !== null) {
+                    lastBar.nearAbovePriceCancellationCount = liquidityData.nearAbovePriceCancellationCount;
+                    lastBar.nearAbovePriceCancellationCountClose = liquidityData.nearAbovePriceCancellationCount;
+                }
+                if (liquidityData.nearBelowPriceCancellationCount !== undefined && liquidityData.nearBelowPriceCancellationCount !== null) {
+                    lastBar.nearBelowPriceCancellationCount = liquidityData.nearBelowPriceCancellationCount;
+                    lastBar.nearBelowPriceCancellationCountClose = liquidityData.nearBelowPriceCancellationCount;
+                    lastBar.nearBelowPriceCancellationCountNegative = toNegativeValue(liquidityData.nearBelowPriceCancellationCount);
+                }
+                if (liquidityData.farAbovePriceCancellationCount !== undefined && liquidityData.farAbovePriceCancellationCount !== null) {
+                    lastBar.farAbovePriceCancellationCount = liquidityData.farAbovePriceCancellationCount;
+                    lastBar.farAbovePriceCancellationCountClose = liquidityData.farAbovePriceCancellationCount;
+                }
+                if (liquidityData.farBelowPriceCancellationCount !== undefined && liquidityData.farBelowPriceCancellationCount !== null) {
+                    lastBar.farBelowPriceCancellationCount = liquidityData.farBelowPriceCancellationCount;
+                    lastBar.farBelowPriceCancellationCountClose = liquidityData.farBelowPriceCancellationCount;
+                    lastBar.farBelowPriceCancellationCountNegative = toNegativeValue(liquidityData.farBelowPriceCancellationCount);
                 }
 
                 // Store other fields

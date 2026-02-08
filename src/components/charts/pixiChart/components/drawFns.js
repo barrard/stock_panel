@@ -194,6 +194,168 @@ export function drawVolume(indicator) {
     indicator.currentAverage = lastBar?.volumeAvg20 || 0;
 }
 
+export const createHistogramDrawFn = ({ barColor = 0x00ffff, maField = null, maColor = 0xff6600 } = {}) => {
+    return (indicator) => {
+        const { chart } = indicator;
+        if (!chart?.slicedData?.length || !indicator?.gfx) {
+            return;
+        }
+
+        const dataLength = indicator.data?.length || 0;
+        if (!dataLength) {
+            return;
+        }
+
+        try {
+            if (!indicator.gfx?._geometry) {
+                return;
+            }
+            indicator.gfx.clear();
+        } catch (err) {
+            console.log("CLEAR() Error?");
+            console.log(err);
+            return err;
+        }
+
+        const candleWidth = (chart.width - (chart.margin.left + chart.margin.right)) / dataLength;
+        const halfWidth = candleWidth / 2;
+        const candleMargin = candleWidth * 0.1;
+        const doubleMargin = candleMargin * 2;
+        const strokeWidth = candleWidth * 0.1;
+        const halfStrokeWidth = strokeWidth / 2;
+        const baseline = indicator.scale(0);
+
+        indicator.data.forEach((value, i) => {
+            if (value === undefined || value === null) {
+                return;
+            }
+
+            const x = chart.xScale(i);
+            const topY = indicator.scale(value);
+            const height = baseline - topY;
+            const adjustedHeight = Math.max(1, height - strokeWidth);
+            indicator.gfx.beginFill(barColor);
+            indicator.gfx.drawRect(
+                x + candleMargin - halfWidth,
+                topY + halfStrokeWidth,
+                candleWidth - doubleMargin,
+                adjustedHeight
+            );
+        });
+
+        indicator.gfx.endFill();
+
+        if (maField) {
+            indicator.gfx.lineStyle(2, maColor, 0.9);
+            let firstPoint = true;
+            chart.slicedData.forEach((bar, i) => {
+                const maValue = bar[maField];
+                if (maValue === undefined || maValue === null) {
+                    return;
+                }
+                const x = chart.xScale(i);
+                const y = indicator.scale(maValue);
+                if (firstPoint) {
+                    indicator.gfx.moveTo(x, y);
+                    firstPoint = false;
+                } else {
+                    indicator.gfx.lineTo(x, y);
+                }
+            });
+        }
+    };
+};
+
+export const createDualHistogramDrawFn = ({
+    positiveField,
+    negativeField,
+    positiveColor = 0x00ff00,
+    negativeColor = 0xff0000,
+    positiveMAField = null,
+    negativeMAField = null,
+    positiveMAColor = positiveColor,
+    negativeMAColor = negativeColor,
+} = {}) => {
+    return (indicator) => {
+        const { chart } = indicator;
+        if (!chart?.slicedData?.length || !indicator?.gfx) {
+            return;
+        }
+
+        try {
+            if (!indicator.gfx?._geometry) {
+                return;
+            }
+            indicator.gfx.clear();
+        } catch (err) {
+            console.log("CLEAR() Error?");
+            console.log(err);
+            return err;
+        }
+
+        const dataLength = chart.slicedData.length;
+        const candleWidth = (chart.width - (chart.margin.left + chart.margin.right)) / dataLength;
+        const halfWidth = candleWidth / 2;
+        const candleMargin = candleWidth * 0.1;
+        const doubleMargin = candleMargin * 2;
+        const strokeWidth = candleWidth * 0.1;
+        const halfStrokeWidth = strokeWidth / 2;
+
+        const drawBar = (value, color, x) => {
+            if (value === null || value === undefined) {
+                return;
+            }
+            const numericValue = typeof value === "number" ? value : Number(value);
+            if (!Number.isFinite(numericValue) || numericValue === 0) {
+                return;
+            }
+            const zeroY = indicator.scale(0);
+            const valueY = indicator.scale(numericValue);
+            const topY = Math.min(zeroY, valueY) + halfStrokeWidth;
+            const height = Math.max(1, Math.abs(zeroY - valueY) - strokeWidth);
+            indicator.gfx.beginFill(color, 0.9);
+            indicator.gfx.drawRect(x + candleMargin - halfWidth, topY, candleWidth - doubleMargin, height);
+            indicator.gfx.endFill();
+        };
+
+        chart.slicedData.forEach((bar, i) => {
+            const x = chart.xScale(i);
+            drawBar(bar[positiveField], positiveColor, x);
+            drawBar(bar[negativeField], negativeColor, x);
+        });
+
+        const drawMALine = (field, color, convertToNegative = false) => {
+            if (!field) return;
+            indicator.gfx.lineStyle(2, color, 0.9);
+            let firstPoint = true;
+            chart.slicedData.forEach((bar, i) => {
+                let value = bar[field];
+                if (value === null || value === undefined) {
+                    return;
+                }
+                value = Number(value);
+                if (!Number.isFinite(value)) {
+                    return;
+                }
+                if (convertToNegative) {
+                    value = -Math.abs(value);
+                }
+                const x = chart.xScale(i);
+                const y = indicator.scale(value);
+                if (firstPoint) {
+                    indicator.gfx.moveTo(x, y);
+                    firstPoint = false;
+                } else {
+                    indicator.gfx.lineTo(x, y);
+                }
+            });
+        };
+
+        drawMALine(positiveMAField, positiveMAColor, false);
+        drawMALine(negativeMAField, negativeMAColor, true);
+    };
+};
+
 export function drawOHLC(opts = {}) {
     const { chart, gfx, wickGfx } = opts;
 
@@ -276,6 +438,7 @@ export function drawIndicatorCandlestick(opts = {}) {
         chartData,
         gfx,
         wickGfx = null,
+        skipClear = false,
     } = opts;
 
     // console.log(`[drawIndicatorCandlestick] Called with fields: ${openField}, ${highField}, ${lowField}, ${closeField}`);
@@ -286,12 +449,14 @@ export function drawIndicatorCandlestick(opts = {}) {
         return;
     }
 
-    try {
-        gfx.clear();
-        if (wickGfx) wickGfx.clear();
-    } catch (err) {
-        console.error(`[drawIndicatorCandlestick] Error clearing graphics:`, err);
-        return err;
+    if (!skipClear) {
+        try {
+            gfx.clear();
+            if (wickGfx) wickGfx.clear();
+        } catch (err) {
+            console.error(`[drawIndicatorCandlestick] Error clearing graphics:`, err);
+            return err;
+        }
     }
 
     const candleWidth = xScale(1) - xScale(0); // Width per bar

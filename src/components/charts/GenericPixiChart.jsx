@@ -85,6 +85,18 @@ export default function GenericPixiChart({
     const [endTime, setEndTime] = useState("");
     const [numDays, setNumDays] = useState("");
     const [useNumDays, setUseNumDays] = useState(true); // Toggle between numDays and endTime
+    const [showTimeRangePanel, setShowTimeRangePanel] = useState(() => {
+        if (typeof window === "undefined") {
+            return true;
+        }
+        return window.innerWidth >= 992;
+    });
+    const [isCompactRangeUI, setIsCompactRangeUI] = useState(() => {
+        if (typeof window === "undefined") {
+            return false;
+        }
+        return window.innerWidth < 992;
+    });
 
     const clearLongPress = () => {
         clearInterval(longPressTimer);
@@ -373,21 +385,29 @@ export default function GenericPixiChart({
         setTouch2(touch2X);
     }, [TouchGesture1.current?.clientX, TouchGesture2.current?.clientX]);
 
-    if (error) {
-        return (
-            <div style={{ border: "2px solid red", color: "#b91c1c", padding: 16, background: "#fef2f2" }}>
-                <b>GenericPixiChart Error:</b> <br />
-                <span>
-                    Missing or invalid <code>symbol</code> prop. Please provide a symbol object with a <code>value</code> property.
-                </span>
-            </div>
-        );
-    }
-
     const handleResetScale = () => {
         if (effectivePixiDataRef.current && effectivePixiDataRef.current.yAxis) {
             effectivePixiDataRef.current.yAxis.resetScale();
             effectivePixiDataRef.current.draw();
+        }
+    };
+
+    useEffect(() => {
+        const handleResize = () => {
+            const compact = window.innerWidth < 992;
+            setIsCompactRangeUI(compact);
+            if (!compact) {
+                setShowTimeRangePanel(true);
+            }
+        };
+
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    const openNativeDatePicker = (event) => {
+        if (typeof event?.target?.showPicker === "function") {
+            event.target.showPicker();
         }
     };
 
@@ -431,6 +451,17 @@ export default function GenericPixiChart({
         }
     };
 
+    if (error) {
+        return (
+            <div style={{ border: "2px solid red", color: "#b91c1c", padding: 16, background: "#fef2f2" }}>
+                <b>GenericPixiChart Error:</b> <br />
+                <span>
+                    Missing or invalid <code>symbol</code> prop. Please provide a symbol object with a <code>value</code> property.
+                </span>
+            </div>
+        );
+    }
+
     return (
         <div style={{ position: "relative", width: "100%" }}>
             {onTimeRangeChange && (
@@ -441,21 +472,48 @@ export default function GenericPixiChart({
                         left: "10px",
                         zIndex: 1000,
                         display: "flex",
-                        gap: "8px",
-                        alignItems: "center",
-                        background: "rgba(0, 0, 0, 0.7)",
-                        padding: "8px",
-                        borderRadius: "4px",
-                        border: "1px solid #666",
-                        flexWrap: "wrap",
+                        flexDirection: "column",
+                        gap: "6px",
+                        alignItems: "flex-start",
                     }}
                 >
-                    <label style={{ color: "white", fontSize: "12px" }}>
+                    {isCompactRangeUI && (
+                        <button
+                            onClick={() => setShowTimeRangePanel((prev) => !prev)}
+                            style={{
+                                padding: "4px 10px",
+                                background: "rgba(0,0,0,0.7)",
+                                color: "white",
+                                border: "1px solid #666",
+                                borderRadius: "4px",
+                                fontSize: "12px",
+                                cursor: "pointer",
+                            }}
+                        >
+                            {showTimeRangePanel ? "Hide Range Loader" : "Load Historical Range"}
+                        </button>
+                    )}
+                    {showTimeRangePanel && (
+                        <div
+                            style={{
+                                display: "flex",
+                                gap: "8px",
+                                alignItems: isCompactRangeUI ? "flex-start" : "center",
+                                background: "rgba(0, 0, 0, 0.7)",
+                                padding: "8px",
+                                borderRadius: "4px",
+                                border: "1px solid #666",
+                                flexWrap: isCompactRangeUI ? "wrap" : "nowrap",
+                                maxWidth: isCompactRangeUI ? "360px" : "unset",
+                            }}
+                        >
+                            <label style={{ color: "white", fontSize: "12px" }}>
                         Start Date:
                         <input
                             type="date"
                             value={startTime}
                             onChange={(e) => setStartTime(e.target.value)}
+                            onFocus={openNativeDatePicker}
                             style={{
                                 marginLeft: "4px",
                                 padding: "4px",
@@ -466,9 +524,9 @@ export default function GenericPixiChart({
                                 fontSize: "12px",
                             }}
                         />
-                    </label>
+                            </label>
 
-                    <label style={{ color: "white", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
+                            <label style={{ color: "white", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
                         <input
                             type="checkbox"
                             checked={useNumDays}
@@ -493,9 +551,9 @@ export default function GenericPixiChart({
                                 fontSize: "12px",
                             }}
                         />
-                    </label>
+                            </label>
 
-                    <label style={{ color: "white", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
+                            <label style={{ color: "white", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
                         <input
                             type="checkbox"
                             checked={!useNumDays}
@@ -507,6 +565,7 @@ export default function GenericPixiChart({
                             type="date"
                             value={endTime}
                             onChange={(e) => setEndTime(e.target.value)}
+                            onFocus={openNativeDatePicker}
                             disabled={useNumDays}
                             style={{
                                 padding: "4px",
@@ -517,9 +576,9 @@ export default function GenericPixiChart({
                                 fontSize: "12px",
                             }}
                         />
-                    </label>
+                            </label>
 
-                    <button
+                            <button
                         onClick={handleTimeRangeSubmit}
                         style={{
                             padding: "4px 12px",
@@ -533,6 +592,8 @@ export default function GenericPixiChart({
                     >
                         Load
                     </button>
+                        </div>
+                    )}
                 </div>
             )}
             {showResetButton && (

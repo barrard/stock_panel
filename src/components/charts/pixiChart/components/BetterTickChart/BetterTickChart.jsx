@@ -6,10 +6,12 @@ import IndicatorsBtns from "../IndicatorsBtns";
 import { useToggleIndicator } from "../../../hooks/useToggleIndicator";
 import { useIndicator } from "../../../hooks/useIndicator";
 import { useLiquidityData } from "../../../hooks/useLiquidityData";
+import { useLiquidityRatios } from "../../../hooks/useLiquidityRatios";
 import { LiquidityHeatmap, liquidityHeatMapConfig } from "../indicatorDrawFunctions";
 import DrawOrdersV2 from "../DrawOrdersV2";
 import DrawSuperTrend from "../../../drawFunctions/DrawSuperTrend";
 import { sendFuturesOrder } from "../sendFuturesOrder";
+import { createDualHistogramDrawFn } from "../drawFns";
 // import { liquidityHeatMapConfig } from "../indicatorConfigs";
 
 const BetterTickChart = (props) => {
@@ -216,7 +218,58 @@ const BetterTickChart = (props) => {
         ohlcData: candleData,
         Socket,
         indicatorsRef,
+        requireIndicatorEnabled: true,
     });
+
+    useLiquidityRatios({
+        symbol,
+        Socket,
+        pixiDataRef,
+        enabled: true,
+        timeframe: "tick",
+        ohlcData: candleData,
+    });
+
+    const lowerIndicators = useMemo(() => {
+        return [
+            {
+                name: "Uber Near Cancellation",
+                height: 90,
+                type: "volume",
+                accessors: "uberNearAbovePriceCancellationCountClose",
+                extentFields: ["uberNearAbovePriceCancellationCountClose", "uberNearBelowPriceCancellationCountNegative"],
+                drawFn: createDualHistogramDrawFn({
+                    positiveField: "uberNearAbovePriceCancellationCountClose",
+                    negativeField: "uberNearBelowPriceCancellationCountNegative",
+                    positiveColor: 0x3399ff,
+                    negativeColor: 0xff3366,
+                    positiveMAField: "uberNearAbovePriceCancellationCountMA20",
+                    negativeMAField: "uberNearBelowPriceCancellationCountMA20",
+                    positiveMAColor: 0x99ccff,
+                    negativeMAColor: 0xff99bb,
+                }),
+                canGoNegative: true,
+            },
+            {
+                name: "Near Price Cancellation",
+                height: 90,
+                type: "volume",
+                accessors: "nearAbovePriceCancellationCountClose",
+                extentFields: ["nearAbovePriceCancellationCountClose", "nearBelowPriceCancellationCountNegative"],
+                drawFn: createDualHistogramDrawFn({
+                    positiveField: "nearAbovePriceCancellationCountClose",
+                    negativeField: "nearBelowPriceCancellationCountNegative",
+                    positiveColor: 0x66ff66,
+                    negativeColor: 0xff6666,
+                    positiveMAField: "nearAbovePriceCancellationCountMA20",
+                    negativeMAField: "nearBelowPriceCancellationCountMA20",
+                    positiveMAColor: 0xd4ffd4,
+                    negativeMAColor: 0xffd6d6,
+                }),
+                canGoNegative: true,
+            },
+        ];
+    }, []);
 
     // Function to combine bars on the frontend
     const combineBars = (bars, joinValue) => {
@@ -577,6 +630,7 @@ const BetterTickChart = (props) => {
                     pixiDataRef={pixiDataRef}
                     tickSize={0.01}
                     Socket={Socket}
+                    lowerIndicators={lowerIndicators}
                     loadMoreData={loadMoreData}
                     onTimeRangeChange={handleTimeRangeChange}
                     isLoading={isLoading}

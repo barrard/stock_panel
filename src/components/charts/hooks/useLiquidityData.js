@@ -21,6 +21,7 @@ export const useLiquidityData = ({
     Socket,
     indicatorsRef,
     fetchLiveDataAndUpdate,
+    requireIndicatorEnabled = false,
 }) => {
     // Cache for liquidity data (persists across indicator toggles)
     const liquidityDataCacheRef = useRef({
@@ -29,16 +30,40 @@ export const useLiquidityData = ({
         symbol: null, // Track which symbol this cache is for
         timeframe: null, // Track which timeframe this cache is for
         lastFetchTime: null, // Track when we last fetched data
+        startDatetime: null, // Track earliest datetime in cache
         endDatetime: null, // Track the end datetime of cached data
     });
 
+    const firstBarTimestamp = ohlcData.length ? ohlcData[0].timestamp || ohlcData[0].datetime : null;
+    const lastBarTimestamp =
+        ohlcData.length ? ohlcData[ohlcData.length - 1].timestamp || ohlcData[ohlcData.length - 1].datetime : null;
+
     // Fetch initial liquidity data when indicator is enabled
     useEffect(() => {
-        const heatmapInstance = liquidityHeatmapIndicator?.instanceRef;
+        console.log(
+            "[useLiquidityData] effect check",
+            JSON.stringify({
+                enabled: liquidityHeatmapIndicator?.enabled,
+                hasInstance: !!liquidityHeatmapIndicator?.instanceRef,
+                ohlcLength: ohlcData.length,
+                symbol,
+                timeframe,
+                firstBarTimestamp,
+                lastBarTimestamp,
+            })
+        );
 
-        if (!heatmapInstance || !liquidityHeatmapIndicator?.enabled || !ohlcData.length) {
+        if (!ohlcData.length) {
+            console.log("[useLiquidityData] skipped fetch - no OHLC data");
             return;
         }
+
+        if (requireIndicatorEnabled && !liquidityHeatmapIndicator?.enabled) {
+            console.log("[useLiquidityData] skipping fetch - indicator disabled and required");
+            return;
+        }
+
+        const heatmapInstance = liquidityHeatmapIndicator?.instanceRef;
 
         const cache = liquidityDataCacheRef.current;
 
@@ -49,6 +74,8 @@ export const useLiquidityData = ({
             cache.hasLoaded = false;
             cache.symbol = symbol;
             cache.timeframe = timeframe;
+            cache.startDatetime = null;
+            cache.endDatetime = null;
         }
 
         // Check if we need to fetch more OHLC bars (if cache indicates we have data beyond current OHLC range)
@@ -76,13 +103,14 @@ export const useLiquidityData = ({
             !cache.history.length ||
             !cache.lastFetchTime ||
             now - cache.lastFetchTime > CACHE_STALE_THRESHOLD ||
-            (cache.endDatetime && currentEndDatetime > cache.endDatetime);
+            (cache.endDatetime && currentEndDatetime > cache.endDatetime) ||
+            (cache.startDatetime && currentStartDatetime < cache.startDatetime);
 
         // Check cache first - if we have fresh data, use it
         if (cache.hasLoaded && cache.history.length > 0 && !isCacheStale) {
             console.log(`[useLiquidityData] Loading liquidity data from cache (fresh) - ${cache.history.length} items`);
-            heatmapInstance.setLiquidityHistory(cache.history);
-            heatmapInstance.draw(true);
+            heatmapInstance?.setLiquidityHistory(cache.history);
+            heatmapInstance?.draw(true);
             return;
         }
 
@@ -92,7 +120,10 @@ export const useLiquidityData = ({
                 const startTime = ohlcData[0].timestamp || ohlcData[0].datetime;
                 const endTime = ohlcData[ohlcData.length - 1].timestamp || ohlcData[ohlcData.length - 1].datetime;
 
-                console.log(`[useLiquidityData] Fetching liquidity data from API for ${symbol} (${timeframe})`);
+                console.log(`[useLiquidityData] Fetching liquidity data from API for ${symbol} (${timeframe})`, {
+                    startTime: new Date(startTime).toISOString(),
+                    endTime: new Date(endTime).toISOString(),
+                });
                 const liquidityData = await API.getOrderFlow({
                     start: startTime,
                     end: endTime,
@@ -142,21 +173,31 @@ export const useLiquidityData = ({
                     cache.history = transformedData;
                     cache.hasLoaded = true;
                     cache.lastFetchTime = Date.now();
+                    cache.startDatetime = startTime;
                     cache.endDatetime = endTime;
 
                     console.log(`[useLiquidityData] Stored ${transformedData.length} bars in cache`);
 
-                    // Load into heatmap
-                    heatmapInstance.setLiquidityHistory(transformedData);
-                    heatmapInstance.draw(true);
+                    // Load into heatmap if it exists
+                    heatmapInstance?.setLiquidityHistory(transformedData);
+                    heatmapInstance?.draw(true);
                 }
             } catch (error) {
                 console.error(`[useLiquidityData] Failed to fetch liquidity data:`, error);
             }
         };
 
+        console.log("[useLiquidityData] triggering API fetch");
         fetchLiquidityData();
-    }, [liquidityHeatmapIndicator?.enabled, liquidityHeatmapIndicator?.instanceRef, symbol, timeframe, ohlcData.length]);
+    }, [
+        liquidityHeatmapIndicator?.enabled,
+        liquidityHeatmapIndicator?.instanceRef,
+        symbol,
+        timeframe,
+        ohlcData.length,
+        firstBarTimestamp,
+        lastBarTimestamp,
+    ]);
 
     // Socket listener for real-time liquidity updates
     useEffect(() => {
