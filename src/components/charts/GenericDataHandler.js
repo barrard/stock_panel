@@ -19,6 +19,7 @@ export default class GenericDataHandler {
         margin = {},
         tickSize,
         fullSymbol = null,
+        exchange = "CME",
         //chartType: "line", lineKey: "last", xKey: "timestamp"
         options = { chartType: "candlestick" },
         lowerIndicators = [],
@@ -36,6 +37,7 @@ export default class GenericDataHandler {
         this.height = height;
         this.symbol = symbol;
         this.fullSymbol = fullSymbol;
+        this.exchange = exchange;
         this.sendOrder = sendOrder;
         this.margin = margin;
         this.initialized = false;
@@ -887,7 +889,7 @@ export default class GenericDataHandler {
 
             const priceType = this.TW_BUY.text === "LIMIT" ? 1 : 4;
 
-            this.sendOrder({ transactionType: 1, limitPrice: this.TW_Price, priceType, symbolData: this.fullSymbol });
+            this.sendOrder({ transactionType: 1, limitPrice: this.TW_Price, priceType, symbolData: { fullSymbol: this.fullSymbol, exchange: this.exchange } });
             // console.log(`Buy ${this.TW_BUY.text} Button clicked!`);
         };
         this.TW_BuyButtonGfx.on("click", this.BuyButtonClick);
@@ -903,15 +905,15 @@ export default class GenericDataHandler {
             const priceType = this.TW_SELL.text === "LIMIT" ? 1 : 4;
 
             // console.log(`Sell ${this.TW_SELL.text} Button clicked!`);
-            this.sendOrder({ transactionType: 2, limitPrice: this.TW_Price, priceType, symbolData: this.fullSymbol });
+            this.sendOrder({ transactionType: 2, limitPrice: this.TW_Price, priceType, symbolData: { fullSymbol: this.fullSymbol, exchange: this.exchange } });
         };
         this.TW_SellButtonGfx.on("click", this.SellButtonClick);
         this.tradeWindowContainer.addChild(this.tradeWindowGfx);
         this.tradeWindowContainer.addChild(this.TW_BuyButtonGfx);
         this.tradeWindowContainer.addChild(this.TW_SellButtonGfx);
 
-        this.TW_symbol = new Text(this.fullSymbol?.current?.fullSymbol, this.darkTextStyle());
-        this.TW_exchange = new Text(this.symbol.exchange, this.darkTextStyle());
+        this.TW_symbol = new Text(this.fullSymbol, this.darkTextStyle());
+        this.TW_exchange = new Text(this.exchange, this.darkTextStyle());
         this.TW_exchange.resolution = 10;
         this.TW_value = new Text("", this.darkTextStyle());
         this.TW_BUY = new Text("BUY", this.darkTextStyle());

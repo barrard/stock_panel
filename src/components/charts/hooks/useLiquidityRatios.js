@@ -319,12 +319,11 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
             cachedRange.symbol === symbol &&
             cachedRange.timeframe === timeframe
         ) {
+            // Only refetch when data range shifts to EARLIER data (scrolling left into history)
+            // New bars at the END are handled by real-time socket listeners, not API refetch
             const outsideKnownRange =
                 cachedRange.start === null ||
-                cachedRange.end === null ||
                 currentStart < cachedRange.start ||
-                currentEnd > cachedRange.end ||
-                currentStart > cachedRange.end ||
                 currentEnd < cachedRange.start;
 
             if (outsideKnownRange) {
@@ -405,15 +404,16 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
                     });
 
                     // Populate all OHLC bars with matching metrics
-                    // let matchedCount = 0;
+                    let matchedCount = 0;
                     pixiDataRef.current.ohlcDatas.forEach((bar) => {
-                        const barTime = bar.timestamp || bar.datetime;
+                        const barTime = new Date(bar.timestamp || bar.datetime).getTime();
                         const metrics = metricsMap.get(barTime);
                         if (metrics) {
                             Object.assign(bar, metrics);
-                            // matchedCount++;
+                            matchedCount++;
                         }
                     });
+                    console.log(`[useLiquidityRatios] Matched ${matchedCount}/${pixiDataRef.current.ohlcDatas.length} bars with liquidity metrics (metricsMap size: ${metricsMap.size})`);
 
                     // console.log(`[useLiquidityRatios] Populated ${matchedCount} bars with ratio data`);
                     recalculateMovingAveragesForAllBars(pixiDataRef.current.ohlcDatas);
@@ -453,7 +453,7 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
         };
 
         fetchHistoricalRatios();
-    }, [enabled, symbol, timeframe, ohlcData?.length, firstBarTimestamp, lastBarTimestamp]); // Include timestamps for range changes
+    }, [enabled, symbol, timeframe, firstBarTimestamp]); // Only react to start boundary changes; end is handled by socket
 
     // Separate effect to detect when user scrolls left to load earlier data
     // This uses a ref to track earliest timestamp, avoiding dependency on ohlcData

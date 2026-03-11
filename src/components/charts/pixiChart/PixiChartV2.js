@@ -3,6 +3,7 @@ import GenericPixiChart from "../GenericPixiChart";
 import API from "../../API";
 import { LiquidityHeatmap, liquidityHeatMapConfig } from "./components/indicatorDrawFunctions";
 import DrawOrdersV2 from "./components/DrawOrdersV2";
+import DrawDepthSignals from "./components/DrawDepthSignals";
 import DrawSuperTrend from "../drawFunctions/DrawSuperTrend";
 import DrawMovingAverages from "../drawFunctions/DrawMovingAverages";
 import IndicatorsBtns from "./components/IndicatorsBtns";
@@ -165,6 +166,131 @@ const createMultiCandlesWithMovingAverageDrawFn = (configs = []) => {
 	};
 };
 
+const getSymbolConfig = (symbolValue = "ES") => {
+	const option = symbolOptions.find((item) => item.value === symbolValue);
+	return {
+		value: symbolValue,
+		name: option?.value || symbolValue,
+		exchange: option?.exchange || "CME",
+		tickSize: ticks[symbolValue] || ticks.ES,
+	};
+};
+
+const timeframeToMs = (timeframe) => {
+	if (typeof timeframe !== "string") return null;
+
+	const match = timeframe.trim().match(/^(\d+)([smhdw])$/i);
+	if (!match) return null;
+
+	const amount = Number(match[1]);
+	if (!Number.isFinite(amount) || amount <= 0) return null;
+
+	const unit = match[2].toLowerCase();
+	const unitMs =
+		unit === "s"
+			? 1000
+			: unit === "m"
+				? 60 * 1000
+				: unit === "h"
+					? 60 * 60 * 1000
+					: unit === "d"
+						? 24 * 60 * 60 * 1000
+						: 7 * 24 * 60 * 60 * 1000;
+
+	return amount * unitMs;
+};
+
+const toFiniteNumber = (value) => {
+	const parsed = Number(value);
+	return Number.isFinite(parsed) ? parsed : null;
+};
+
+const getBarTimestamp = (bar) => {
+	const timestamp = Number(bar?.timestamp ?? bar?.datetime);
+	return Number.isFinite(timestamp) ? timestamp : null;
+};
+
+const buildDepthBarKey = (timestamp, timeframeMs) => {
+	if (!Number.isFinite(timestamp) || !Number.isFinite(timeframeMs) || timeframeMs <= 0) return null;
+	return Math.floor(timestamp / timeframeMs) * timeframeMs;
+};
+
+const findBarByDepthKey = (bars = [], timestamp, timeframeMs) => {
+	if (!Array.isArray(bars) || !bars.length) return null;
+	const targetKey = buildDepthBarKey(timestamp, timeframeMs);
+	if (targetKey === null) return null;
+
+	for (let index = bars.length - 1; index >= 0; index -= 1) {
+		const bar = bars[index];
+		const barKey = buildDepthBarKey(getBarTimestamp(bar), timeframeMs);
+		if (barKey === targetKey) {
+			return bar;
+		}
+	}
+
+	return null;
+};
+
+const aggregateDepthSummariesByBar = (summaries = [], timeframeMs) => {
+	const aggregated = new Map();
+	if (!Array.isArray(summaries) || !summaries.length || !Number.isFinite(timeframeMs) || timeframeMs <= 0) {
+		return aggregated;
+	}
+
+	summaries.forEach((summary) => {
+		const timestamp = toFiniteNumber(summary?.timestamp);
+		const barKey = buildDepthBarKey(timestamp, timeframeMs);
+		if (barKey === null) return;
+
+		const existing = aggregated.get(barKey) || {
+			depthSignalWindowScore: 0,
+			depthSignalZero: 0,
+			latestTimestamp: Number.NEGATIVE_INFINITY,
+		};
+
+		const nextAggregate = { ...existing };
+		const windowScore = toFiniteNumber(summary?.windowScore);
+		if (windowScore !== null) {
+			nextAggregate.depthSignalWindowScore += windowScore;
+		}
+
+		if (timestamp >= nextAggregate.latestTimestamp) {
+			const cumulative = toFiniteNumber(summary?.signalCumulative);
+			const direction = toFiniteNumber(summary?.signalDirection);
+			const consecutive = toFiniteNumber(summary?.signalConsecutive);
+
+			nextAggregate.latestTimestamp = timestamp;
+			if (cumulative !== null) nextAggregate.depthSignalCumulative = cumulative;
+			if (direction !== null) nextAggregate.depthSignalDirection = direction;
+			if (consecutive !== null) nextAggregate.depthSignalConsecutive = consecutive;
+		}
+
+		aggregated.set(barKey, nextAggregate);
+	});
+
+	return aggregated;
+};
+
+const mergeDepthAggregateIntoBar = (bar, depthAggregate, timeframeMs) => {
+	if (!bar || !Number.isFinite(timeframeMs) || timeframeMs <= 0) return bar;
+
+	const timestamp = getBarTimestamp(bar);
+	const barKey = buildDepthBarKey(timestamp, timeframeMs);
+	if (barKey === null) return bar;
+
+	const aggregate = depthAggregate.get(barKey);
+	if (!aggregate) return bar;
+
+	return {
+		...bar,
+		...(aggregate.depthSignalCumulative !== undefined && { depthSignalCumulative: aggregate.depthSignalCumulative }),
+		...(aggregate.depthSignalWindowScore !== undefined && { depthSignalWindowScore: aggregate.depthSignalWindowScore }),
+		...(aggregate.depthSignalDirection !== undefined && { depthSignalDirection: aggregate.depthSignalDirection }),
+		...(aggregate.depthSignalConsecutive !== undefined && { depthSignalConsecutive: aggregate.depthSignalConsecutive }),
+		depthSignalZero: 0,
+	};
+};
+
 const PixiChartV2 = (props) => {
 	const { Socket, height = 500, orders: ordersFromParent = {}, fullSymbol } = props;
 
@@ -173,6 +299,9 @@ const PixiChartV2 = (props) => {
 	const ohlcDataRef = useRef([]);
 	const loadingMoreRef = useRef(false);
 	const isLoadingRef = useRef(true);
+	const depthSignalsRef = useRef(null);
+	const depthSummaryEventsRef = useRef([]);
+	const depthSummaryAggregationRef = useRef(new Map());
 
 	//most charts handle timeframe with barType and barTypePeriod
 	// barType 1 = seconds, 2 = minutes, 3 = hours, 4 = days
@@ -196,13 +325,78 @@ const PixiChartV2 = (props) => {
 		isLoadingRef.current = isLoading;
 	}, [isLoading]);
 
+	const depthTimeframeMs = useMemo(() => timeframeToMs(timeframe), [timeframe]);
+
 	// the symbol of the chart
-	const [symbol, setSymbol] = useState({
-		value: "ES",
-		name: "ES",
-		exchange: "CME",
-		tickSize: ticks["ES"],
-	});
+	const [symbol, setSymbol] = useState(() => getSymbolConfig(props.symbol || "ES"));
+
+	const rebuildDepthSummaryAggregation = useCallback(() => {
+		depthSummaryAggregationRef.current = aggregateDepthSummariesByBar(depthSummaryEventsRef.current, depthTimeframeMs);
+	}, [depthTimeframeMs]);
+
+	const hydrateBarsWithDepthSummaries = useCallback(
+		(bars = []) => {
+			if (!Array.isArray(bars) || !bars.length) return Array.isArray(bars) ? bars : [];
+			const depthAggregate = depthSummaryAggregationRef.current;
+			if (!depthAggregate?.size || !Number.isFinite(depthTimeframeMs) || depthTimeframeMs <= 0) return bars;
+
+			return bars.map((bar) => mergeDepthAggregateIntoBar(bar, depthAggregate, depthTimeframeMs));
+		},
+		[depthTimeframeMs]
+	);
+
+	const applyDepthSummaryToBarInPlace = useCallback(
+		(bar) => {
+			if (!bar || !Number.isFinite(depthTimeframeMs) || depthTimeframeMs <= 0) return false;
+
+			const timestamp = getBarTimestamp(bar);
+			const barKey = buildDepthBarKey(timestamp, depthTimeframeMs);
+			if (barKey === null) return false;
+
+			const aggregate = depthSummaryAggregationRef.current.get(barKey);
+			if (!aggregate) return false;
+
+			let changed = false;
+			const assignIfDifferent = (field, value) => {
+				if (value === undefined || bar[field] === value) return;
+				bar[field] = value;
+				changed = true;
+			};
+
+			assignIfDifferent("depthSignalCumulative", aggregate.depthSignalCumulative);
+			assignIfDifferent("depthSignalWindowScore", aggregate.depthSignalWindowScore);
+			assignIfDifferent("depthSignalDirection", aggregate.depthSignalDirection);
+			assignIfDifferent("depthSignalConsecutive", aggregate.depthSignalConsecutive);
+			assignIfDifferent("depthSignalZero", 0);
+
+			return changed;
+		},
+		[depthTimeframeMs]
+	);
+
+	const applyDepthSummariesToLiveBars = useCallback(() => {
+		const bars = pixiDataRef.current?.ohlcDatas;
+		if (!Array.isArray(bars) || !bars.length) return;
+
+		const changed = [bars[bars.length - 2], bars[bars.length - 1]].some((bar) => applyDepthSummaryToBarInPlace(bar));
+		if (changed) {
+			pixiDataRef.current?.draw();
+		}
+	}, [applyDepthSummaryToBarInPlace]);
+
+	useEffect(() => {
+		if (!props.symbol || props.symbol === symbol.value) return;
+		setSymbol(getSymbolConfig(props.symbol));
+	}, [props.symbol, symbol.value]);
+
+	useEffect(() => {
+		depthSummaryEventsRef.current = [];
+		depthSummaryAggregationRef.current = new Map();
+	}, [symbol.value]);
+
+	useEffect(() => {
+		rebuildDepthSummaryAggregation();
+	}, [rebuildDepthSummaryAggregation]);
 
 	//controls various indicators
 	const [indicators, setIndicators] = useState([
@@ -411,7 +605,7 @@ const PixiChartV2 = (props) => {
 
 				if (replaceData) {
 					// Replace data completely (for timeframe changes)
-					setOhlcData(liveData);
+					setOhlcData(hydrateBarsWithDepthSummaries(liveData));
 					console.log(`[PixiChartV2] Replaced data with ${liveData.length} bars`);
 				} else {
 					// Use functional update to avoid dependency on ohlcData
@@ -420,7 +614,7 @@ const PixiChartV2 = (props) => {
 							(a, b) => a.datetime - b.datetime
 						);
 						console.log(`[PixiChartV2] Merged to ${result.length} total bars`);
-						return result;
+						return hydrateBarsWithDepthSummaries(result);
 					});
 				}
 			} catch (error) {
@@ -429,7 +623,7 @@ const PixiChartV2 = (props) => {
 				setIsLoading(false);
 			}
 		},
-		[symbol.value, timeframe] // Removed ohlcData - use functional update instead
+		[hydrateBarsWithDepthSummaries, symbol.value, timeframe] // Removed ohlcData - use functional update instead
 	);
 
 	const fetchHistoricalWindow = useCallback(
@@ -507,7 +701,10 @@ const PixiChartV2 = (props) => {
 			if (normalized.length) {
 				setOhlcData((prevOhlcData) => {
 					const merged = [...normalized, ...prevOhlcData];
-					return Array.from(new Map(merged.map((bar) => [bar.datetime, bar])).values()).sort((a, b) => a.datetime - b.datetime);
+					const deduped = Array.from(new Map(merged.map((bar) => [bar.datetime, bar])).values()).sort(
+						(a, b) => a.datetime - b.datetime
+					);
+					return hydrateBarsWithDepthSummaries(deduped);
 				});
 			} else {
 				console.log("[PixiChartV2] No additional historical data returned after multiple attempts.");
@@ -518,7 +715,7 @@ const PixiChartV2 = (props) => {
 			loadingMoreRef.current = false;
 			setIsLoading(false);
 		}
-	}, [fetchHistoricalWindow, timeframe]);
+	}, [fetchHistoricalWindow, hydrateBarsWithDepthSummaries, symbol.value, timeframe]);
 
 	// Use the liquidity data hook for fetching and caching
 	useLiquidityData({
@@ -540,6 +737,27 @@ const PixiChartV2 = (props) => {
 		timeframe,
 		ohlcData,
 	});
+
+	useEffect(() => {
+		const pixiData = pixiDataRef.current;
+		if (!pixiData) return;
+		if (depthSignalsRef.current?.chart === pixiData) return;
+
+		depthSignalsRef.current?.cleanup?.();
+
+		const depthSignals = new DrawDepthSignals(pixiData);
+		depthSignalsRef.current = depthSignals;
+		pixiData.registerDrawFn("depthSignals", depthSignals.draw.bind(depthSignals));
+		pixiData.draw();
+
+		return () => {
+			pixiData.unregisterDrawFn("depthSignals");
+			if (depthSignalsRef.current === depthSignals) {
+				depthSignalsRef.current = null;
+			}
+			depthSignals.cleanup();
+		};
+	}, [symbol.value, timeframe, isLoading]);
 
 	// Update timeframe state when barType or barTypePeriod changes
 	useEffect(() => {
@@ -595,10 +813,17 @@ const PixiChartV2 = (props) => {
 				barTypePeriod,
 				symbol,
 				setIsLoading,
-				setOhlcData,
+				setOhlcData: (dataOrUpdater) => {
+					if (typeof dataOrUpdater === "function") {
+						setOhlcData((prevOhlcData) => hydrateBarsWithDepthSummaries(dataOrUpdater(prevOhlcData)));
+						return;
+					}
+
+					setOhlcData(hydrateBarsWithDepthSummaries(dataOrUpdater));
+				},
 			});
 		},
-		[barType, barTypePeriod, symbol, setIsLoading, setOhlcData]
+		[barType, barTypePeriod, hydrateBarsWithDepthSummaries, symbol, setIsLoading, setOhlcData]
 	);
 
 	//main on load to get data
@@ -615,6 +840,7 @@ const PixiChartV2 = (props) => {
 
 			// Replace temporary bar with complete bar
 			pixiDataRef?.current?.setCompleteBar(newBar);
+			applyDepthSummariesToLiveBars();
 		};
 		Socket.on(liveBarNew, handleLiveBarNew);
 
@@ -625,15 +851,50 @@ const PixiChartV2 = (props) => {
 
 			// Update temporary bar
 			pixiDataRef?.current?.newTick(tick);
+			applyDepthSummariesToLiveBars();
 		};
 
 		Socket.on(liveBarUpdate, handleLiveBarUpdate);
 
+		const depthSummaryEvent = `depthSummary-${symbol.value}`;
+		const handleDepthSummary = (summary) => {
+			const timestamp = toFiniteNumber(summary?.timestamp) ?? Date.now();
+			depthSummaryEventsRef.current = [...depthSummaryEventsRef.current.slice(-499), { ...summary, timestamp }];
+			rebuildDepthSummaryAggregation();
+
+			const targetBar = findBarByDepthKey(pixiDataRef.current?.ohlcDatas, timestamp, depthTimeframeMs);
+			if (applyDepthSummaryToBarInPlace(targetBar)) {
+				pixiDataRef.current?.draw();
+			}
+		};
+		Socket.on(depthSummaryEvent, handleDepthSummary);
+
+		const depthSignalEvent = `depthTradeSignal-${symbol.value}`;
+		const handleDepthSignal = (signal) => {
+			depthSignalsRef.current?.pushSignal({
+				...signal,
+				timestamp: signal?.timestamp || Date.now(),
+				receivedAt: Date.now(),
+			});
+		};
+		Socket.on(depthSignalEvent, handleDepthSignal);
+
 		return () => {
 			Socket.off(liveBarNew, handleLiveBarNew);
 			Socket.off(liveBarUpdate, handleLiveBarUpdate);
+			Socket.off(depthSummaryEvent, handleDepthSummary);
+			Socket.off(depthSignalEvent, handleDepthSignal);
 		};
-	}, [symbol.value, timeframe, Socket, fetchLiveDataAndUpdate]); // Socket intentionally omitted to prevent re-registrations
+	}, [
+		symbol.value,
+		timeframe,
+		Socket,
+		applyDepthSummariesToLiveBars,
+		applyDepthSummaryToBarInPlace,
+		depthTimeframeMs,
+		fetchLiveDataAndUpdate,
+		rebuildDepthSummaryAggregation,
+	]); // Socket intentionally omitted to prevent re-registrations
 
 	// Filter orders by current symbol
 	const symbolFilteredOrders = useMemo(() => {
@@ -660,6 +921,14 @@ const PixiChartV2 = (props) => {
 	// Create lower indicators array - always visible
 	const lowerIndicators = useMemo(() => {
 		return [
+			{
+				name: "Depth Cumulative",
+				height: 90,
+				type: "line",
+				accessors: "depthSignalCumulative",
+				lineColor: 0xfdd835,
+				canGoNegative: true,
+			},
 			{
 				name: "Delta",
 				height: 100,
@@ -831,7 +1100,7 @@ const PixiChartV2 = (props) => {
 				// width={width}
 				height={height}
 				symbol={symbol.value}
-				fullSymbol={symbol.value}
+				fullSymbol={fullSymbol || symbol.value}
 				exchange={symbol.exchange} // symbol.exchange
 				barType={barType.value}
 				barTypePeriod={barTypePeriod}

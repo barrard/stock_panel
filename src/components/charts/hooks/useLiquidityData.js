@@ -98,12 +98,13 @@ export const useLiquidityData = ({
         const now = Date.now();
         const CACHE_STALE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
 
+        // Only refetch when data range shifts to EARLIER data (scrolling left into history)
+        // New bars at the END are handled by the real-time socket listener, not API refetch
         const isCacheStale =
             !cache.hasLoaded ||
             !cache.history.length ||
             !cache.lastFetchTime ||
             now - cache.lastFetchTime > CACHE_STALE_THRESHOLD ||
-            (cache.endDatetime && currentEndDatetime > cache.endDatetime) ||
             (cache.startDatetime && currentStartDatetime < cache.startDatetime);
 
         // Check cache first - if we have fresh data, use it
@@ -194,9 +195,7 @@ export const useLiquidityData = ({
         liquidityHeatmapIndicator?.instanceRef,
         symbol,
         timeframe,
-        ohlcData.length,
         firstBarTimestamp,
-        lastBarTimestamp,
     ]);
 
     // Socket listener for real-time liquidity updates

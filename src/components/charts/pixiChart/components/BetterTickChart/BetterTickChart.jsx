@@ -634,6 +634,7 @@ const BetterTickChart = (props) => {
                     loadMoreData={loadMoreData}
                     onTimeRangeChange={handleTimeRangeChange}
                     isLoading={isLoading}
+                    exchange={exchange}
                     sendOrder={sendFuturesOrder}
                     options={{
                         withoutVolume: false,
