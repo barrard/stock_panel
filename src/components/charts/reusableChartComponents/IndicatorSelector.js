@@ -2,7 +2,7 @@ import React from "react";
 
 const IndicatorSelector = ({ indicators, toggleIndicator }) => {
     return (
-        <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+        <div style={{ display: "block", marginBottom: "8px" }}>
             {indicators.map((indicator) => (
                 <button
                     key={indicator.id}
@@ -10,10 +10,15 @@ const IndicatorSelector = ({ indicators, toggleIndicator }) => {
                     style={{
                         backgroundColor: indicator.enabled ? "#4CAF50" : "#f44336",
                         color: "white",
-                        padding: "8px 12px",
+                        padding: "4px 8px",
                         border: "none",
                         borderRadius: "4px",
                         cursor: "pointer",
+                        fontSize: "11px",
+                        lineHeight: 1.1,
+                        whiteSpace: "nowrap",
+                        marginRight: "6px",
+                        marginBottom: "6px",
                     }}
                 >
                     {indicator.name}

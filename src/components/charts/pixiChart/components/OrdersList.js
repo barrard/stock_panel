@@ -29,6 +29,41 @@ const getOrderTimestamp = (order) => {
 
 const extractPrice = (order) => order?.avgFillPrice ?? order?.price ?? order?.triggerPrice ?? null;
 
+const toDisplayNumber = (value) => {
+	if (value == null || value === "") return null;
+	const numericValue = Number(value);
+	return Number.isFinite(numericValue) ? numericValue : null;
+};
+
+const formatPriceValue = (value) => {
+	const numericValue = toDisplayNumber(value);
+	if (numericValue == null) return null;
+	return `$${numericValue.toFixed(2)}`;
+};
+
+const findBestPrice = (...orders) => {
+	for (const order of orders) {
+		if (!order) continue;
+		const candidate =
+			order.avgFillPrice ??
+			order.fillPrice ??
+			order.price ??
+			order.triggerPrice ??
+			order.limitPrice ??
+			order.stopPrice ??
+			order.stopLimitPrice;
+		const numericValue = toDisplayNumber(candidate);
+		if (numericValue != null) return numericValue;
+	}
+	return null;
+};
+
+const formatContracts = (value) => {
+	const numericValue = toDisplayNumber(value);
+	if (numericValue == null) return "-";
+	return Number.isInteger(numericValue) ? String(numericValue) : numericValue.toFixed(2);
+};
+
 const getFilledQuantity = (order) => {
 	if (!order) return 0;
 	if (order.totalFillSize != null) return order.totalFillSize;
@@ -478,31 +513,6 @@ function orderTransactionType(type) {
 	}
 }
 
-const colors = {
-	// Direction colors
-	BUY: "#22c55e", // Green-500
-	SELL: "#ef4444", // Red-500
-
-	// Order types - using blues and purples for distinction
-	MARKET: "#3b82f6", // Blue-500
-	LIMIT: "#6366f1", // Indigo-500
-	STOP_LIMIT: "#8b5cf6", // Violet-500
-	STOP_MARKET: "#a855f7", // Purple-500
-
-	// Complex order types
-	OCO: "#0ea5e9", // Sky-500
-	BRACKET: "#06b6d4", // Cyan-500
-
-	// Status colors
-	OPEN: "#84cc16", // Lime-500 (active/running)
-	OPEN_PENDING: "#facc15", // Yellow-500 (waiting)
-	COMPLETE: "#10b981", // Emerald-500 (success)
-	CANCEL: "#f97316", // Orange-500 (cancelled)
-};
-function OrderColorScheme(type) {
-	return colors[type] || "black";
-}
-
 const StyledOrderContainer = styled.div`
     background: #1a1a1a;
     border-radius: 0.5rem;
@@ -543,18 +553,145 @@ const StatusBadge = styled.span`
 	}}
 `;
 
+const OrderCardHeader = styled.div`
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 0.75rem;
+	margin-bottom: 0.9rem;
+`;
+
+const OrderHeaderLeft = styled.div`
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	flex-wrap: wrap;
+`;
+
+const OrderHeaderRight = styled.div`
+	text-align: right;
+	color: #9ca3af;
+	font-size: 0.82rem;
+`;
+
+const OrderMainGrid = styled.div`
+	display: grid;
+	grid-template-columns: minmax(0, 1.4fr) minmax(190px, 1fr) minmax(180px, 0.95fr) auto;
+	gap: 1rem;
+	align-items: start;
+
+	@media (max-width: 1100px) {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	@media (max-width: 720px) {
+		grid-template-columns: 1fr;
+	}
+`;
+
+const OrderIdentity = styled.div`
+	display: flex;
+	flex-direction: column;
+	gap: 0.55rem;
+`;
+
+const OrderTitleRow = styled.div`
+	display: flex;
+	align-items: center;
+	gap: 0.65rem;
+	flex-wrap: wrap;
+`;
+
+const OrderSymbol = styled.div`
+	font-size: 1rem;
+	font-weight: 700;
+	color: #f9fafb;
+	letter-spacing: 0.02em;
+`;
+
+const OrderSummary = styled.div`
+	font-size: 0.95rem;
+	color: #d1d5db;
+	line-height: 1.45;
+`;
+
+const OrderMetaGrid = styled.div`
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0.5rem;
+
+	@media (max-width: 720px) {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+`;
+
+const MetaItem = styled.div`
+	padding: 0.55rem 0.65rem;
+	border: 1px solid #2b3445;
+	border-radius: 0.55rem;
+	background: #111827;
+`;
+
+const MetaLabel = styled.div`
+	font-size: 0.7rem;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: #7c8aa5;
+	margin-bottom: 0.2rem;
+`;
+
+const MetaValue = styled.div`
+	font-size: 0.92rem;
+	font-weight: 600;
+	color: #f3f4f6;
+`;
+
+const PricePanel = styled.div`
+	border: 1px solid #243145;
+	border-radius: 0.7rem;
+	padding: 0.8rem;
+	background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+`;
+
+const PricePrimary = styled.div`
+	font-size: 1.2rem;
+	font-weight: 700;
+	color: #f9fafb;
+`;
+
+const PriceSecondary = styled.div`
+	margin-top: 0.35rem;
+	font-size: 0.85rem;
+	color: #94a3b8;
+	line-height: 1.45;
+`;
+
+const FillPanel = styled.div`
+	border: 1px solid #243145;
+	border-radius: 0.7rem;
+	padding: 0.8rem;
+	background: #0b1220;
+`;
+
+const FillHeadline = styled.div`
+	font-size: 0.92rem;
+	font-weight: 600;
+	color: #e5e7eb;
+`;
+
+const FillSubline = styled.div`
+	margin-top: 0.35rem;
+	font-size: 0.84rem;
+	color: #94a3b8;
+	line-height: 1.45;
+`;
+
 const BracketBadge = styled.span`
     padding: 0.25rem 0.75rem;
     border-radius: 9999px;
     font-size: 0.875rem;
     background-color: #1e3a8a;
     color: #93c5fd;
-`;
-
-const OrderInfo = styled.div`
-    margin-top: 0.5rem;
-    font-size: 0.875rem;
-    color: #9ca3af;
 `;
 
 const TradeTypeContainer = styled.div`
@@ -729,24 +866,45 @@ const OrderItem = memo(function OrderItem({ events, compiledOrder }) {
 				: "filled"
 			: `working ${displayQuantity || "?"} contracts`;
 
+	const orderTypeLabel = priceType(compiledOrder.priceType) || priceType(latestEvent?.priceType) || "Order";
+	const primaryPrice = findBestPrice(compiledOrder, latestEvent, ...orderedEvents.slice().reverse());
+	const avgFillPrice = findBestPrice(
+		{ avgFillPrice: compiledOrder.avgFillPrice },
+		{ avgFillPrice: latestEvent?.avgFillPrice },
+		...orderedEvents.slice().reverse().map((event) => ({ avgFillPrice: event.avgFillPrice }))
+	);
+	const triggerPrice = findBestPrice(
+		{ triggerPrice: compiledOrder.triggerPrice },
+		{ triggerPrice: latestEvent?.triggerPrice },
+		...orderedEvents.slice().reverse().map((event) => ({ triggerPrice: event.triggerPrice }))
+	);
+	const limitPrice = findBestPrice(
+		{ price: compiledOrder.price, limitPrice: compiledOrder.limitPrice },
+		{ price: latestEvent?.price, limitPrice: latestEvent?.limitPrice },
+		...orderedEvents.slice().reverse().map((event) => ({ price: event.price, limitPrice: event.limitPrice }))
+	);
+	const orderTimestamp = getOrderTimestamp(compiledOrder) || getOrderTimestamp(latestEvent);
+	const basketSuffix = compiledOrder.basketId ? compiledOrder.basketId.slice(-6) : "------";
+	const netQuantity = compiledOrder.netQuantity ?? latestEvent?.netQuantity ?? "-";
+
 	return (
 		<StyledOrderContainer onClick={() => setExpanded((prev) => !prev)}>
-			<div className="row">
-				{/* Main Order Info */}
-				<div className="col-4">
-					<div className="d-flex align-items-center gap-2 mb-2">
+			<OrderCardHeader>
+				<OrderHeaderLeft>
+					<div className="d-flex align-items-center gap-2">
 						<StatusBadge status={displayStatus}>{displayStatus}</StatusBadge>
 						{isBracket && <BracketBadge>BRACKET</BracketBadge>}
 					</div>
+				</OrderHeaderLeft>
+				<OrderHeaderRight>
+					<div>{orderTimestamp ? new Date(orderTimestamp).toLocaleString() : "-"}</div>
+					<div>Basket #{basketSuffix}</div>
+				</OrderHeaderRight>
+			</OrderCardHeader>
 
-					<OrderInfo>
-						<div>Net Qty: {compiledOrder.netQuantity}</div>
-						<div>Template ID: {compiledOrder.templateId}</div>
-						<div>Basket ID: {compiledOrder.basketId.slice(-4)}</div>
-					</OrderInfo>
-
-					<div className="d-flex align-items-center gap-2 mt-2">
-						{displayTransactionType}
+			<OrderMainGrid>
+				<OrderIdentity>
+					<OrderTitleRow>
 						{displayTransactionType === 1 || displayTransactionType === "BUY" ? (
 							<ArrowUpCircle size={20} color="#22c55e" />
 						) : displayTransactionType === 2 || displayTransactionType === "SELL" ? (
@@ -754,38 +912,66 @@ const OrderItem = memo(function OrderItem({ events, compiledOrder }) {
 						) : (
 							<ArrowUpCircle size={20} color="#9ca3af" />
 						)}
-						<TradeDirectionLabel transactionType={displayTransactionType}>
-							{orderTransactionType(displayTransactionType)} {displayQuantity} of {compiledOrder.symbol} at{" "}
-							{priceType(compiledOrder.priceType)}
-						</TradeDirectionLabel>
-					</div>
+						<OrderSymbol>{compiledOrder.symbol || latestEvent?.symbol || "Unknown symbol"}</OrderSymbol>
+						<TradeDirectionLabel transactionType={displayTransactionType}>{orderTransactionType(displayTransactionType) || "Order"}</TradeDirectionLabel>
+					</OrderTitleRow>
 
-					<div className="mt-2">
-						{compiledOrder.symbol} {fillSummary}
-					</div>
-				</div>
+					<OrderSummary>
+						{orderTransactionType(displayTransactionType) || "Order"} {formatContracts(displayQuantity)} contracts using {orderTypeLabel}
+					</OrderSummary>
 
-				{/* Trade Type Info */}
-				<div className="col-3">
+					<OrderMetaGrid>
+						<MetaItem>
+							<MetaLabel>Net Qty</MetaLabel>
+							<MetaValue>{formatContracts(netQuantity)}</MetaValue>
+						</MetaItem>
+						<MetaItem>
+							<MetaLabel>Template</MetaLabel>
+							<MetaValue>{compiledOrder.templateId ?? latestEvent?.templateId ?? "-"}</MetaValue>
+						</MetaItem>
+						<MetaItem>
+							<MetaLabel>Filled</MetaLabel>
+							<MetaValue>{formatContracts(totalFill)}</MetaValue>
+						</MetaItem>
+						<MetaItem>
+							<MetaLabel>Working</MetaLabel>
+							<MetaValue>{formatContracts(totalUnfilled)}</MetaValue>
+						</MetaItem>
+						<MetaItem>
+							<MetaLabel>Reports</MetaLabel>
+							<MetaValue>{reportTexts.length}</MetaValue>
+						</MetaItem>
+						<MetaItem>
+							<MetaLabel>Price Type</MetaLabel>
+							<MetaValue>{orderTypeLabel}</MetaValue>
+						</MetaItem>
+					</OrderMetaGrid>
+				</OrderIdentity>
+
+				<PricePanel>
 					<TradeTypeContainer transactionType={displayTransactionType}>
 						<TransactionLabel transactionType={displayTransactionType}>
-							{priceType(compiledOrder.priceType)} - {orderTransactionType(displayTransactionType)}
+							{orderTransactionType(displayTransactionType) || "Order"} · {orderTypeLabel}
 						</TransactionLabel>
-						<br />
-						<span className="text-secondary">
-							${compiledOrder.price || compiledOrder.avgFillPrice || compiledOrder.triggerPrice || "No price"}
-						</span>
+						<PricePrimary>{formatPriceValue(primaryPrice) || "Price pending"}</PricePrimary>
+						<PriceSecondary>
+							<div>Limit: {formatPriceValue(limitPrice) || "-"}</div>
+							<div>Trigger: {formatPriceValue(triggerPrice) || "-"}</div>
+							<div>Avg Fill: {formatPriceValue(avgFillPrice) || "-"}</div>
+						</PriceSecondary>
 					</TradeTypeContainer>
-				</div>
+				</PricePanel>
 
-				{/* Time and Price Info */}
-				<div className="col-3">
-					<div className="text-secondary">{new Date(compiledOrder.ssboe * 1000).toLocaleString()}</div>
-					<div className="mt-2 fw-medium">Avg. Fill: ${compiledOrder.avgFillPrice || "-"}</div>
-				</div>
+				<FillPanel>
+					<FillHeadline>{fillSummary}</FillHeadline>
+					<FillSubline>
+						<div>Open qty: {formatContracts(displayQuantity)}</div>
+						<div>Status: {displayStatus}</div>
+						<div>Last update: {latestEvent?.status || compiledOrder.status || "-"}</div>
+					</FillSubline>
+				</FillPanel>
 
-				{/* Action Buttons */}
-				<div className="col-2 d-flex justify-content-end">
+				<div className="d-flex justify-content-end align-items-start">
 					{(displayStatus === "open" || displayStatus === "trigger pending" || displayStatus === "open pending") && (
 						<CancelButton
 							onClick={async (e) => {
@@ -800,37 +986,36 @@ const OrderItem = memo(function OrderItem({ events, compiledOrder }) {
 						</CancelButton>
 					)}
 				</div>
+			</OrderMainGrid>
 
-				{/* Expanded Order Events */}
-				{expanded && (
-					<ExpandedSection className="col-12">
-						{reportTexts.map((report) => {
-							const { text, time, notifyType, templateId, timeDiff } = report;
-							return (
-								<ReportContainer key={`${time}-${notifyType}-${templateId}`}>
-									{text ? (
-										<div>
-											<div className="d-flex justify-content-between align-items-start">
-												<div>
-													<span className="fw-medium">{notifyType}</span>
-													<span className="ms-2 text-secondary">#{templateId}</span>
-												</div>
-												<div className="small text-secondary">
-													<div>{time}</div>
-													{timeDiff && <div>{formatTimeDiffInMicroSeconds(timeDiff)}</div>}
-												</div>
+			{expanded && (
+				<ExpandedSection>
+					{reportTexts.map((report) => {
+						const { text, time, notifyType, templateId, timeDiff } = report;
+						return (
+							<ReportContainer key={`${time}-${notifyType}-${templateId}`}>
+								{text ? (
+									<div>
+										<div className="d-flex justify-content-between align-items-start">
+											<div>
+												<span className="fw-medium">{notifyType}</span>
+												<span className="ms-2 text-secondary">#{templateId}</span>
 											</div>
-											<p className="mt-2 mb-0 text-secondary">{text}</p>
+											<div className="small text-secondary">
+												<div>{time}</div>
+												{timeDiff && <div>{formatTimeDiffInMicroSeconds(timeDiff)}</div>}
+											</div>
 										</div>
-									) : (
-										compiledOrder.reportText
-									)}
-								</ReportContainer>
-							);
-						})}
-					</ExpandedSection>
-				)}
-			</div>
+										<p className="mt-2 mb-0 text-secondary">{text}</p>
+									</div>
+								) : (
+									compiledOrder.reportText
+								)}
+							</ReportContainer>
+						);
+					})}
+				</ExpandedSection>
+			)}
 		</StyledOrderContainer>
 	);
 });

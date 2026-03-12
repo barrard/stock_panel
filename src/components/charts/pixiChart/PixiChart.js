@@ -14,7 +14,7 @@ import { Flex } from "../../StratBuilder/components/chartComponents/styled";
 
 import PixiData from "./components/DataHandler";
 import PixiChartV2 from "./PixiChartV2";
-// import TradeControls from "./components/TradeControls";
+import TradeControls from "./components/TradeControls";
 import OrdersList from "./components/OrdersList";
 import Select from "./components/Select";
 import Input from "./components/Input";
@@ -23,6 +23,7 @@ import SymbolBtns from "./components/SymbolBtns";
 import TimeFrameBtns from "./components/TimeFrameBtns";
 import IndicatorsBtns from "./components/IndicatorsBtns";
 import MarketOverview from "./components/MarketOverview";
+import MarketBreadth from "./components/MarketBreadth";
 import SpyOptions from "./components/SpyOptions";
 // import StartEndTimes from "./components/StartEndTimes";
 // import PnL_AndOrderFlowStats from "./components/PnL_AndOrderFlowStats";
@@ -31,8 +32,9 @@ import { parseBarTypeTimeFrame, symbolOptions } from "./components/utils";
 import onLastTrade from "./handlers/onLastTrade";
 import PlantStatuses from "./components/PlantStatuses";
 import { TICKS } from "../../../indicators/indicatorHelpers/TICKS";
-import MarketBreadth from "./components/MarketBreadth";
 import BetterTickChart from "./components/BetterTickChart";
+import BackTestChartGeneric from "../BacktestChart/BackTestChartGeneric";
+import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from "react-resizable-panels";
 
 function getNextTimeBar(data) {
     const { barType, barTypePeriod } = data;
@@ -53,6 +55,7 @@ export default function PixiChart({ Socket }) {
 
     //Trade Window
     const [openTradeWindow, setOpenTradeWindow] = useState(false);
+    const [activeTab, setActiveTab] = useState("futures");
 
     //Pixi Application
     const PixiAppRef = useRef();
@@ -123,6 +126,7 @@ export default function PixiChart({ Socket }) {
 
     const [currentTimeBar, setCurrentTimeBar] = useState();
     const [orders, setOrders] = useState({});
+    const [embeddedBacktestData, setEmbeddedBacktestData] = useState(null);
     const [lastTrade, setLastTrade] = useState({});
     const [backgroundDataFetch, setBackgroundDataFetch] = useState(false);
     const [startTime, setStartTime] = useState();
@@ -753,6 +757,23 @@ export default function PixiChart({ Socket }) {
         );
     }, [Socket, symbol.value, fullSymbolValue, symbolInput.exchange, orders]);
 
+    const EmbeddedBacktestChartMemo = useMemo(() => {
+        if (!embeddedBacktestData?.bars?.length) {
+            return <div style={{ padding: "12px", color: "#777" }}>Loading backtest chart...</div>;
+        }
+
+        return (
+            <BackTestChartGeneric
+                height={400}
+                width={1200}
+                data={embeddedBacktestData}
+                Socket={Socket}
+                symbol={symbol.value}
+                timeframe="30m"
+            />
+        );
+    }, [embeddedBacktestData, Socket, symbol.value]);
+
     const mainChartProps = useMemo(
         () => ({
             // candleData: candleData.spy1MinData,
@@ -775,147 +796,202 @@ export default function PixiChart({ Socket }) {
         [Socket, symbol.value, orders, fullSymbolValue]
     );
 
+    const symbolData = useMemo(
+        () => fullSymbols.find((s) => s.baseSymbol === symbolInput.value),
+        [fullSymbols, symbolInput.value]
+    );
+    const tradeWindowLastTrade = useMemo(
+        () => ({
+            tradePrice: Number(lastTrade?.tradePrice) || 0,
+            ...lastTrade,
+        }),
+        [lastTrade]
+    );
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadEmbeddedBacktestData() {
+            setEmbeddedBacktestData(null);
+            try {
+                const data = await API.getBacktestData(symbol.value);
+                if (!cancelled) {
+                    setEmbeddedBacktestData(data);
+                }
+            } catch (error) {
+                console.error("[PixiChart] Failed to load embedded backtest data", error);
+                if (!cancelled) {
+                    setEmbeddedBacktestData({ bars: [] });
+                }
+            }
+        }
+
+        loadEmbeddedBacktestData();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [symbol.value]);
+
     return (
-        <>
-            <div className="row g-0 relative">
-                <div className="absolute ">{PlantStatusesMemo}</div>
-                <div className="col-6 ">{/* <TradeControls fullSymbols={fullSymbols} symbol={symbolInput} lastTrade={lastTrade} /> */}</div>
-
+        <div className="trading-platform">
+            {/* ===== ACCOUNT BAR ===== */}
+            <div style={{ flexShrink: 0, borderBottom: "1px solid #444" }}>
                 <AccountInfoTable Socket={Socket} />
+            </div>
 
-                <SpyOptions Socket={Socket} />
-                <div className="row ">
-                    <div className="col-auto flex_center">
-                        <MarketOverview Socket={Socket} lastTradesRef={lastTradesRef} fullSymbols={fullSymbols} />
+            {/* ===== MAIN CONTENT (outer vertical: content | bottom) ===== */}
+            <div style={{ flex: 1, overflow: "hidden" }}>
+                <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                    <div className="tab-bar">
+                        <button
+                            className={`tab-btn ${activeTab === "futures" ? "active" : ""}`}
+                            onClick={() => setActiveTab("futures")}
+                        >
+                            Futures
+                        </button>
+                        <button
+                            className={`tab-btn ${activeTab === "options" ? "active" : ""}`}
+                            onClick={() => setActiveTab("options")}
+                        >
+                            SPY Options
+                        </button>
+                        <button
+                            className={`tab-btn ${activeTab === "breadth" ? "active" : ""}`}
+                            onClick={() => setActiveTab("breadth")}
+                        >
+                            Market Breadth
+                        </button>
+                        <button
+                            className={`tab-btn ${activeTab === "tick" ? "active" : ""}`}
+                            onClick={() => setActiveTab("tick")}
+                        >
+                            Tick
+                        </button>
                     </div>
-                    <div className="col-6">
-                        {" "}
-                        <MarketBreadth Socket={Socket} />
-                    </div>
-                </div>
-                {/* <div className="col-12">
-                    <div className="row">
-                        <div className="col">Start {new Date(startTime).toLocaleString()}</div>
-                        <div className="col">end {new Date(endTime).toLocaleString()}</div>
-                        <div className="col-auto">Symbol {symbol.name}</div>
-                        <div className="col-auto">Exchange {exchange.name}</div>
-                        <div className="col-auto">BarType val {barType.name}</div>
-                        <div className="col-auto">BarTypePeriod {barTypePeriod}</div>
-                    </div>
-                </div> */}
-                <div className="row d-flex border">
-                    <div className="col-auto">
-                        <IndicatorsBtns
-                            setDrawZigZag={setDrawZigZag}
-                            setDrawMarketProfile={setDrawMarketProfile}
-                            setDrawOrderBook={setDrawOrderBook}
-                            togglePivotLines={togglePivotLines}
-                            setDrawPivotLines={setDrawPivotLines}
-                            toggleZigZag={toggleZigZag}
-                            toggleMarketProfile={toggleMarketProfile}
-                            toggleOrderbook={toggleOrderbook}
-                            setDrawOrders={setDrawOrders}
-                            toggleOrders={toggleOrders}
-                        />
-                    </div>
-
-                    <div className="col-auto">
-                        {TimeFrameBtnsMemo}
-                        {/* <TimeFrameBtns setBarType={setBarTypeInput} setBarTypePeriod={setBarTypePeriodInput} barType={barType} barTypePeriod={barTypePeriod} /> */}
-                    </div>
-                    <div className="col-auto">
-                        {SymbolBtnsMemo}
-                        {/* <TimeFrameBtns setBarType={setBarTypeInput} setBarTypePeriod={setBarTypePeriodInput} barType={barType} barTypePeriod={barTypePeriod} /> */}
-                    </div>
-
-                    <div className="col-auto border ">
-                        <Select
-                            // disabled={symbolInputDisabled}
-                            // label="Symbol"
-                            value={symbolInput}
-                            setValue={setSymbolInput}
-                            options={symbolOptions}
-                        />
+                    <div style={{ flex: 1, overflow: "hidden" }}>
+                        {activeTab === "futures" ? (
+                            <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                                <div className="platform-toolbar">
+                                    <div className="toolbar-group plant-status-toolbar">
+                                        {PlantStatusesMemo}
+                                    </div>
+                                    <div className="toolbar-divider" />
+                                    <div className="toolbar-group">
+                                        {SymbolBtnsMemo}
+                                    </div>
+                                    <div className="toolbar-group">
+                                        <Select
+                                            value={symbolInput}
+                                            setValue={setSymbolInput}
+                                            options={symbolOptions}
+                                        />
+                                    </div>
+                                    <div className="toolbar-divider" />
+                                    <div className="toolbar-group">
+                                        {TimeFrameBtnsMemo}
+                                    </div>
+                                    <div className="toolbar-divider" />
+                                    <div className="toolbar-group">
+                                        <IndicatorsBtns
+                                            setDrawZigZag={setDrawZigZag}
+                                            setDrawMarketProfile={setDrawMarketProfile}
+                                            setDrawOrderBook={setDrawOrderBook}
+                                            togglePivotLines={togglePivotLines}
+                                            setDrawPivotLines={setDrawPivotLines}
+                                            toggleZigZag={toggleZigZag}
+                                            toggleMarketProfile={toggleMarketProfile}
+                                            toggleOrderbook={toggleOrderbook}
+                                            setDrawOrders={setDrawOrders}
+                                            toggleOrders={toggleOrders}
+                                        />
+                                    </div>
+                                </div>
+                                <div style={{ flexShrink: 0, borderBottom: "1px solid #1f2937" }}>
+                                    <MarketBreadth Socket={Socket} compact={true} />
+                                </div>
+                                <div style={{ flex: 1, overflow: "hidden" }}>
+                                    <PanelGroup direction="vertical" autoSaveId="pixi-futures-v-v3">
+                                        <Panel defaultSize={78} minSize={30}>
+                                            <PanelGroup direction="horizontal" autoSaveId="pixi-futures-h-v3">
+                                                <Panel defaultSize={72} minSize={30}>
+                                                    <PanelGroup direction="vertical" autoSaveId="pixi-charts-v-v3">
+                                                        <Panel defaultSize={50} minSize={10} collapsible={true}>
+                                                            <div className="chart-panel">
+                                                                <PixiChartV2 {...mainChartProps} />
+                                                            </div>
+                                                        </Panel>
+                                                        <PanelResizeHandle className="resize-handle-h resize-handle-chart-split" />
+                                                        <Panel defaultSize={38} minSize={10} collapsible={true}>
+                                                            <div className="chart-panel">
+                                                                {EmbeddedBacktestChartMemo}
+                                                            </div>
+                                                        </Panel>
+                                                    </PanelGroup>
+                                                </Panel>
+                                                <PanelResizeHandle className="resize-handle-v" />
+                                                <Panel defaultSize={28} minSize={18} collapsible={true}>
+                                                    <div className="right-panel-inner">
+                                                        <div className="panel-section">
+                                                            <div className="panel-section-header">Market Overview</div>
+                                                            <MarketOverview Socket={Socket} lastTradesRef={lastTradesRef} fullSymbols={fullSymbols} />
+                                                        </div>
+                                                        <div className="panel-section">
+                                                            <div className="panel-section-header">Trade Entry</div>
+                                                            {symbolData ? (
+                                                                <TradeControls
+                                                                    symbolData={symbolData}
+                                                                    symbol={symbolInput}
+                                                                    lastTrade={tradeWindowLastTrade}
+                                                                />
+                                                            ) : (
+                                                                <div style={{ color: "#666", fontSize: "12px", padding: "8px" }}>
+                                                                    Waiting for symbol metadata...
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </Panel>
+                                            </PanelGroup>
+                                        </Panel>
+                                        <PanelResizeHandle className="resize-handle-h" />
+                                        <Panel defaultSize={22} minSize={5} collapsible={true}>
+                                            <div className="bottom-panel-inner">
+                                                <div>{OrdersListMemo}</div>
+                                            </div>
+                                        </Panel>
+                                    </PanelGroup>
+                                </div>
+                            </div>
+                        ) : activeTab === "tick" ? (
+                            <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                                <div className="platform-toolbar">
+                                    <div className="toolbar-group plant-status-toolbar">{PlantStatusesMemo}</div>
+                                    <div className="toolbar-divider" />
+                                    <div className="toolbar-group">{SymbolBtnsMemo}</div>
+                                    <div className="toolbar-group">
+                                        <Select value={symbolInput} setValue={setSymbolInput} options={symbolOptions} />
+                                    </div>
+                                </div>
+                                <div style={{ flex: 1, overflow: "hidden" }}>
+                                    <div className="chart-panel">{BetterTickChartMemo}</div>
+                                </div>
+                            </div>
+                        ) : activeTab === "options" ? (
+                            <div style={{ height: "100%", overflowY: "auto" }}>
+                                <SpyOptions Socket={Socket} />
+                            </div>
+                        ) : (
+                            <div style={{ height: "100%", overflowY: "auto" }}>
+                                <MarketBreadth Socket={Socket} />
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
-            <div className="row flex_center">{BetterTickChartMemo}</div>
 
-            <div className="col-10">
-                {" "}
-                <PixiChartV2 {...mainChartProps} />{" "}
-            </div>
-            <div
-                className="col-10"
-                onContextMenu={(e) => {
-                    e.preventDefault();
-                    console.log(`onContextMenu ${openTradeWindow}`);
-                    setOpenTradeWindow((v) => !v);
-                }}
-                onMouseEnter={(e) => {
-                    setMouseEnter(true);
-                }}
-                onTouchMove={(e) => {
-                    setTouchMoveEvent(e);
-                    checkGesture(e);
-                }}
-                onTouchStart={(e) => {
-                    checkGesture(e);
-                    setTouch(true);
-                    setMouseEnter(false);
-                    pixiData.touches++;
-
-                    if (!longPressTimer) {
-                        const _longPressTimer = setTimeout(() => {
-                            console.log("long press");
-                            setLongPress(true);
-                            setMouseEnter(true);
-                        }, 1000);
-
-                        setLongPressTimer(_longPressTimer);
-                    }
-                }}
-                onTouchEnd={() => {
-                    setTouch(false);
-                    clearGesture();
-                    setTouchMoveEvent(false);
-                    setTouch1(false);
-                    setTouch2(false);
-                    setZoomGesture(false);
-                    clearLongPress();
-                    pixiData.touches--;
-                }}
-                onMouseLeave={() => {
-                    clearLongPress();
-                    setMouseEnter(false);
-                    setLongPress(false);
-                    setOpenTradeWindow(false);
-                }}
-                onPointerEnter={() => setMouseEnter(true)}
-                onPointerLeave={() => setMouseEnter(false)}
-                onWheel={(e) => {
-                    if (e.deltaY > 0) {
-                        // console.log("The user scrolled up");
-                        pixiData.zoomOut("scroll");
-                    } else {
-                        // console.log("The user scrolled down");
-                        pixiData.zoomIn("scroll");
-                    }
-                }}
-                ref={PixiChartRef}
-                style={{
-                    border: "2px solid red",
-                }}
-            />
-            {/* <OrdersList orders={orders} /> */}
-            {/* <button
-                onClick={async () => {
-                    await getOrders();
-                }}
-            >
-                Get Orders
-            </button> */}
-            <div>{OrdersListMemo}</div>
-        </>
+            {/* V1 Chart - hidden but kept for data handler compatibility */}
+            <div ref={PixiChartRef} style={{ display: "none" }} />
+        </div>
     );
 }

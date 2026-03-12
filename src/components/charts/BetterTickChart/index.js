@@ -1,3 +1,3 @@
-import BetterTickChart from "./BetterTickChart";
+import OldBetterTickChart from "./OldBetterTickChart";
 
-export default BetterTickChart;
+export default OldBetterTickChart;

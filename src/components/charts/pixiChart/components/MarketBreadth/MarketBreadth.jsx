@@ -1,195 +1,320 @@
-import React, { useState, useEffect, useRef } from "react";
-import GenericPixiChart from "../../../GenericPixiChart";
+import React, { useEffect, useMemo, useState } from "react";
+import "chartjs-adapter-date-fns";
+import { Line } from "react-chartjs-2";
+import {
+    Chart as ChartJS,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Tooltip,
+    Legend,
+    TimeScale,
+} from "chart.js";
 import API from "../../../../API";
-// import drawStrikes from "./drawStrikes";
-// import MonteCarloCone from "./monteCarloSimulation";
 
-const breadthKeys = {
-    $ADVN: { color: 0x1abc9c },
-    $COMPX: { color: 0x3498db },
-    $DECN: { color: 0x9b59b6 },
-    $DJC: { color: 0xe67e22 },
-    $DJI: { color: 0xe74c3c },
-    $DJT: { color: 0xf1c40f },
-    $DVOL: { color: 0x2ecc71 },
-    $GDMOC: { color: 0x16a085 },
-    $NDX: { color: 0x2980b9 },
-    $NYA: { color: 0x8e44ad },
-    $OEX: { color: 0xd35400 },
-    $R25I: { color: 0xc0392b },
-    $RUI: { color: 0xf39c12 },
-    $RUT: { color: 0x27ae60 },
-    $UVOL: { color: 0x2f3e50 },
-    $VIX: { color: 0x95a5a6 },
+ChartJS.register(LinearScale, PointElement, LineElement, Tooltip, Legend, TimeScale);
 
-    // avgTICK: {
-    //     ticks: 0.01,
-    // },
-    // avgTRIN: {
-    //     ticks: 0.01,
-    // },
+const MAX_POINTS = 600;
 
-    // $TICK: {
-    //     ticks: 0.01,
-    // },
+const latestValueTagPlugin = {
+    id: "latestValueTag",
+    afterDatasetsDraw(chart) {
+        const { ctx, chartArea, scales } = chart;
+        const yScale = scales?.y;
+        if (!ctx || !chartArea || !yScale) return;
 
-    // $TRIN: {
-    //     ticks: 0.01,
-    // },
+        chart.data.datasets.forEach((dataset, datasetIndex) => {
+            const points = dataset.data || [];
+            const lastPoint = [...points].reverse().find((point) => Number.isFinite(point?.y));
+            if (!lastPoint) return;
 
-    // $SPX: {
-    //     ticks: 0.01,
-    // },
-    // tick: {
-    //     ticks: 0.01,
-    // },
-    // trin: {
-    //     ticks: 0.01,
-    // },
+            const y = yScale.getPixelForValue(lastPoint.y);
+            if (!Number.isFinite(y) || y < chartArea.top || y > chartArea.bottom) return;
+
+            const label = formatCompactNumber(Number(lastPoint.y));
+            if (!label) return;
+
+            ctx.save();
+            ctx.font = "10px sans-serif";
+            const textWidth = ctx.measureText(label).width;
+            const paddingX = 6;
+            const tagHeight = 16;
+            const tagWidth = textWidth + paddingX * 2;
+            const x = chartArea.right - tagWidth - 2;
+            const tagY = y - tagHeight / 2;
+
+            ctx.fillStyle = dataset.borderColor || "#94a3b8";
+            ctx.beginPath();
+            ctx.roundRect(x, tagY, tagWidth, tagHeight, 4);
+            ctx.fill();
+
+            ctx.fillStyle = "#020617";
+            ctx.textBaseline = "middle";
+            ctx.fillText(label, x + paddingX, y);
+            ctx.restore();
+        });
+    },
 };
-const MarketBreadth = (props) => {
-    const {
-        // width = 800,
-        height = 60,
-        symbol = "SPY",
-        Socket,
-        fullSymbolRef,
-        spyLevelOne,
-        strike,
-        putCall,
-        exp,
-        getCurrentStrikeData,
-        callsOrPuts,
-        tick,
-        // ...rest
-    } = props;
 
-    // Default bar type and period for GenericPixiChart
-    const barType = { value: 2, name: "Minutes" };
-    const barTypePeriod = 1;
-    const tickSize = 0.01;
-    let key = "$SPX";
+const CHARTS = [
+    {
+        id: "advanceDecline",
+        title: "Advance / Decline",
+        series: [
+            { key: "$ADVN", label: "$ADVN", color: "#22c55e" },
+            { key: "$DECN", label: "$DECN", color: "#ef4444" },
+        ],
+    },
+    {
+        id: "volumeBreadth",
+        title: "Up / Down Volume",
+        series: [
+            { key: "$UVOL", label: "$UVOL", color: "#38bdf8" },
+            { key: "$DVOL", label: "$DVOL", color: "#f97316" },
+        ],
+    },
+    {
+        id: "tick",
+        title: "TICK",
+        series: [
+            { key: "$TICK", label: "$TICK", color: "#eab308" },
+            { key: "avgTICK", label: "avgTICK", color: "#f8fafc" },
+        ],
+    },
+    {
+        id: "trin",
+        title: "TRIN",
+        series: [
+            { key: "$TRIN", label: "$TRIN", color: "#a855f7" },
+            { key: "avgTRIN", label: "avgTRIN", color: "#f8fafc" },
+        ],
+    },
+    {
+        id: "vix",
+        title: "VIX",
+        series: [{ key: "$VIX", label: "$VIX", color: "#f43f5e" }],
+    },
+];
 
-    // const pixiApplicationRef = useRef();
-    const pixiDataRef = useRef();
+function formatCompactNumber(value) {
+    if (!Number.isFinite(value)) return "";
+    if (Math.abs(value) >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+    if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(1)}K`;
+    if (Math.abs(value) >= 100) return value.toFixed(0);
+    if (Math.abs(value) >= 10) return value.toFixed(1);
+    return value.toFixed(2);
+}
 
-    const lastTotalVolumeRef = useRef();
+function MarketBreadthChart({ title, data, series, compact = false }) {
+    const chartData = useMemo(
+        () => ({
+            datasets: series.map(({ key, label, color }) => ({
+                label,
+                data: data
+                    .map((point) => ({
+                        x: point.datetime,
+                        y: Number(point[key]),
+                    }))
+                    .filter((point) => Number.isFinite(point.y)),
+                borderColor: color,
+                backgroundColor: color,
+                borderWidth: key.startsWith("avg") ? 2.25 : 1.5,
+                pointRadius: 0,
+                pointHoverRadius: 2,
+                tension: 0.15,
+                spanGaps: true,
+            })),
+        }),
+        [data, series]
+    );
 
-    const [candleData, setCandleData] = useState({});
-    //TODO add a way to toggle the 5 min data?   Set to 1 minute
-    // const [timeframe, setTimeframe] = useState("4Seconds");
+    const options = useMemo(
+        () => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            normalized: true,
+            interaction: {
+                mode: "index",
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: "top",
+                    align: "start",
+                    labels: {
+                        color: "#d1d5db",
+                        boxWidth: 10,
+                        boxHeight: 10,
+                        usePointStyle: true,
+                        pointStyle: "line",
+                        padding: compact ? 8 : 12,
+                        font: {
+                            size: compact ? 10 : 11,
+                        },
+                    },
+                },
+                title: {
+                    display: true,
+                    text: title,
+                    align: "start",
+                    color: "#f8fafc",
+                    font: {
+                        size: compact ? 11 : 13,
+                        weight: "600",
+                    },
+                    padding: {
+                        bottom: compact ? 6 : 10,
+                    },
+                },
+                tooltip: {
+                    callbacks: {
+                        title(items) {
+                            const value = items?.[0]?.parsed?.x;
+                            if (!Number.isFinite(value)) return "";
+                            return new Date(value).toLocaleTimeString([], {
+                                hour: "numeric",
+                                minute: "2-digit",
+                            });
+                        },
+                        label(context) {
+                            return `${context.dataset.label}: ${formatCompactNumber(context.parsed.y)}`;
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    type: "time",
+                    time: {
+                        unit: "minute",
+                    },
+                    grid: {
+                        color: "rgba(148, 163, 184, 0.12)",
+                    },
+                    ticks: {
+                        color: "#94a3b8",
+                        maxRotation: 0,
+                        autoSkip: true,
+                        maxTicksLimit: 6,
+                        font: {
+                            size: compact ? 9 : 10,
+                        },
+                    },
+                },
+                y: {
+                    position: "right",
+                    grid: {
+                        color: "rgba(148, 163, 184, 0.12)",
+                    },
+                    ticks: {
+                        color: "#94a3b8",
+                        maxTicksLimit: 5,
+                        font: {
+                            size: compact ? 9 : 10,
+                        },
+                        callback(value) {
+                            return formatCompactNumber(Number(value));
+                        },
+                    },
+                },
+            },
+        }),
+        [title]
+    );
 
-    const [lastSpyLevelOne, setLastSpyLevelOne] = useState(null);
-    const [newSpyMinuteBar, setNewSpyMinuteBar] = useState(null);
+    return (
+        <div
+            style={{
+                background: "#0f172a",
+                border: "1px solid #1e293b",
+                borderRadius: "12px",
+                padding: compact ? "6px 8px 4px" : "10px 12px 8px",
+                minHeight: compact ? "145px" : "240px",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
+            }}
+        >
+            <div style={{ height: compact ? "120px" : "210px" }}>
+                <Line data={chartData} options={options} plugins={[latestValueTagPlugin]} />
+            </div>
+        </div>
+    );
+}
 
-    const fetchData = async (opts = {}) => {
-        const data = await API.fetchMarketBreadth(opts);
-        console.log(data);
-
-        setCandleData(data);
-    };
+const MarketBreadth = ({ Socket, compact = false }) => {
+    const [breadthData, setBreadthData] = useState([]);
+    const [error, setError] = useState("");
 
     useEffect(() => {
-        console.log("MarketBreadth loaded");
-        fetchData({ limit: 2000, sort: { _id: -1 }, filter: {} });
+        let isMounted = true;
 
-        Socket.on("market-breadth", (data) => {
-            if (!pixiDataRef.current) return;
+        const load = async () => {
+            try {
+                const data = await API.fetchMarketBreadth({
+                    limit: MAX_POINTS,
+                    sort: { _id: -1 },
+                    filter: {},
+                });
 
-            const datetime = new Date().getTime();
+                if (!isMounted) return;
+                setBreadthData(Array.isArray(data) ? data.slice(-MAX_POINTS) : []);
+            } catch (err) {
+                if (!isMounted) return;
+                setError(err?.message || "Failed to load market breadth");
+            }
+        };
 
-            // Create a new data point with all breadth values
-            const newDataPoint = {
-                datetime,
-                ...data, // Spread all the breadth data ($SPX, $NDX, etc.)
+        load();
+
+        const handleBreadthUpdate = (update) => {
+            const nextPoint = {
+                datetime: Date.now(),
+                ...update,
             };
 
-            // Update the chart with the new data point
-            // The setNewBar method adds the data point to pixiDataRef.current.ohlcDatas
-            pixiDataRef.current.setNewBar(newDataPoint);
+            setBreadthData((current) => {
+                const next = current.concat(nextPoint);
+                return next.length > MAX_POINTS ? next.slice(next.length - MAX_POINTS) : next;
+            });
+        };
 
-            // Update the current price label with the main symbol value
-            if (data[key]) {
-                pixiDataRef.current.updateCurrentPriceLabel(data[key]);
-            }
-        });
+        Socket?.on("market-breadth", handleBreadthUpdate);
 
         return () => {
-            Socket.off("market-breadth");
+            isMounted = false;
+            Socket?.off("market-breadth", handleBreadthUpdate);
         };
-    }, []);
+    }, [Socket]);
 
-    if (!candleData?.length) {
-        return <div>Loading... </div>;
+    if (error) {
+        return <div style={{ color: "#fca5a5", padding: "16px" }}>{error}</div>;
     }
-    return (
-        <>
-            <div className="row w-100 ">
-                {/* {Object.keys(breadthKeys).map((key) => ( */}
-                <div style={{ border: "1px solid white" }} className="col-12  border-white" key={key}>
-                    <GenericPixiChart
-                        name="MarketBreadth"
-                        key={key}
-                        ohlcDatas={candleData}
-                        // width={100}
-                        height={50}
-                        symbol={key}
-                        // fullSymbolRef={fullSymbolRef}
-                        barType={barType}
-                        barTypePeriod={barTypePeriod}
-                        // loadData={loadData}
-                        pixiDataRef={pixiDataRef}
-                        tickSize={1}
-                        lowerIndicators={[
-                            ...Object.keys(breadthKeys)
-                                .filter((key) => key !== "$DVOL" && key !== "$UVOL" && key !== "$GDMOC") // Exclude these from individual indicators
-                                .map((key) => ({
-                                    lineColor: breadthKeys[key].color,
-                                    name: key,
-                                    type: "line",
-                                    lineKey: key,
-                                    xKey: "datetime",
-                                })),
-                            {
-                                name: "Volume",
-                                type: "multi-line",
-                                lines: [
-                                    { lineColor: breadthKeys.$DVOL.color, lineKey: "$DVOL", lineWidth: 2 },
-                                    { lineColor: breadthKeys.$UVOL.color, lineKey: "$UVOL", lineWidth: 2 },
-                                ],
-                            },
-                            {
-                                name: "TICK",
-                                type: "multi-line",
-                                lines: [
-                                    { lineColor: 0xef4444, lineKey: "$TICK" },
-                                    { lineColor: 0x44ef44, lineKey: "avgTICK" },
-                                ],
-                            },
 
-                            {
-                                name: "TRIN",
-                                type: "multi-line",
-                                height: 80,
-                                lines: [
-                                    { lineColor: 0x11ff11, lineKey: "$TRIN", lineWidth: 1 },
-                                    { lineColor: 0xff1111, lineKey: "avgTRIN", lineWidth: 2 },
-                                ],
-                            },
-                        ]}
-                        options={{
-                            withoutVolume: true,
-                            chartType: "line",
-                            lineKey: key,
-                            xKey: "datetime",
-                            lineColor: 0xffa500,
-                        }}
-                        margin={{ top: 0, right: 50, left: 0, bottom: 15 }}
-                    />
-                </div>
-                {/* ))} */}
+    if (!breadthData.length) {
+        return <div style={{ color: "#cbd5e1", padding: "16px" }}>Loading market breadth...</div>;
+    }
+
+    return (
+        <div
+            style={{
+                minHeight: compact ? "auto" : "100%",
+                background: "#020617",
+                padding: compact ? "6px 8px" : "16px",
+            }}
+        >
+            <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns: compact ? "repeat(5, minmax(0, 1fr))" : "repeat(auto-fit, minmax(320px, 1fr))",
+                    gap: compact ? "8px" : "16px",
+                    overflowX: compact ? "auto" : "visible",
+                }}
+            >
+                {CHARTS.map((chart) => (
+                    <MarketBreadthChart key={chart.id} title={chart.title} data={breadthData} series={chart.series} compact={compact} />
+                ))}
             </div>
-        </>
+        </div>
     );
 };
 

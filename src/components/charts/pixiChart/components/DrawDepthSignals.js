@@ -2,13 +2,6 @@ import { Container, Graphics, Text, TextStyle } from "pixi.js";
 
 const DEFAULT_MAX_SIGNALS = 100;
 
-const LABEL_STYLE = new TextStyle({
-    fontFamily: "Arial",
-    fontSize: 10,
-    fontWeight: "bold",
-    fill: 0xffffff,
-});
-
 const TOOLTIP_STYLE = new TextStyle({
     fontFamily: "Arial",
     fontSize: 11,
@@ -64,6 +57,30 @@ function formatSigned(value, digits = 1) {
     return `${numericValue >= 0 ? "+" : ""}${numericValue.toFixed(digits)}`;
 }
 
+function formatSignalTime(timestamp) {
+    if (!Number.isFinite(timestamp)) return "Unknown time";
+    return new Date(timestamp).toLocaleString();
+}
+
+function getScoreStrength(windowScore) {
+    const normalizedScore = Number.isFinite(Number(windowScore)) ? Math.abs(Number(windowScore)) : 0;
+    return Math.max(0, Math.min(1, normalizedScore / 6));
+}
+
+function getMarkerVisuals(consecutive, windowScore) {
+    const normalizedSize = Number.isFinite(Number(consecutive)) ? Math.max(0, Number(consecutive)) : 0;
+    const strength = getScoreStrength(windowScore);
+    const baseSize = Math.max(4, Math.min(14, 4 + normalizedSize * 1.1));
+    const markerSize = Math.max(3, baseSize * (0.6 + strength * 0.4));
+
+    return {
+        markerSize,
+        lineAlpha: 0.2 + strength * 0.5,
+        fillAlpha: 0.2 + strength * 0.65,
+        strokeAlpha: 0.35 + strength * 0.6,
+    };
+}
+
 export default class DrawDepthSignals {
     constructor(chart, options = {}) {
         this.chart = chart;
@@ -106,44 +123,31 @@ export default class DrawDepthSignals {
         if (!Array.isArray(data) || !data.length) return -1;
         if (!signal?.timestamp) return data.length - 1;
 
-        let closestIndex = -1;
-        let closestDelta = Number.POSITIVE_INFINITY;
+        const firstTimestamp = data[0]?.timestamp ?? data[0]?.datetime;
+        const lastTimestamp = data[data.length - 1]?.timestamp ?? data[data.length - 1]?.datetime;
+        if (Number.isFinite(lastTimestamp) && signal.timestamp >= lastTimestamp) {
+            return data.length - 1;
+        }
+        if (Number.isFinite(firstTimestamp) && signal.timestamp < firstTimestamp) {
+            return -1;
+        }
+
+        let matchingIndex = -1;
 
         for (let index = 0; index < data.length; index += 1) {
             const bar = data[index];
             const barTimestamp = bar?.timestamp ?? bar?.datetime;
             if (!Number.isFinite(barTimestamp)) continue;
 
-            const delta = Math.abs(barTimestamp - signal.timestamp);
-            if (delta < closestDelta) {
-                closestDelta = delta;
-                closestIndex = index;
+            if (barTimestamp <= signal.timestamp) {
+                matchingIndex = index;
+                continue;
             }
+
+            break;
         }
 
-        if (closestIndex === -1) return -1;
-
-        const firstTimestamp = data[0]?.timestamp ?? data[0]?.datetime;
-        const lastTimestamp = data[data.length - 1]?.timestamp ?? data[data.length - 1]?.datetime;
-        if (signal.timestamp < firstTimestamp || signal.timestamp > lastTimestamp) {
-            return -1;
-        }
-
-        return closestIndex;
-    }
-
-    drawSignalLabel({ x, y, direction, color, cumulative, consecutive }) {
-        const cumulativeLabel = `${cumulative >= 0 ? "+" : ""}${cumulative.toFixed(1)}`;
-        const label = `${cumulativeLabel} ${Math.max(0, Math.round(consecutive))}w`;
-        const text = new Text(label, LABEL_STYLE);
-        text.y = y - text.height / 2;
-        text.x = direction > 0 ? x + 10 : x - text.width - 10;
-        this.labelContainer.addChild(text);
-
-        this.graphics.beginFill(0x101010, 0.85);
-        this.graphics.lineStyle(1, color, 0.9);
-        this.graphics.drawRoundedRect(text.x - 4, text.y - 2, text.width + 8, text.height + 4, 4);
-        this.graphics.endFill();
+        return matchingIndex;
     }
 
     drawTooltip(marker) {
@@ -156,7 +160,7 @@ export default class DrawDepthSignals {
             `${title}\nScore ${formatSigned(signal.windowScore)} | Cum ${formatSigned(signal.cumulative)} | ${Math.max(
                 0,
                 Math.round(signal.consecutive)
-            )}w\n${signal.frontMonth || signal.symbol || ""} @ ${signal.lastPrice}\n${narrative}`,
+            )}w\n${signal.frontMonth || signal.symbol || ""} @ ${signal.lastPrice}\n${formatSignalTime(signal.timestamp)}\n${narrative}`,
             TOOLTIP_STYLE
         );
 
@@ -179,12 +183,12 @@ export default class DrawDepthSignals {
         this.labelContainer.addChild(tooltipText);
     }
 
-    drawMarker({ x, y, direction, color }) {
-        const markerSize = 6;
+    drawMarker({ x, y, direction, color, consecutive, windowScore }) {
+        const { markerSize, fillAlpha, strokeAlpha } = getMarkerVisuals(consecutive, windowScore);
 
-        this.graphics.lineStyle(2, color, 0.95);
+        this.graphics.lineStyle(1.5, color, strokeAlpha);
         if (direction > 0) {
-            this.graphics.beginFill(color, 0.95);
+            this.graphics.beginFill(color, fillAlpha);
             this.graphics.drawPolygon([
                 x,
                 y - markerSize,
@@ -194,7 +198,7 @@ export default class DrawDepthSignals {
                 y + markerSize,
             ]);
         } else {
-            this.graphics.beginFill(color, 0.95);
+            this.graphics.beginFill(color, fillAlpha);
             this.graphics.drawPolygon([
                 x,
                 y + markerSize,
@@ -205,6 +209,8 @@ export default class DrawDepthSignals {
             ]);
         }
         this.graphics.endFill();
+
+        return markerSize;
     }
 
     draw() {
@@ -234,10 +240,14 @@ export default class DrawDepthSignals {
             const stackCount = stackOffsets.get(stackKey) || 0;
             stackOffsets.set(stackKey, stackCount + 1);
 
+            const { markerSize, lineAlpha } = getMarkerVisuals(signal.consecutive, signal.windowScore);
             const offset = 24 + stackCount * 18;
-            const markerY = signal.direction > 0 ? Math.max(12, y - offset) : Math.min(mainChartContainerHeight - 12, y + offset);
+            const markerY =
+                signal.direction > 0
+                    ? Math.max(markerSize + 2, y - offset)
+                    : Math.min(mainChartContainerHeight - markerSize - 2, y + offset);
 
-            this.graphics.lineStyle(1.5, color, 0.8);
+            this.graphics.lineStyle(1.25, color, lineAlpha);
             this.graphics.moveTo(x, y);
             this.graphics.lineTo(x, markerY);
 
@@ -246,21 +256,15 @@ export default class DrawDepthSignals {
                 y: markerY,
                 direction: signal.direction,
                 color,
-            });
-
-            this.drawSignalLabel({
-                x,
-                y: markerY,
-                direction: signal.direction,
-                color,
-                cumulative: signal.cumulative,
                 consecutive: signal.consecutive,
+                windowScore: signal.windowScore,
             });
 
             markers.push({
                 x,
                 y: markerY,
                 color,
+                markerSize,
                 signal,
             });
         });
@@ -270,7 +274,8 @@ export default class DrawDepthSignals {
         }
 
         const hoverMarker = markers.find((marker) => {
-            return Math.abs(marker.x - this.chart.mouseX) <= 10 && Math.abs(marker.y - this.chart.mouseY) <= 10;
+            const hitbox = Math.max(10, marker.markerSize + 2);
+            return Math.abs(marker.x - this.chart.mouseX) <= hitbox && Math.abs(marker.y - this.chart.mouseY) <= hitbox;
         });
 
         if (hoverMarker) {

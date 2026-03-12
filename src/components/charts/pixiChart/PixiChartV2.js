@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { MdDateRange } from "react-icons/md";
 import GenericPixiChart from "../GenericPixiChart";
 import API from "../../API";
 import { LiquidityHeatmap, liquidityHeatMapConfig } from "./components/indicatorDrawFunctions";
@@ -300,6 +301,7 @@ const PixiChartV2 = (props) => {
 	const loadingMoreRef = useRef(false);
 	const isLoadingRef = useRef(true);
 	const depthSignalsRef = useRef(null);
+	const pendingDepthSignalsRef = useRef([]);
 	const depthSummaryEventsRef = useRef([]);
 	const depthSummaryAggregationRef = useRef(new Map());
 
@@ -316,6 +318,13 @@ const PixiChartV2 = (props) => {
 
 	// Loading state for data fetching
 	const [isLoading, setIsLoading] = useState(true);
+
+	// Date range picker state
+	const [showDateRange, setShowDateRange] = useState(false);
+	const [drStartTime, setDrStartTime] = useState("");
+	const [drEndTime, setDrEndTime] = useState("");
+	const [drNumDays, setDrNumDays] = useState("5");
+	const [drUseNumDays, setDrUseNumDays] = useState(true);
 
 	useEffect(() => {
 		ohlcDataRef.current = ohlcData;
@@ -409,6 +418,12 @@ const PixiChartV2 = (props) => {
 			instanceRef: null,
 		},
 		{
+			id: "depthSignals",
+			name: "Depth Signals",
+			enabled: true,
+			instanceRef: null,
+		},
+		{
 			id: "superTrend",
 			name: "Super Trend",
 			enabled: false,
@@ -497,6 +512,7 @@ const PixiChartV2 = (props) => {
 	// Get indicator configs
 	const liquidityHeatmapIndicator = indicators.find((ind) => ind.id === "liquidityHeatmap");
 	const ordersIndicator = indicators.find((ind) => ind.id === "orders");
+	const depthSignalsIndicator = indicators.find((ind) => ind.id === "depthSignals");
 	const superTrendIndicator = indicators.find((ind) => ind.id === "superTrend");
 	const movingAverageIndicator = indicators.find((ind) => ind.id === "movingAverages");
 
@@ -741,12 +757,25 @@ const PixiChartV2 = (props) => {
 	useEffect(() => {
 		const pixiData = pixiDataRef.current;
 		if (!pixiData) return;
-		if (depthSignalsRef.current?.chart === pixiData) return;
+		if (!depthSignalsIndicator?.enabled) {
+			pixiData.unregisterDrawFn("depthSignals");
+			depthSignalsRef.current?.clearSignals?.();
+			depthSignalsRef.current?.cleanup?.();
+			depthSignalsRef.current = null;
+			pixiData.draw();
+			return;
+		}
+		if (depthSignalsRef.current?.chart === pixiData) {
+			depthSignalsRef.current.setSignals(pendingDepthSignalsRef.current);
+			pixiData.draw();
+			return;
+		}
 
 		depthSignalsRef.current?.cleanup?.();
 
 		const depthSignals = new DrawDepthSignals(pixiData);
 		depthSignalsRef.current = depthSignals;
+		depthSignals.setSignals(pendingDepthSignalsRef.current);
 		pixiData.registerDrawFn("depthSignals", depthSignals.draw.bind(depthSignals));
 		pixiData.draw();
 
@@ -757,7 +786,7 @@ const PixiChartV2 = (props) => {
 			}
 			depthSignals.cleanup();
 		};
-	}, [symbol.value, timeframe, isLoading]);
+	}, [symbol.value, timeframe, isLoading, depthSignalsIndicator?.enabled]);
 
 	// Update timeframe state when barType or barTypePeriod changes
 	useEffect(() => {
@@ -826,6 +855,21 @@ const PixiChartV2 = (props) => {
 		[barType, barTypePeriod, hydrateBarsWithDepthSummaries, symbol, setIsLoading, setOhlcData]
 	);
 
+	const handleDateRangeSubmit = useCallback(() => {
+		if (!drStartTime) return alert("Please provide a start date");
+		const startTimestamp = new Date(drStartTime + "T00:00:00").getTime();
+		if (drUseNumDays) {
+			if (!drNumDays || drNumDays <= 0) return alert("Please provide a valid number of days");
+			handleChartTimeRangeChange({ startTime: startTimestamp, numDays: parseInt(drNumDays) });
+		} else {
+			if (!drEndTime) return alert("Please provide an end date");
+			const endTimestamp = new Date(drEndTime + "T23:59:59.999").getTime();
+			if (startTimestamp >= endTimestamp) return alert("Start date must be before end date");
+			handleChartTimeRangeChange({ startTime: startTimestamp, endTime: endTimestamp });
+		}
+		setShowDateRange(false);
+	}, [drStartTime, drEndTime, drNumDays, drUseNumDays, handleChartTimeRangeChange]);
+
 	//main on load to get data
 	useEffect(() => {
 		console.log(`[useEffect] Socket setup running - symbol: ${symbol.value}, timeframe: ${timeframe}`);
@@ -871,11 +915,13 @@ const PixiChartV2 = (props) => {
 
 		const depthSignalEvent = `depthTradeSignal-${symbol.value}`;
 		const handleDepthSignal = (signal) => {
-			depthSignalsRef.current?.pushSignal({
+			const nextSignal = {
 				...signal,
 				timestamp: signal?.timestamp || Date.now(),
 				receivedAt: Date.now(),
-			});
+			};
+			pendingDepthSignalsRef.current = [...pendingDepthSignalsRef.current.slice(-99), nextSignal];
+			depthSignalsRef.current?.pushSignal(nextSignal);
 		};
 		Socket.on(depthSignalEvent, handleDepthSignal);
 
@@ -895,6 +941,10 @@ const PixiChartV2 = (props) => {
 		fetchLiveDataAndUpdate,
 		rebuildDepthSummaryAggregation,
 	]); // Socket intentionally omitted to prevent re-registrations
+
+	useEffect(() => {
+		pendingDepthSignalsRef.current = [];
+	}, [symbol.value, timeframe]);
 
 	// Filter orders by current symbol
 	const symbolFilteredOrders = useMemo(() => {
@@ -1062,7 +1112,7 @@ const PixiChartV2 = (props) => {
 
 	return (
 		<>
-			<div className="row g-0">
+			<div className="row g-0 align-items-center">
 				<div className="col-auto">
 					<IndicatorsBtns
 						indicators={indicators}
@@ -1091,27 +1141,104 @@ const PixiChartV2 = (props) => {
 						</div>
 					</>
 				)}
+				{/* Date Range Toggle */}
+				<div className="col-auto" style={{ position: "relative" }}>
+					<button
+						onClick={() => setShowDateRange((v) => !v)}
+						title="Load Date Range"
+						style={{
+							background: showDateRange ? "steelblue" : "#333",
+							border: "1px solid #555",
+							borderRadius: "4px",
+							color: "#fff",
+							cursor: "pointer",
+							padding: "4px 8px",
+							display: "flex",
+							alignItems: "center",
+							gap: "4px",
+							fontSize: "12px",
+						}}
+					>
+						<MdDateRange size={16} />
+					</button>
+					{showDateRange && (
+						<div
+							style={{
+								position: "absolute",
+								top: "100%",
+								left: 0,
+								zIndex: 10000,
+								background: "#222",
+								border: "1px solid #555",
+								borderRadius: "4px",
+								padding: "8px",
+								display: "flex",
+								flexDirection: "column",
+								gap: "6px",
+								minWidth: "240px",
+								boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+							}}
+						>
+							<label style={{ color: "#aaa", fontSize: "11px" }}>
+								Start Date
+								<input
+									type="date"
+									value={drStartTime}
+									onChange={(e) => setDrStartTime(e.target.value)}
+									style={{ display: "block", width: "100%", padding: "4px", background: "#333", color: "#fff", border: "1px solid #555", borderRadius: "3px", fontSize: "12px" }}
+								/>
+							</label>
+							<label style={{ color: "#aaa", fontSize: "11px", display: "flex", alignItems: "center", gap: "4px" }}>
+								<input type="checkbox" checked={drUseNumDays} onChange={(e) => setDrUseNumDays(e.target.checked)} />
+								Days
+								<input
+									type="number"
+									min="1"
+									value={drNumDays}
+									onChange={(e) => setDrNumDays(e.target.value)}
+									disabled={!drUseNumDays}
+									style={{ width: "50px", padding: "4px", background: drUseNumDays ? "#333" : "#222", color: drUseNumDays ? "#fff" : "#666", border: "1px solid #555", borderRadius: "3px", fontSize: "12px" }}
+								/>
+							</label>
+							{!drUseNumDays && (
+								<label style={{ color: "#aaa", fontSize: "11px" }}>
+									End Date
+									<input
+										type="date"
+										value={drEndTime}
+										onChange={(e) => setDrEndTime(e.target.value)}
+										style={{ display: "block", width: "100%", padding: "4px", background: "#333", color: "#fff", border: "1px solid #555", borderRadius: "3px", fontSize: "12px" }}
+									/>
+								</label>
+							)}
+							<button
+								onClick={handleDateRangeSubmit}
+								style={{ padding: "5px 12px", background: "#0066cc", color: "#fff", border: "none", borderRadius: "3px", cursor: "pointer", fontSize: "12px" }}
+							>
+								Load
+							</button>
+						</div>
+					)}
+				</div>
 			</div>
 			<GenericPixiChart
 				name="PixiChartV2"
-				//always add a unique key to force remount on changes to important props
-				key={`${symbol.value}-${timeframe}`} //include both symbol and timeframe in key to force remount
+				key={`${symbol.value}-${timeframe}`}
 				ohlcDatas={ohlcData}
-				// width={width}
 				height={height}
 				symbol={symbol.value}
 				fullSymbol={fullSymbol || symbol.value}
-				exchange={symbol.exchange} // symbol.exchange
+				exchange={symbol.exchange}
 				barType={barType.value}
 				barTypePeriod={barTypePeriod}
-				// loadData={loadData}
 				pixiDataRef={pixiDataRef}
 				lowerIndicators={lowerIndicators}
 				loadMoreData={loadMoreData}
 				onTimeRangeChange={handleChartTimeRangeChange}
+				hideTimeRangeOverlay={true}
 				isLoading={isLoading}
 				sendOrder={sendFuturesOrder}
-			// tickSize={tickSize}
+				margin={{ top: 50, right: 50, left: 0, bottom: 40 }}
 			/>
 
 			{/* Symbol-filtered orders list */}

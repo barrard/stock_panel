@@ -930,6 +930,226 @@ canvas {
     }
 }
 
+/* ===== Trading Platform Layout ===== */
+.trading-platform {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    background: #1a1a1a;
+}
+
+/* --- Toolbar --- */
+.platform-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    background: #222;
+    border-bottom: 1px solid #444;
+    flex-shrink: 0;
+    min-height: 38px;
+    overflow-x: auto;
+}
+
+.toolbar-divider {
+    width: 1px;
+    height: 24px;
+    background: #555;
+    flex-shrink: 0;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+/* Override PlantStatuses absolute positioning when in toolbar */
+.plant-status-toolbar > div {
+    position: static !important;
+    top: auto !important;
+    display: flex;
+    align-items: center;
+}
+
+/* --- Tab Bar --- */
+.tab-bar {
+    display: flex;
+    background: #1e1e1e;
+    border-bottom: 1px solid #444;
+    flex-shrink: 0;
+}
+
+.tab-btn {
+    padding: 6px 16px;
+    background: transparent;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.tab-btn:hover {
+    color: #ccc;
+    background: #2a2a2a;
+}
+
+.tab-btn.active {
+    color: #fff;
+    border-bottom-color: #0088ff;
+}
+
+/* --- Resize Handles --- */
+.resize-handle-h {
+    height: 10px;
+    background: #262626;
+    cursor: row-resize;
+    transition: background 0.15s;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+}
+
+.resize-handle-h::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 56px;
+    height: 2px;
+    border-radius: 999px;
+    background: #6b7280;
+    transform: translate(-50%, -50%);
+}
+
+.resize-handle-h:hover,
+.resize-handle-h[data-resize-handle-active] {
+    background: #0088ff;
+}
+
+.resize-handle-h:hover::before,
+.resize-handle-h[data-resize-handle-active]::before {
+    background: #e5e7eb;
+}
+
+.resize-handle-chart-split {
+    height: 12px;
+    background: transparent;
+    box-shadow: none;
+}
+
+.resize-handle-chart-split::before {
+    width: 4px;
+    height: 18px;
+    background: #6b7280;
+}
+
+.resize-handle-chart-split:hover,
+.resize-handle-chart-split[data-resize-handle-active] {
+    background: rgba(59, 130, 246, 0.08);
+}
+
+.resize-handle-v {
+    width: 4px;
+    background: #333;
+    cursor: col-resize;
+    transition: background 0.15s;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.resize-handle-v:hover,
+.resize-handle-v[data-resize-handle-active] {
+    background: #0088ff;
+}
+
+/* --- Chart Panels --- */
+.chart-panel {
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Toolbar rows (from PixiChartV2 Fragment or BetterTickChart) stay natural size */
+.chart-panel > .row,
+.chart-panel > div > .row {
+    flex-shrink: 0;
+}
+
+/* GenericPixiChart wrapper and BetterTickChart outer div fill remaining space */
+.chart-panel > div:not(.row) {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Nested chart containers (BetterTickChart's inner wrapper) also fill */
+.chart-panel > div:not(.row) > div:not(.row) {
+    flex: 1;
+    min-height: 0;
+}
+
+/* --- Panel Sections --- */
+.panel-section {
+    border-bottom: 1px solid #333;
+    padding: 8px;
+}
+
+.panel-section-header {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #888;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+/* --- Right Sidebar --- */
+.right-panel-inner {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #1e1e1e;
+}
+
+/* --- Bottom Panel --- */
+.bottom-panel-inner {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #1a1a1a;
+    border-top: 1px solid #444;
+}
+
+/* --- Mobile --- */
+@media (max-width: 768px) {
+    .platform-toolbar {
+        gap: 4px;
+        padding: 2px 4px;
+        min-height: 34px;
+    }
+
+    .tab-btn {
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+
+    .resize-handle-h {
+        height: 6px;
+    }
+
+    .resize-handle-v {
+        width: 6px;
+    }
+}
+
 .border-green {
     border: 3px solid green;
 }

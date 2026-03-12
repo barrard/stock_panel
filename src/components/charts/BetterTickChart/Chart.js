@@ -13,6 +13,136 @@ import { discontinuousTimeScaleProvider } from "react-stockcharts/lib/scale";
 import { fitWidth } from "react-stockcharts/lib/helper";
 import { last } from "react-stockcharts/lib/utils";
 import { OHLCTooltip, MovingAverageTooltip, MACDTooltip } from "react-stockcharts/lib/tooltip";
+import GenericChartComponent from "react-stockcharts/lib/GenericChartComponent";
+
+const DEFAULT_MAX_SIGNALS = 100;
+
+function toTimestamp(value) {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+        const parsed = new Date(value).getTime();
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+}
+
+function normalizeSignal(signal = {}) {
+    const direction = signal.direction > 0 ? 1 : signal.direction < 0 ? -1 : 0;
+    const lastPrice = Number(signal.lastPrice);
+    const consecutive = Number(signal.consecutive);
+    const timestamp =
+        toTimestamp(signal.timestamp) ??
+        toTimestamp(signal.timestampMs) ??
+        toTimestamp(signal.receivedAt) ??
+        Date.now();
+
+    if (!direction || !Number.isFinite(lastPrice)) {
+        return null;
+    }
+
+    return {
+        ...signal,
+        direction,
+        lastPrice,
+        consecutive: Number.isFinite(consecutive) ? consecutive : 0,
+        timestamp,
+    };
+}
+
+function getMarkerSize(consecutive) {
+    const normalizedSize = Number.isFinite(Number(consecutive)) ? Math.max(0, Number(consecutive)) : 0;
+    return Math.max(6, Math.min(18, 6 + normalizedSize * 1.5));
+}
+
+function findSignalIndex(signal, data) {
+    if (!Array.isArray(data) || !data.length) return -1;
+
+    const firstTimestamp = toTimestamp(data[0]?.datetime) ?? toTimestamp(data[0]?.date?.getTime?.());
+    const lastTimestamp = toTimestamp(data[data.length - 1]?.datetime) ?? toTimestamp(data[data.length - 1]?.date?.getTime?.());
+    if (Number.isFinite(lastTimestamp) && signal.timestamp >= lastTimestamp) {
+        return data.length - 1;
+    }
+    if (Number.isFinite(firstTimestamp) && signal.timestamp < firstTimestamp) {
+        return -1;
+    }
+
+    let matchingIndex = -1;
+
+    for (let index = 0; index < data.length; index += 1) {
+        const bar = data[index];
+        const barTimestamp = toTimestamp(bar?.datetime) ?? toTimestamp(bar?.date?.getTime?.());
+        if (!Number.isFinite(barTimestamp)) continue;
+
+        if (barTimestamp <= signal.timestamp) {
+            matchingIndex = index;
+            continue;
+        }
+
+        break;
+    }
+
+    return matchingIndex;
+}
+
+class DepthSignalMarkers extends React.Component {
+    constructor(props) {
+        super(props);
+        this.renderSVG = this.renderSVG.bind(this);
+    }
+
+    renderSVG(moreProps) {
+        const { signals = [] } = this.props;
+        const { plotData = [], xScale, xAccessor, chartConfig } = moreProps;
+        const yScale = chartConfig?.yScale;
+        const chartHeight = chartConfig?.height ?? 0;
+
+        if (!plotData.length || !xScale || !xAccessor || !yScale) return null;
+
+        const normalizedSignals = signals.map(normalizeSignal).filter(Boolean).slice(-DEFAULT_MAX_SIGNALS);
+        const stackOffsets = new Map();
+
+        return (
+            <g className="depth-signal-markers">
+                {normalizedSignals.map((signal, signalIndex) => {
+                    const index = findSignalIndex(signal, plotData);
+                    if (index < 0) return null;
+
+                    const datum = plotData[index];
+                    const xValue = xAccessor(datum);
+                    const x = xScale(xValue);
+                    const y = yScale(signal.lastPrice);
+
+                    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+
+                    const markerSize = getMarkerSize(signal.consecutive);
+                    const stackKey = `${index}:${signal.direction}`;
+                    const stackCount = stackOffsets.get(stackKey) || 0;
+                    stackOffsets.set(stackKey, stackCount + 1);
+
+                    const offset = 24 + stackCount * 18;
+                    const markerY =
+                        signal.direction > 0 ? Math.max(markerSize + 2, y - offset) : Math.min(chartHeight - markerSize - 2, y + offset);
+                    const color = signal.direction > 0 ? "#00c853" : "#d50000";
+                    const points =
+                        signal.direction > 0
+                            ? `${x},${markerY - markerSize} ${x - markerSize},${markerY + markerSize} ${x + markerSize},${markerY + markerSize}`
+                            : `${x},${markerY + markerSize} ${x - markerSize},${markerY - markerSize} ${x + markerSize},${markerY - markerSize}`;
+
+                    return (
+                        <g key={`${signal.timestamp}-${signalIndex}`}>
+                            <line x1={x} y1={y} x2={x} y2={markerY} stroke={color} strokeWidth={1.5} strokeOpacity={0.8} />
+                            <polygon points={points} fill={color} fillOpacity={0.95} stroke={color} strokeWidth={2} strokeOpacity={0.95} />
+                        </g>
+                    );
+                })}
+            </g>
+        );
+    }
+
+    render() {
+        return <GenericChartComponent svgDraw={this.renderSVG} drawOn={["pan", "mousemove", "drag"]} />;
+    }
+}
 
 class CandleStickStockScaleChartWithVolumeBarV3 extends React.Component {
     constructor(props) {
@@ -77,7 +207,7 @@ class CandleStickStockScaleChartWithVolumeBarV3 extends React.Component {
 
         const elderImpulseCalculator = elderImpulse().macdSource(macdCalculator.accessor()).emaSource(ema20.accessor());
 
-        const { type, data: initialData, width, ratio } = this.props;
+        const { type, data: initialData, width, ratio, depthSignals } = this.props;
 
         const calculatedData = emaVol20(elderImpulseCalculator(macdCalculator(ema20(ema50(ema200(changeCalculator(initialData)))))));
 
@@ -107,6 +237,7 @@ class CandleStickStockScaleChartWithVolumeBarV3 extends React.Component {
 
                     {/* <CandlestickSeries /> */}
                     <OHLCSeries stroke={(d) => (d.volumePro ? "orange" : d.volumeAm ? "yellow" : d.volumeClimaxChurnBar ? "magenta" : d.lowVolumeChurnBar ? "blue" : d.lowVolumeBar ? "white" : d.highVolumeChurnBar ? "black" : d.volumeClimaxDownBar ? "red" : d.volumeClimaxUpBar ? "green" : "grey")} />
+                    <DepthSignalMarkers signals={depthSignals} />
                     <OHLCTooltip textFill="white" origin={[0, 10]} />
 
                     <EdgeIndicator itemType="last" orient="right" edgeAt="right" yAccessor={(d) => d.close} fill={(d) => (d.close > d.open ? "#yellow" : "#orange")} />
@@ -128,11 +259,13 @@ class CandleStickStockScaleChartWithVolumeBarV3 extends React.Component {
 }
 CandleStickStockScaleChartWithVolumeBarV3.propTypes = {
     data: PropTypes.array.isRequired,
+    depthSignals: PropTypes.array,
     width: PropTypes.number.isRequired,
     ratio: PropTypes.number.isRequired,
 };
 
 CandleStickStockScaleChartWithVolumeBarV3.defaultProps = {
+    depthSignals: [],
     type: "hybrid",
 };
 CandleStickStockScaleChartWithVolumeBarV3 = fitWidth(CandleStickStockScaleChartWithVolumeBarV3);

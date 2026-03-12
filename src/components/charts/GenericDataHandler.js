@@ -583,7 +583,7 @@ export default class GenericDataHandler {
             valueFinder: timeScaleValues,
         });
         this.xAxis.container.position.x = this.margin.left;
-        this.xAxis.container.position.y = this.innerHeight();
+        this.xAxis.container.position.y = this.mainChartContainerHeight;
     }
 
     setupPriceScales() {
@@ -1416,11 +1416,11 @@ export default class GenericDataHandler {
 
     drawCrossHair() {
         const { left, right, top, bottom } = this.margin;
-        //Y Crosshair
+        //Y Crosshair - spans full height including lower indicators
         this.crossHairYGfx.clear();
         this.crossHairYGfx.lineStyle(1, 0xffffff, 1);
         this.crossHairYGfx.moveTo(0, 0);
-        this.crossHairYGfx.lineTo(0, this.height - (bottom + top));
+        this.crossHairYGfx.lineTo(0, this.innerHeight());
 
         //X Crosshair
         this.crossHairXGfx.clear();
@@ -1436,7 +1436,7 @@ export default class GenericDataHandler {
         this.borderGfx.lineStyle(3, 0xaaaaaa, 1);
 
         const rightSide = this.width - (right + left);
-        const bottomSide = this.height - (top + bottom);
+        const bottomSide = this.mainChartContainerHeight;
         this.borderGfx.moveTo(0, 0);
         this.borderGfx.lineTo(rightSide, 0);
         this.borderGfx.lineTo(rightSide, bottomSide);
@@ -1480,9 +1480,9 @@ export default class GenericDataHandler {
         // this.yAxis.container.position.x = this.width - this.margin.right;
         // this.yAxis.container.position.y = 0;
         this.addToLayer(3, this.yAxis.container); // Layer 3 won't be masked
-        //xAxis
-        // this.xAxis.container.position.x = this.margin.left;
-        // this.xAxis.container.position.y = this.innerHeight();
+        //xAxis - reposition after initLowerIndicators has expanded this.height
+        this.xAxis.container.position.x = this.margin.left;
+        this.xAxis.container.position.y = this.innerHeight();
         this.addToLayer(3, this.xAxis.container); // Layer 3 won't be masked
     }
 

@@ -12,7 +12,7 @@ import IndicatorSelector from "../../reusableChartComponents/IndicatorSelector";
 import API from "../../../API";
 // import { getExchangeFromSymbol } from "../../pixiChart/components/utils";
 const BackTestChartGeneric = (props) => {
-    const { width, height, symbol = "ES", Socket, data } = props;
+    const { width, height, symbol = "ES", Socket, data, timeframe = "30m" } = props;
 
     const pixiDataRef = useRef();
 
@@ -265,11 +265,8 @@ const BackTestChartGeneric = (props) => {
 
     async function fetchLiveDataAndUpdate(data) {
         const liveData = await API.rapi_requestLiveBars({
-            // barType: 2,
-            // barTypePeriod: 30,
-            timeframe: "30m",
+            timeframe,
             symbol: symbol,
-            // exchange: getExchangeFromSymbol(symbol),
         });
         //merge and remove duplicate datetime with data.bars
         const mergedBars = [...data.bars, ...liveData].reduce((acc, bar) => {
@@ -280,6 +277,68 @@ const BackTestChartGeneric = (props) => {
         }, []);
         setCandleData({ ...data, bars: mergedBars });
     }
+
+    useEffect(() => {
+        if (!symbol || !timeframe) return;
+
+        API.rapi_requestLiveBars({
+            symbol,
+            timeframe,
+        }).catch((error) => {
+            console.error("[BackTestChartGeneric] Failed to request live bars", error);
+        });
+    }, [symbol, timeframe]);
+
+    useEffect(() => {
+        if (!Socket || !symbol) return;
+
+        const liveBarNewEvent = `${timeframe}-${symbol}-LiveBarNew`;
+        const liveBarUpdateEvent = `1s-${symbol}-LiveBarUpdate`;
+
+        const handleLiveBarNew = (newBar) => {
+            if (!pixiDataRef.current) return;
+            setCandleData((prevData) => {
+                const previousBars = Array.isArray(prevData?.bars) ? prevData.bars : [];
+                const mergedBars = [...previousBars];
+                const existingIndex = mergedBars.findIndex((bar) => bar.datetime === newBar.datetime);
+
+                if (existingIndex >= 0) {
+                    mergedBars[existingIndex] = { ...mergedBars[existingIndex], ...newBar };
+                } else {
+                    mergedBars.push(newBar);
+                }
+
+                return {
+                    ...(prevData || data || {}),
+                    bars: mergedBars,
+                };
+            });
+            pixiDataRef.current.setCompleteBar(newBar);
+            pixiDataRef.current.updateCurrentPriceLabel(newBar.close);
+        };
+
+        const handleLiveBarUpdate = (tick) => {
+            if (!pixiDataRef.current) return;
+
+            const lastPrice = tick?.lastPrice ?? tick?.close ?? tick?.last;
+            if (!Number.isFinite(Number(lastPrice))) return;
+
+            pixiDataRef.current.newTick({
+                lastPrice: Number(lastPrice),
+                volume: tick?.volume || 0,
+                datetime: tick?.datetime || Date.now(),
+                timestamp: tick?.timestamp || Date.now(),
+            });
+        };
+
+        Socket.on(liveBarNewEvent, handleLiveBarNew);
+        Socket.on(liveBarUpdateEvent, handleLiveBarUpdate);
+
+        return () => {
+            Socket.off(liveBarNewEvent, handleLiveBarNew);
+            Socket.off(liveBarUpdateEvent, handleLiveBarUpdate);
+        };
+    }, [Socket, symbol, timeframe]);
 
     return (
         <>
@@ -296,6 +355,14 @@ const BackTestChartGeneric = (props) => {
                     height={height}
                     symbol={symbol}
                     pixiDataRef={pixiDataRef}
+                    margin={{ top: 35, right: 42, left: 0, bottom: 30 }}
+                    options={{
+                        chartType: "candlestick",
+                        axisFontSizes: {
+                            x: 10,
+                            y: 10,
+                        },
+                    }}
                 />
             )}
         </>

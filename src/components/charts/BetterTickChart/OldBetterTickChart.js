@@ -50,13 +50,14 @@ async function loadData(options = {}) {
     return ohlcData;
 }
 
-class ChartComponent extends React.Component {
+class OldBetterTickChart extends React.Component {
     constructor(props) {
         super(props);
         const { location } = this.props;
         const params = queryString.parse(location.search);
         this.state = {
             data: [],
+            depthSignals: [],
             symbol: params.symbol || "ES",
             isLoading: true,
             error: null,
@@ -71,6 +72,7 @@ class ChartComponent extends React.Component {
     componentDidMount() {
         this.loadChartData();
         this.setupSocketListeners();
+        this.setupDepthSignalListener(this.state.symbol);
     }
     componentDidUpdate(prevProps) {
         const { location } = this.props;
@@ -78,13 +80,17 @@ class ChartComponent extends React.Component {
         const prevParams = queryString.parse(prevProps.location.search);
 
         if (params.symbol !== prevParams.symbol) {
+            const nextSymbol = params.symbol || "ES";
+            this.teardownDepthSignalListener(prevParams.symbol || "ES");
             this.setState(
                 {
-                    symbol: params.symbol || "DEFAULT_SYMBOL",
+                    symbol: nextSymbol,
+                    depthSignals: [],
                     isLoading: true,
                 },
                 () => {
                     this.loadChartData();
+                    this.setupDepthSignalListener(nextSymbol);
                 }
             );
         }
@@ -149,9 +155,38 @@ class ChartComponent extends React.Component {
         });
     };
 
+    setupDepthSignalListener = (symbol) => {
+        if (!symbol) return;
+        const eventName = `depthTradeSignal-${symbol}`;
+        this.depthSignalEventName = eventName;
+        this.depthSignalHandler = (signal) => {
+            this.setState((prevState) => ({
+                depthSignals: [
+                    ...prevState.depthSignals.slice(-99),
+                    {
+                        ...signal,
+                        timestamp: signal?.timestamp || signal?.timestampMs || Date.now(),
+                        receivedAt: Date.now(),
+                    },
+                ],
+            }));
+        };
+        this.props.Socket.on(eventName, this.depthSignalHandler);
+    };
+
+    teardownDepthSignalListener = (symbol = this.state.symbol) => {
+        const eventName = this.depthSignalEventName || (symbol ? `depthTradeSignal-${symbol}` : null);
+        if (eventName && this.depthSignalHandler) {
+            this.props.Socket.off(eventName, this.depthSignalHandler);
+        }
+        this.depthSignalEventName = null;
+        this.depthSignalHandler = null;
+    };
+
     componentWillUnmount() {
         this.props.Socket.off("newTickBar");
         this.props.Socket.off("lastTrade");
+        this.teardownDepthSignalListener();
     }
 
     handleSymbolChange = (newSymbol) => {
@@ -195,7 +230,7 @@ class ChartComponent extends React.Component {
     };
 
     render() {
-        const { isLoading, error, symbol, join } = this.state;
+        const { isLoading, error, symbol, join, depthSignals } = this.state;
         const data = this.dataRef.current;
 
         return (
@@ -213,7 +248,7 @@ class ChartComponent extends React.Component {
                     <NoDataContainer>No data available</NoDataContainer>
                 ) : (
                     <ChartContainer>
-                        <Chart key={symbol} type="hybrid" data={data} symbol={symbol} />
+                        <Chart key={symbol} type="hybrid" data={data} symbol={symbol} depthSignals={depthSignals} />
                     </ChartContainer>
                 )}
             </ChartPageContainer>
@@ -222,7 +257,7 @@ class ChartComponent extends React.Component {
 }
 
 // Higher-order component to handle URL params
-export default withRouter(ChartComponent);
+export default withRouter(OldBetterTickChart);
 
 const ChartPageContainer = styled.div`
     padding: 1em;

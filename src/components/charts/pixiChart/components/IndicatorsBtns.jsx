@@ -161,6 +161,7 @@ function IndicatorsBtns(props) {
         marketProfile: <GiAmplitude />,
         orderbook: <CgReadme />,
         orders: <AiOutlineTransaction />,
+        depthSignals: <MdLayers />,
         pivotLines: <IoIosReorder />,
         superTrend: <MdTrendingUp />,
         movingAverages: <SineWavesIcon />,

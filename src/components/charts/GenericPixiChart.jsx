@@ -42,6 +42,7 @@ export default function GenericPixiChart({
     isLoading = false, // Loading state for data fetching
     name = "GenericPixiChart", // Name for logging purposes
     sendOrder = null, // Optional function to send orders - enables trade window when provided
+    hideTimeRangeOverlay = false, // When true, suppress built-in time range overlay (parent renders its own)
     ...rest
 }) {
     if (!fullSymbol) {
@@ -134,13 +135,15 @@ export default function GenericPixiChart({
         const container = PixiChartRef.current;
         const rect = container.getBoundingClientRect();
 
-        let { width, height } = rect;
+        // Use container dimensions, falling back to height prop if container has no height yet
+        const initWidth = rect.width;
+        const initHeight = rect.height || height;
 
-        console.log(`GenericPixiChart init - ${name}`);
+        console.log(`GenericPixiChart init - ${name}, w=${initWidth}, h=${initHeight}`);
 
         PixiAppRef.current = new PIXI.Application({
-            width,
-            height,
+            width: initWidth,
+            height: initHeight,
             backgroundColor: 0x000,
             antialias: true,
             resolution: window.devicePixelRatio || 1,
@@ -150,7 +153,7 @@ export default function GenericPixiChart({
         const canvas = PixiAppRef.current.view;
         canvas.style.display = "block"; // ✅ kills extra 6px gap
         canvas.style.width = "100%"; // follow container
-        // canvas.style.height = "100%"; // follow container
+        // canvas.style.height = "100%"; // Don't CSS-stretch height — let PIXI + ResizeObserver manage it
         canvas.style.margin = "0";
         canvas.style.padding = "0";
         canvas.style.boxSizing = "border-box";
@@ -174,14 +177,14 @@ export default function GenericPixiChart({
             ohlcDatas,
             pixiApp: PixiAppRef.current,
             currentBarRef,
-            width,
-            height,
+            width: initWidth,
+            height: initHeight,
             symbol,
             fullSymbol,
             exchange,
             margin,
             options,
-            mainChartContainerHeight,
+            mainChartContainerHeight: mainChartContainerHeight || initHeight,
             tickSize: tickSizeRef.current,
             lowerIndicators,
             loadMoreData,
@@ -193,8 +196,8 @@ export default function GenericPixiChart({
         effectivePixiDataRef.current.onManualScaleChange = setShowResetButton;
         // setPixiData(_pixiData);
 
-        let lastWidth = width;
-        let lastHeight = height;
+        let lastWidth = initWidth;
+        let lastHeight = initHeight;
         // ResizeObserver to handle dynamic sizing
         const resizeCanvas = () => {
             const container = PixiChartRef.current;
@@ -465,8 +468,8 @@ export default function GenericPixiChart({
     }
 
     return (
-        <div style={{ position: "relative", width: "100%" }}>
-            {onTimeRangeChange && (
+        <div style={{ position: "relative", width: "100%", height: "100%" }}>
+            {onTimeRangeChange && !hideTimeRangeOverlay && (
                 <div
                     style={{
                         position: "absolute",
@@ -685,7 +688,7 @@ export default function GenericPixiChart({
                     }
                 }}
                 {...rest}
-                style={{ width: "100%", touchAction: "none", padding: 0, margin: 0 }}
+                style={{ width: "100%", height: "100%", touchAction: "none", padding: 0, margin: 0 }}
             />
         </div>
     );

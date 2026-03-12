@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { MdDateRange } from "react-icons/md";
 import GenericPixiChart from "../../../GenericPixiChart";
 import API from "../../../../API";
 import { IconButton } from "../../../../StratBuilder/components";
@@ -9,6 +10,7 @@ import { useLiquidityData } from "../../../hooks/useLiquidityData";
 import { useLiquidityRatios } from "../../../hooks/useLiquidityRatios";
 import { LiquidityHeatmap, liquidityHeatMapConfig } from "../indicatorDrawFunctions";
 import DrawOrdersV2 from "../DrawOrdersV2";
+import DrawDepthSignals from "../DrawDepthSignals";
 import DrawSuperTrend from "../../../drawFunctions/DrawSuperTrend";
 import { sendFuturesOrder } from "../sendFuturesOrder";
 import { createDualHistogramDrawFn } from "../drawFns";
@@ -45,6 +47,16 @@ const BetterTickChart = (props) => {
     const [isLoading, setIsLoading] = useState(true);
     const [join, setJoin] = useState(1);
     const rawDataRef = useRef([]); // Raw 100-tick bars from server (used for combining)
+    const depthSignalsDrawRef = useRef(null);
+    const pendingDepthSignalsRef = useRef([]);
+    const seenDepthSignalKeysRef = useRef(new Set());
+
+    // Date range picker state
+    const [showDateRange, setShowDateRange] = useState(false);
+    const [drStartTime, setDrStartTime] = useState("");
+    const [drEndTime, setDrEndTime] = useState("");
+    const [drNumDays, setDrNumDays] = useState("5");
+    const [drUseNumDays, setDrUseNumDays] = useState(true);
 
     // Indicators configuration
     const [indicators, setIndicators] = useState([
@@ -54,6 +66,12 @@ const BetterTickChart = (props) => {
             name: "Orders",
             enabled: false,
             drawFunctionKey: "draw",
+            instanceRef: null,
+        },
+        {
+            id: "depthSignals",
+            name: "Depth Signals",
+            enabled: true,
             instanceRef: null,
         },
         {
@@ -111,37 +129,46 @@ const BetterTickChart = (props) => {
     // Get indicator configs
     const liquidityHeatmapIndicator = indicators.find((ind) => ind.id === "liquidityHeatmap");
     const ordersIndicator = indicators.find((ind) => ind.id === "orders");
+    const depthSignalsIndicator = indicators.find((ind) => ind.id === "depthSignals");
     const superTrendIndicator = indicators.find((ind) => ind.id === "superTrend");
-
-    const symbolFilteredOrders = useMemo(() => {
-        if (!ordersFromParent || !fullSymbol) return {};
-        const filtered = {};
-        Object.keys(ordersFromParent).forEach((basketId) => {
-            const orderArray = ordersFromParent[basketId];
-            if (!Array.isArray(orderArray) || orderArray.length === 0) return;
-
-            const matchesSymbol = orderArray.some((orderEvent) => {
-                const eventSymbol = orderEvent?.symbol || orderEvent?.fullSymbol;
-                return eventSymbol && eventSymbol === fullSymbol;
-            });
-
-            if (matchesSymbol) {
-                filtered[basketId] = orderArray;
-            }
-        });
-        console.log("[BetterTickChart] Filtered orders", {
-            total: Object.keys(ordersFromParent).length,
-            filtered: Object.keys(filtered).length,
-            fullSymbol,
-        });
-        return filtered;
-    }, [ordersFromParent, fullSymbol]);
 
     // Keep a ref to indicators to avoid stale closures in socket handlers
     const indicatorsRef = useRef(indicators);
     useEffect(() => {
         indicatorsRef.current = indicators;
     }, [indicators]);
+
+    const normalizeDepthSignal = useCallback((signal = {}) => {
+        const timestamp = Number(signal?.timestamp ?? signal?.timestampMs ?? signal?.receivedAt ?? Date.now());
+        const lastPrice = Number(signal?.lastPrice);
+        const direction = signal?.direction > 0 ? 1 : signal?.direction < 0 ? -1 : 0;
+
+        if (!Number.isFinite(timestamp) || !Number.isFinite(lastPrice) || !direction) {
+            return null;
+        }
+
+        return {
+            ...signal,
+            timestamp,
+            lastPrice,
+            direction,
+            consecutive: Number.isFinite(Number(signal?.consecutive)) ? Number(signal.consecutive) : 0,
+            cumulative: Number.isFinite(Number(signal?.cumulative)) ? Number(signal.cumulative) : 0,
+            windowScore: Number.isFinite(Number(signal?.windowScore)) ? Number(signal.windowScore) : 0,
+            receivedAt: Date.now(),
+        };
+    }, []);
+
+    const getDepthSignalKey = useCallback((signal) => {
+        return [
+            signal?.timestamp,
+            signal?.direction,
+            signal?.lastPrice,
+            signal?.consecutive,
+            signal?.cumulative,
+            signal?.windowScore,
+        ].join(":");
+    }, []);
 
     // Use the useIndicator hook for liquidity heatmap
     useIndicator({
@@ -204,11 +231,53 @@ const BetterTickChart = (props) => {
         if (!ordersInstance || !ordersIndicator?.enabled) return;
 
         console.log("[BetterTickChart] Drawing orders on chart", {
-            baskets: Object.keys(symbolFilteredOrders).length,
+            baskets: Object.keys(ordersFromParent || {}).length,
             fullSymbol,
         });
-        ordersInstance.draw(symbolFilteredOrders);
-    }, [ordersIndicator?.enabled, ordersIndicator?.instanceRef, symbolFilteredOrders, fullSymbol]);
+        ordersInstance.draw(ordersFromParent || {});
+    }, [ordersIndicator?.enabled, ordersIndicator?.instanceRef, ordersFromParent, fullSymbol]);
+
+    useEffect(() => {
+        if (!pixiDataRef.current || !candleData.length) return;
+
+        const pixiData = pixiDataRef.current;
+        if (!depthSignalsIndicator?.enabled) {
+            pixiData.unregisterDrawFn("depthSignals");
+            depthSignalsDrawRef.current?.clearSignals?.();
+            depthSignalsDrawRef.current?.cleanup?.();
+            depthSignalsDrawRef.current = null;
+            pixiData.draw?.();
+            return;
+        }
+        if (depthSignalsDrawRef.current?.chart === pixiData) {
+            depthSignalsDrawRef.current.setSignals(pendingDepthSignalsRef.current);
+            pixiData.draw?.();
+            return;
+        }
+
+        depthSignalsDrawRef.current?.cleanup?.();
+
+        const instance = new DrawDepthSignals(pixiData);
+        depthSignalsDrawRef.current = instance;
+        instance.setSignals(pendingDepthSignalsRef.current);
+        pixiData.registerDrawFn("depthSignals", instance.draw.bind(instance));
+        pixiData.draw?.();
+
+        return () => {
+            pixiData.unregisterDrawFn("depthSignals");
+            if (depthSignalsDrawRef.current === instance) {
+                depthSignalsDrawRef.current = null;
+            }
+            instance.cleanup?.();
+        };
+    }, [candleData.length, isLoading, symbol, join, depthSignalsIndicator?.enabled]);
+
+    useEffect(() => {
+        pendingDepthSignalsRef.current = [];
+        seenDepthSignalKeysRef.current.clear();
+        depthSignalsDrawRef.current?.clearSignals?.();
+        pixiDataRef.current?.draw?.();
+    }, [symbol, fullSymbol, join]);
 
     // Use the liquidity data hook for fetching and caching
     useLiquidityData({
@@ -371,6 +440,22 @@ const BetterTickChart = (props) => {
             alert("Failed to load data for selected time range");
         }
     };
+
+    const handleDateRangeSubmit = useCallback(() => {
+        if (!drStartTime) return alert("Please provide a start date");
+        const startTimestamp = new Date(drStartTime + "T00:00:00").getTime();
+        if (drUseNumDays) {
+            if (!drNumDays || drNumDays <= 0) return alert("Please provide a valid number of days");
+            const endTimestamp = startTimestamp + parseInt(drNumDays) * 24 * 60 * 60 * 1000;
+            handleTimeRangeChange({ startTime: startTimestamp, endTime: endTimestamp });
+        } else {
+            if (!drEndTime) return alert("Please provide an end date");
+            const endTimestamp = new Date(drEndTime + "T23:59:59.999").getTime();
+            if (startTimestamp >= endTimestamp) return alert("Start date must be before end date");
+            handleTimeRangeChange({ startTime: startTimestamp, endTime: endTimestamp });
+        }
+        setShowDateRange(false);
+    }, [drStartTime, drEndTime, drNumDays, drUseNumDays, handleTimeRangeChange]);
 
     // Load more historical data (called when scrolling back)
     const loadMoreData = async () => {
@@ -566,15 +651,33 @@ const BetterTickChart = (props) => {
             });
         };
 
+        const depthSignalEvents = [...new Set([`depthTradeSignal-${symbol}`, fullSymbol ? `depthTradeSignal-${fullSymbol}` : null].filter(Boolean))];
+        const handleDepthSignal = (signal) => {
+            const normalizedSignal = normalizeDepthSignal(signal);
+            if (!normalizedSignal) return;
+
+            const signalKey = getDepthSignalKey(normalizedSignal);
+            if (seenDepthSignalKeysRef.current.has(signalKey)) return;
+            seenDepthSignalKeysRef.current.add(signalKey);
+
+            pendingDepthSignalsRef.current = [...pendingDepthSignalsRef.current.slice(-99), normalizedSignal];
+
+            if (depthSignalsDrawRef.current) {
+                depthSignalsDrawRef.current.pushSignal(normalizedSignal);
+            }
+        };
+
         Socket.on(tickBarEvent, handleNew100TickBar);
         Socket.on(liveBarUpdateEvent, handleLiveBarUpdate);
+        depthSignalEvents.forEach((eventName) => Socket.on(eventName, handleDepthSignal));
 
         return () => {
-            console.log("[BetterTickChart] Cleaning up socket listeners", { tickBarEvent, liveBarUpdateEvent });
+            console.log("[BetterTickChart] Cleaning up socket listeners", { tickBarEvent, liveBarUpdateEvent, depthSignalEvents });
             Socket.off(tickBarEvent, handleNew100TickBar);
             Socket.off(liveBarUpdateEvent, handleLiveBarUpdate);
+            depthSignalEvents.forEach((eventName) => Socket.off(eventName, handleDepthSignal));
         };
-    }, [symbol, fullSymbol, join, Socket, exchange]); // IMPORTANT: Don't include pixiDataRef.current!
+    }, [symbol, fullSymbol, join, Socket, exchange, getDepthSignalKey, normalizeDepthSignal]); // IMPORTANT: Don't include pixiDataRef.current!
 
     // Note: Server event patterns
     // Time-based charts: ${timeframe}-${symbol}-LiveBarNew (e.g., "1m-ES-LiveBarNew", "5m-YMZ5-LiveBarNew")
@@ -606,7 +709,7 @@ const BetterTickChart = (props) => {
     // const canRenderChart = dataSymbol === symbol && candleData.length > 0;
     return (
         <div style={{ width: "100%" }}>
-            <div className="row g-0">
+            <div className="row g-0 align-items-center">
                 <div className="col-auto">
                     <IndicatorsBtns
                         indicators={indicators}
@@ -618,8 +721,66 @@ const BetterTickChart = (props) => {
                 {joinOptions.map((value) => (
                     <TickJoinBtn key={value} isActive={join === value} value={value} label={value === 1 ? "1" : `${value}`} />
                 ))}
+                {/* Date Range Toggle */}
+                <div className="col-auto" style={{ position: "relative" }}>
+                    <button
+                        onClick={() => setShowDateRange((v) => !v)}
+                        title="Load Date Range"
+                        style={{
+                            background: showDateRange ? "steelblue" : "#333",
+                            border: "1px solid #555",
+                            borderRadius: "4px",
+                            color: "#fff",
+                            cursor: "pointer",
+                            padding: "4px 8px",
+                            display: "flex",
+                            alignItems: "center",
+                            fontSize: "12px",
+                        }}
+                    >
+                        <MdDateRange size={16} />
+                    </button>
+                    {showDateRange && (
+                        <div
+                            style={{
+                                position: "absolute",
+                                top: "100%",
+                                left: 0,
+                                zIndex: 10000,
+                                background: "#222",
+                                border: "1px solid #555",
+                                borderRadius: "4px",
+                                padding: "8px",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "6px",
+                                minWidth: "240px",
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+                            }}
+                        >
+                            <label style={{ color: "#aaa", fontSize: "11px" }}>
+                                Start Date
+                                <input type="date" value={drStartTime} onChange={(e) => setDrStartTime(e.target.value)} style={{ display: "block", width: "100%", padding: "4px", background: "#333", color: "#fff", border: "1px solid #555", borderRadius: "3px", fontSize: "12px" }} />
+                            </label>
+                            <label style={{ color: "#aaa", fontSize: "11px", display: "flex", alignItems: "center", gap: "4px" }}>
+                                <input type="checkbox" checked={drUseNumDays} onChange={(e) => setDrUseNumDays(e.target.checked)} />
+                                Days
+                                <input type="number" min="1" value={drNumDays} onChange={(e) => setDrNumDays(e.target.value)} disabled={!drUseNumDays} style={{ width: "50px", padding: "4px", background: drUseNumDays ? "#333" : "#222", color: drUseNumDays ? "#fff" : "#666", border: "1px solid #555", borderRadius: "3px", fontSize: "12px" }} />
+                            </label>
+                            {!drUseNumDays && (
+                                <label style={{ color: "#aaa", fontSize: "11px" }}>
+                                    End Date
+                                    <input type="date" value={drEndTime} onChange={(e) => setDrEndTime(e.target.value)} style={{ display: "block", width: "100%", padding: "4px", background: "#333", color: "#fff", border: "1px solid #555", borderRadius: "3px", fontSize: "12px" }} />
+                                </label>
+                            )}
+                            <button onClick={handleDateRangeSubmit} style={{ padding: "5px 12px", background: "#0066cc", color: "#fff", border: "none", borderRadius: "3px", cursor: "pointer", fontSize: "12px" }}>
+                                Load
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
-            <div style={{ border: "1px solid white", width: "100%", minHeight: `${height}px` }}>
+            <div style={{ border: "1px solid #444", width: "100%", height: "100%", minHeight: 0 }}>
                 <GenericPixiChart
                     name="BetterTickChart"
                     key={`${symbol}-${join}`}
@@ -633,14 +794,18 @@ const BetterTickChart = (props) => {
                     lowerIndicators={lowerIndicators}
                     loadMoreData={loadMoreData}
                     onTimeRangeChange={handleTimeRangeChange}
+                    hideTimeRangeOverlay={true}
                     isLoading={isLoading}
                     exchange={exchange}
                     sendOrder={sendFuturesOrder}
                     options={{
                         withoutVolume: false,
                         chartType: "OHLC",
+                        axisFontSizes: {
+                            x: 12,
+                        },
                     }}
-                    margin={{ top: 50, right: 100, left: 0, bottom: 40 }}
+                    margin={{ top: 50, right: 50, left: 0, bottom: 40 }}
                 />
             </div>
         </div>

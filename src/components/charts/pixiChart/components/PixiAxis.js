@@ -13,9 +13,10 @@ export default class PixiAxis {
         this.valueFinder = valueFinder;
         this.valueAccessor = valueAccessor.bind(this);
 
-        // Calculate font size based on margin
+        // Allow per-axis overrides while preserving margin-based defaults.
+        const axisFontSizes = this.chart.options?.axisFontSizes || {};
         const margin = this.chart.margin || this.chart.options?.margin || {};
-        const fontSize = this.calculateFontSize(margin);
+        const fontSize = axisFontSizes[this.type] ?? this.calculateFontSize(margin);
 
         this.textStyle = new TextStyle({
             fontFamily: "Arial",
@@ -232,7 +233,7 @@ export default class PixiAxis {
     }
 
     setHitArea() {
-        const { margin, height, width } = this.chart || !this.chart.options;
+        const { margin, height, width, mainChartContainerHeight } = this.chart || !this.chart.options;
         const { left, right, top, bottom } = margin;
         if (!this?.container) return;
         this.backgroundGfx = new Graphics();
@@ -246,12 +247,12 @@ export default class PixiAxis {
 
         if (this.type === "y") {
             // Draw background slightly larger to ensure it covers all text
-            this.backgroundGfx.drawRect(-10, -10, right + 20, height - (top + bottom) + 20);
-            // this.hitArea = new Rectangle(width - right, top, right, height - (top + bottom));
+            // Use mainChartContainerHeight for the y-axis height (matches the candle drawing area)
+            const chartHeight = mainChartContainerHeight || height - (top + bottom);
+            this.backgroundGfx.drawRect(-10, -10, right + 20, chartHeight + 20);
         } else if (this.type === "x") {
             // Draw background slightly larger to ensure it covers all text
             this.backgroundGfx.drawRect(-10, -10, width - (left + right) + 20, bottom + 20);
-            // this.hitArea = new Rectangle(0, 0, width - (left + right), bottom);
         }
         this.backgroundGfx.endFill();
 
@@ -260,7 +261,8 @@ export default class PixiAxis {
 
         // Force the container to only respond to events within the background area
         if (this.type === "y") {
-            this.container.hitArea = new Rectangle(-10, -10, right + 20, height - (top + bottom) + 20);
+            const chartHeight = mainChartContainerHeight || height - (top + bottom);
+            this.container.hitArea = new Rectangle(-10, -10, right + 20, chartHeight + 20);
         } else if (this.type === "x") {
             this.container.hitArea = new Rectangle(-10, -10, width - (left + right) + 20, bottom + 20);
         }

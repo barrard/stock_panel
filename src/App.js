@@ -30,7 +30,7 @@ import PickList from "./components/PickListPage";
 import FilingAnalysisDetail from "./components/FilingAnalysisDetail";
 
 import BidAskStats from "./components/charts/BidAskStats";
-import BetterTickChart from "./components/charts/BetterTickChart";
+import OldBetterTickChart from "./components/charts/BetterTickChart";
 import EconData from "./components/EconData";
 import SectorsPage from "./components/SectorsPage";
 
@@ -126,7 +126,7 @@ class App extends React.Component {
                     <Route path="/OptionContractChartPage" render={(props) => <OptionContractChartPage {...props} Socket={Socket} />} />
 
                     <Route path="/bid-ask-stats" render={(props) => <BidAskStats {...props} Socket={Socket} />} />
-                    <Route path="/better-tick" render={(props) => <BetterTickChart {...props} Socket={Socket} />} />
+                    <Route path="/old-better-tick" render={(props) => <OldBetterTickChart {...props} Socket={Socket} />} />
                     <Route path="/econ-events" render={(props) => <EconData {...props} Socket={Socket} />} />
                     <Route path="/sectors" render={(props) => <SectorsPage {...props} Socket={Socket} />} />
 
