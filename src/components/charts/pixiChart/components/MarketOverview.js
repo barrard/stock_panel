@@ -33,40 +33,40 @@ const MarketOverview = ({ lastTradesRef, fullSymbols, Socket }) => {
     }, [Socket]);
 
     return (
-        <div className="row g-0">
-            <div className="col-auto">
-                <table className="w-full border-collapse ">
+        <OverviewShell>
+            <OverviewScroller>
+                <OverviewTable>
                     <thead>
                         <tr className="bg-gray-100">
-                            <StyledTh w={50} className="border ">
+                            <StyledTh w={48} className="border ">
                                 Sym.
                             </StyledTh>
-                            <StyledTh w={50} className="border ">
+                            <StyledTh w={84} className="border ">
                                 Trade Price
                             </StyledTh>
-                            <StyledTh w={50} className="border  small">
+                            <StyledTh w={96} className="border  small">
                                 Bid/Ask Ratio/MA
                             </StyledTh>
 
-                            <StyledTh w={50} className="border ">
+                            <StyledTh w={52} className="border ">
                                 Delta
                             </StyledTh>
                             <StyledTh w={50} className="border ">
                                 PnL
                             </StyledTh>
-                            <StyledTh w={50} className="border ">
+                            <StyledTh w={54} className="border ">
                                 Position
                             </StyledTh>
-                            <StyledTh w={50} className="border ">
+                            <StyledTh w={66} className="border ">
                                 Orders b/s
                             </StyledTh>
-                            <StyledTh w={50} className="border ">
+                            <StyledTh w={66} className="border ">
                                 Filled b/s
                             </StyledTh>
-                            <StyledTh w={50} className="border ">
+                            <StyledTh w={66} className="border ">
                                 Avg
                             </StyledTh>
-                            <StyledTh w={50} className="border ">
+                            <StyledTh w={66} className="border ">
                                 Day
                             </StyledTh>
                         </tr>
@@ -77,12 +77,21 @@ const MarketOverview = ({ lastTradesRef, fullSymbols, Socket }) => {
                             const symbolData = fullSymbols.find((s) => s.baseSymbol == symbol);
                             const pnlData = instrumentPnLPositionUpdate[symbolData?.fullSymbol];
 
-                            return <MarketItem key={symbol} symbol={symbol} pnlData={pnlData} symbolData={symbolData} lastTrade={lastTrade} index={index} />;
+                            return (
+                                <MarketItem
+                                    key={symbol}
+                                    symbol={symbol}
+                                    pnlData={pnlData}
+                                    symbolData={symbolData}
+                                    lastTrade={lastTrade}
+                                    index={index}
+                                />
+                            );
                         })}
                     </tbody>
-                </table>
-            </div>
-        </div>
+                </OverviewTable>
+            </OverviewScroller>
+        </OverviewShell>
     );
 };
 
@@ -131,7 +140,11 @@ function MarketItem(props) {
         return (
             <div className="row">
                 <div className="col-12">
-                    <ValChange num={lastTrade?.nearPriceBidSizeToAskSizeRatio?.toFixed(2) - lastTrade?.nearPriceBidSizeToAskSizeRatioMA?.toFixed(2)}>
+                    <ValChange
+                        num={
+                            lastTrade?.nearPriceBidSizeToAskSizeRatio?.toFixed(2) - lastTrade?.nearPriceBidSizeToAskSizeRatioMA?.toFixed(2)
+                        }
+                    >
                         {lastTrade?.nearPriceBidSizeToAskSizeRatio?.toFixed(2)} / {lastTrade?.nearPriceBidSizeToAskSizeRatioMA?.toFixed(2)}
                     </ValChange>
                 </div>
@@ -188,19 +201,44 @@ function MarketItem(props) {
 }
 
 const SetWidth = styled.div``;
+const OverviewShell = styled.div`
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+`;
+
+const OverviewScroller = styled.div`
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+`;
+
+const OverviewTable = styled.table`
+    border-collapse: collapse;
+    width: max-content;
+    min-width: 100%;
+    table-layout: fixed;
+`;
+
 const Small = styled.div`
-    font-size: 12px;
+    font-size: 10px;
     display: inline;
 `;
 const ValChange = styled.div`
     color: ${({ num }) => (num < 0 ? "#FF6B6B" : num > 0 ? "#4ADE80" : "white")};
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 700;
     text-shadow: 1px 1px 2px black;
 `;
 
 const TD = styled.td`
     text-align: center;
+    padding: 4px;
+    font-size: 11px;
     max-width ${({ w }) => w + "px"};
     min-width ${({ w }) => w + "px"};
     width: ${({ w }) => w + "px"};
@@ -209,13 +247,10 @@ const TD = styled.td`
 const StyledTh = styled.th`
     background-color: #111;
     border: 1px solid #ddd;
-    padding: 6px;
+    padding: 4px;
     font-weight: bold;
     user-select: none;
-
-
-    
-
+    font-size: 10px;
     text-align: center;
     max-width ${({ w }) => w + "px"};
     min-width ${({ w }) => w + "px"};
@@ -234,3 +269,7 @@ const TR = styled.tr`
 
     padding: 20px;
 `;
+
+TD.defaultProps = {
+    w: 52,
+};

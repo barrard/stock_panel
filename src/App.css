@@ -681,7 +681,10 @@ canvas {
     background-image: -ms-linear-gradient(top, #595959, #1a1a1a);
     background-image: -o-linear-gradient(top, #595959, #1a1a1a);
     background-image: linear-gradient(top, #595959, #1a1a1a);
-    box-shadow: inset rgba(0, 0, 0, 0.1) 0px -0.15em 0px, inset rgba(255, 255, 255, 0.2) 0px 0.15em 0px, rgba(0, 0, 0, 0.3) 0px 0.1em 0.3em;
+    box-shadow:
+        inset rgba(0, 0, 0, 0.1) 0px -0.15em 0px,
+        inset rgba(255, 255, 255, 0.2) 0px 0.15em 0px,
+        rgba(0, 0, 0, 0.3) 0px 0.1em 0.3em;
     text-align: center;
     background-repeat: no-repeat;
     -webkit-transition: background-position 0.1s ease-in-out;
@@ -693,7 +696,9 @@ canvas {
     color: #fff;
 }
 .sc-btn:active {
-    box-shadow: rgba(255, 255, 255, 0.2) 0 0.1em 0, inset rgba(0, 0, 0, 0.3) 0px 0.25em 1em;
+    box-shadow:
+        rgba(255, 255, 255, 0.2) 0 0.1em 0,
+        inset rgba(0, 0, 0, 0.3) 0px 0.25em 1em;
 }
 
 .sc-icon,
@@ -786,10 +791,17 @@ canvas {
 }
 
 .sc--shine {
-    box-shadow: inset rgba(0, 0, 0, 0.1) 0px -0.15em 0px, inset rgba(255, 255, 255, 0.1) 0px 0.15em 0px, rgba(0, 0, 0, 0.3) 0px 0.1em 0.3em, inset rgba(255, 255, 255, 0.15) 0px 2.5em 0px -1em;
+    box-shadow:
+        inset rgba(0, 0, 0, 0.1) 0px -0.15em 0px,
+        inset rgba(255, 255, 255, 0.1) 0px 0.15em 0px,
+        rgba(0, 0, 0, 0.3) 0px 0.1em 0.3em,
+        inset rgba(255, 255, 255, 0.15) 0px 2.5em 0px -1em;
 }
 .sc--shine:active {
-    box-shadow: rgba(255, 255, 255, 0.2) 0 0.1em 0, inset rgba(0, 0, 0, 0.3) 0px 0.25em 1em, inset rgba(255, 255, 255, 0.1) 0px 2.5em 0px -1em;
+    box-shadow:
+        rgba(255, 255, 255, 0.2) 0 0.1em 0,
+        inset rgba(0, 0, 0, 0.3) 0px 0.25em 1em,
+        inset rgba(255, 255, 255, 0.1) 0px 2.5em 0px -1em;
 }
 .sc--shine:before,
 .sc--shine:after {
@@ -991,7 +1003,9 @@ canvas {
     font-size: 13px;
     font-weight: 500;
     border-bottom: 2px solid transparent;
-    transition: color 0.15s, border-color 0.15s;
+    transition:
+        color 0.15s,
+        border-color 0.15s;
 }
 
 .tab-btn:hover {
@@ -1035,23 +1049,6 @@ canvas {
 .resize-handle-h:hover::before,
 .resize-handle-h[data-resize-handle-active]::before {
     background: #e5e7eb;
-}
-
-.resize-handle-chart-split {
-    height: 12px;
-    background: transparent;
-    box-shadow: none;
-}
-
-.resize-handle-chart-split::before {
-    width: 4px;
-    height: 18px;
-    background: #6b7280;
-}
-
-.resize-handle-chart-split:hover,
-.resize-handle-chart-split[data-resize-handle-active] {
-    background: rgba(59, 130, 246, 0.08);
 }
 
 .resize-handle-v {
@@ -1100,6 +1097,11 @@ canvas {
 .panel-section {
     border-bottom: 1px solid #333;
     padding: 8px;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .panel-section-header {
@@ -1114,18 +1116,71 @@ canvas {
 /* --- Right Sidebar --- */
 .right-panel-inner {
     height: 100%;
-    overflow-y: auto;
+    min-height: 0;
+    width: 100%;
     overflow-x: hidden;
     background: #1e1e1e;
 }
 
-/* --- Bottom Panel --- */
-.bottom-panel-inner {
+.right-utility-layout {
+    width: 100%;
     height: 100%;
+    overflow: hidden;
+}
+
+.right-utility-layout > [data-panel-group] {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+}
+
+.right-utility-layout [data-panel] {
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+}
+
+.panel-fill {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+}
+
+.market-overview-section {
+    height: 100%;
+    width: 100%;
+    overflow: auto;
+}
+
+.utility-panel-section {
+    height: 100%;
+    width: 100%;
     overflow-y: auto;
     overflow-x: hidden;
     background: #1a1a1a;
-    border-top: 1px solid #444;
+}
+
+.orders-panel-section {
+    border-left: 1px solid #333;
+}
+
+.breadth-toggle-btn {
+    border: 1px solid #3b4556;
+    background: #182232;
+    color: #d8e1ef;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    padding: 6px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.breadth-toggle-btn:hover {
+    background: #223149;
 }
 
 /* --- Mobile --- */
@@ -1147,6 +1202,11 @@ canvas {
 
     .resize-handle-v {
         width: 6px;
+    }
+
+    .orders-panel-section {
+        border-left: none;
+        border-top: 1px solid #333;
     }
 }
 

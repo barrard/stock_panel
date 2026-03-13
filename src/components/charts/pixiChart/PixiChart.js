@@ -56,6 +56,7 @@ export default function PixiChart({ Socket }) {
     //Trade Window
     const [openTradeWindow, setOpenTradeWindow] = useState(false);
     const [activeTab, setActiveTab] = useState("futures");
+    const [showCompactBreadth, setShowCompactBreadth] = useState(true);
 
     //Pixi Application
     const PixiAppRef = useRef();
@@ -296,7 +297,7 @@ export default function PixiChart({ Socket }) {
             "[useEffect] Checking if orders need to be loaded for symbol:",
             symbol.value,
             "Already loaded:",
-            ordersLoadedRef.current
+            ordersLoadedRef.current,
         );
 
         // Only load orders once when component mounts or symbol changes
@@ -500,7 +501,7 @@ export default function PixiChart({ Socket }) {
             (e) => {
                 e.preventDefault();
             },
-            { passive: false }
+            { passive: false },
         );
 
         const pixiData = new PixiData({
@@ -713,7 +714,7 @@ export default function PixiChart({ Socket }) {
     const PlantStatusesMemo = useMemo(
         () => <PlantStatuses plantStatus={plantStatus} setPlantStatus={setPlantStatus} />,
 
-        [plantStatus]
+        [plantStatus],
     );
 
     const TimeFrameBtnsMemo = useMemo(
@@ -731,11 +732,11 @@ export default function PixiChart({ Socket }) {
                 barTypePeriod={barTypePeriod}
             />
         ),
-        [barType, barTypePeriod]
+        [barType, barTypePeriod],
     );
     const SymbolBtnsMemo = useMemo(
         () => <SymbolBtns symbolOptions={symbolOptions} symbol={symbolInput} setSymbol={setSymbolInput} />,
-        [symbolInput]
+        [symbolInput],
     );
 
     const BetterTickChartMemo = useMemo(() => {
@@ -793,19 +794,72 @@ export default function PixiChart({ Socket }) {
             withTimeFrameBtns: true,
             withSymbolBtns: false,
         }),
-        [Socket, symbol.value, orders, fullSymbolValue]
+        [Socket, symbol.value, orders, fullSymbolValue],
     );
 
-    const symbolData = useMemo(
-        () => fullSymbols.find((s) => s.baseSymbol === symbolInput.value),
-        [fullSymbols, symbolInput.value]
-    );
+    const symbolData = useMemo(() => fullSymbols.find((s) => s.baseSymbol === symbolInput.value), [fullSymbols, symbolInput.value]);
     const tradeWindowLastTrade = useMemo(
         () => ({
             tradePrice: Number(lastTrade?.tradePrice) || 0,
             ...lastTrade,
         }),
-        [lastTrade]
+        [lastTrade],
+    );
+
+    const marketOverviewPanel = (
+        <div className="panel-fill">
+            <div className="">
+                <div className="panel-section-header">Market Overview</div>
+                <MarketOverview Socket={Socket} lastTradesRef={lastTradesRef} fullSymbols={fullSymbols} />
+            </div>
+        </div>
+    );
+
+    const tradeEntryPanel = (
+        <div className="panel-fill">
+            <div className="panel-section utility-panel-section">
+                <div className="panel-section-header">Trade Entry</div>
+                {symbolData ? (
+                    <TradeControls symbolData={symbolData} symbol={symbolInput} lastTrade={tradeWindowLastTrade} />
+                ) : (
+                    <div style={{ color: "#666", fontSize: "12px", padding: "8px" }}>Waiting for symbol metadata...</div>
+                )}
+            </div>
+        </div>
+    );
+
+    const positionsPanel = (
+        <div className="panel-fill">
+            <div className="panel-section utility-panel-section orders-panel-section">
+                <div className="panel-section-header">Orders & Positions</div>
+                <div>{OrdersListMemo}</div>
+            </div>
+        </div>
+    );
+
+    const rightUtilityPanel = (
+        <div className="">
+            <PanelGroup direction="vertical" autoSaveId="pixi-right-utility-v-v1">
+                <Panel defaultSize={46} minSize={24} collapsible={true}>
+                    {marketOverviewPanel}
+                </Panel>
+            </PanelGroup>
+            <PanelResizeHandle className="resize-handle-h" />
+
+            <PanelGroup direction="horizontal" autoSaveId="pixi-right-utility-h-v1">
+                <Panel defaultSize={54} minSize={24} collapsible={true}>
+                    <PanelGroup direction="horizontal" autoSaveId="pixi-right-utility-h-v1">
+                        <Panel defaultSize={42} minSize={28} collapsible={true}>
+                            {tradeEntryPanel}
+                        </Panel>
+                        <PanelResizeHandle className="resize-handle-v" />
+                        <Panel defaultSize={58} minSize={32} collapsible={true}>
+                            {positionsPanel}
+                        </Panel>
+                    </PanelGroup>
+                </Panel>
+            </PanelGroup>
+        </div>
     );
 
     useEffect(() => {
@@ -844,28 +898,16 @@ export default function PixiChart({ Socket }) {
             <div style={{ flex: 1, overflow: "hidden" }}>
                 <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
                     <div className="tab-bar">
-                        <button
-                            className={`tab-btn ${activeTab === "futures" ? "active" : ""}`}
-                            onClick={() => setActiveTab("futures")}
-                        >
+                        <button className={`tab-btn ${activeTab === "futures" ? "active" : ""}`} onClick={() => setActiveTab("futures")}>
                             Futures
                         </button>
-                        <button
-                            className={`tab-btn ${activeTab === "options" ? "active" : ""}`}
-                            onClick={() => setActiveTab("options")}
-                        >
+                        <button className={`tab-btn ${activeTab === "options" ? "active" : ""}`} onClick={() => setActiveTab("options")}>
                             SPY Options
                         </button>
-                        <button
-                            className={`tab-btn ${activeTab === "breadth" ? "active" : ""}`}
-                            onClick={() => setActiveTab("breadth")}
-                        >
+                        <button className={`tab-btn ${activeTab === "breadth" ? "active" : ""}`} onClick={() => setActiveTab("breadth")}>
                             Market Breadth
                         </button>
-                        <button
-                            className={`tab-btn ${activeTab === "tick" ? "active" : ""}`}
-                            onClick={() => setActiveTab("tick")}
-                        >
+                        <button className={`tab-btn ${activeTab === "tick" ? "active" : ""}`} onClick={() => setActiveTab("tick")}>
                             Tick
                         </button>
                     </div>
@@ -873,24 +915,14 @@ export default function PixiChart({ Socket }) {
                         {activeTab === "futures" ? (
                             <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
                                 <div className="platform-toolbar">
-                                    <div className="toolbar-group plant-status-toolbar">
-                                        {PlantStatusesMemo}
+                                    <div className="toolbar-group plant-status-toolbar">{PlantStatusesMemo}</div>
+                                    <div className="toolbar-divider" />
+                                    <div className="toolbar-group">{SymbolBtnsMemo}</div>
+                                    <div className="toolbar-group">
+                                        <Select value={symbolInput} setValue={setSymbolInput} options={symbolOptions} />
                                     </div>
                                     <div className="toolbar-divider" />
-                                    <div className="toolbar-group">
-                                        {SymbolBtnsMemo}
-                                    </div>
-                                    <div className="toolbar-group">
-                                        <Select
-                                            value={symbolInput}
-                                            setValue={setSymbolInput}
-                                            options={symbolOptions}
-                                        />
-                                    </div>
-                                    <div className="toolbar-divider" />
-                                    <div className="toolbar-group">
-                                        {TimeFrameBtnsMemo}
-                                    </div>
+                                    <div className="toolbar-group">{TimeFrameBtnsMemo}</div>
                                     <div className="toolbar-divider" />
                                     <div className="toolbar-group">
                                         <IndicatorsBtns
@@ -906,59 +938,40 @@ export default function PixiChart({ Socket }) {
                                             toggleOrders={toggleOrders}
                                         />
                                     </div>
+                                    <div className="toolbar-divider" />
+                                    <div className="toolbar-group">
+                                        <button
+                                            type="button"
+                                            className="breadth-toggle-btn"
+                                            onClick={() => setShowCompactBreadth((prev) => !prev)}
+                                        >
+                                            {showCompactBreadth ? "Hide Breadth" : "Show Breadth"}
+                                        </button>
+                                    </div>
                                 </div>
-                                <div style={{ flexShrink: 0, borderBottom: "1px solid #1f2937" }}>
-                                    <MarketBreadth Socket={Socket} compact={true} />
-                                </div>
+                                {showCompactBreadth && (
+                                    <div style={{ flexShrink: 0, borderBottom: "1px solid #1f2937" }}>
+                                        <MarketBreadth Socket={Socket} compact={true} />
+                                    </div>
+                                )}
                                 <div style={{ flex: 1, overflow: "hidden" }}>
-                                    <PanelGroup direction="vertical" autoSaveId="pixi-futures-v-v3">
-                                        <Panel defaultSize={78} minSize={30}>
-                                            <PanelGroup direction="horizontal" autoSaveId="pixi-futures-h-v3">
-                                                <Panel defaultSize={72} minSize={30}>
-                                                    <PanelGroup direction="vertical" autoSaveId="pixi-charts-v-v3">
-                                                        <Panel defaultSize={50} minSize={10} collapsible={true}>
-                                                            <div className="chart-panel">
-                                                                <PixiChartV2 {...mainChartProps} />
-                                                            </div>
-                                                        </Panel>
-                                                        <PanelResizeHandle className="resize-handle-h resize-handle-chart-split" />
-                                                        <Panel defaultSize={38} minSize={10} collapsible={true}>
-                                                            <div className="chart-panel">
-                                                                {EmbeddedBacktestChartMemo}
-                                                            </div>
-                                                        </Panel>
-                                                    </PanelGroup>
+                                    <PanelGroup direction="horizontal" autoSaveId="pixi-futures-h-v4">
+                                        <Panel defaultSize={70} minSize={35}>
+                                            <PanelGroup direction="vertical" autoSaveId="pixi-charts-v-v4">
+                                                <Panel defaultSize={50} minSize={10} collapsible={true}>
+                                                    <div className="chart-panel">
+                                                        <PixiChartV2 {...mainChartProps} />
+                                                    </div>
                                                 </Panel>
                                                 <PanelResizeHandle className="resize-handle-v" />
-                                                <Panel defaultSize={28} minSize={18} collapsible={true}>
-                                                    <div className="right-panel-inner">
-                                                        <div className="panel-section">
-                                                            <div className="panel-section-header">Market Overview</div>
-                                                            <MarketOverview Socket={Socket} lastTradesRef={lastTradesRef} fullSymbols={fullSymbols} />
-                                                        </div>
-                                                        <div className="panel-section">
-                                                            <div className="panel-section-header">Trade Entry</div>
-                                                            {symbolData ? (
-                                                                <TradeControls
-                                                                    symbolData={symbolData}
-                                                                    symbol={symbolInput}
-                                                                    lastTrade={tradeWindowLastTrade}
-                                                                />
-                                                            ) : (
-                                                                <div style={{ color: "#666", fontSize: "12px", padding: "8px" }}>
-                                                                    Waiting for symbol metadata...
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
+                                                <Panel defaultSize={38} minSize={10} collapsible={true}>
+                                                    <div className="chart-panel">{EmbeddedBacktestChartMemo}</div>
                                                 </Panel>
                                             </PanelGroup>
                                         </Panel>
-                                        <PanelResizeHandle className="resize-handle-h" />
-                                        <Panel defaultSize={22} minSize={5} collapsible={true}>
-                                            <div className="bottom-panel-inner">
-                                                <div>{OrdersListMemo}</div>
-                                            </div>
+                                        <PanelResizeHandle className="resize-handle-v" />
+                                        <Panel defaultSize={30} minSize={22} collapsible={true}>
+                                            {rightUtilityPanel}
                                         </Panel>
                                     </PanelGroup>
                                 </div>
@@ -974,7 +987,15 @@ export default function PixiChart({ Socket }) {
                                     </div>
                                 </div>
                                 <div style={{ flex: 1, overflow: "hidden" }}>
-                                    <div className="chart-panel">{BetterTickChartMemo}</div>
+                                    <PanelGroup direction="horizontal" autoSaveId="pixi-tick-h-v2">
+                                        <Panel defaultSize={70} minSize={35}>
+                                            <div className="chart-panel">{BetterTickChartMemo}</div>
+                                        </Panel>
+                                        <PanelResizeHandle className="resize-handle-v" />
+                                        <Panel defaultSize={30} minSize={22} collapsible={true}>
+                                            {rightUtilityPanel}
+                                        </Panel>
+                                    </PanelGroup>
                                 </div>
                             </div>
                         ) : activeTab === "options" ? (
