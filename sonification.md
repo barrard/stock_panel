@@ -154,19 +154,23 @@ Current unlock triggers:
 - toggling `Depth flow enabled`
 - clicking strength buttons
 - clicking test buttons
+- the first tap / pointer interaction on the page now also attempts to unlock audio
+
+The sound panel also exposes an explicit `Enable Audio` button because mobile browsers often require a direct gesture before Web Audio will start.
 
 If audio is not unlocked, incoming cues may be received correctly but no sound will be heard.
 
 ## Button Flashing
 
-When the sound panel is open, the cue test buttons flash only when a cue actually passes playback gating.
+When the sound panel is open, the cue test buttons flash when that cue is emitted to the frontend.
 
-This matters because earlier versions flashed on any incoming cue, even if that cue was filtered out. That created false positives in the UI.
+This is intentionally decoupled from playback success. If audio is still locked on mobile, the UI can still show emitted cues.
 
 Current behavior:
 
-- trade cue button flashes only if that cue would really play
-- depth cue button flashes only if depth flow is enabled and that cue would really play
+- multiple cue buttons can flash at the same time if cues arrive together
+- trade cue button flashes when that trade cue is emitted
+- depth cue button flashes when that depth cue is emitted
 
 ## Sound Design Rationale
 
