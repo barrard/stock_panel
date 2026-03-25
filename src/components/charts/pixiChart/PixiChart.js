@@ -35,6 +35,77 @@ import { TICKS } from "../../../indicators/indicatorHelpers/TICKS";
 import BetterTickChart from "./components/BetterTickChart";
 import BackTestChartGeneric from "../BacktestChart/BackTestChartGeneric";
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from "react-resizable-panels";
+import OrderFlowSoundEngine from "./components/OrderFlowSoundEngine";
+
+const EMPTY_ORDERS = Object.freeze({});
+const ORDER_FLOW_SOUND_SETTINGS_KEY = "pixi-chart-order-flow-sound-settings";
+const ORDER_FLOW_CUE_TYPES = [
+    "price_step_up",
+    "price_step_down",
+    "large_trade_buy",
+    "large_trade_sell",
+    "burst_buy",
+    "burst_sell",
+    "pace_buy",
+    "pace_sell",
+    "pace_buy_fast",
+    "pace_sell_fast",
+];
+const DEPTH_FLOW_TEST_TYPES = ["depth_bid_support", "depth_ask_pressure", "depth_pull_ask", "depth_pull_bid"];
+const CUE_NUMBERS = {
+    depth_ask_pressure: 10,
+    large_trade_sell: 14,
+    burst_sell: 18,
+    depth_pull_bid: 22,
+    pace_sell: 26,
+    pace_sell_fast: 30,
+    pace_down: 34,
+    depth_bid_support: 38,
+    price_step_down: 46,
+    pace_buy: 58,
+    burst_buy: 66,
+    price_step_up: 74,
+    pace_buy_fast: 82,
+    large_trade_buy: 90,
+    depth_pull_ask: 98,
+};
+
+function getCueButtonLabel(cueType) {
+    const cueNumber = CUE_NUMBERS[cueType];
+    return cueNumber !== undefined ? `${cueNumber} ${cueType}` : cueType;
+}
+
+function getCueButtonPalette(cueType, isActive) {
+    const isPositive =
+        cueType.includes("buy") || cueType.includes("bid_support") || cueType.includes("pull_ask") || cueType.includes("step_up");
+    const isNegative =
+        cueType.includes("sell") || cueType.includes("ask_pressure") || cueType.includes("pull_bid") || cueType.includes("step_down");
+
+    if (isPositive) {
+        return {
+            background: isActive ? "#15803d" : "#0f2a1a",
+            border: isActive ? "1px solid #86efac" : "1px solid #355e43",
+            color: "#dcfce7",
+            boxShadow: isActive ? "0 0 0 1px rgba(187, 247, 208, 0.35), 0 0 16px rgba(34, 197, 94, 0.35)" : "none",
+        };
+    }
+
+    if (isNegative) {
+        return {
+            background: isActive ? "#b91c1c" : "#2d1212",
+            border: isActive ? "1px solid #fca5a5" : "1px solid #6b3a3a",
+            color: "#fee2e2",
+            boxShadow: isActive ? "0 0 0 1px rgba(254, 202, 202, 0.35), 0 0 16px rgba(239, 68, 68, 0.35)" : "none",
+        };
+    }
+
+    return {
+        background: isActive ? "#1d4ed8" : "#162033",
+        border: isActive ? "1px solid #93c5fd" : "1px solid #475569",
+        color: "#dbeafe",
+        boxShadow: isActive ? "0 0 0 1px rgba(191, 219, 254, 0.35), 0 0 16px rgba(37, 99, 235, 0.35)" : "none",
+    };
+}
 
 function getNextTimeBar(data) {
     const { barType, barTypePeriod } = data;
@@ -66,6 +137,8 @@ export default function PixiChart({ Socket }) {
     const TouchGesture1 = useRef();
     const TouchGesture2 = useRef();
     const newSymbolTimerRef = useRef();
+    const orderFlowSoundButtonRef = useRef();
+    const orderFlowSoundEngineRef = useRef(null);
     // const pixiDataRef = useRef();
     const loadDataRef = useRef();
     //price data
@@ -136,6 +209,209 @@ export default function PixiChart({ Socket }) {
     // const [bidAskRatios, setBidAskRatios] = useState({});
     const [plantStatus, setPlantStatus] = useState({});
     // const [ticks, setTicks] = useState([]);
+    const [showOrderFlowSoundPanel, setShowOrderFlowSoundPanel] = useState(false);
+    const [orderFlowSoundPanelPosition, setOrderFlowSoundPanelPosition] = useState({
+        top: 0,
+        right: 0,
+    });
+    const [activeOrderFlowCueType, setActiveOrderFlowCueType] = useState(null);
+    const [activeDepthFlowCueType, setActiveDepthFlowCueType] = useState(null);
+    const [orderFlowSoundSettings, setOrderFlowSoundSettings] = useState(() => {
+        try {
+            const rawSettings = window.localStorage.getItem(ORDER_FLOW_SOUND_SETTINGS_KEY);
+            if (!rawSettings) {
+                return {
+                    enabled: true,
+                    minStrength: 1,
+                };
+            }
+
+            const parsedSettings = JSON.parse(rawSettings);
+            return {
+                enabled: parsedSettings.enabled !== false,
+                minStrength: [1, 2, 3].includes(parsedSettings.minStrength) ? parsedSettings.minStrength : 1,
+                depthFlowEnabled: parsedSettings.depthFlowEnabled !== false,
+            };
+        } catch (error) {
+            console.error("[PixiChart] Failed to load order flow sound settings", error);
+            return {
+                enabled: true,
+                minStrength: 1,
+                depthFlowEnabled: true,
+            };
+        }
+    });
+
+    useEffect(() => {
+        window.localStorage.setItem(ORDER_FLOW_SOUND_SETTINGS_KEY, JSON.stringify(orderFlowSoundSettings));
+    }, [orderFlowSoundSettings]);
+
+    useEffect(() => {
+        orderFlowSoundEngineRef.current = new OrderFlowSoundEngine();
+
+        return () => {
+            orderFlowSoundEngineRef.current?.cleanup();
+            orderFlowSoundEngineRef.current = null;
+        };
+    }, []);
+
+    const updateOrderFlowSoundPanelPosition = useCallback(() => {
+        const buttonRect = orderFlowSoundButtonRef.current?.getBoundingClientRect?.();
+        if (!buttonRect) return;
+
+        setOrderFlowSoundPanelPosition({
+            top: buttonRect.bottom + 8,
+            right: Math.max(window.innerWidth - buttonRect.right, 8),
+        });
+    }, []);
+
+    useEffect(() => {
+        if (!showOrderFlowSoundPanel) return;
+
+        updateOrderFlowSoundPanelPosition();
+
+        window.addEventListener("resize", updateOrderFlowSoundPanelPosition);
+        window.addEventListener("scroll", updateOrderFlowSoundPanelPosition, true);
+
+        return () => {
+            window.removeEventListener("resize", updateOrderFlowSoundPanelPosition);
+            window.removeEventListener("scroll", updateOrderFlowSoundPanelPosition, true);
+        };
+    }, [showOrderFlowSoundPanel, updateOrderFlowSoundPanelPosition]);
+
+    const registerOrderFlowSound = useCallback(() => {
+        if (!symbolInput?.value) return;
+
+        Socket.emit("subscribeOrderFlow", {
+            symbol: symbolInput.value,
+        });
+    }, [Socket, symbolInput?.value]);
+
+    const subscribeDepthFlowSound = useCallback(() => {
+        if (!symbolInput?.value) return;
+
+        Socket.emit("subscribeDepthFlow", {
+            symbol: symbolInput.value,
+        });
+    }, [Socket, symbolInput?.value]);
+
+    const unsubscribeDepthFlowSound = useCallback(() => {
+        if (!symbolInput?.value) return;
+
+        Socket.emit("unsubscribeDepthFlow", {
+            symbol: symbolInput.value,
+        });
+    }, [Socket, symbolInput?.value]);
+
+    const unlockOrderFlowSound = useCallback(async () => {
+        try {
+            const unlocked = await orderFlowSoundEngineRef.current?.unlock?.();
+            if (unlocked === false) {
+                console.warn("[PixiChart] Order flow audio is not available yet");
+            } else if (unlocked) {
+                console.log("[PixiChart] Order flow audio unlocked");
+            }
+        } catch (error) {
+            console.error("[PixiChart] Failed to unlock order flow audio", error);
+        }
+    }, []);
+
+    const testOrderFlowSound = useCallback(async () => {
+        try {
+            const played = await orderFlowSoundEngineRef.current?.test?.();
+            if (!played) {
+                console.warn("[PixiChart] Order flow test sound did not play");
+            }
+        } catch (error) {
+            console.error("[PixiChart] Failed to play order flow test sound", error);
+        }
+    }, []);
+
+    const testOrderFlowCue = useCallback(
+        async (type) => {
+            await unlockOrderFlowSound();
+            orderFlowSoundEngineRef.current?.playCue({
+                type,
+                strength: orderFlowSoundSettings.minStrength,
+            });
+        },
+        [orderFlowSoundSettings.minStrength, unlockOrderFlowSound]
+    );
+
+    const testDepthFlowCue = useCallback(
+        async (type) => {
+            await unlockOrderFlowSound();
+            orderFlowSoundEngineRef.current?.playDepthCue({
+                type,
+                strength: orderFlowSoundSettings.minStrength,
+            });
+        },
+        [orderFlowSoundSettings.minStrength, unlockOrderFlowSound]
+    );
+
+    useEffect(() => {
+        if (!activeOrderFlowCueType) return;
+
+        const timerId = window.setTimeout(() => {
+            setActiveOrderFlowCueType((currentType) => (currentType === activeOrderFlowCueType ? null : currentType));
+        }, 220);
+
+        return () => {
+            window.clearTimeout(timerId);
+        };
+    }, [activeOrderFlowCueType]);
+
+    useEffect(() => {
+        if (!activeDepthFlowCueType) return;
+
+        const timerId = window.setTimeout(() => {
+            setActiveDepthFlowCueType((currentType) => (currentType === activeDepthFlowCueType ? null : currentType));
+        }, 220);
+
+        return () => {
+            window.clearTimeout(timerId);
+        };
+    }, [activeDepthFlowCueType]);
+
+    const playOrderFlowCue = useCallback(({ type, strength }) => {
+        orderFlowSoundEngineRef.current?.playCue({ type, strength });
+    }, []);
+
+    const playDepthFlowCue = useCallback(({ type, strength }) => {
+        orderFlowSoundEngineRef.current?.playDepthCue({ type, strength });
+    }, []);
+
+    const handleOrderFlowSound = useCallback(
+        (payload) => {
+            const { type, strength } = payload || {};
+            if (!type) return;
+            if (!orderFlowSoundSettings.enabled) return;
+
+            const normalizedStrength = Number.isFinite(Number(strength)) ? Number(strength) : 1;
+            if (normalizedStrength < orderFlowSoundSettings.minStrength) return;
+
+            if (showOrderFlowSoundPanel) {
+                setActiveOrderFlowCueType(type);
+            }
+            playOrderFlowCue({ type, strength: normalizedStrength });
+        },
+        [orderFlowSoundSettings.enabled, orderFlowSoundSettings.minStrength, playOrderFlowCue, showOrderFlowSoundPanel]
+    );
+
+    const handleDepthFlowSound = useCallback(
+        (payload) => {
+            const { type, strength } = payload || {};
+            if (!type) return;
+            if (!orderFlowSoundSettings.depthFlowEnabled) return;
+
+            const normalizedStrength = Number.isFinite(Number(strength)) ? Number(strength) : 1;
+            if (showOrderFlowSoundPanel) {
+                setActiveDepthFlowCueType(type);
+            }
+            playDepthFlowCue({ type, strength: normalizedStrength });
+        },
+        [orderFlowSoundSettings.depthFlowEnabled, playDepthFlowCue, showOrderFlowSoundPanel]
+    );
 
     const loadTicks = async () => {
         const ticks = await API.getTicks();
@@ -263,16 +539,19 @@ export default function PixiChart({ Socket }) {
             });
     };
 
+    const getOrderGroupKey = useCallback((order) => order?.groupBasketId || order?.entryBasketId || order?.basketId, []);
+
     // Define getOrders before the useEffects that use it
     const getOrders = useCallback(async () => {
         console.log("[getOrders] Called");
         const _orders = await API.getOrders();
         function reduceByBasketId(acc, order) {
-            if (!order.basketId) return acc;
-            if (!acc[order.basketId]) {
-                acc[order.basketId] = [];
+            const groupKey = getOrderGroupKey(order);
+            if (!groupKey) return acc;
+            if (!acc[groupKey]) {
+                acc[groupKey] = [];
             }
-            acc[order.basketId].push(order);
+            acc[groupKey].push(order);
             return acc;
         }
         // Use functional update to avoid dependency on 'orders'
@@ -281,7 +560,7 @@ export default function PixiChart({ Socket }) {
             return { ...compiledOrders };
         });
         pixiData?.setOrders(_orders);
-    }, [pixiData]);
+    }, [getOrderGroupKey, pixiData]);
 
     // Separate useEffect for trade window - depends on openTradeWindow
     useEffect(() => {
@@ -595,19 +874,54 @@ export default function PixiChart({ Socket }) {
     // }, [symbol, barType, barTypePeriod]);
 
     useEffect(() => {
+        registerOrderFlowSound();
+        Socket.on("orderFlowCue", handleOrderFlowSound);
+
+        return () => {
+            Socket.off("orderFlowCue", handleOrderFlowSound);
+        };
+    }, [Socket, handleOrderFlowSound, registerOrderFlowSound, symbolInput.value]);
+
+    useEffect(() => {
+        if (orderFlowSoundSettings.depthFlowEnabled) {
+            subscribeDepthFlowSound();
+        } else {
+            unsubscribeDepthFlowSound();
+        }
+
+        Socket.on("depthFlowCue", handleDepthFlowSound);
+
+        return () => {
+            Socket.off("depthFlowCue", handleDepthFlowSound);
+            unsubscribeDepthFlowSound();
+        };
+    }, [
+        Socket,
+        handleDepthFlowSound,
+        orderFlowSoundSettings.depthFlowEnabled,
+        subscribeDepthFlowSound,
+        symbolInput.value,
+        unsubscribeDepthFlowSound,
+    ]);
+
+    useEffect(() => {
         Socket.on("ordersShown", (data) => {
-            Object.keys(data).forEach((basketId) => {
-                // setOrders((orders) => [...orders, data[basketId]]);
-                if (!orders[basketId]) orders[basketId] = [];
-                orders[basketId].push(data[basketId]);
-                pixiData?.addOrder([data[basketId]]);
+            setOrders((prevOrders) => {
+                const nextOrders = { ...prevOrders };
+                Object.keys(data).forEach((basketId) => {
+                    const order = data[basketId];
+                    const groupKey = getOrderGroupKey(order);
+                    if (!groupKey) return;
+                    nextOrders[groupKey] = [...(nextOrders[groupKey] || []), order];
+                    pixiData?.addOrder([order]);
+                });
+                return nextOrders;
             });
-            setOrders({ ...orders });
         });
         return () => {
             Socket.off("ordersShown");
         };
-    }, [orders]);
+    }, [getOrderGroupKey, pixiData]);
 
     useEffect(() => {
         if (!pixiData || !pixiData.showCrosshair || !pixiData.hideCrosshair) return console.log("no pixidata?");
@@ -739,6 +1053,23 @@ export default function PixiChart({ Socket }) {
         [symbolInput],
     );
 
+    const ordersForTickChart = useMemo(() => {
+        const filteredOrders = Object.entries(orders).reduce((acc, [groupKey, orderEvents]) => {
+            if (!Array.isArray(orderEvents) || !orderEvents.length) return acc;
+
+            const matchesSymbol = orderEvents.some((orderEvent) => {
+                const eventSymbol = orderEvent?.symbol || orderEvent?.fullSymbol;
+                return eventSymbol && eventSymbol === fullSymbolValue;
+            });
+
+            if (!matchesSymbol) return acc;
+            acc[groupKey] = orderEvents;
+            return acc;
+        }, {});
+
+        return Object.keys(filteredOrders).length ? filteredOrders : EMPTY_ORDERS;
+    }, [orders, fullSymbolValue]);
+
     const BetterTickChartMemo = useMemo(() => {
         console.log("[PixiChart] Rendering BetterTickChart memo", {
             symbol: symbol.value,
@@ -753,10 +1084,10 @@ export default function PixiChart({ Socket }) {
                 exchange={symbolInput.exchange}
                 timeframe="tick"
                 Socket={Socket}
-                orders={orders}
+                orders={ordersForTickChart}
             />
         );
-    }, [Socket, symbol.value, fullSymbolValue, symbolInput.exchange, orders]);
+    }, [Socket, symbol.value, fullSymbolValue, symbolInput.exchange, ordersForTickChart]);
 
     const EmbeddedBacktestChartMemo = useMemo(() => {
         if (!embeddedBacktestData?.bars?.length) {
@@ -862,6 +1193,219 @@ export default function PixiChart({ Socket }) {
         </div>
     );
 
+    const orderFlowSoundPanel = showOrderFlowSoundPanel ? (
+        <div
+            style={{
+                position: "fixed",
+                top: `${orderFlowSoundPanelPosition.top}px`,
+                right: `${orderFlowSoundPanelPosition.right}px`,
+                width: "220px",
+                padding: "12px",
+                borderRadius: "8px",
+                background: "#0f172a",
+                border: "1px solid #334155",
+                boxShadow: "0 10px 24px rgba(0, 0, 0, 0.35)",
+                zIndex: 20,
+            }}
+        >
+            <div style={{ color: "#e2e8f0", fontSize: "12px", fontWeight: 700, marginBottom: "10px" }}>Order Flow Sound</div>
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", color: "#cbd5e1", fontSize: "12px", marginBottom: "12px" }}>
+                <input
+                    type="checkbox"
+                    checked={orderFlowSoundSettings.enabled}
+                    onChange={(event) => {
+                        unlockOrderFlowSound();
+                        setOrderFlowSoundSettings((prev) => ({
+                            ...prev,
+                            enabled: event.target.checked,
+                        }));
+                    }}
+                />
+                Sound enabled
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", color: "#cbd5e1", fontSize: "12px", marginBottom: "12px" }}>
+                <input
+                    type="checkbox"
+                    checked={orderFlowSoundSettings.depthFlowEnabled}
+                    onChange={(event) => {
+                        unlockOrderFlowSound();
+                        setOrderFlowSoundSettings((prev) => ({
+                            ...prev,
+                            depthFlowEnabled: event.target.checked,
+                        }));
+                    }}
+                />
+                Depth flow enabled
+            </label>
+            <div style={{ color: "#94a3b8", fontSize: "11px", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                Minimum strength
+            </div>
+            <div style={{ display: "flex", gap: "6px" }}>
+                {[1, 2, 3].map((strengthLevel) => (
+                    <button
+                        key={strengthLevel}
+                        type="button"
+                        onClick={() => {
+                            unlockOrderFlowSound();
+                            setOrderFlowSoundSettings((prev) => ({
+                                ...prev,
+                                minStrength: strengthLevel,
+                            }));
+                        }}
+                        style={{
+                            flex: 1,
+                            padding: "6px 0",
+                            borderRadius: "6px",
+                            border:
+                                orderFlowSoundSettings.minStrength === strengthLevel
+                                    ? "1px solid #60a5fa"
+                                    : "1px solid #475569",
+                            background: orderFlowSoundSettings.minStrength === strengthLevel ? "#1d4ed8" : "#1e293b",
+                            color: "#e2e8f0",
+                            fontSize: "12px",
+                            cursor: "pointer",
+                        }}
+                    >
+                        {strengthLevel}
+                    </button>
+                ))}
+            </div>
+            <button
+                type="button"
+                onClick={() => {
+                    unlockOrderFlowSound();
+                    testOrderFlowSound();
+                }}
+                style={{
+                    width: "100%",
+                    marginTop: "12px",
+                    padding: "7px 0",
+                    borderRadius: "6px",
+                    border: "1px solid #475569",
+                    background: "#1e293b",
+                    color: "#e2e8f0",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                }}
+            >
+                Test Sound
+            </button>
+            <div style={{ color: "#94a3b8", fontSize: "11px", marginTop: "12px", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                Cue Tests
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: "6px" }}>
+                {(() => {
+                    const cueType = "pace_down";
+                    const palette = getCueButtonPalette(cueType, activeOrderFlowCueType === cueType);
+                    return (
+                        <button
+                            key={cueType}
+                            type="button"
+                            onClick={() => testOrderFlowCue(cueType)}
+                            style={{
+                                minWidth: "96px",
+                                padding: "7px 10px",
+                                borderRadius: "6px",
+                                border: palette.border,
+                                background: palette.background,
+                                color: palette.color,
+                                fontSize: "11px",
+                                lineHeight: 1.2,
+                                cursor: "pointer",
+                                textTransform: "none",
+                                boxShadow: palette.boxShadow,
+                                transition: "background 120ms ease, box-shadow 120ms ease, border-color 120ms ease",
+                            }}
+                        >
+                            {getCueButtonLabel(cueType)}
+                        </button>
+                    );
+                })()}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+                {ORDER_FLOW_CUE_TYPES.map((cueType) => {
+                    const palette = getCueButtonPalette(cueType, activeOrderFlowCueType === cueType);
+                    return (
+                        <button
+                            key={cueType}
+                            type="button"
+                            onClick={() => testOrderFlowCue(cueType)}
+                            style={{
+                                padding: "7px 6px",
+                                borderRadius: "6px",
+                                border: palette.border,
+                                background: palette.background,
+                                color: palette.color,
+                                fontSize: "11px",
+                                lineHeight: 1.2,
+                                cursor: "pointer",
+                                textTransform: "none",
+                                boxShadow: palette.boxShadow,
+                                transition: "background 120ms ease, box-shadow 120ms ease, border-color 120ms ease",
+                            }}
+                        >
+                            {getCueButtonLabel(cueType)}
+                        </button>
+                    );
+                })}
+            </div>
+            <div style={{ color: "#94a3b8", fontSize: "11px", marginTop: "12px", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                Depth Cue Tests
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+                {DEPTH_FLOW_TEST_TYPES.map((cueType) => {
+                    const palette = getCueButtonPalette(cueType, activeDepthFlowCueType === cueType);
+                    return (
+                        <button
+                            key={cueType}
+                            type="button"
+                            onClick={() => testDepthFlowCue(cueType)}
+                            style={{
+                                padding: "7px 6px",
+                                borderRadius: "6px",
+                                border: palette.border,
+                                background: palette.background,
+                                color: palette.color,
+                                fontSize: "11px",
+                                lineHeight: 1.2,
+                                cursor: "pointer",
+                                textTransform: "none",
+                                boxShadow: palette.boxShadow,
+                                transition: "background 120ms ease, box-shadow 120ms ease, border-color 120ms ease",
+                            }}
+                        >
+                            {getCueButtonLabel(cueType)}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    ) : null;
+
+    const orderFlowSoundControl = (
+        <div>
+            <button
+                ref={orderFlowSoundButtonRef}
+                type="button"
+                className="breadth-toggle-btn"
+                onClick={() => {
+                    unlockOrderFlowSound();
+                    if (!showOrderFlowSoundPanel) {
+                        updateOrderFlowSoundPanelPosition();
+                    }
+                    setShowOrderFlowSoundPanel((prev) => !prev);
+                }}
+                style={{
+                    minWidth: "76px",
+                    opacity: orderFlowSoundSettings.enabled ? 1 : 0.7,
+                }}
+            >
+                Sound {orderFlowSoundSettings.enabled ? `S${orderFlowSoundSettings.minStrength}+` : "Off"}
+            </button>
+            {orderFlowSoundPanel}
+        </div>
+    );
+
     useEffect(() => {
         let cancelled = false;
 
@@ -948,6 +1492,8 @@ export default function PixiChart({ Socket }) {
                                             {showCompactBreadth ? "Hide Breadth" : "Show Breadth"}
                                         </button>
                                     </div>
+                                    <div className="toolbar-divider" />
+                                    <div className="toolbar-group">{orderFlowSoundControl}</div>
                                 </div>
                                 {showCompactBreadth && (
                                     <div style={{ flexShrink: 0, borderBottom: "1px solid #1f2937" }}>
@@ -985,6 +1531,8 @@ export default function PixiChart({ Socket }) {
                                     <div className="toolbar-group">
                                         <Select value={symbolInput} setValue={setSymbolInput} options={symbolOptions} />
                                     </div>
+                                    <div className="toolbar-divider" />
+                                    <div className="toolbar-group">{orderFlowSoundControl}</div>
                                 </div>
                                 <div style={{ flex: 1, overflow: "hidden" }}>
                                     <PanelGroup direction="horizontal" autoSaveId="pixi-tick-h-v2">

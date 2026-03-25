@@ -35,6 +35,7 @@ import EconData from "./components/EconData";
 import SectorsPage from "./components/SectorsPage";
 
 import CommodityChartPage from "./components/CommodityChartPage.js";
+import DepthMetricsTuningPage from "./components/DepthMetricsTuningPage";
 import defaultFilterList from "./components/QuoteComponents/DefaultFilterList.js";
 import Main_Nav from "./components/Main_Nav.js";
 import { addOptionAlert } from "./redux/actions/opActions.js";
@@ -124,6 +125,7 @@ class App extends React.Component {
                     <Route path="/marketBreadth" render={(props) => <MarketBreadth {...props} Socket={Socket} />} />
                     <Route path="/SpyOptionsPage" render={(props) => <SpyOptionsPage {...props} Socket={Socket} />} />
                     <Route path="/OptionContractChartPage" render={(props) => <OptionContractChartPage {...props} Socket={Socket} />} />
+                    <Route path="/depth-metrics-tuning" render={(props) => <DepthMetricsTuningPage {...props} Socket={Socket} />} />
 
                     <Route path="/bid-ask-stats" render={(props) => <BidAskStats {...props} Socket={Socket} />} />
                     <Route path="/old-better-tick" render={(props) => <OldBetterTickChart {...props} Socket={Socket} />} />

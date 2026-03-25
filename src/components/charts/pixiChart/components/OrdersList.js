@@ -20,6 +20,7 @@ const classifyOrder = (order) => {
 
 const getOrderTimestamp = (order) => {
     if (!order) return 0;
+    if (order.eventTimestampMs) return order.eventTimestampMs;
     if (order.datetime) return order.datetime;
     if (order.fillTime && !Number.isNaN(Number(order.fillTime))) return Number(order.fillTime) * 1000;
     if (order.endTime) return Number(order.endTime) * 1000;
@@ -128,12 +129,16 @@ const normalizeBasket = (basketId, events) => {
     const normalizedEvents = events
         .map((event) => ({
             ...event,
-            datetime: combineTimestampsMicroSeconds(event),
+            datetime: event.eventTimestampMs ?? combineTimestampsMicroSeconds(event),
         }))
         .sort((a, b) => a.datetime - b.datetime);
 
     const compiledMap = compileOrders(normalizedEvents, {});
-    const compiledOrder = compiledMap[basketId] || compiledMap[Object.keys(compiledMap)[0]];
+    const primaryBasketId =
+        normalizedEvents.find((event) => event.legType === "entry")?.basketId ??
+        normalizedEvents.find((event) => event.entryBasketId)?.entryBasketId ??
+        basketId;
+    const compiledOrder = compiledMap[primaryBasketId] || compiledMap[basketId] || compiledMap[Object.keys(compiledMap)[0]];
 
     if (!compiledOrder) return null;
 
@@ -1068,10 +1073,12 @@ const OrderItem = memo(function OrderItem({ events, compiledOrder }) {
     );
     const orderTimestamp = getOrderTimestamp(compiledOrder) || getOrderTimestamp(latestEvent);
     // const basketSuffix = compiledOrder.basketId ? compiledOrder.basketId.slice(-6) : "------";
-    const basketSuffix = compiledOrder.basketId ? compiledOrder.basketId : "------";
+    const entryBasketId = compiledOrder.entryBasketId ?? latestEvent?.entryBasketId ?? compiledOrder.groupBasketId ?? latestEvent?.groupBasketId;
+    const basketSuffix = entryBasketId || compiledOrder.basketId || "------";
     const netQuantity = compiledOrder.netQuantity ?? latestEvent?.netQuantity ?? "-";
     const originalBasketId = compiledOrder.originalBasketId ?? latestEvent?.originalBasketId;
     const linkedBasketIds = compiledOrder.linkedBasketIds ?? latestEvent?.linkedBasketIds;
+    const linkedBasketIdsLabel = Array.isArray(linkedBasketIds) ? linkedBasketIds.join(", ") : linkedBasketIds;
     const workingPrice = findBestPrice(
         { price: compiledOrder.price },
         { price: latestEvent?.price },
@@ -1170,7 +1177,7 @@ const OrderItem = memo(function OrderItem({ events, compiledOrder }) {
                         </MetaItem>
                         <MetaItem>
                             <MetaLabel>Linked</MetaLabel>
-                            <MetaValue>{linkedBasketIds || originalBasketId || "-"}</MetaValue>
+                            <MetaValue>{linkedBasketIdsLabel || originalBasketId || "-"}</MetaValue>
                         </MetaItem>
                     </OrderMetaGrid>
                 </OrderIdentity>

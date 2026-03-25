@@ -81,10 +81,31 @@ function getMarkerVisuals(consecutive, windowScore) {
     };
 }
 
+function getSignalType(signal = {}) {
+    return signal?.signalType || signal?.emitType || "primary";
+}
+
+function buildStarPoints(x, y, outerRadius, innerRadius, points = 4, rotation = 0) {
+    const coords = [];
+    const step = Math.PI / points;
+
+    for (let index = 0; index < points * 2; index += 1) {
+        const radius = index % 2 === 0 ? outerRadius : innerRadius;
+        const angle = rotation + index * step - Math.PI / 2;
+        coords.push(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius);
+    }
+
+    return coords;
+}
+
 export default class DrawDepthSignals {
     constructor(chart, options = {}) {
         this.chart = chart;
         this.maxSignals = options.maxSignals ?? DEFAULT_MAX_SIGNALS;
+        this.signalLabel = options.signalLabel || "DEPTH";
+        this.buyColor = options.buyColor ?? 0x00c853;
+        this.sellColor = options.sellColor ?? 0xd50000;
+        this.hoverHitboxPadding = options.hoverHitboxPadding ?? 8;
         this.signals = [];
         this.graphics = new Graphics();
         this.labelContainer = new Container();
@@ -154,7 +175,8 @@ export default class DrawDepthSignals {
         if (!marker?.signal) return;
 
         const { signal } = marker;
-        const title = signal.direction > 0 ? "DEPTH BUY" : "DEPTH SELL";
+        const signalType = getSignalType(signal).toUpperCase();
+        const title = `${this.signalLabel} ${signalType} ${signal.direction > 0 ? "BUY" : "SELL"}`;
         const narrative = stripAnsi(signal.narrative);
         const tooltipText = new Text(
             `${title}\nScore ${formatSigned(signal.windowScore)} | Cum ${formatSigned(signal.cumulative)} | ${Math.max(
@@ -183,34 +205,50 @@ export default class DrawDepthSignals {
         this.labelContainer.addChild(tooltipText);
     }
 
-    drawMarker({ x, y, direction, color, consecutive, windowScore }) {
+    drawMarker({ x, y, direction, color, consecutive, windowScore, signalType }) {
         const { markerSize, fillAlpha, strokeAlpha } = getMarkerVisuals(consecutive, windowScore);
 
-        this.graphics.lineStyle(1.5, color, strokeAlpha);
-        if (direction > 0) {
-            this.graphics.beginFill(color, fillAlpha);
+        const type = getSignalType({ signalType });
+        const strokeWidth =
+            type === "impulse" ? 2.5 :
+            type === "transition" ? 2 :
+            1.5;
+        const size =
+            type === "impulse" ? markerSize + 2 :
+            type === "continuation" ? markerSize + 1 :
+            markerSize;
+
+        this.graphics.lineStyle(strokeWidth, color, strokeAlpha);
+        this.graphics.beginFill(color, fillAlpha);
+
+        if (type === "transition") {
+            this.graphics.drawRect(x - size, y - size, size * 2, size * 2);
+        } else if (type === "continuation") {
+            this.graphics.drawCircle(x, y, size);
+        } else if (type === "impulse") {
+            this.graphics.drawPolygon(buildStarPoints(x, y, size, Math.max(3, size * 0.55), 4, direction > 0 ? 0 : Math.PI / 4));
+        } else if (direction > 0) {
             this.graphics.drawPolygon([
                 x,
-                y - markerSize,
-                x - markerSize,
-                y + markerSize,
-                x + markerSize,
-                y + markerSize,
+                y - size,
+                x - size,
+                y + size,
+                x + size,
+                y + size,
             ]);
         } else {
-            this.graphics.beginFill(color, fillAlpha);
             this.graphics.drawPolygon([
                 x,
-                y + markerSize,
-                x - markerSize,
-                y - markerSize,
-                x + markerSize,
-                y - markerSize,
+                y + size,
+                x - size,
+                y - size,
+                x + size,
+                y - size,
             ]);
         }
         this.graphics.endFill();
 
-        return markerSize;
+        return size;
     }
 
     draw() {
@@ -235,7 +273,7 @@ export default class DrawDepthSignals {
             const y = priceScale(signal.lastPrice);
             if (!Number.isFinite(x) || !Number.isFinite(y)) return;
 
-            const color = signal.direction > 0 ? 0x00c853 : 0xd50000;
+            const color = signal.direction > 0 ? this.buyColor : this.sellColor;
             const stackKey = `${index}:${signal.direction}`;
             const stackCount = stackOffsets.get(stackKey) || 0;
             stackOffsets.set(stackKey, stackCount + 1);
@@ -258,6 +296,7 @@ export default class DrawDepthSignals {
                 color,
                 consecutive: signal.consecutive,
                 windowScore: signal.windowScore,
+                signalType: getSignalType(signal),
             });
 
             markers.push({
@@ -274,7 +313,7 @@ export default class DrawDepthSignals {
         }
 
         const hoverMarker = markers.find((marker) => {
-            const hitbox = Math.max(10, marker.markerSize + 2);
+            const hitbox = Math.max(12, marker.markerSize + this.hoverHitboxPadding);
             return Math.abs(marker.x - this.chart.mouseX) <= hitbox && Math.abs(marker.y - this.chart.mouseY) <= hitbox;
         });
 

@@ -69,6 +69,7 @@ const API = {
 	getFromRedis,
 	getOrderFlow,
 	getLiquidityMetrics,
+	getDepthMetrics,
 	getTickbarLiquidity,
 	getTicks,
 	getCustomTicks,
@@ -219,6 +220,24 @@ async function getLiquidityMetrics({ start, end, symbol = "ES", timeframe = "1m"
 	return await GET(`/API/getLiquidityMetrics/${start}/${end}/${symbol}/${timeframe}`);
 }
 
+async function getDepthMetrics({ symbol = "ES", start, end, windowSeconds, frontMonth, limit = 5000 }) {
+	if (start === undefined || end === undefined) {
+		throw new Error("getDepthMetrics requires both start and end timestamps");
+	}
+
+	const params = new URLSearchParams({
+		symbol,
+		start: String(start),
+		end: String(end),
+		limit: String(limit),
+	});
+
+	if (windowSeconds !== undefined) params.append("windowSeconds", String(windowSeconds));
+	if (frontMonth) params.append("frontMonth", frontMonth);
+
+	return await GET(`/API/rapi/depth-metrics?${params.toString()}`);
+}
+
 async function getTickbarLiquidity({ start, finish, symbol = "ES", join = 1 }) {
 	if (!start || !finish) {
 		throw new Error("getTickbarLiquidity requires both start and finish timestamps");
@@ -237,11 +256,34 @@ async function getTickbarLiquidity({ start, finish, symbol = "ES", join = 1 }) {
 async function GET(url, opts = {}) {
 	const { withCreds = false } = opts;
 
-	let data = await fetch(`${REACT_APP_API_SERVER}${url}`, {
+	const response = await fetch(`${REACT_APP_API_SERVER}${url}`, {
 		method: "GET",
 		...(withCreds ? { credentials: "include" } : {}),
 	});
-	return await data.json();
+	const text = await response.text();
+	let parsed = null;
+
+	if (text) {
+		try {
+			parsed = JSON.parse(text);
+		} catch (error) {
+			if (response.ok) {
+				throw new Error(`Invalid JSON response from ${url}`);
+			}
+		}
+	}
+
+	if (!response.ok) {
+		const message =
+			parsed?.error ||
+			parsed?.message ||
+			text ||
+			`${response.status} ${response.statusText}`.trim() ||
+			"Request failed";
+		throw new Error(message);
+	}
+
+	return parsed;
 }
 
 //TODO this maybe broken

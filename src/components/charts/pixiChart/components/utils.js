@@ -614,6 +614,9 @@ export function compileOrders(orders, accumulator = {}) {
             templateId,
             completionReason,
             basketId,
+            groupBasketId,
+            entryBasketId,
+            legType,
             totalUnfilledSize,
             totalFillSize,
             bracketType,
@@ -630,6 +633,18 @@ export function compileOrders(orders, accumulator = {}) {
             acc[basketId].isBracketOrder = true;
         }
         acc[basketId].basketId = basketId;
+        if (groupBasketId) {
+            acc[basketId].groupBasketId = groupBasketId;
+        }
+        if (entryBasketId) {
+            acc[basketId].entryBasketId = entryBasketId;
+        }
+        if (legType) {
+            acc[basketId].legType = legType;
+        }
+        if (order.eventTimestampMs) {
+            acc[basketId].eventTimestampMs = order.eventTimestampMs;
+        }
         //what time is this? the latest?
         if (ssboe) {
             if (!acc[basketId].ssboe) {
