@@ -68,6 +68,7 @@ const API = {
 	getFrontMonthSymbols,
 	getFromRedis,
 	getOrderFlow,
+	getTickbarOrderFlow,
 	getLiquidityMetrics,
 	getDepthMetrics,
 	getTickbarLiquidity,
@@ -85,6 +86,7 @@ const API = {
 	getStockDatas,
 	getTickerData,
 	fetchOptionContractData,
+	getWeeklyOptionChain,
 	getSchwabAccountDetails,
 	fetchMarketBreadth,
 	getTopWinnersLosers,
@@ -93,6 +95,8 @@ const API = {
 	getSectorData,
 	getSectorPerformance,
 	getSectorCorrelation,
+	// Screener
+	getInterestingStocks,
 };
 
 export default API;
@@ -104,6 +108,15 @@ async function getSchwabAccountDetails() {
 async function fetchOptionContractData({ symbol = "SPY", putCall = "CALL", strike = 590, exp = "2025-06-20" }) {
 	return await GET(`/options/contract/${symbol}/${strike}/${exp}/${putCall}`);
 }
+
+async function getWeeklyOptionChain({ symbol, contractType = "ALL", strikeCount = 5 }) {
+	const query = new URLSearchParams({
+		contractType,
+		strikeCount: String(strikeCount),
+	});
+
+	return await GET(`/API/options/weekly-chain/${encodeURIComponent(symbol)}?${query.toString()}`);
+}
 async function getPickLists() {
 	return await GET(`/API/get-pick-lists`);
 }
@@ -114,6 +127,11 @@ async function getEnhancedPickLists() {
 
 async function getTopWinnersLosers({ topN = 10, bottomN = 10 } = {}) {
 	return await GET(`/API/filing-analysis/top-winners-losers?topN=${topN}&bottomN=${bottomN}`);
+}
+
+async function getInterestingStocks(body) {
+	const resp = await fetch(`${REACT_APP_API_SERVER}/API/interesting-stocks`, POST(body));
+	return await handleResponse(resp);
 }
 
 async function getFilingAnalysisFull(ticker) {
@@ -214,6 +232,21 @@ async function getTicks() {
 
 async function getOrderFlow({ start, end, symbol = "ES", compiled = false }) {
 	return await GET(`/API/getOrderFlow/${start}/${end}/${symbol}/${compiled}`);
+}
+
+async function getTickbarOrderFlow({ start, finish, symbol = "ES", join = 1 }) {
+	if (!start || !finish) {
+		throw new Error("getTickbarOrderFlow requires both start and finish timestamps");
+	}
+
+	const params = new URLSearchParams({
+		start: String(start),
+		finish: String(finish),
+		symbol,
+		join: String(join),
+	});
+
+	return await GET(`/API/tickbar-order-flow?${params.toString()}`);
 }
 
 async function getLiquidityMetrics({ start, end, symbol = "ES", timeframe = "1m" }) {

@@ -248,8 +248,9 @@ const mapTickLiquidityMetrics = (bar) => {
  * @param {boolean} params.enabled - Whether the hook is active
  * @param {string} params.timeframe - Current timeframe for API fetch
  * @param {Array} params.ohlcData - OHLC data for date range
+ * @param {number} params.join - Tick-bar join factor when timeframe is "tick"
  */
-export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true, timeframe, ohlcData }) => {
+export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true, timeframe, ohlcData, join = 1 }) => {
     // Stores the most recent liquidity snapshot from socket
     // Currently unused but available for future features (e.g., displaying current values in UI)
     const latestDataRef = useRef(null);
@@ -257,6 +258,7 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
     const fetchedRangeRef = useRef({
         symbol: null,
         timeframe: null,
+        join: 1,
         start: null,
         end: null,
     });
@@ -295,13 +297,15 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
         const previousRange = fetchedRangeRef.current;
         const symbolChanged = previousRange.symbol !== symbol;
         const timeframeChanged = previousRange.timeframe !== timeframe;
+        const joinChanged = timeframe === "tick" && previousRange.join !== join;
 
-        if (symbolChanged || timeframeChanged) {
+        if (symbolChanged || timeframeChanged || joinChanged) {
             // Context changed - clear all tracking and fetch
             console.log(`[useLiquidityRatios] Context changed - clearing and fetching`);
             fetchedRangeRef.current = {
                 symbol: null,
                 timeframe: null,
+                join,
                 start: null,
                 end: null,
             };
@@ -317,7 +321,8 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
             currentStart &&
             currentEnd &&
             cachedRange.symbol === symbol &&
-            cachedRange.timeframe === timeframe
+            cachedRange.timeframe === timeframe &&
+            (timeframe !== "tick" || cachedRange.join === join)
         ) {
             // Only refetch when data range shifts to EARLIER data (scrolling left into history)
             // New bars at the END are handled by real-time socket listeners, not API refetch
@@ -336,6 +341,7 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
                 fetchedRangeRef.current = {
                     symbol,
                     timeframe,
+                    join,
                     start: null,
                     end: null,
                 };
@@ -379,7 +385,7 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
                 // );
                 const liquidityData =
                     timeframe === "tick"
-                        ? await API.getTickbarLiquidity({ start: startTime, finish: endTime, symbol })
+                        ? await API.getTickbarLiquidity({ start: startTime, finish: endTime, symbol, join })
                         : await API.getLiquidityMetrics({
                               start: startTime,
                               end: endTime,
@@ -425,6 +431,7 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
                     fetchedRangeRef.current = {
                         symbol,
                         timeframe,
+                        join,
                         start: prevRange.start === null ? startTime : Math.min(prevRange.start, startTime),
                         end: Math.max(prevRange.end || 0, endTime),
                     };
@@ -453,7 +460,7 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
         };
 
         fetchHistoricalRatios();
-    }, [enabled, symbol, timeframe, firstBarTimestamp]); // Only react to start boundary changes; end is handled by socket
+    }, [enabled, symbol, timeframe, firstBarTimestamp, join]); // Only react to start boundary changes; end is handled by socket
 
     // Separate effect to detect when user scrolls left to load earlier data
     // This uses a ref to track earliest timestamp, avoiding dependency on ohlcData
@@ -737,6 +744,7 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
                 if (fetchedRangeRef.current.start === null) {
                     fetchedRangeRef.current.symbol = symbol;
                     fetchedRangeRef.current.timeframe = timeframe;
+                    fetchedRangeRef.current.join = join;
                     fetchedRangeRef.current.start = barTime;
                 }
                 // Always extend end time to latest bar

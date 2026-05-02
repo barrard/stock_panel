@@ -11,6 +11,7 @@ const classifyOrder = (order) => {
     const status = (order.status || "").toLowerCase();
     const completionReason = (order.completionReason || "").toUpperCase();
 
+    if (order.rejected || status.includes("reject") || (order.reportType || "").toLowerCase() === "reject") return "rejected";
     if (order.isCancel || completionReason === "C" || status.includes("cancel")) return "cancelled";
     if (status === "complete" || completionReason === "F" || order.isComplete) return "closed";
     if (order.totalUnfilledSize === 0 && order.totalFillSize >= order.quantity) return "closed";

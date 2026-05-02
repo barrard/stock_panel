@@ -400,13 +400,16 @@ export default class DrawOrdersV2 {
                 order.isCancelled ||
                 reportType === "cancel" ||
                 status.includes("cancel");
+            const isRejected = order.rejected || reportType === "reject" || status.includes("reject");
 
             const startTime = this.getStartTime(order);
             const endTime = this.getEndTime(order);
             const durationMs = startTime && endTime ? endTime - startTime : 0;
             const shouldDrawInstantFill = IS_MARKET_ORDER && hasFill && (!durationMs || durationMs < 1000);
 
-            if (isCancelled) {
+            if (isRejected) {
+                return;
+            } else if (isCancelled) {
                 const anchor = this.drawCancelledMarker(order);
                 if (anchor && normalizedBasketId) markerAnchors.set(normalizedBasketId, anchor);
             } else if (hasFill) {

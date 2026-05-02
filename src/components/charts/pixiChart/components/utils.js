@@ -581,18 +581,36 @@ export function combineTimestampsMicroSeconds({ ssboe, usecs = "" }) {
     return totalMilliseconds;
 }
 
+function getOrderTextFragments(order = {}) {
+    return [order.reportText, order.text, order.status]
+        .filter((value) => value !== undefined && value !== null && value !== "")
+        .map((value) => String(value).toLowerCase());
+}
+
+function isRejectedOrderEvent(order = {}) {
+    const reportType = String(order.reportType || "").toLowerCase();
+    const status = String(order.status || "").toLowerCase();
+    const textFragments = getOrderTextFragments(order);
+
+    if (order.rejected || order.marginExhausted) return true;
+    if (reportType === "reject" || reportType === "rejected") return true;
+    if (status.includes("reject")) return true;
+    if (order.templateId === 352 && Number(order.notifyType) === 6) return true;
+
+    return textFragments.some((text) => text.includes("reject") || text.includes("margin exhausted"));
+}
+
 export function compileOrders(orders, accumulator = {}) {
     const _priceType = priceType;
     let compiledOrders = orders.reduce((acc, order) => {
+        if (order.data) {
+            order = order.data;
+        }
+        if (!order?.basketId) return acc;
+
         const isMarket = order.priceType === "MARKET";
         if (!acc[order.basketId]) {
             acc[order.basketId] = {};
-        }
-        if (order.reportText == "Rejected at RMS - Available margin exhausted") {
-            acc[order.basketId].marginExhausted = true;
-            acc[order.basketId].rejected = true;
-            acc[order.basketId].reportText = "Rejected at RMS - Available margin exhausted";
-            return acc;
         }
         if (order.userMsg?.[0] == "RequestCancelOrder") {
             return acc;
@@ -600,12 +618,17 @@ export function compileOrders(orders, accumulator = {}) {
         if (order?.status == "open" && isMarket && order?.reportType != "fill") {
             return acc;
         }
+        if (isRejectedOrderEvent(order)) {
+            acc[order.basketId].rejected = true;
+            acc[order.basketId].marginExhausted = getOrderTextFragments(order).some((text) => text.includes("margin exhausted"));
+            acc[order.basketId].status = "rejected";
+            acc[order.basketId].reportType = "reject";
+            acc[order.basketId].endTime = order.ssboe || acc[order.basketId].endTime;
+            acc[order.basketId].reportText = order.reportText || order.text || acc[order.basketId].reportText;
+        }
         order.priceType = _priceType(order.priceType);
         // console.log(order);
         const isBracket = order.bracketType ? order.bracketType : acc[order.basketId].bracketType ? acc[order.basketId].bracketType : null;
-        if (order.data) {
-            order = order.data;
-        }
 
         let {
             symbol,
@@ -750,6 +773,12 @@ export function compileOrders(orders, accumulator = {}) {
         if (order.netQuantity !== undefined) {
             acc[basketId].netQuantity = order.netQuantity;
         }
+        if (order.text) {
+            acc[basketId].text = order.text;
+        }
+        if (order.reportText) {
+            acc[basketId].reportText = order.reportText;
+        }
         if (
             order.status == "complete" ||
             order.status == "open" ||
@@ -862,6 +891,9 @@ export function compileOrders(orders, accumulator = {}) {
             acc[basketId].statusTime = order.ssboe;
             // acc[basketId].triggerPrice = order.triggerPrice;
             // acc[basketId].price = order.price;
+        } else if (acc[basketId].rejected || order.reportType === "reject") {
+            acc[basketId].rejectTime = order.ssboe;
+            acc[basketId].endTime = order.ssboe || acc[basketId].endTime;
         } else if (order.status === "trigger pending") {
             acc[basketId].triggerPendingTime = order.ssboe;
             acc[basketId].triggerPrice = order.triggerPrice;

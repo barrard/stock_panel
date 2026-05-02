@@ -1,8 +1,8 @@
 export default function onLastTrade({ setLastTrade, setOhlcDatas, pixiData, tickBar = false, lastTradesRef }) {
     return (message) => {
         const { avgVolPerSecond, tradePrice, volume, lastTradeData } = message;
-        if (lastTradesRef?.current?.[message.symbol]) {
-            lastTradesRef.current[message.symbol] = { ...lastTradesRef.current[message.symbol], ...message };
+        if (lastTradesRef?.current) {
+            lastTradesRef.current[message.symbol] = { ...(lastTradesRef.current[message.symbol] || {}), ...message };
         }
         if (message.symbol !== pixiData.symbol.value) return;
 

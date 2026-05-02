@@ -3,34 +3,93 @@ import styled from "styled-components";
 import TradeControls from "./TradeControls";
 import { priceFormat } from "../../chartHelpers/utils.js";
 import Seismograph from "../../Seismograph";
+import { TICKS } from "../../../../indicators/indicatorHelpers/TICKS";
+import { tickValues } from "../../../../indicators/indicatorHelpers/utils";
+import { findRelatedInstrumentPnl, normalizeFuturesBaseSymbol } from "./futuresSymbolFamily";
+
+const tickSizeLookup = TICKS();
+const tickValueLookup = tickValues();
+
+const toFiniteNumber = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
+const deriveOpenPositionPnl = ({ pnlData, lastTrade, symbolData }) => {
+    const netQuantity = toFiniteNumber(pnlData?.netQuantity);
+    const reportedOpenPositionPnl = toFiniteNumber(pnlData?.openPositionPnl);
+
+    if (reportedOpenPositionPnl !== null && (reportedOpenPositionPnl !== 0 || !netQuantity)) {
+        return reportedOpenPositionPnl;
+    }
+
+    if (!netQuantity) {
+        return reportedOpenPositionPnl;
+    }
+
+    const avgOpenFillPrice = toFiniteNumber(pnlData?.avgOpenFillPrice);
+    const lastPrice = toFiniteNumber(lastTrade?.tradePrice);
+    const baseSymbol = normalizeFuturesBaseSymbol(pnlData?.symbol || symbolData?.fullSymbol || symbolData?.baseSymbol);
+    const tickSize = tickSizeLookup[baseSymbol];
+    const tickValue = tickValueLookup[baseSymbol];
+
+    if (!Number.isFinite(avgOpenFillPrice) || !Number.isFinite(lastPrice) || !Number.isFinite(tickSize) || !Number.isFinite(tickValue) || !tickSize) {
+        return reportedOpenPositionPnl;
+    }
+
+    const ticksMoved = (lastPrice - avgOpenFillPrice) / tickSize;
+    return ticksMoved * tickValue * netQuantity;
+};
 
 const MarketOverview = ({ lastTradesRef, fullSymbols, Socket }) => {
     // if (!lastTradesRef.current) lastTradesRef.current = {};
 
     const [instrumentPnLPositionUpdate, setInstrumentPnLPositionUpdate] = useState({});
+    const [tradeSnapshot, setTradeSnapshot] = useState(() => ({ ...(lastTradesRef?.current || {}) }));
 
-    const sortedEntries = Object.entries(lastTradesRef.current); //.sort(([, tradeA], [, tradeB]) => tradeB.nearPriceBidSizeToAskSizeRatio - tradeA.nearPriceBidSizeToAskSizeRatio);
+    const sortedEntries = Object.entries(tradeSnapshot); //.sort(([, tradeA], [, tradeB]) => tradeB.nearPriceBidSizeToAskSizeRatio - tradeA.nearPriceBidSizeToAskSizeRatio);
 
     useEffect(() => {
-        Socket.on("positionPnL", (message) => {
+        const handlePositionPnL = (message) => {
             // console.log(message);
             setInstrumentPnLPositionUpdate(message);
-        });
+        };
 
-        Socket.on("orderTracker", (orderTrackerCount) => {
-            const sym = orderTrackerCount.symbol;
-            if (!lastTradesRef?.current?.[sym]) {
-                lastTradesRef.current[sym] = {};
+        const mergeTradeUpdate = (symbol, update) => {
+            if (!symbol) return;
+
+            if (lastTradesRef?.current) {
+                lastTradesRef.current[symbol] = { ...(lastTradesRef.current[symbol] || {}), ...update };
             }
-            // if (lastTradesRef?.current?.[sym]) {
-            lastTradesRef.current[sym] = { ...lastTradesRef.current[sym], ...orderTrackerCount };
-        });
+
+            setTradeSnapshot((prevState) => ({
+                ...prevState,
+                [symbol]: {
+                    ...(prevState[symbol] || {}),
+                    ...update,
+                },
+            }));
+        };
+
+        const handleLastTrade = (message) => {
+            mergeTradeUpdate(message?.symbol, message);
+        };
+
+        const handleOrderTracker = (orderTrackerCount) => {
+            const sym = orderTrackerCount.symbol;
+            mergeTradeUpdate(sym, orderTrackerCount);
+        };
+
+        Socket.on("positionPnL", handlePositionPnL);
+        Socket.on("lastTrade", handleLastTrade);
+        Socket.on("orderTracker", handleOrderTracker);
 
         return () => {
-            Socket.off("orderTracker");
-            Socket.off("positionPnL");
+            Socket.off("orderTracker", handleOrderTracker);
+            Socket.off("lastTrade", handleLastTrade);
+            Socket.off("positionPnL", handlePositionPnL);
         };
-    }, [Socket]);
+    }, [Socket, lastTradesRef]);
 
     return (
         <OverviewShell>
@@ -75,7 +134,7 @@ const MarketOverview = ({ lastTradesRef, fullSymbols, Socket }) => {
                         {/* Market Overview ROWS */}
                         {sortedEntries.map(([symbol, lastTrade], index) => {
                             const symbolData = fullSymbols.find((s) => s.baseSymbol == symbol);
-                            const pnlData = instrumentPnLPositionUpdate[symbolData?.fullSymbol];
+                            const pnlData = findRelatedInstrumentPnl(instrumentPnLPositionUpdate, symbolData?.fullSymbol || symbol);
 
                             return (
                                 <MarketItem
@@ -108,6 +167,7 @@ function MarketItem(props) {
     const [expandedRow, setExpandedRow] = useState(null);
 
     const { symbol, lastTrade, index, symbolData, pnlData } = props;
+    const openPositionPnl = deriveOpenPositionPnl({ pnlData, lastTrade, symbolData });
 
     // if (!lastTrade) return <></>;
 
@@ -177,7 +237,9 @@ function MarketItem(props) {
                 <TD className="border p-2">
                     <ValChange num={lastTrade?.delta}>{priceFormat(lastTrade?.delta?.toFixed(2))}</ValChange>
                 </TD>
-                <TD className="border p-2">{pnlData?.openPositionPnl ? priceFormat(pnlData?.openPositionPnl) : 0}</TD>
+                <TD className="border p-2">
+                    <ValChange num={openPositionPnl}>{Number.isFinite(openPositionPnl) ? priceFormat(openPositionPnl) : 0}</ValChange>
+                </TD>
                 <TD className="border p-2">{pnlData?.netQuantity}</TD>
                 <TD className="border p-2">
                     {pnlData?.orderBuyQty}/{pnlData?.orderSellQty}

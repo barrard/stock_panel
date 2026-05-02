@@ -261,6 +261,9 @@ class Main_Nav extends React.Component {
                 <Link title="Econ Events" activeclassname="active" className="navbar-brand " to="/econ-events">
                     Econ Events
                 </Link>
+                <Link title="Screener" activeclassname="active" className="navbar-brand " to="/screener">
+                    Screener
+                </Link>
 
                 {/* <div className="collapse navbar-collapse" id="navbarSupportedContent"> */}
                 <ul className="nav-bar-links">

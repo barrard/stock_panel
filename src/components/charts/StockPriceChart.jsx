@@ -3,11 +3,15 @@ import GenericPixiChart from "./GenericPixiChart";
 import API from "../API";
 
 const StockPriceChart = (props) => {
-    const { height = 400, symbol, timeframe = "daily" } = props;
+    const { height = 400, symbol, timeframe = "daily", fillContainer = false, showVolume = true } = props;
 
     const pixiDataRef = useRef();
     const [ohlcData, setOhlcData] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const containerStyle = {
+        width: "100%",
+        height: fillContainer ? "100%" : typeof height === "number" ? `${height}px` : height,
+    };
 
     // Fetch stock price data from MongoDB stockDatas collection
     useEffect(() => {
@@ -18,12 +22,7 @@ const StockPriceChart = (props) => {
 
             setIsLoading(true);
             try {
-                console.log(`[StockPriceChart] Fetching daily data for ${symbol}`);
-
-                // Calculate date range (1 year ago)
-                const endDate = new Date();
-                const startDate = new Date();
-                startDate.setFullYear(startDate.getFullYear() - 5);
+                console.log(`[StockPriceChart] Fetching ${timeframe} data for ${symbol}`);
 
                 // Query stockDatas collection
                 const response = await API.getStockDatas({
@@ -74,38 +73,54 @@ const StockPriceChart = (props) => {
         return () => {
             isMounted = false;
         };
-    }, [symbol]);
+    }, [symbol, timeframe]);
 
     if (!symbol) {
-        return <div style={{ padding: "1rem", color: "#9ca3af" }}>No symbol provided</div>;
+        return (
+            <div style={containerStyle}>
+                <div style={{ padding: "1rem", color: "#9ca3af" }}>No symbol provided</div>
+            </div>
+        );
     }
 
     if (isLoading) {
         return (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: `${height}px` }}>
-                <span style={{ color: "#d1d5db" }}>Loading stock chart...</span>
+            <div style={containerStyle}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}>
+                    <span style={{ color: "#d1d5db" }}>Loading stock chart...</span>
+                </div>
             </div>
         );
     }
 
     if (ohlcData.length === 0) {
-        return <div style={{ padding: "1rem", color: "#9ca3af" }}>No stock price data available for {symbol}</div>;
+        return (
+            <div style={containerStyle}>
+                <div style={{ display: "flex", alignItems: "center", width: "100%", height: "100%", padding: "1rem", color: "#9ca3af" }}>
+                    No stock price data available for {symbol}
+                </div>
+            </div>
+        );
     }
 
     return (
-        <GenericPixiChart
-            key={symbol}
-            ohlcDatas={ohlcData}
-            symbol={symbol}
-            pixiDataRef={pixiDataRef}
-            height={height}
-            options={{
-                chartType: "candlestick",
-                marketHoursAlpha: 0,
-                afterHoursAlpha: 0,
-            }}
-            isLoading={isLoading}
-        />
+        <div style={containerStyle}>
+            <GenericPixiChart
+                key={`${symbol}-${timeframe}`}
+                ohlcDatas={ohlcData}
+                symbol={symbol}
+                pixiDataRef={pixiDataRef}
+                height={height}
+                fitContainerHeight={fillContainer}
+                options={{
+                    chartType: "candlestick",
+                    marketHoursAlpha: 0,
+                    afterHoursAlpha: 0,
+                    withoutVolume: !showVolume,
+                }}
+                isLoading={isLoading}
+            />
+        </div>
     );
 };
 

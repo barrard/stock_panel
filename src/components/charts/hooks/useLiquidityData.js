@@ -12,6 +12,7 @@ import API from "../../API";
  * @param {Object} params.Socket - Socket.io instance
  * @param {Object} params.indicatorsRef - Ref to indicators array (for socket handlers)
  * @param {Function} params.fetchLiveDataAndUpdate - Optional: Function to fetch more OHLC data (PixiChartV2 only)
+ * @param {number} params.join - Tick-bar join factor when timeframe is "tick"
  */
 export const useLiquidityData = ({
     liquidityHeatmapIndicator,
@@ -22,6 +23,7 @@ export const useLiquidityData = ({
     indicatorsRef,
     fetchLiveDataAndUpdate,
     requireIndicatorEnabled = false,
+    join = 1,
 }) => {
     // Cache for liquidity data (persists across indicator toggles)
     const liquidityDataCacheRef = useRef({
@@ -29,6 +31,7 @@ export const useLiquidityData = ({
         hasLoaded: false, // Flag to track if we've fetched from server
         symbol: null, // Track which symbol this cache is for
         timeframe: null, // Track which timeframe this cache is for
+        join: 1, // Track join for tick timeframe
         lastFetchTime: null, // Track when we last fetched data
         startDatetime: null, // Track earliest datetime in cache
         endDatetime: null, // Track the end datetime of cached data
@@ -68,12 +71,13 @@ export const useLiquidityData = ({
         const cache = liquidityDataCacheRef.current;
 
         // Check if cache is invalid (symbol or timeframe changed)
-        if (cache.symbol !== symbol || cache.timeframe !== timeframe) {
+        if (cache.symbol !== symbol || cache.timeframe !== timeframe || (timeframe === "tick" && cache.join !== join)) {
             // Clear cache for new symbol/timeframe
             cache.history = [];
             cache.hasLoaded = false;
             cache.symbol = symbol;
             cache.timeframe = timeframe;
+            cache.join = join;
             cache.startDatetime = null;
             cache.endDatetime = null;
         }
@@ -125,12 +129,20 @@ export const useLiquidityData = ({
                     startTime: new Date(startTime).toISOString(),
                     endTime: new Date(endTime).toISOString(),
                 });
-                const liquidityData = await API.getOrderFlow({
-                    start: startTime,
-                    end: endTime,
-                    symbol: symbol,
-                    compiled: timeframe, // Get pre-compiled data from server
-                });
+                const liquidityData =
+                    timeframe === "tick"
+                        ? await API.getTickbarOrderFlow({
+                              start: startTime,
+                              finish: endTime,
+                              symbol,
+                              join,
+                          })
+                        : await API.getOrderFlow({
+                              start: startTime,
+                              end: endTime,
+                              symbol: symbol,
+                              compiled: timeframe, // Get pre-compiled data from server
+                          });
 
                 // Transform to our format
                 if (liquidityData && Array.isArray(liquidityData)) {
@@ -173,6 +185,7 @@ export const useLiquidityData = ({
                     // Store in cache with metadata
                     cache.history = transformedData;
                     cache.hasLoaded = true;
+                    cache.join = join;
                     cache.lastFetchTime = Date.now();
                     cache.startDatetime = startTime;
                     cache.endDatetime = endTime;
@@ -196,6 +209,7 @@ export const useLiquidityData = ({
         symbol,
         timeframe,
         firstBarTimestamp,
+        join,
     ]);
 
     // Socket listener for real-time liquidity updates

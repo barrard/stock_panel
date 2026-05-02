@@ -46,7 +46,8 @@ const BetterTickChart = (props) => {
     const [candleData, setCandleData] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [join, setJoin] = useState(1);
-    const rawDataRef = useRef([]); // Raw 100-tick bars from server (used for combining)
+    const rawDataRef = useRef([]); // Display bars returned from server using the active join value
+    const liveJoinBufferRef = useRef([]); // Raw 100-tick bars collected until they complete the next joined bar
     const depthSignalsDrawRef = useRef(null);
     const pendingDepthSignalsRef = useRef([]);
     const seenDepthSignalKeysRef = useRef(new Set());
@@ -288,6 +289,7 @@ const BetterTickChart = (props) => {
         Socket,
         indicatorsRef,
         requireIndicatorEnabled: true,
+        join,
     });
 
     useLiquidityRatios({
@@ -297,6 +299,7 @@ const BetterTickChart = (props) => {
         enabled: true,
         timeframe: "tick",
         ohlcData: candleData,
+        join,
     });
 
     const lowerIndicators = useMemo(() => {
@@ -340,34 +343,56 @@ const BetterTickChart = (props) => {
         ];
     }, []);
 
-    // Function to combine bars on the frontend
-    const combineBars = (bars, joinValue) => {
-        if (joinValue <= 1 || bars.length === 0) return bars;
+    const buildCombinedBar = useCallback((barsToJoin) => {
+        if (!barsToJoin?.length) return null;
 
-        const combined = [];
-        for (let i = 0; i < bars.length; i += joinValue) {
-            const barsToJoin = bars.slice(i, i + joinValue);
-            if (barsToJoin.length === 0) continue;
+        return {
+            open: barsToJoin[0].open,
+            high: Math.max(...barsToJoin.map((b) => b.high)),
+            low: Math.min(...barsToJoin.map((b) => b.low)),
+            close: barsToJoin[barsToJoin.length - 1].close,
+            volume: barsToJoin.reduce((sum, b) => sum + (b.volume || 0), 0),
+            datetime: barsToJoin[barsToJoin.length - 1].datetime,
+            timestamp: barsToJoin[barsToJoin.length - 1].timestamp || barsToJoin[barsToJoin.length - 1].datetime,
+            symbol: barsToJoin[0].symbol,
+        };
+    }, []);
 
-            const combinedBar = {
-                open: barsToJoin[0].open,
-                high: Math.max(...barsToJoin.map((b) => b.high)),
-                low: Math.min(...barsToJoin.map((b) => b.low)),
-                close: barsToJoin[barsToJoin.length - 1].close,
-                volume: barsToJoin.reduce((sum, b) => sum + (b.volume || 0), 0),
-                datetime: barsToJoin[barsToJoin.length - 1].datetime,
-                timestamp: barsToJoin[barsToJoin.length - 1].timestamp || barsToJoin[barsToJoin.length - 1].datetime,
-                symbol: barsToJoin[0].symbol,
+    const mergeBarsByTimestamp = useCallback((bars = []) => {
+        return Array.from(
+            new Map(
+                bars.map((bar) => {
+                    const key = bar?.timestamp || bar?.datetime;
+                    return [key, bar];
+                })
+            ).values()
+        ).sort((a, b) => (a.timestamp || a.datetime) - (b.timestamp || b.datetime));
+    }, []);
+
+    const requestHistoricalBars = useCallback(
+        async (opts = {}) => {
+            const requestOpts = {
+                ...opts,
+                symbol,
+                join,
             };
-            combined.push(combinedBar);
-        }
-        return combined;
-    };
+            console.log("[BetterTickChart] Calling API.getCustomTicks with:", requestOpts);
+            return await API.getCustomTicks(requestOpts);
+        },
+        [join, symbol]
+    );
 
-    const fetchData = async (opts = {}) => {
+    const syncServerBarsToState = useCallback((bars = []) => {
+        rawDataRef.current = bars;
+        liveJoinBufferRef.current = [];
+        setCandleData(bars);
+    }, []);
+
+    const fetchData = useCallback(async (opts = {}) => {
         const { symbol, limit = 2000 } = opts;
         console.log("[BetterTickChart] fetchData called", {
             symbol,
+            join,
         });
 
         // Mark this request as active
@@ -375,8 +400,7 @@ const BetterTickChart = (props) => {
         setIsLoading(true);
 
         try {
-            console.log("[BetterTickChart] Calling API.getCustomTicks with:", opts);
-            const data = await API.getCustomTicks(opts);
+            const data = await requestHistoricalBars({ ...opts, limit, symbol });
 
             console.log("[BetterTickChart] API.getCustomTicks returned:", {
                 dataLength: data?.length,
@@ -384,19 +408,15 @@ const BetterTickChart = (props) => {
                 lastItem: data?.[data?.length - 1],
             });
 
-            rawDataRef.current = data;
-            const combined = combineBars(data, join);
-
-            console.log("[BetterTickChart] Combined bars:", {
-                combinedLength: combined.length,
+            console.log("[BetterTickChart] Server bars loaded:", {
+                barsLength: data.length,
                 join,
-                firstCombined: combined[0],
-                lastCombined: combined[combined.length - 1],
+                firstBar: data[0],
+                lastBar: data[data.length - 1],
             });
 
-            setCandleData(combined);
-            // setDataSymbol(symbol);
-            console.log("[BetterTickChart] State updated - candleData and dataSymbol set");
+            syncServerBarsToState(data);
+            console.log("[BetterTickChart] State updated from server bars");
         } catch (error) {
             console.error("[BetterTickChart] fetchData error:", error);
         } finally {
@@ -406,10 +426,10 @@ const BetterTickChart = (props) => {
             loadingRef.current = false;
             setIsLoading(false);
         }
-    };
+    }, [join, requestHistoricalBars, syncServerBarsToState]);
 
     // Handler for time range changes from the GenericPixiChart
-    const handleTimeRangeChange = async ({ startTime, endTime }) => {
+    const handleTimeRangeChange = useCallback(async ({ startTime, endTime }) => {
         console.log(
             `[BetterTickChart] Loading data for time range: ${new Date(startTime).toLocaleString()} to ${new Date(
                 endTime
@@ -417,8 +437,7 @@ const BetterTickChart = (props) => {
         );
 
         try {
-            const data = await API.getCustomTicks({
-                symbol,
+            const data = await requestHistoricalBars({
                 start: Math.floor(startTime),
                 finish: Math.floor(endTime),
                 limit: 10000, // Allow larger limit for custom time ranges
@@ -426,11 +445,7 @@ const BetterTickChart = (props) => {
 
             if (data && data.length > 0) {
                 console.log(`[BetterTickChart] Loaded ${data.length} bars for time range`);
-                rawDataRef.current = data;
-                const combined = combineBars(data, join);
-                debugger;
-                setCandleData(combined);
-                // setDataSymbol(symbol);
+                syncServerBarsToState(data);
             } else {
                 console.log("[BetterTickChart] No data available for selected time range");
                 alert("No data available for selected time range");
@@ -439,7 +454,7 @@ const BetterTickChart = (props) => {
             console.error("[BetterTickChart] Failed to load time range data:", error);
             alert("Failed to load data for selected time range");
         }
-    };
+    }, [requestHistoricalBars, syncServerBarsToState]);
 
     const handleDateRangeSubmit = useCallback(() => {
         if (!drStartTime) return alert("Please provide a start date");
@@ -478,8 +493,7 @@ const BetterTickChart = (props) => {
         console.log(`[BetterTickChart] Loading more data before ${new Date(finishTime).toLocaleString()}`);
 
         try {
-            const olderData = await API.getCustomTicks({
-                symbol,
+            const olderData = await requestHistoricalBars({
                 finish: Math.floor(finishTime),
                 limit: 2000, // Load 2000 older bars
             });
@@ -487,25 +501,20 @@ const BetterTickChart = (props) => {
             if (olderData && olderData.length > 0) {
                 console.log(`[BetterTickChart] Loaded ${olderData.length} older bars`);
 
-                // Prepend older data to raw data
-                rawDataRef.current = [...olderData, ...rawDataRef.current];
-
-                // Recombine all bars with current join value
-                const combined = combineBars(rawDataRef.current, join);
-
-                // Combine the older data with the current join value
-                const combinedOlderData = combineBars(olderData, join);
+                const existingTimestamps = new Set(rawDataRef.current.map((bar) => bar?.timestamp || bar?.datetime));
+                const uniqueOlderData = olderData.filter((bar) => !existingTimestamps.has(bar?.timestamp || bar?.datetime));
+                const mergedServerBars = mergeBarsByTimestamp([...olderData, ...rawDataRef.current]);
+                rawDataRef.current = mergedServerBars;
 
                 // Update the data handler - same as old version
-                if (pixiDataRef.current) {
-                    pixiDataRef.current.sliceStart += combinedOlderData.length;
-                    pixiDataRef.current.sliceEnd += combinedOlderData.length;
-                    pixiDataRef.current.ohlcDatas = combinedOlderData.concat(pixiDataRef.current.ohlcDatas);
+                if (pixiDataRef.current && uniqueOlderData.length) {
+                    pixiDataRef.current.sliceStart += uniqueOlderData.length;
+                    pixiDataRef.current.sliceEnd += uniqueOlderData.length;
+                    pixiDataRef.current.ohlcDatas = uniqueOlderData.concat(pixiDataRef.current.ohlcDatas);
                     pixiDataRef.current.draw();
                 }
 
-                debugger;
-                setCandleData(combined);
+                setCandleData(mergedServerBars);
             } else {
                 console.log("[BetterTickChart] No more historical data available");
             }
@@ -526,13 +535,14 @@ const BetterTickChart = (props) => {
         loadingRef.current = false;
 
         console.log("[BetterTickChart] State cleared, calling fetchData");
+        liveJoinBufferRef.current = [];
         fetchData({ symbol: symbol, limit: 2000 });
 
         // Cleanup function - abort the fetch if component unmounts or deps change
         return () => {
             console.log("[BetterTickChart] Effect cleanup - aborting fetch", { requestKey });
         };
-    }, [symbol]);
+    }, [fetchData, join, symbol]);
 
     // Separate effect for socket listeners
     useEffect(() => {
@@ -578,56 +588,33 @@ const BetterTickChart = (props) => {
                 return;
             }
 
-            // Add new complete 100-tick bar to raw data (used for combining when join > 1)
-            // rawDataRef.current.push(data);
-            // console.log("[BetterTickChart] New 100-tick bar received:", data);
-
             if (join === 1) {
+                rawDataRef.current = [...rawDataRef.current, data];
                 // No combining - use the complete 100-tick bar directly
-                // setCompleteBar handles adding/replacing the bar in the chart's internal data
-                // No need to call setCandleData - chart manages its own data after init
-                // console.log("[BetterTickChart] Processing complete 100-tick bar (join=1)");
                 pixiDataRef.current.setCompleteBar(data);
                 pixiDataRef.current.updateCurrentPriceLabel(data.close);
             } else {
-                // Combining multiple 100-tick bars
-                const totalBars = rawDataRef.current.length;
-                const lastCombinedStartIndex = Math.floor((totalBars - 1) / join) * join;
-                const barsForLastCombined = rawDataRef.current.slice(lastCombinedStartIndex);
-                const isNewCombinedBar = barsForLastCombined.length === 1; // First bar of a new combined bar
+                liveJoinBufferRef.current = [...liveJoinBufferRef.current, data];
+                const inProgressBar = buildCombinedBar(liveJoinBufferRef.current);
+                if (!inProgressBar) return;
 
-                const lastCombinedBar = {
-                    open: barsForLastCombined[0].open,
-                    high: Math.max(...barsForLastCombined.map((b) => b.high)),
-                    low: Math.min(...barsForLastCombined.map((b) => b.low)),
-                    close: barsForLastCombined[barsForLastCombined.length - 1].close,
-                    volume: barsForLastCombined.reduce((sum, b) => sum + (b.volume || 0), 0),
-                    datetime: barsForLastCombined[barsForLastCombined.length - 1].datetime,
-                    timestamp:
-                        barsForLastCombined[barsForLastCombined.length - 1].timestamp ||
-                        barsForLastCombined[barsForLastCombined.length - 1].datetime,
-                    symbol: data.symbol,
-                };
-
-                if (isNewCombinedBar) {
-                    // Starting a new combined bar - this is a complete bar
-                    console.log("[BetterTickChart] New combined bar starting", lastCombinedBar);
-                    // setCompleteBar handles adding the bar - no setCandleData needed
-                    pixiDataRef.current.setCompleteBar(lastCombinedBar);
-                    pixiDataRef.current.updateCurrentPriceLabel(lastCombinedBar.close);
+                if (liveJoinBufferRef.current.length >= join) {
+                    console.log("[BetterTickChart] Completed joined live bar", inProgressBar);
+                    rawDataRef.current = [...rawDataRef.current, inProgressBar];
+                    liveJoinBufferRef.current = [];
+                    pixiDataRef.current.setCompleteBar(inProgressBar);
+                    pixiDataRef.current.updateCurrentPriceLabel(inProgressBar.close);
                 } else {
-                    // Still building the current combined bar - update it with newTick
-                    console.log("[BetterTickChart] Updating combined bar", lastCombinedBar);
-                    // newTick updates the existing temp bar in place - no setCandleData needed
+                    console.log("[BetterTickChart] Updating joined live bar", inProgressBar);
                     pixiDataRef.current.newTick({
-                        lastPrice: lastCombinedBar.close,
-                        high: lastCombinedBar.high,
-                        low: lastCombinedBar.low,
+                        lastPrice: inProgressBar.close,
+                        high: inProgressBar.high,
+                        low: inProgressBar.low,
                         volume: 0, // Already included in combined bar
-                        datetime: lastCombinedBar.datetime,
-                        timestamp: lastCombinedBar.timestamp,
+                        datetime: inProgressBar.datetime,
+                        timestamp: inProgressBar.timestamp,
                     });
-                    pixiDataRef.current.updateCurrentPriceLabel(lastCombinedBar.close);
+                    pixiDataRef.current.updateCurrentPriceLabel(inProgressBar.close);
                 }
             }
         };
@@ -677,26 +664,12 @@ const BetterTickChart = (props) => {
             Socket.off(liveBarUpdateEvent, handleLiveBarUpdate);
             depthSignalEvents.forEach((eventName) => Socket.off(eventName, handleDepthSignal));
         };
-    }, [symbol, fullSymbol, join, Socket, exchange, getDepthSignalKey, normalizeDepthSignal]); // IMPORTANT: Don't include pixiDataRef.current!
+    }, [symbol, fullSymbol, join, Socket, exchange, getDepthSignalKey, normalizeDepthSignal, buildCombinedBar]); // IMPORTANT: Don't include pixiDataRef.current!
 
     // Note: Server event patterns
     // Time-based charts: ${timeframe}-${symbol}-LiveBarNew (e.g., "1m-ES-LiveBarNew", "5m-YMZ5-LiveBarNew")
     // Tick charts: new-100-${fullSymbol}-tickBar (e.g., "new-100-ESZ5-tickBar", "new-100-NQZ5-tickBar")
     // Live updates: 1s-${fullSymbol}-LiveBarUpdate (e.g., "1s-ESZ5-LiveBarUpdate")
-
-    // Effect to recombine bars when join value changes
-    // This triggers a chart remount (via key change) with the newly combined data
-    useEffect(() => {
-        if (rawDataRef.current.length > 0) {
-            console.log("[BetterTickChart] Join value changed, recombining bars", {
-                join,
-                rawBarsCount: rawDataRef.current.length,
-            });
-            const combined = combineBars(rawDataRef.current, join);
-            console.log("[BetterTickChart] Recombined into", combined.length, "bars");
-            setCandleData(combined);
-        }
-    }, [join]);
 
     const joinOptions = [1, 5, 10, 15, 20];
 

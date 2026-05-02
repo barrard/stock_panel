@@ -95,6 +95,12 @@ Current depth cue types:
 - `depth_pull_bid`
 - `depth_pull_ask`
 
+Tuning note:
+
+- depth cues are intended to report backend depth metrics, not "correct" them in the frontend sound layer
+- if a cue sounds wrong, the first thing to inspect is the backend metric aggregation, especially whether fast repricing is being counted as true pressure/pull or as repositioning
+- we are actively watching for cue combinations that do not make market sense, such as same-side pressure and pull appearing together too often, and using those cases to debug and polish the feature
+
 ## Sound Config UI
 
 The `pixi-chart` toolbar now includes a `Sound` button.
@@ -158,6 +164,8 @@ Current unlock triggers:
 
 The sound panel also exposes an explicit `Enable Audio` button because mobile browsers often require a direct gesture before Web Audio will start.
 
+On mobile devices, the page also shows a delayed prompt shortly after load. Its `Allow Audio` button is a direct user gesture that unlocks Web Audio and plays a short approval tone.
+
 If audio is not unlocked, incoming cues may be received correctly but no sound will be heard.
 
 ## Button Flashing
@@ -171,6 +179,15 @@ Current behavior:
 - multiple cue buttons can flash at the same time if cues arrive together
 - trade cue button flashes when that trade cue is emitted
 - depth cue button flashes when that depth cue is emitted
+
+## Troubleshooting
+
+When a depth cue looks implausible, treat it as a signal-quality debugging case, not just an audio-design issue.
+
+- verify the backend actually emitted that cue type
+- compare the cue against the current `depthSummary-*` metrics for the same symbol and window
+- pay special attention during fast directional moves, where order chasing and restacking can make naive pull/pressure metrics misleading
+- log and review repeated "doesn't make sense" cases; those are the best inputs for refining the backend depth metrics and polishing sonification behavior
 
 ## Sound Design Rationale
 

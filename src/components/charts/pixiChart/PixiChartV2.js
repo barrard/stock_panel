@@ -21,6 +21,7 @@ import { useLiquidityRatios } from "../hooks/useLiquidityRatios";
 import { TICKS } from "../../../indicators/indicatorHelpers/TICKS";
 import { drawLine, drawIndicatorCandlestick, createHistogramDrawFn, createDualHistogramDrawFn } from "./components/drawFns";
 import handleTimeRangeChange from "./components/handleTimeRangeChange";
+import { areRelatedFuturesSymbols } from "./components/futuresSymbolFamily";
 // import { liquidityHeatMapConfig } from "./components/indicatorConfigs";
 // import drawStrikes from "./drawStrikes";
 // import MonteCarloCone from "./monteCarloSimulation";
@@ -956,7 +957,7 @@ const PixiChartV2 = (props) => {
 
 			const matchesSymbol = orderArray.some((orderEvent) => {
 				const eventSymbol = orderEvent?.symbol || orderEvent?.fullSymbol;
-				return eventSymbol && eventSymbol === fullSymbol;
+				return eventSymbol && areRelatedFuturesSymbols(eventSymbol, fullSymbol || symbol.value);
 			});
 
 			if (matchesSymbol) {

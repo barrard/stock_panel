@@ -28,6 +28,7 @@ import MarketBreadth from "./components/charts/pixiChart/components/MarketBreadt
 import OptionContractChartPage from "./components/OptionContractChartPage";
 import PickList from "./components/PickListPage";
 import FilingAnalysisDetail from "./components/FilingAnalysisDetail";
+import InterestingStocks from "./components/InterestingStocksPage";
 
 import BidAskStats from "./components/charts/BidAskStats";
 import OldBetterTickChart from "./components/charts/BetterTickChart";
@@ -121,6 +122,7 @@ class App extends React.Component {
                     <Route path="/pixi-backtest" render={(props) => <BacktestChart {...props} Socket={Socket} />} />
                     <Route path="/backtest-results" render={(props) => <BacktestResults {...props} Socket={Socket} />} />
                     <Route path="/pick-list" render={(props) => <PickList {...props} Socket={Socket} />} />
+                    <Route path="/screener" render={(props) => <InterestingStocks {...props} />} />
                     <Route path="/filing-analysis/:ticker" render={(props) => <FilingAnalysisDetail {...props} />} />
                     <Route path="/marketBreadth" render={(props) => <MarketBreadth {...props} Socket={Socket} />} />
                     <Route path="/SpyOptionsPage" render={(props) => <SpyOptionsPage {...props} Socket={Socket} />} />

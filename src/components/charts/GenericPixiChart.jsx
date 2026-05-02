@@ -34,6 +34,7 @@ export default function GenericPixiChart({
     currentBarRefProp = {},
     tickSize,
     mainChartContainerHeight,
+    fitContainerHeight = false,
     options = { chartType: "candlestick" },
     lowerIndicators = [],
     margin = { top: 50, right: 100, left: 0, bottom: 40 },
@@ -52,7 +53,6 @@ export default function GenericPixiChart({
     const tickLookup = TICKS();
     const resolvedTickSize = tickSize ?? tickLookup?.[symbol];
     tickSize = resolvedTickSize && resolvedTickSize > 0 ? resolvedTickSize : 0.01;
-    mainChartContainerHeight = mainChartContainerHeight || height;
     // Use provided refs or create them if not provided
     const PixiAppRef = useRef();
     const PixiChartRef = useRef();
@@ -126,6 +126,30 @@ export default function GenericPixiChart({
 
     const error = !symbol;
 
+    const getReservedIndicatorHeight = () => {
+        const baseIndicatorHeight = 50;
+        const defaultVolumeHeight = options?.withoutVolume ? 0 : baseIndicatorHeight;
+        const customIndicatorHeight = (lowerIndicators || []).reduce(
+            (total, indicator) => total + (indicator?.height || baseIndicatorHeight),
+            0
+        );
+
+        return defaultVolumeHeight + customIndicatorHeight;
+    };
+
+    const resolveMainChartHeight = (containerHeight) => {
+        if (typeof mainChartContainerHeight === "number") {
+            return mainChartContainerHeight;
+        }
+
+        if (fitContainerHeight) {
+            const reservedIndicatorHeight = getReservedIndicatorHeight();
+            return Math.max(containerHeight - ((margin.top || 0) + (margin.bottom || 0) + reservedIndicatorHeight), 1);
+        }
+
+        return height;
+    };
+
     useEffect(() => {
         console.log("generic pixi?");
 
@@ -136,8 +160,9 @@ export default function GenericPixiChart({
         const rect = container.getBoundingClientRect();
 
         // Use container dimensions, falling back to height prop if container has no height yet
-        const initWidth = rect.width;
+        const initWidth = rect.width || width;
         const initHeight = rect.height || height;
+        const initialMainChartHeight = resolveMainChartHeight(initHeight);
 
         console.log(`GenericPixiChart init - ${name}, w=${initWidth}, h=${initHeight}`);
 
@@ -153,7 +178,7 @@ export default function GenericPixiChart({
         const canvas = PixiAppRef.current.view;
         canvas.style.display = "block"; // ✅ kills extra 6px gap
         canvas.style.width = "100%"; // follow container
-        // canvas.style.height = "100%"; // Don't CSS-stretch height — let PIXI + ResizeObserver manage it
+        canvas.style.height = "100%"; // keep CSS box aligned with the container height
         canvas.style.margin = "0";
         canvas.style.padding = "0";
         canvas.style.boxSizing = "border-box";
@@ -184,7 +209,7 @@ export default function GenericPixiChart({
             exchange,
             margin,
             options,
-            mainChartContainerHeight: mainChartContainerHeight || initHeight,
+            mainChartContainerHeight: initialMainChartHeight,
             tickSize: tickSizeRef.current,
             lowerIndicators,
             loadMoreData,
@@ -205,6 +230,7 @@ export default function GenericPixiChart({
 
             const width = Math.round(container.clientWidth);
             const height = Math.round(container.clientHeight);
+            const nextMainChartHeight = resolveMainChartHeight(height);
 
             const widthIsDiff = Math.abs(width - lastWidth) > 20;
             const heightIsDiff = Math.abs(height - lastHeight) > 20;
@@ -213,8 +239,16 @@ export default function GenericPixiChart({
                 // update Pixi buffer
                 PixiAppRef.current.renderer.resize(width, height);
 
+                // autoDensity overrides canvas.style.width with a fixed pixel value;
+                // re-apply percentage sizing so the canvas stays aligned to the container
+                const canvas = PixiAppRef.current.view;
+                if (canvas) {
+                    canvas.style.width = "100%";
+                    canvas.style.height = "100%";
+                }
+
                 // update your data handler scales / redraw
-                effectivePixiDataRef.current?.resize(width, height);
+                effectivePixiDataRef.current?.resize(width, height, nextMainChartHeight);
                 lastWidth = width;
                 lastHeight = height;
             }

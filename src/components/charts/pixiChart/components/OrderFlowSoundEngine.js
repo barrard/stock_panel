@@ -3,6 +3,14 @@ class OrderFlowSoundEngine {
         this.audioContext = null;
         this.masterGain = null;
         this.isSupported = typeof window !== "undefined" && (window.AudioContext || window.webkitAudioContext);
+        this.isMobileDevice = this.detectMobileDevice();
+    }
+
+    detectMobileDevice() {
+        if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+
+        const mobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+        return mobileUserAgent.test(navigator.userAgent) || window.matchMedia?.("(pointer: coarse)")?.matches === true;
     }
 
     ensureContext() {
@@ -37,6 +45,21 @@ class OrderFlowSoundEngine {
             frequencies: [660, 880, 1100],
             stepDuration: 0.08,
             volume: 0.18,
+            type: "triangle",
+            now: this.audioContext.currentTime,
+        });
+
+        return true;
+    }
+
+    async playApprovalSound() {
+        const unlocked = await this.unlock();
+        if (!unlocked) return false;
+
+        this.playSequence({
+            frequencies: [520, 740, 980],
+            stepDuration: 0.07,
+            volume: 0.14,
             type: "triangle",
             now: this.audioContext.currentTime,
         });
@@ -89,13 +112,13 @@ class OrderFlowSoundEngine {
                 this.playTradeBuyFamily({ flavor: "pace", gainScale, now });
                 break;
             case "pace_buy_fast":
-                this.playTradeBuyFamily({ flavor: "pace_fast", gainScale, now });
+                this.playTradeBuyFamily({ flavor: "pace", gainScale, now });
                 break;
             case "pace_sell":
                 this.playTradeSellFamily({ flavor: "pace", gainScale, now });
                 break;
             case "pace_sell_fast":
-                this.playTradeSellFamily({ flavor: "pace_fast", gainScale, now });
+                this.playTradeSellFamily({ flavor: "pace", gainScale, now });
                 break;
             case "pace_down":
                 this.playTradeNeutralFamily({ gainScale, now });
