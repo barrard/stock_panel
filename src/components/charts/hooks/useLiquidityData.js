@@ -285,9 +285,11 @@ export const useLiquidityData = ({
         };
 
         Socket.on(liquidityEventName, handleLiquidityData);
+        Socket.subscribeLiquidity(symbol);
 
         return () => {
             Socket.off(liquidityEventName, handleLiquidityData);
+            Socket.unsubscribeLiquidity(symbol);
         };
     }, [liquidityHeatmapIndicator?.enabled, symbol, timeframe, Socket, indicatorsRef]);
 

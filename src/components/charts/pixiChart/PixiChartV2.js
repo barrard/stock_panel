@@ -878,6 +878,15 @@ const PixiChartV2 = (props) => {
 		//get data from OHLC_Compiler thing - replace data on timeframe/symbol change
 		fetchLiveDataAndUpdate(true);
 
+		// Update vwap on the current bar from lastTrade (OHLC_Compiler doesn't carry vwap)
+		const handleLastTradeVwap = (msg) => {
+			if (msg.symbol !== symbol.value || !msg.vwap) return;
+			const ohlcDatas = pixiDataRef?.current?.ohlcDatas;
+			if (!ohlcDatas?.length) return;
+			ohlcDatas[ohlcDatas.length - 1].vwap = msg.vwap;
+		};
+		Socket.on("lastTrade", handleLastTradeVwap);
+
 		// Listen for COMPLETE bars for this timeframe (replaces temporary bar)
 		const liveBarNew = `${timeframe}-${symbol.value}-LiveBarNew`;
 		const handleLiveBarNew = (newBar) => {
@@ -913,6 +922,7 @@ const PixiChartV2 = (props) => {
 			}
 		};
 		Socket.on(depthSummaryEvent, handleDepthSummary);
+		Socket.subscribeDepthSummary(symbol.value);
 
 		const depthSignalEvent = `depthTradeSignal-${symbol.value}`;
 		const handleDepthSignal = (signal) => {
@@ -927,10 +937,12 @@ const PixiChartV2 = (props) => {
 		Socket.on(depthSignalEvent, handleDepthSignal);
 
 		return () => {
+			Socket.off("lastTrade", handleLastTradeVwap);
 			Socket.off(liveBarNew, handleLiveBarNew);
 			Socket.off(liveBarUpdate, handleLiveBarUpdate);
 			Socket.off(depthSummaryEvent, handleDepthSummary);
 			Socket.off(depthSignalEvent, handleDepthSignal);
+			Socket.unsubscribeDepthSummary(symbol.value);
 		};
 	}, [
 		symbol.value,

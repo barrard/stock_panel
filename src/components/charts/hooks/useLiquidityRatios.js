@@ -754,10 +754,12 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
         };
 
         Socket.on(liquidityEventName, handleLiquidityData);
+        Socket.subscribeLiquidity(symbol);
 
         return () => {
             console.log(`[useLiquidityRatios] Cleaning up listener for: ${liquidityEventName}`);
             Socket.off(liquidityEventName, handleLiquidityData);
+            Socket.unsubscribeLiquidity(symbol);
         };
     }, [symbol, Socket, pixiDataRef, enabled]);
 

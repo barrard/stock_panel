@@ -1,6 +1,8 @@
 import io from "socket.io-client";
 
 const Events = {}; // Now stores arrays of handlers per event
+const LiquiditySubscriptions = {}; // ref-count per symbol to avoid premature unsubscribe
+const DepthSummarySubscriptions = {}; // ref-count per symbol
 
 const Socket = {
     socket: null,
@@ -84,6 +86,42 @@ const Socket = {
             }
             delete Events[event];
             // console.log(`[Socket.off] Event fully unregistered: ${event}`);
+        }
+    },
+    subscribeLiquidity(symbol) {
+        if (!symbol) return;
+        const sym = symbol.trim().toUpperCase();
+        LiquiditySubscriptions[sym] = (LiquiditySubscriptions[sym] || 0) + 1;
+        if (LiquiditySubscriptions[sym] === 1) {
+            Socket.emit("subscribeLiquidity", { symbol: sym });
+        }
+    },
+    unsubscribeLiquidity(symbol) {
+        if (!symbol) return;
+        const sym = symbol.trim().toUpperCase();
+        if (!LiquiditySubscriptions[sym]) return;
+        LiquiditySubscriptions[sym]--;
+        if (LiquiditySubscriptions[sym] === 0) {
+            delete LiquiditySubscriptions[sym];
+            Socket.emit("unsubscribeLiquidity", { symbol: sym });
+        }
+    },
+    subscribeDepthSummary(symbol) {
+        if (!symbol) return;
+        const sym = symbol.trim().toUpperCase();
+        DepthSummarySubscriptions[sym] = (DepthSummarySubscriptions[sym] || 0) + 1;
+        if (DepthSummarySubscriptions[sym] === 1) {
+            Socket.emit("subscribeDepthSummary", { symbol: sym });
+        }
+    },
+    unsubscribeDepthSummary(symbol) {
+        if (!symbol) return;
+        const sym = symbol.trim().toUpperCase();
+        if (!DepthSummarySubscriptions[sym]) return;
+        DepthSummarySubscriptions[sym]--;
+        if (DepthSummarySubscriptions[sym] === 0) {
+            delete DepthSummarySubscriptions[sym];
+            Socket.emit("unsubscribeDepthSummary", { symbol: sym });
         }
     },
     onConnect: {},
