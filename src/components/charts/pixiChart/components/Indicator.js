@@ -17,6 +17,8 @@ export default class Indicator {
         lines = null,
         candlestickSets = null,
         extentFields = null,
+        extentValueProvider = null,
+        disableCache = false,
     }) {
         this.accessors = accessors;
         this.chart = chart;
@@ -40,6 +42,8 @@ export default class Indicator {
         } else {
             this.extentFields = null;
         }
+        this.extentValueProvider = typeof extentValueProvider === "function" ? extentValueProvider : null;
+        this.disableCache = !!disableCache;
 
         // console.log(this.name);
     }
@@ -253,13 +257,15 @@ export default class Indicator {
 
         // Cache check to avoid unnecessary recalculations
         // Include last bar's timestamp to detect temp bar updates
-        const lastBar = this.chart.slicedData[this.chart.slicedData.length - 1];
-        const lastBarKey = lastBar ? `${lastBar.datetime || lastBar.timestamp}-${lastBar[this.accessors]}` : '';
-        const cacheKey = `${this.chart.sliceStart}-${this.chart.sliceEnd}-${this.chart.slicedData.length}-${lastBarKey}`;
-        if (this._lastCacheKey === cacheKey) {
-            return; // Skip redraw if nothing changed
+        if (!this.disableCache) {
+            const lastBar = this.chart.slicedData[this.chart.slicedData.length - 1];
+            const lastBarKey = lastBar ? `${lastBar.datetime || lastBar.timestamp}-${lastBar[this.accessors]}` : "";
+            const cacheKey = `${this.chart.sliceStart}-${this.chart.sliceEnd}-${this.chart.slicedData.length}-${lastBarKey}`;
+            if (this._lastCacheKey === cacheKey) {
+                return; // Skip redraw if nothing changed
+            }
+            this._lastCacheKey = cacheKey;
         }
-        this._lastCacheKey = cacheKey;
 
         // console.log(`[Indicator.setupScales] ${this.name} - type: ${this.type}, accessor: ${this.accessors}`);
 
@@ -342,6 +348,21 @@ export default class Indicator {
                         if (bar[closeField] !== undefined && bar[closeField] !== null) allValues.push(bar[closeField]);
                     });
                 });
+
+                if (this.extentValueProvider) {
+                    const extraExtentValues = this.extentValueProvider({
+                        data: this.chart.slicedData,
+                        chart: this.chart,
+                        indicator: this,
+                    });
+                    if (Array.isArray(extraExtentValues)) {
+                        extraExtentValues.forEach((value) => {
+                            if (value !== undefined && value !== null && !Number.isNaN(value)) {
+                                allValues.push(value);
+                            }
+                        });
+                    }
+                }
 
                 if (!allValues.length) {
                     console.warn(`[Indicator.setupScales] No candlestick data for ${this.name}`);

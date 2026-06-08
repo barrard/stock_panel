@@ -29,6 +29,8 @@ import { areRelatedFuturesSymbols } from "./components/futuresSymbolFamily";
 // import IndicatorSelector from "../../../reusableChartComponents/IndicatorSelector";
 const ticks = TICKS();
 const LIQUIDITY_MA_LINE_COLOR = 0xffd966;
+const ACTUAL_CANDLE_DELTA_LINE_FIELD = "__actualCandleDeltaCumulative";
+const ACTUAL_CANDLE_DELTA_LINE_COLOR = 0x4fc3f7;
 const BID_CANDLE_COLORS = {
 	up: 0x66ff66,
 	down: 0x1b5e20,
@@ -87,6 +89,70 @@ const NEAR_FULL_RATIO_CONFIGS = [
 	},
 ];
 
+const getBarSideVolumeValue = (volumeData) => {
+	if (volumeData === undefined || volumeData === null) {
+		return null;
+	}
+
+	if (typeof volumeData === "number") {
+		return Number.isFinite(volumeData) ? volumeData : null;
+	}
+
+	if (typeof volumeData === "object") {
+		const normalizedValue = volumeData.low ?? volumeData.close ?? volumeData.value ?? null;
+		return typeof normalizedValue === "number" && Number.isFinite(normalizedValue) ? normalizedValue : null;
+	}
+
+	const numericValue = Number(volumeData);
+	return Number.isFinite(numericValue) ? numericValue : null;
+};
+
+const getBarActualDelta = (bar) => {
+	if (!bar) {
+		return null;
+	}
+
+	const askVolume = getBarSideVolumeValue(bar.askVolume);
+	const bidVolume = getBarSideVolumeValue(bar.bidVolume);
+
+	if (askVolume === null && bidVolume === null) {
+		return null;
+	}
+
+	return (askVolume ?? 0) - (bidVolume ?? 0);
+};
+
+const buildActualCandleDeltaLineData = (bars = []) => {
+	let runningDelta = 0;
+
+	return bars.map((bar) => {
+		const barDelta = getBarActualDelta(bar);
+		if (barDelta === null) {
+			return { [ACTUAL_CANDLE_DELTA_LINE_FIELD]: null };
+		}
+
+		runningDelta += barDelta;
+		return { [ACTUAL_CANDLE_DELTA_LINE_FIELD]: runningDelta };
+	});
+};
+
+const getActualCandleDeltaExtentValues = ({ data = [] } = {}) => {
+	let runningDelta = 0;
+	const values = [0];
+
+	data.forEach((bar) => {
+		const barDelta = getBarActualDelta(bar);
+		if (barDelta === null) {
+			return;
+		}
+
+		runningDelta += barDelta;
+		values.push(runningDelta);
+	});
+
+	return values;
+};
+
 const createCandlesWithMovingAverageDrawFn = ({
 	openField,
 	highField,
@@ -97,6 +163,7 @@ const createCandlesWithMovingAverageDrawFn = ({
 	maField,
 	maColor = LIQUIDITY_MA_LINE_COLOR,
 	maLineWidth = 2,
+	overlayLines = [],
 }) => {
 	return (opts) => {
 		const { chartData, data } = opts;
@@ -135,6 +202,21 @@ const createCandlesWithMovingAverageDrawFn = ({
 			lineWidth: maLineWidth,
 			yField: maField,
 			skipClear: true,
+		});
+
+		overlayLines.forEach((overlayLine) => {
+			if (!overlayLine?.yField || typeof overlayLine.dataBuilder !== "function") {
+				return;
+			}
+
+			drawLine({
+				...opts,
+				data: overlayLine.dataBuilder(data, { ...opts, chartData }),
+				lineColor: overlayLine.lineColor ?? 0xffffff,
+				lineWidth: overlayLine.lineWidth ?? 2,
+				yField: overlayLine.yField,
+				skipClear: true,
+			});
 		});
 	};
 };
@@ -352,7 +434,7 @@ const PixiChartV2 = (props) => {
 
 			return bars.map((bar) => mergeDepthAggregateIntoBar(bar, depthAggregate, depthTimeframeMs));
 		},
-		[depthTimeframeMs]
+		[depthTimeframeMs],
 	);
 
 	const applyDepthSummaryToBarInPlace = useCallback(
@@ -381,7 +463,7 @@ const PixiChartV2 = (props) => {
 
 			return changed;
 		},
-		[depthTimeframeMs]
+		[depthTimeframeMs],
 	);
 
 	const applyDepthSummariesToLiveBars = useCallback(() => {
@@ -464,7 +546,7 @@ const PixiChartV2 = (props) => {
 						"enabled:",
 						ind.enabled,
 						"instanceRef:",
-						!!ind.instanceRef
+						!!ind.instanceRef,
 					);
 					const updatedIndicator = {
 						...ind,
@@ -499,7 +581,7 @@ const PixiChartV2 = (props) => {
 							"[updateIndicatorOptions] Instance not available - enabled:",
 							updatedIndicator.enabled,
 							"instanceRef:",
-							!!updatedIndicator.instanceRef
+							!!updatedIndicator.instanceRef,
 						);
 					}
 
@@ -521,7 +603,7 @@ const PixiChartV2 = (props) => {
 	useEffect(() => {
 		console.log(
 			"[PixiChartV2] Indicators:",
-			indicators.map((ind) => ({ id: ind.id, enabled: ind.enabled }))
+			indicators.map((ind) => ({ id: ind.id, enabled: ind.enabled })),
 		);
 
 		console.log("[PixiChartV2] Orders from parent:", Object.keys(ordersFromParent).length, "baskets");
@@ -628,7 +710,7 @@ const PixiChartV2 = (props) => {
 					// Use functional update to avoid dependency on ohlcData
 					setOhlcData((prevOhlcData) => {
 						const result = Array.from(new Map([...prevOhlcData, ...liveData].map((b) => [b.datetime, b])).values()).sort(
-							(a, b) => a.datetime - b.datetime
+							(a, b) => a.datetime - b.datetime,
 						);
 						console.log(`[PixiChartV2] Merged to ${result.length} total bars`);
 						return hydrateBarsWithDepthSummaries(result);
@@ -640,7 +722,7 @@ const PixiChartV2 = (props) => {
 				setIsLoading(false);
 			}
 		},
-		[hydrateBarsWithDepthSummaries, symbol.value, timeframe] // Removed ohlcData - use functional update instead
+		[hydrateBarsWithDepthSummaries, symbol.value, timeframe], // Removed ohlcData - use functional update instead
 	);
 
 	const fetchHistoricalWindow = useCallback(
@@ -660,8 +742,8 @@ const PixiChartV2 = (props) => {
 				const nextStart = Math.max(0, nextFinish - lookbackWindow);
 				console.log(
 					`[PixiChartV2] loadMore attempt ${attempt + 1} (${new Date(nextStart).toLocaleString()} -> ${new Date(
-						nextFinish
-					).toLocaleString()})`
+						nextFinish,
+					).toLocaleString()})`,
 				);
 
 				const olderData = await API.rapi_requestBars({
@@ -684,7 +766,7 @@ const PixiChartV2 = (props) => {
 
 			return normalized;
 		},
-		[barType.value, barTypePeriod, normalizeBarData, symbol.exchange, symbol.value]
+		[barType.value, barTypePeriod, normalizeBarData, symbol.exchange, symbol.value],
 	);
 
 	const loadMoreData = useCallback(async () => {
@@ -710,7 +792,7 @@ const PixiChartV2 = (props) => {
 			setIsLoading(true);
 
 			console.log(
-				`[PixiChartV2] Loading older data for ${symbol.value} ${timeframe} before ${new Date(finishIndex).toLocaleString()}`
+				`[PixiChartV2] Loading older data for ${symbol.value} ${timeframe} before ${new Date(finishIndex).toLocaleString()}`,
 			);
 
 			const normalized = await fetchHistoricalWindow(finishIndex);
@@ -719,7 +801,7 @@ const PixiChartV2 = (props) => {
 				setOhlcData((prevOhlcData) => {
 					const merged = [...normalized, ...prevOhlcData];
 					const deduped = Array.from(new Map(merged.map((bar) => [bar.datetime, bar])).values()).sort(
-						(a, b) => a.datetime - b.datetime
+						(a, b) => a.datetime - b.datetime,
 					);
 					return hydrateBarsWithDepthSummaries(deduped);
 				});
@@ -818,7 +900,7 @@ const PixiChartV2 = (props) => {
 			"instance:",
 			!!ordersInstance,
 			"orders count:",
-			Object.keys(ordersFromParent).length
+			Object.keys(ordersFromParent).length,
 		);
 
 		if (!ordersInstance || !ordersIndicator?.enabled) {
@@ -853,7 +935,7 @@ const PixiChartV2 = (props) => {
 				},
 			});
 		},
-		[barType, barTypePeriod, hydrateBarsWithDepthSummaries, symbol, setIsLoading, setOhlcData]
+		[barType, barTypePeriod, hydrateBarsWithDepthSummaries, symbol, setIsLoading, setOhlcData],
 	);
 
 	const handleDateRangeSubmit = useCallback(() => {
@@ -985,14 +1067,6 @@ const PixiChartV2 = (props) => {
 	const lowerIndicators = useMemo(() => {
 		return [
 			{
-				name: "Depth Cumulative",
-				height: 90,
-				type: "line",
-				accessors: "depthSignalCumulative",
-				lineColor: 0xfdd835,
-				canGoNegative: true,
-			},
-			{
 				name: "Delta",
 				height: 100,
 				type: "candlestick",
@@ -1005,8 +1079,18 @@ const PixiChartV2 = (props) => {
 					upColor: 0x00ff00,
 					downColor: 0xff0000,
 					maField: "deltaMA20",
+					overlayLines: [
+						{
+							yField: ACTUAL_CANDLE_DELTA_LINE_FIELD,
+							lineColor: ACTUAL_CANDLE_DELTA_LINE_COLOR,
+							lineWidth: 2,
+							dataBuilder: buildActualCandleDeltaLineData,
+						},
+					],
 				}),
 				canGoNegative: true,
+				extentValueProvider: getActualCandleDeltaExtentValues,
+				disableCache: true,
 			},
 			{
 				name: "Near vs Full Book Ratio",
@@ -1032,6 +1116,23 @@ const PixiChartV2 = (props) => {
 					maField: "bidOrderToAskOrderRatioMA20",
 				}),
 				canGoNegative: false,
+			},
+			{
+				name: "Bid/Ask Size Order Ratio",
+				height: 120,
+				type: "candlestick",
+				accessors: "bidSizeOrderRatioClose",
+				candlestickSets: BID_ASK_SIZE_RATIO_CONFIGS,
+				drawFn: createMultiCandlesWithMovingAverageDrawFn(BID_ASK_SIZE_RATIO_CONFIGS),
+				canGoNegative: false,
+			},
+			{
+				name: "Depth Cumulative",
+				height: 90,
+				type: "line",
+				accessors: "depthSignalCumulative",
+				lineColor: 0xfdd835,
+				canGoNegative: true,
 			},
 			{
 				name: "Uber Near Cancellation",
@@ -1111,20 +1212,11 @@ const PixiChartV2 = (props) => {
 				}),
 				canGoNegative: false,
 			},
-			{
-				name: "Bid/Ask Size Order Ratio",
-				height: 120,
-				type: "candlestick",
-				accessors: "bidSizeOrderRatioClose",
-				candlestickSets: BID_ASK_SIZE_RATIO_CONFIGS,
-				drawFn: createMultiCandlesWithMovingAverageDrawFn(BID_ASK_SIZE_RATIO_CONFIGS),
-				canGoNegative: false,
-			},
 		];
 	}, []);
 
 	return (
-		<>
+		<div>
 			<div className="row g-0 align-items-center">
 				<div className="col-auto">
 					<IndicatorsBtns
@@ -1198,7 +1290,16 @@ const PixiChartV2 = (props) => {
 									type="date"
 									value={drStartTime}
 									onChange={(e) => setDrStartTime(e.target.value)}
-									style={{ display: "block", width: "100%", padding: "4px", background: "#333", color: "#fff", border: "1px solid #555", borderRadius: "3px", fontSize: "12px" }}
+									style={{
+										display: "block",
+										width: "100%",
+										padding: "4px",
+										background: "#333",
+										color: "#fff",
+										border: "1px solid #555",
+										borderRadius: "3px",
+										fontSize: "12px",
+									}}
 								/>
 							</label>
 							<label style={{ color: "#aaa", fontSize: "11px", display: "flex", alignItems: "center", gap: "4px" }}>
@@ -1210,7 +1311,15 @@ const PixiChartV2 = (props) => {
 									value={drNumDays}
 									onChange={(e) => setDrNumDays(e.target.value)}
 									disabled={!drUseNumDays}
-									style={{ width: "50px", padding: "4px", background: drUseNumDays ? "#333" : "#222", color: drUseNumDays ? "#fff" : "#666", border: "1px solid #555", borderRadius: "3px", fontSize: "12px" }}
+									style={{
+										width: "50px",
+										padding: "4px",
+										background: drUseNumDays ? "#333" : "#222",
+										color: drUseNumDays ? "#fff" : "#666",
+										border: "1px solid #555",
+										borderRadius: "3px",
+										fontSize: "12px",
+									}}
 								/>
 							</label>
 							{!drUseNumDays && (
@@ -1220,13 +1329,30 @@ const PixiChartV2 = (props) => {
 										type="date"
 										value={drEndTime}
 										onChange={(e) => setDrEndTime(e.target.value)}
-										style={{ display: "block", width: "100%", padding: "4px", background: "#333", color: "#fff", border: "1px solid #555", borderRadius: "3px", fontSize: "12px" }}
+										style={{
+											display: "block",
+											width: "100%",
+											padding: "4px",
+											background: "#333",
+											color: "#fff",
+											border: "1px solid #555",
+											borderRadius: "3px",
+											fontSize: "12px",
+										}}
 									/>
 								</label>
 							)}
 							<button
 								onClick={handleDateRangeSubmit}
-								style={{ padding: "5px 12px", background: "#0066cc", color: "#fff", border: "none", borderRadius: "3px", cursor: "pointer", fontSize: "12px" }}
+								style={{
+									padding: "5px 12px",
+									background: "#0066cc",
+									color: "#fff",
+									border: "none",
+									borderRadius: "3px",
+									cursor: "pointer",
+									fontSize: "12px",
+								}}
 							>
 								Load
 							</button>
@@ -1261,7 +1387,7 @@ const PixiChartV2 = (props) => {
                     <OrdersList orders={symbolFilteredOrders} />
                 </div>
             )} */}
-		</>
+		</div>
 	);
 };
 

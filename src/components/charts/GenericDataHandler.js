@@ -744,6 +744,8 @@ export default class GenericDataHandler {
                     lines: indicator.lines || null, // Pass lines array for multi-line indicators
                     candlestickSets: indicator.candlestickSets || null,
                     extentFields: indicator.extentFields || null,
+                    extentValueProvider: indicator.extentValueProvider || null,
+                    disableCache: indicator.disableCache || false,
                 });
             });
         }
