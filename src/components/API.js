@@ -219,6 +219,8 @@ async function getCustomTicks(options = {}) {
 	if (options.limit !== undefined) params.append("limit", options.limit);
 	if (options.join !== undefined) params.append("join", options.join);
 	if (options.skip !== undefined) params.append("skip", options.skip);
+	if (options.includeProfile !== undefined) params.append("includeProfile", options.includeProfile);
+	if (options.includeAggressors !== undefined) params.append("includeAggressors", options.includeAggressors);
 
 	const queryString = params.toString();
 	const url = `/API/custom-ticks${queryString ? `?${queryString}` : ""}`;

@@ -13,6 +13,7 @@ import API from "../../API";
  * @param {Object} params.indicatorsRef - Ref to indicators array (for socket handlers)
  * @param {Function} params.fetchLiveDataAndUpdate - Optional: Function to fetch more OHLC data (PixiChartV2 only)
  * @param {number} params.join - Tick-bar join factor when timeframe is "tick"
+ * @param {boolean} params.enabled - Whether the hook is allowed to fetch/subscribe at all (e.g. gated by timeframe)
  */
 export const useLiquidityData = ({
     liquidityHeatmapIndicator,
@@ -24,6 +25,7 @@ export const useLiquidityData = ({
     fetchLiveDataAndUpdate,
     requireIndicatorEnabled = false,
     join = 1,
+    enabled = true,
 }) => {
     // Cache for liquidity data (persists across indicator toggles)
     const liquidityDataCacheRef = useRef({
@@ -55,6 +57,11 @@ export const useLiquidityData = ({
                 lastBarTimestamp,
             })
         );
+
+        if (!enabled) {
+            console.log("[useLiquidityData] skipped fetch - disabled for this timeframe");
+            return;
+        }
 
         if (!ohlcData.length) {
             console.log("[useLiquidityData] skipped fetch - no OHLC data");
@@ -210,11 +217,12 @@ export const useLiquidityData = ({
         timeframe,
         firstBarTimestamp,
         join,
+        enabled,
     ]);
 
     // Socket listener for real-time liquidity updates
     useEffect(() => {
-        if (!liquidityHeatmapIndicator?.enabled || !Socket) return;
+        if (!enabled || !liquidityHeatmapIndicator?.enabled || !Socket) return;
 
         const liquidityEventName = `liquidity-${symbol}`;
         console.log(`[useLiquidityData] Registering liquidity listener for event: ${liquidityEventName}`);
@@ -291,7 +299,7 @@ export const useLiquidityData = ({
             Socket.off(liquidityEventName, handleLiquidityData);
             Socket.unsubscribeLiquidity(symbol);
         };
-    }, [liquidityHeatmapIndicator?.enabled, symbol, timeframe, Socket, indicatorsRef]);
+    }, [enabled, liquidityHeatmapIndicator?.enabled, symbol, timeframe, Socket, indicatorsRef]);
 
     return liquidityDataCacheRef;
 };

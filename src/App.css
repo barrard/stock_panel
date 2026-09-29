@@ -514,6 +514,138 @@ canvas {
 .left-1em {
     left: 1em;
 }
+.app-nav-toggle {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 1300;
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #4b5563;
+    border-radius: 6px;
+    background: rgba(17, 24, 39, 0.92);
+    color: #f8fafc;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+}
+
+.app-nav-toggle:hover {
+    background: #111827;
+    border-color: #64748b;
+}
+
+.app-nav-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1190;
+    border: 0;
+    background: rgba(0, 0, 0, 0.48);
+    cursor: pointer;
+}
+
+.app-drawer-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1200;
+    width: min(330px, calc(100vw - 48px));
+    height: 100vh;
+    padding: 58px 14px 18px;
+    background: #15191f;
+    border-right: 1px solid #374151;
+    box-shadow: 18px 0 34px rgba(0, 0, 0, 0.44);
+    transform: translateX(-105%);
+    transition: transform 160ms ease;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.app-drawer-nav.open {
+    transform: translateX(0);
+}
+
+.app-drawer-header {
+    display: flex;
+    align-items: center;
+    height: 28px;
+    margin-bottom: 12px;
+    color: #cbd5e1;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.app-drawer-links,
+.app-drawer-auth-links {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.app-drawer-main-link,
+.app-drawer-auth-links .nav-link {
+    display: block;
+    width: 100%;
+    min-height: 38px;
+    padding: 9px 10px;
+    border-radius: 6px;
+    color: #f8fafc !important;
+    font-size: 14px;
+    line-height: 20px;
+    text-decoration: none;
+}
+
+.app-drawer-main-link:hover,
+.app-drawer-auth-links .nav-link:hover {
+    background: #242c38;
+    color: #ffffff !important;
+    text-decoration: none;
+}
+
+.app-drawer-main-link.active,
+.app-drawer-auth-links .nav-link.active {
+    background: #1f3a5f;
+    color: #ffffff !important;
+}
+
+.app-drawer-auth-links {
+    margin: 12px 0;
+    padding: 12px 0;
+    border-top: 1px solid #2d3748;
+    border-bottom: 1px solid #2d3748;
+}
+
+.app-drawer-search {
+    position: relative;
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 6px;
+    margin-top: 12px;
+}
+
+.app-drawer-search label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #cbd5e1 !important;
+}
+
+.app-drawer-search input {
+    width: 100% !important;
+    margin-right: 0 !important;
+    background: #0f141b;
+    border-color: #475569;
+    color: #f8fafc;
+}
+
+.app-drawer-search input::placeholder {
+    color: #94a3b8;
+}
+
 .nav-bar-links {
     color: rgba(0, 0, 0, 0.5);
     display: contents;
@@ -528,6 +660,19 @@ canvas {
 
 .dropdown-item:hover {
     color: rgba(0, 0, 0, 0.5);
+}
+
+.app-drawer-nav .filtered_stock_list {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 100%;
+    max-width: none;
+    max-height: 45vh;
+    margin-top: 8px;
+    border: 1px solid #475569;
+    box-shadow: none;
+    text-align: left;
 }
 
 .filtered_stock_list_item {

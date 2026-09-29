@@ -23,11 +23,12 @@ export const useIndicator = ({
 
         const pixiData = pixiDataRef?.current;
         if (!pixiData) return;
+        let instance = null;
 
         // If indicator is enabled, create and register
         if (indicator.enabled) {
             // Create the indicator instance
-            const instance = createInstance(pixiData);
+            instance = createInstance(pixiData);
 
             if (!instance) return;
 
@@ -66,11 +67,7 @@ export const useIndicator = ({
                 // Unregister draw function
                 pixiData?.unregisterDrawFn(indicator.drawFunctionKey || indicator.id);
 
-                // Get the current instance from state
-                const currentInstance = indicator.instanceRef;
-                if (currentInstance && currentInstance.cleanup) {
-                    currentInstance.cleanup();
-                }
+                instance?.cleanup?.();
 
                 // Clear instanceRef in state
                 setIndicators((prevIndicators) =>

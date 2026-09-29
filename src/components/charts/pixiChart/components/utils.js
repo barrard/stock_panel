@@ -424,6 +424,10 @@ export const symbolOptions = [
 ];
 
 export function parseBarTypeTimeFrame({ barType, barTypePeriod }) {
+    if (barType === 2 && barTypePeriod === 5) {
+        return 1000 * 60 * 60 * 24 * 5;
+    }
+
     let timeBerBar;
     if (barType === 1) {
         //SECONDS

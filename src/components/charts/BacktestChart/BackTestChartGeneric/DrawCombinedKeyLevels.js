@@ -37,7 +37,7 @@ export default class DrawCombinedKeyLevels {
 
         // Destroy the container, which will also destroy all its children (the level graphics)
         if (this.combinedKeyLevelsContainer) {
-            this.pixiDataRef.current.removeFromLayer(this.layer, this.combinedKeyLevelsContainer);
+            this.pixiDataRef?.current?.removeFromLayer?.(this.layer, this.combinedKeyLevelsContainer);
             this.combinedKeyLevelsContainer.destroy({ children: true });
             this.combinedKeyLevelsContainer = null;
         }

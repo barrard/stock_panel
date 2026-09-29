@@ -20,19 +20,19 @@ export default class DrawMinMax {
     cleanup() {
         if (this.minMaxGfx) {
             this.minMaxGfx.clear();
-            this.pixiDataRef.current.removeFromLayer(this.layer, this.minMaxGfx);
+            this.pixiDataRef?.current?.removeFromLayer?.(this.layer, this.minMaxGfx);
             this.minMaxGfx.destroy();
             this.minMaxGfx = null;
         }
         if (this.minMaxRegressionGfx) {
             this.minMaxRegressionGfx.clear();
-            this.pixiDataRef.current.removeFromLayer(this.layer, this.minMaxRegressionGfx);
+            this.pixiDataRef?.current?.removeFromLayer?.(this.layer, this.minMaxRegressionGfx);
             this.minMaxRegressionGfx.destroy();
             this.minMaxRegressionGfx = null;
         }
         if (this.minMaxFibsGfx) {
             this.minMaxFibsGfx.clear();
-            this.pixiDataRef.current.removeFromLayer(this.layer, this.minMaxFibsGfx);
+            this.pixiDataRef?.current?.removeFromLayer?.(this.layer, this.minMaxFibsGfx);
             this.minMaxFibsGfx.destroy();
             this.minMaxFibsGfx = null;
         }

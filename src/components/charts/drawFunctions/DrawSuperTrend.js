@@ -38,7 +38,7 @@ export default class DrawSuperTrend {
 
     cleanup() {
         if (this.superTrendContainer) {
-            this.pixiDataRef.current.removeFromLayer(this.layer, this.superTrendContainer);
+            this.pixiDataRef?.current?.removeFromLayer?.(this.layer, this.superTrendContainer);
             this.superTrendContainer.destroy({ children: true });
             this.superTrendContainer = null;
         }

@@ -3,6 +3,8 @@ import * as PIXI from "pixi.js";
 import GenericDataHandler from "./GenericDataHandler";
 import { TICKS } from "../../indicators/indicatorHelpers/TICKS";
 
+const RESIZE_SETTLE_DELAY_MS = 150;
+
 function getNextTimeBar(data) {
     const { barType, barTypePeriod } = data;
     let time = barType === 1 ? 1 : barType === 2 ? 60 : barType === 3 ? 60 * 60 * 24 : 60 * 60 * 24 * 7;
@@ -44,6 +46,11 @@ export default function GenericPixiChart({
     name = "GenericPixiChart", // Name for logging purposes
     sendOrder = null, // Optional function to send orders - enables trade window when provided
     hideTimeRangeOverlay = false, // When true, suppress built-in time range overlay (parent renders its own)
+    // Time-based charts pass their bar length and say which edge the feed labels a bar
+    // by, so the chart can place a tick in the right bar on its own. Leave barSizeMs
+    // null for tick/volume bars, where bar boundaries are the caller's to decide.
+    barSizeMs = null,
+    barLabel = "start",
     ...rest
 }) {
     if (!fullSymbol) {
@@ -215,43 +222,105 @@ export default function GenericPixiChart({
             loadMoreData,
             name,
             sendOrder,
+            barSizeMs,
+            barLabel,
         });
 
         // Set up callback for manual scale changes
         effectivePixiDataRef.current.onManualScaleChange = setShowResetButton;
         // setPixiData(_pixiData);
 
-        let lastWidth = initWidth;
-        let lastHeight = initHeight;
+        let lastRenderedWidth = Math.round(initWidth);
+        let lastRenderedHeight = Math.round(initHeight);
+        let pendingResize = null;
+        let resizeSettleTimer = null;
+        let isResizeActive = false;
+        let tickerWasStarted = false;
+
+        const beginResize = () => {
+            if (isResizeActive) return;
+
+            isResizeActive = true;
+            effectivePixiDataRef.current?.setDrawingSuspended?.(true);
+
+            const ticker = PixiAppRef.current?.ticker;
+            if (!ticker) return;
+
+            // Keep the current canvas bitmap visible, but stop spending GPU time
+            // rendering the unchanged Pixi stage while CSS stretches it with the panel.
+            tickerWasStarted = ticker.started;
+            ticker.stop();
+        };
+
+        const endResize = (resumeDrawing = true) => {
+            if (!isResizeActive) return;
+
+            const ticker = PixiAppRef.current?.ticker;
+            try {
+                if (resumeDrawing) {
+                    effectivePixiDataRef.current?.setDrawingSuspended?.(false);
+                }
+            } finally {
+                if (resumeDrawing && ticker && tickerWasStarted) {
+                    ticker.start();
+                }
+
+                tickerWasStarted = false;
+                isResizeActive = false;
+            }
+        };
+
+        const applyPendingResize = () => {
+            if (!pendingResize || !PixiAppRef.current) return;
+
+            const { width: nextWidth, height: nextHeight, mainChartHeight: nextMainChartHeight } = pendingResize;
+            pendingResize = null;
+
+            if (nextWidth === lastRenderedWidth && nextHeight === lastRenderedHeight) return;
+
+            // Resize the backing buffer and rebuild the chart at its final size.
+            PixiAppRef.current.renderer.resize(nextWidth, nextHeight);
+
+            // autoDensity writes fixed pixel values here, so restore percentage sizing
+            // and keep the canvas aligned with the panel after the final redraw.
+            const canvas = PixiAppRef.current.view;
+            if (canvas) {
+                canvas.style.width = "100%";
+                canvas.style.height = "100%";
+            }
+
+            effectivePixiDataRef.current?.resize(nextWidth, nextHeight, nextMainChartHeight);
+            lastRenderedWidth = nextWidth;
+            lastRenderedHeight = nextHeight;
+        };
+
         // ResizeObserver to handle dynamic sizing
         const resizeCanvas = () => {
             const container = PixiChartRef.current;
             if (!container || !PixiAppRef.current) return;
 
-            const width = Math.round(container.clientWidth);
-            const height = Math.round(container.clientHeight);
-            const nextMainChartHeight = resolveMainChartHeight(height);
+            const nextWidth = Math.round(container.clientWidth);
+            const nextHeight = Math.round(container.clientHeight);
+            if (!nextWidth || !nextHeight) return;
+            if (nextWidth === lastRenderedWidth && nextHeight === lastRenderedHeight && !pendingResize) return;
 
-            const widthIsDiff = Math.abs(width - lastWidth) > 20;
-            const heightIsDiff = Math.abs(height - lastHeight) > 20;
+            pendingResize = {
+                width: nextWidth,
+                height: nextHeight,
+                mainChartHeight: resolveMainChartHeight(nextHeight),
+            };
+            beginResize();
 
-            if (width && height && (widthIsDiff || heightIsDiff)) {
-                // update Pixi buffer
-                PixiAppRef.current.renderer.resize(width, height);
-
-                // autoDensity overrides canvas.style.width with a fixed pixel value;
-                // re-apply percentage sizing so the canvas stays aligned to the container
-                const canvas = PixiAppRef.current.view;
-                if (canvas) {
-                    canvas.style.width = "100%";
-                    canvas.style.height = "100%";
+            // CSS keeps the existing canvas fitted to the panel during the drag.
+            // Rebuild only once after resize events settle, at the exact final size.
+            clearTimeout(resizeSettleTimer);
+            resizeSettleTimer = setTimeout(() => {
+                try {
+                    applyPendingResize();
+                } finally {
+                    endResize();
                 }
-
-                // update your data handler scales / redraw
-                effectivePixiDataRef.current?.resize(width, height, nextMainChartHeight);
-                lastWidth = width;
-                lastHeight = height;
-            }
+            }, RESIZE_SETTLE_DELAY_MS);
         };
 
         // Call initially and on container resize
@@ -274,6 +343,8 @@ export default function GenericPixiChart({
             console.log("DESTROY PIXI CHART");
 
             resizeObserver.disconnect();
+            clearTimeout(resizeSettleTimer);
+            endResize(false);
 
             if (PixiAppRef.current) {
                 PixiAppRef.current.destroy(true, true);

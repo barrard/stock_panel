@@ -101,12 +101,11 @@ export function determineTimeFrame(data) {
  * we want to remove duplicate prices
  */
 export function dropDuplicateMinMax(values) {
-    let valCheck = [];
+    let valCheck = new Set();
     let newValues = [];
     values.forEach((v) => {
-        let index = valCheck.indexOf(v.y);
-        if (index < 0) {
-            valCheck.push(v.y);
+        if (!valCheck.has(v.y)) {
+            valCheck.add(v.y);
             newValues.push(v);
         }
     });
@@ -137,21 +136,19 @@ export function slopeAndIntercept({ x1, x2, y1, y2 }) {
 export function findTheBreakAndHolds({ x2, y2, ohlc, fibData }) {
     //if isResistance, we will look for prices to close ABOVE the value
     const isResistance = fibData.firstPoint.name === "high";
-    const data = ohlc.slice(x2);
     let consecutiveCount = [];
-    const holds = [];
-    for (let x = 0; x < data.length; x++) {
-        const { close } = data[x];
+    for (let i = x2; i < ohlc.length; i++) {
+        const { close } = ohlc[i];
 
         if (isResistance) {
             if (close > y2) {
-                consecutiveCount.push({ y: y2, x: x + x2 });
+                consecutiveCount.push({ y: y2, x: i });
             } else {
                 consecutiveCount = [];
             }
         } else {
             if (close < y2) {
-                consecutiveCount.push({ y: y2, x: x + x2 });
+                consecutiveCount.push({ y: y2, x: i });
             } else {
                 consecutiveCount = [];
             }

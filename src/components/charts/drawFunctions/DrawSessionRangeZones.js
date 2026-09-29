@@ -41,7 +41,7 @@ export default class DrawSessionRangeZones {
 
     cleanup() {
         if (this.zonesContainer) {
-            this.pixiDataRef.current.removeFromLayer(this.layer, this.zonesContainer);
+            this.pixiDataRef?.current?.removeFromLayer?.(this.layer, this.zonesContainer);
             this.zonesContainer.destroy({ children: true });
             this.zonesContainer = null;
         }

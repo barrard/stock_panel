@@ -1,6 +1,7 @@
 import React from "react";
 import { connect } from "react-redux";
 import { Link, withRouter } from "react-router-dom";
+import { Menu, X } from "lucide-react";
 
 import { set_symbols_data, set_search_symbol, add_chart_data } from "../redux/actions/stock_actions.js";
 import { view_selected_stock, view_selected_commodity, getMinutelyCommodityData } from "./landingPageComponents/chart_data_utils.js";
@@ -15,6 +16,7 @@ class Main_Nav extends React.Component {
             filtered_stock_list: [],
             highlightedSymbolListIndex: 0,
             listWindowScrollCount: 0,
+            isDrawerOpen: false,
             // searching: true,
             // stock_selected: false
             // show_filter_list: false
@@ -26,8 +28,13 @@ class Main_Nav extends React.Component {
         this.filtered_stock_list_item = this.filtered_stock_list_item.bind(this);
         this.handleLogout = this.handleLogout.bind(this);
         this.arrowKeyListSelect = this.arrowKeyListSelect.bind(this);
+        this.closeDrawer = this.closeDrawer.bind(this);
+        this.toggleDrawer = this.toggleDrawer.bind(this);
+        this.handleKeyDown = this.handleKeyDown.bind(this);
     }
     async componentDidMount() {
+        window.addEventListener("keydown", this.handleKeyDown);
+
         try {
             const { has_symbols_data } = this.props.stock_data;
             // console.log({ has_symbols_data });
@@ -38,6 +45,10 @@ class Main_Nav extends React.Component {
             console.log("err");
             console.log(err);
         }
+    }
+
+    componentWillUnmount() {
+        window.removeEventListener("keydown", this.handleKeyDown);
     }
 
     componentDidUpdate(prevProps) {
@@ -213,8 +224,10 @@ class Main_Nav extends React.Component {
                 key={index}
                 onClick={() => {
                     if (isCommodity) {
+                        this.closeDrawer();
                         return props.history.push(`/commodity/${symbol}`);
                     } else {
+                        this.closeDrawer();
                         return props.history.push(`/chart/${symbol}`);
                     }
                 }}
@@ -240,58 +253,73 @@ class Main_Nav extends React.Component {
 
     handleLogout(e) {
         e.preventDefault();
+        this.closeDrawer();
         this.props.dispatch(logout_user(this.props));
     }
+
+    closeDrawer() {
+        this.setState({ isDrawerOpen: false });
+    }
+
+    toggleDrawer() {
+        this.setState((prevState) => ({ isDrawerOpen: !prevState.isDrawerOpen }));
+    }
+
+    handleKeyDown(e) {
+        if (e.key === "Escape") {
+            this.closeDrawer();
+        }
+    }
+
     render() {
         let isLoggedIn = this.props.user.isLoggedIn;
         let { pathname } = this.props.location;
+        const { isDrawerOpen } = this.state;
         return (
-            <nav className="navbar navbar-dark bg-dark relative ">
-                <Link title="Home" activeclassname="active" className="navbar-brand " to="/">
-                    Home
-                </Link>
+            <>
+                <button className="app-nav-toggle" type="button" aria-label={isDrawerOpen ? "Close navigation" : "Open navigation"} title={isDrawerOpen ? "Close navigation" : "Open navigation"} onClick={this.toggleDrawer}>
+                    {isDrawerOpen ? <X size={22} strokeWidth={2.2} /> : <Menu size={22} strokeWidth={2.2} />}
+                </button>
+                {isDrawerOpen && <button className="app-nav-backdrop" type="button" aria-label="Close navigation" onClick={this.closeDrawer} />}
+                <nav className={`app-drawer-nav ${isDrawerOpen ? "open" : ""}`} aria-hidden={!isDrawerOpen}>
+                    <div className="app-drawer-header">
+                        <span>Navigation</span>
+                    </div>
 
-                <Link title="Option Alerts" activeclassname="active" className="navbar-brand " to="/op-alerts">
-                    Op Alerts
-                </Link>
+                    <div className="app-drawer-links">
+                        <DrawerLink title="Home" pathname={pathname} path="/" name="Home" onNavigate={this.closeDrawer} />
+                        <DrawerLink title="Option Alerts" pathname={pathname} path="/op-alerts" name="Op Alerts" onNavigate={this.closeDrawer} />
+                        <DrawerLink title="Fundamentals" pathname={pathname} path="/fundamentals" name="Fundamentals" onNavigate={this.closeDrawer} />
+                        <DrawerLink title="Econ Events" pathname={pathname} path="/econ-events" name="Econ Events" onNavigate={this.closeDrawer} />
+                        <DrawerLink title="Screener" pathname={pathname} path="/screener" name="Screener" onNavigate={this.closeDrawer} />
+                    </div>
 
-                <Link title="Fundamentals" activeclassname="active" className="navbar-brand " to="/fundamentals">
-                    Fundamentals
-                </Link>
-                <Link title="Econ Events" activeclassname="active" className="navbar-brand " to="/econ-events">
-                    Econ Events
-                </Link>
-                <Link title="Screener" activeclassname="active" className="navbar-brand " to="/screener">
-                    Screener
-                </Link>
+                    <ul className="nav-bar-links app-drawer-auth-links">
+                        {!isLoggedIn && <Register_Login_Links pathname={pathname} onNavigate={this.closeDrawer} />}
+                        {isLoggedIn && <Logout_Link username={this.props.user.user.primary_email.split("@")[0]} pathname={pathname} handleLogout={this.handleLogout} onNavigate={this.closeDrawer} />}
 
-                {/* <div className="collapse navbar-collapse" id="navbarSupportedContent"> */}
-                <ul className="nav-bar-links">
-                    {!isLoggedIn && <Register_Login_Links pathname={pathname} />}
-                    {isLoggedIn && <Logout_Link username={this.props.user.user.primary_email.split("@")[0]} pathname={pathname} handleLogout={this.handleLogout} />}
-
-                    {/* {isLoggedIn && <TradesLink />} */}
-                </ul>
-                <Navbar_Search
-                    /* Let the list stay long enough to click */
-                    handle_search_input_blur={() =>
-                        setTimeout(() => {
-                            this.setState({ highlightedSymbolListIndex: 0 });
-                            // this.props.dispatch(show_filter_list(false));
-                        }, 200)
-                    }
-                    arrowKeyListSelect={this.arrowKeyListSelect}
-                    handle_search_input={(e) => this.handle_search_symbol_input(e)}
-                    search_symbol={this.state.search_symbol}
-                    handle_search={(e) => this.handle_search(e)}
-                />
-                {/* </div> */}
-                {this.props.meta.show_filter_list &&
-                    this.Filtered_Stock_List({
-                        filtered_stock_list: this.state.filtered_stock_list,
-                        search_symbol: this.state.search_symbol,
-                    })}
-            </nav>
+                        {/* {isLoggedIn && <TradesLink />} */}
+                    </ul>
+                    <Navbar_Search
+                        /* Let the list stay long enough to click */
+                        handle_search_input_blur={() =>
+                            setTimeout(() => {
+                                this.setState({ highlightedSymbolListIndex: 0 });
+                                // this.props.dispatch(show_filter_list(false));
+                            }, 200)
+                        }
+                        arrowKeyListSelect={this.arrowKeyListSelect}
+                        handle_search_input={(e) => this.handle_search_symbol_input(e)}
+                        search_symbol={this.state.search_symbol}
+                        handle_search={(e) => this.handle_search(e)}
+                    />
+                    {this.props.meta.show_filter_list &&
+                        this.Filtered_Stock_List({
+                            filtered_stock_list: this.state.filtered_stock_list,
+                            search_symbol: this.state.search_symbol,
+                        })}
+                </nav>
+            </>
         );
     }
 }
@@ -305,7 +333,7 @@ export default connect(mapStateToProps)(withRouter(Main_Nav));
 /*              Nav components               */
 
 const Navbar_Search = ({ handle_search_input, handle_search, arrowKeyListSelect, search_symbol, handle_search_input_blur }) => (
-    <div className="form-inline ">
+    <div className="form-inline app-drawer-search">
         <label className="white" htmlFor="symbol search">
             Symbol Search
         </label>
@@ -315,21 +343,21 @@ const Navbar_Search = ({ handle_search_input, handle_search, arrowKeyListSelect,
 
 const TradesLink = ({ pathname }) => <Navbar_Links name="Trades" path={"/trades"} pathname={pathname} />;
 
-const Logout_Link = ({ username, pathname, handleLogout }) => (
+const Logout_Link = ({ username, pathname, handleLogout, onNavigate }) => (
     <>
-        <Navbar_Links name={`${username} Profile`} path={"/account-profile"} pathname={pathname} />
-        <Navbar_Links name={`Strat Builder`} path={"/strat-builder"} pathname={pathname} />
+        <Navbar_Links name={`${username} Profile`} path={"/account-profile"} pathname={pathname} onNavigate={onNavigate} />
+        <Navbar_Links name={`Strat Builder`} path={"/strat-builder"} pathname={pathname} onNavigate={onNavigate} />
         <LogOutBtn handleLogout={handleLogout} />
         {/* <Navbar_Links name="Logout" path={`${}/auth/logout`} pathname={pathname} /> */}
     </>
 );
 
-const Register_Login_Links = ({ pathname }) => {
+const Register_Login_Links = ({ pathname, onNavigate }) => {
     return (
         <>
-            <Navbar_Links name="Login" path={"/login"} pathname={pathname} />
+            <Navbar_Links name="Login" path={"/login"} pathname={pathname} onNavigate={onNavigate} />
 
-            <Navbar_Links name="Sign Up" path={"/sign-up"} pathname={pathname} />
+            <Navbar_Links name="Sign Up" path={"/sign-up"} pathname={pathname} onNavigate={onNavigate} />
         </>
     );
 };
@@ -342,10 +370,16 @@ const LogOutBtn = ({ handleLogout }) => (
     </li>
 );
 
-const Navbar_Links = ({ path, pathname, name }) => (
+const Navbar_Links = ({ path, pathname, name, onNavigate }) => (
     <li className="nav-item">
-        <Link className={`${pathname == path ? "active " : " "} nav-link white`} to={path}>
+        <Link className={`${pathname == path ? "active " : " "} nav-link white`} to={path} onClick={onNavigate}>
             {name}
         </Link>
     </li>
+);
+
+const DrawerLink = ({ path, pathname, name, title, onNavigate }) => (
+    <Link title={title} activeclassname="active" className={`${pathname === path ? "active " : ""}app-drawer-main-link`} to={path} onClick={onNavigate}>
+        {name}
+    </Link>
 );

@@ -41,7 +41,7 @@ export default class DrawMovingAverages {
 
     cleanup() {
         if (this.maContainer) {
-            this.pixiDataRef.current.removeFromLayer(this.layer, this.maContainer);
+            this.pixiDataRef?.current?.removeFromLayer?.(this.layer, this.maContainer);
             this.maContainer.destroy({ children: true });
             this.maContainer = null;
         }

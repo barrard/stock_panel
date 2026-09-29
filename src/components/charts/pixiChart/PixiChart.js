@@ -20,11 +20,10 @@ import Select from "./components/Select";
 import Input from "./components/Input";
 
 import SymbolBtns from "./components/SymbolBtns";
-import TimeFrameBtns from "./components/TimeFrameBtns";
-import IndicatorsBtns from "./components/IndicatorsBtns";
 import MarketOverview from "./components/MarketOverview";
 import MarketBreadth from "./components/MarketBreadth";
 import SpyOptions from "./components/SpyOptions";
+import SpyPanel from "./components/SpyOptions/SpyPanel";
 // import StartEndTimes from "./components/StartEndTimes";
 // import PnL_AndOrderFlowStats from "./components/PnL_AndOrderFlowStats";
 import AccountInfoTable from "./components/AccountInfoTable";
@@ -108,6 +107,7 @@ export default function PixiChart({ Socket }) {
 	const [openTradeWindow, setOpenTradeWindow] = useState(false);
 	const [activeTab, setActiveTab] = useState("futures");
 	const [showCompactBreadth, setShowCompactBreadth] = useState(false);
+	const [futuresToolbarTarget, setFuturesToolbarTarget] = useState(null);
 
 	//Pixi Application
 	const PixiAppRef = useRef();
@@ -164,11 +164,11 @@ export default function PixiChart({ Socket }) {
 		name: "Seconds",
 	});
 	const [barTypePeriod, setBarTypePeriod] = useState(60);
-	const [barTypeInput, setBarTypeInput] = useState({
+	const [barTypeInput] = useState({
 		value: 1,
 		name: "Seconds",
 	});
-	const [barTypePeriodInput, setBarTypePeriodInput] = useState(60);
+	const [barTypePeriodInput] = useState(60);
 	const [symbol, setSymbol] = useState({ name: "ES", value: "ES" });
 	const [exchange, setExchange] = useState({ value: "CME", name: "CME" });
 	const [symbolInput, setSymbolInput] = useState({
@@ -182,9 +182,9 @@ export default function PixiChart({ Socket }) {
 	const [orders, setOrders] = useState({});
 	const [embeddedBacktestData, setEmbeddedBacktestData] = useState(null);
 	const [lastTrade, setLastTrade] = useState({});
-	const [backgroundDataFetch, setBackgroundDataFetch] = useState(false);
-	const [startTime, setStartTime] = useState();
-	const [endTime, setEndTime] = useState();
+	const [backgroundDataFetch] = useState(false);
+	const [startTime] = useState();
+	const [endTime] = useState();
 	const [lastTwoDaysCompiled, setLastTwoDaysCompiled] = useState({});
 	// const [bidAskRatios, setBidAskRatios] = useState({});
 	const [plantStatus, setPlantStatus] = useState({});
@@ -1110,23 +1110,6 @@ export default function PixiChart({ Socket }) {
 		[plantStatus],
 	);
 
-	const TimeFrameBtnsMemo = useMemo(
-		() => (
-			<TimeFrameBtns
-				backgroundDataFetch={backgroundDataFetch}
-				setBackgroundDataFetch={setBackgroundDataFetch}
-				setStartTime={setStartTime}
-				setEndTime={setEndTime}
-				startTime={startTime}
-				endTime={endTime}
-				setBarType={setBarTypeInput}
-				setBarTypePeriod={setBarTypePeriodInput}
-				barType={barType}
-				barTypePeriod={barTypePeriod}
-			/>
-		),
-		[barType, barTypePeriod],
-	);
 	const SymbolBtnsMemo = useMemo(
 		() => <SymbolBtns symbolOptions={symbolOptions} symbol={symbolInput} setSymbol={setSymbolInput} />,
 		[symbolInput],
@@ -1185,27 +1168,7 @@ export default function PixiChart({ Socket }) {
 		);
 	}, [embeddedBacktestData, Socket, symbol.value]);
 
-	const mainChartProps = useMemo(
-		() => ({
-			// candleData: candleData.spy1MinData,
-			height: 200,
-			// width: 600,
-			// spyLevelOne,
-			Socket,
-			symbol: symbol.value,
-			orders, // Pass orders to PixiChartV2
-			fullSymbol: fullSymbolValue,
-			// getCurrentStrikeData,
-			// callsOrPuts,
-			// callsData,
-			// putsData,
-			// underlyingData,
-			// lvl2Data,
-			withTimeFrameBtns: true,
-			withSymbolBtns: false,
-		}),
-		[Socket, symbol.value, orders, fullSymbolValue],
-	);
+	const SpyPanelMemo = useMemo(() => <SpyPanel Socket={Socket} height={260} />, [Socket]);
 
 	const symbolData = useMemo(() => fullSymbols.find((s) => s.baseSymbol === symbolInput.value), [fullSymbols, symbolInput.value]);
 	const tradeWindowLastTrade = useMemo(
@@ -1248,28 +1211,23 @@ export default function PixiChart({ Socket }) {
 	);
 
 	const rightUtilityPanel = (
-		<div className="">
-			<PanelGroup direction="vertical" autoSaveId="pixi-right-utility-v-v1">
-				<Panel defaultSize={46} minSize={24} collapsible={true}>
-					{marketOverviewPanel}
-				</Panel>
-			</PanelGroup>
+		<PanelGroup orientation="vertical">
+			<Panel defaultSize={46} minSize={24} collapsible={true}>
+				{marketOverviewPanel}
+			</Panel>
 			<PanelResizeHandle className="resize-handle-h" />
-
-			<PanelGroup direction="horizontal" autoSaveId="pixi-right-utility-h-v1">
-				<Panel defaultSize={54} minSize={24} collapsible={true}>
-					<PanelGroup direction="horizontal" autoSaveId="pixi-right-utility-h-v1">
-						<Panel defaultSize={42} minSize={28} collapsible={true}>
-							{tradeEntryPanel}
-						</Panel>
-						<PanelResizeHandle className="resize-handle-v" />
-						<Panel defaultSize={58} minSize={32} collapsible={true}>
-							{positionsPanel}
-						</Panel>
-					</PanelGroup>
-				</Panel>
-			</PanelGroup>
-		</div>
+			<Panel defaultSize={54} minSize={24} collapsible={true}>
+				<PanelGroup orientation="horizontal">
+					<Panel defaultSize={42} minSize={28} collapsible={true}>
+						{tradeEntryPanel}
+					</Panel>
+					<PanelResizeHandle className="resize-handle-v" />
+					<Panel defaultSize={58} minSize={32} collapsible={true}>
+						{positionsPanel}
+					</Panel>
+				</PanelGroup>
+			</Panel>
+		</PanelGroup>
 	);
 
 	const mobileAudioPrompt = showMobileAudioPrompt ? (
@@ -1596,6 +1554,39 @@ export default function PixiChart({ Socket }) {
 		</div>
 	);
 
+	const mainChartProps = {
+		// candleData: candleData.spy1MinData,
+		height: 200,
+		// width: 600,
+		// spyLevelOne,
+		Socket,
+		symbol: symbol.value,
+		orders, // Pass orders to PixiChartV2
+		fullSymbol: fullSymbolValue,
+		// getCurrentStrikeData,
+		// callsOrPuts,
+		// callsData,
+		// putsData,
+		// underlyingData,
+		// lvl2Data,
+		withTimeFrameBtns: true,
+		withSymbolBtns: false,
+		toolbarPortalTarget: futuresToolbarTarget,
+		plantStatusControl: PlantStatusesMemo,
+		symbolButtonsControl: SymbolBtnsMemo,
+		symbolSelectControl: <Select value={symbolInput} setValue={setSymbolInput} options={symbolOptions} />,
+		breadthToggleControl: (
+			<button
+				type="button"
+				className="breadth-toggle-btn"
+				onClick={() => setShowCompactBreadth((prev) => !prev)}
+			>
+				{showCompactBreadth ? "Hide Breadth" : "Show Breadth"}
+			</button>
+		),
+		orderFlowSoundControl,
+	};
+
 	useEffect(() => {
 		let cancelled = false;
 
@@ -1648,60 +1639,32 @@ export default function PixiChart({ Socket }) {
 					<div style={{ flex: 1, overflow: "hidden" }}>
 						{activeTab === "futures" ? (
 							<div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-								<div className="platform-toolbar">
-									<div className="toolbar-group plant-status-toolbar">{PlantStatusesMemo}</div>
-									<div className="toolbar-divider" />
-									<div className="toolbar-group">{SymbolBtnsMemo}</div>
-									<div className="toolbar-group">
-										<Select value={symbolInput} setValue={setSymbolInput} options={symbolOptions} />
-									</div>
-									<div className="toolbar-divider" />
-									<div className="toolbar-group">{TimeFrameBtnsMemo}</div>
-									<div className="toolbar-divider" />
-									<div className="toolbar-group">
-										<IndicatorsBtns
-											setDrawZigZag={setDrawZigZag}
-											setDrawMarketProfile={setDrawMarketProfile}
-											setDrawOrderBook={setDrawOrderBook}
-											togglePivotLines={togglePivotLines}
-											setDrawPivotLines={setDrawPivotLines}
-											toggleZigZag={toggleZigZag}
-											toggleMarketProfile={toggleMarketProfile}
-											toggleOrderbook={toggleOrderbook}
-											setDrawOrders={setDrawOrders}
-											toggleOrders={toggleOrders}
-										/>
-									</div>
-									<div className="toolbar-divider" />
-									<div className="toolbar-group">
-										<button
-											type="button"
-											className="breadth-toggle-btn"
-											onClick={() => setShowCompactBreadth((prev) => !prev)}
-										>
-											{showCompactBreadth ? "Hide Breadth" : "Show Breadth"}
-										</button>
-									</div>
-									<div className="toolbar-divider" />
-									<div className="toolbar-group">{orderFlowSoundControl}</div>
-								</div>
+								<div ref={setFuturesToolbarTarget} style={{ flexShrink: 0 }} />
 								{showCompactBreadth && (
 									<div style={{ flexShrink: 0, borderBottom: "1px solid #1f2937" }}>
 										<MarketBreadth Socket={Socket} compact={true} />
 									</div>
 								)}
 								<div style={{ flex: 1, overflow: "hidden" }}>
-									<PanelGroup direction="horizontal" autoSaveId="pixi-futures-h-v4">
+									<PanelGroup orientation="horizontal">
 										<Panel defaultSize={70} minSize={35}>
-											<PanelGroup direction="vertical" autoSaveId="pixi-charts-v-v4">
-												<Panel defaultSize={50} minSize={10} collapsible={true}>
+											<PanelGroup orientation="horizontal">
+												<Panel defaultSize={55} minSize={25}>
 													<div className="chart-panel">
 														<PixiChartV2 {...mainChartProps} />
 													</div>
 												</Panel>
 												<PanelResizeHandle className="resize-handle-v" />
-												<Panel defaultSize={38} minSize={10} collapsible={true}>
-													<div className="chart-panel">{EmbeddedBacktestChartMemo}</div>
+												<Panel defaultSize={45} minSize={25}>
+													<PanelGroup orientation="vertical">
+														<Panel defaultSize={50} minSize={10} collapsible={true}>
+															<div className="chart-panel">{EmbeddedBacktestChartMemo}</div>
+														</Panel>
+														<PanelResizeHandle className="resize-handle-h" />
+														<Panel defaultSize={50} minSize={10} collapsible={true}>
+															<div className="chart-panel">{SpyPanelMemo}</div>
+														</Panel>
+													</PanelGroup>
 												</Panel>
 											</PanelGroup>
 										</Panel>
@@ -1725,7 +1688,7 @@ export default function PixiChart({ Socket }) {
 									<div className="toolbar-group">{orderFlowSoundControl}</div>
 								</div>
 								<div style={{ flex: 1, overflow: "hidden" }}>
-									<PanelGroup direction="horizontal" autoSaveId="pixi-tick-h-v2">
+									<PanelGroup orientation="horizontal">
 										<Panel defaultSize={70} minSize={35}>
 											<div className="chart-panel">{BetterTickChartMemo}</div>
 										</Panel>

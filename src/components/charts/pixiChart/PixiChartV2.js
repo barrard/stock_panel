@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { MdDateRange } from "react-icons/md";
 import GenericPixiChart from "../GenericPixiChart";
 import API from "../../API";
@@ -7,6 +8,9 @@ import DrawOrdersV2 from "./components/DrawOrdersV2";
 import DrawDepthSignals from "./components/DrawDepthSignals";
 import DrawSuperTrend from "../drawFunctions/DrawSuperTrend";
 import DrawMovingAverages from "../drawFunctions/DrawMovingAverages";
+import DrawExtremaAnalysis from "../drawFunctions/DrawExtremaAnalysis";
+import { createDefaultExtremaIndicators, EXTREMA_INDICATOR_IDS } from "../drawFunctions/extremaAnalysisConfig";
+import { saveIndicatorOptions } from "../drawFunctions/indicatorOptionsStorage";
 import IndicatorsBtns from "./components/IndicatorsBtns";
 import SymbolBtns from "./components/SymbolBtns";
 import TimeFrameBtns from "./components/TimeFrameBtns";
@@ -119,7 +123,7 @@ const getBarActualDelta = (bar) => {
 		return null;
 	}
 
-	return (askVolume ?? 0) - (bidVolume ?? 0);
+	return (bidVolume ?? 0) - (askVolume ?? 0);
 };
 
 const buildActualCandleDeltaLineData = (bars = []) => {
@@ -292,6 +296,28 @@ const toFiniteNumber = (value) => {
 const getBarTimestamp = (bar) => {
 	const timestamp = Number(bar?.timestamp ?? bar?.datetime);
 	return Number.isFinite(timestamp) ? timestamp : null;
+};
+
+const getExtremaAnalysisDataKey = (bars = []) => {
+	if (!bars.length) return "empty";
+
+	const firstBar = bars[0];
+	const completedIndex = Math.max(0, bars.length - 2);
+	const completedBar = bars[completedIndex];
+
+	return [
+		bars.length,
+		getBarTimestamp(firstBar),
+		firstBar?.open,
+		firstBar?.high,
+		firstBar?.low,
+		firstBar?.close,
+		getBarTimestamp(completedBar),
+		completedBar?.open,
+		completedBar?.high,
+		completedBar?.low,
+		completedBar?.close,
+	].join(":");
 };
 
 const buildDepthBarKey = (timestamp, timeframeMs) => {
@@ -524,6 +550,7 @@ const PixiChartV2 = (props) => {
 				periods: [20, 50, 200],
 			},
 		},
+		...createDefaultExtremaIndicators(),
 		// { id: "zigZag", name: "ZigZag", enabled: false, drawFunctionKey: "draw", instanceRef: null },
 		// { id: "marketProfile", name: "Market Profile", enabled: false, drawFunctionKey: "draw", instanceRef: null },
 		// { id: "pivotLines", name: "Pivot Lines", enabled: false, drawFunctionKey: "draw", instanceRef: null },
@@ -553,6 +580,10 @@ const PixiChartV2 = (props) => {
 						options: { ...ind.options, ...newOptions },
 					};
 
+					if (EXTREMA_INDICATOR_IDS.includes(indicatorId)) {
+						saveIndicatorOptions(indicatorId, updatedIndicator.options);
+					}
+
 					// If the indicator is enabled and has an instance, update it
 					if (updatedIndicator.enabled && updatedIndicator.instanceRef) {
 						const instance = updatedIndicator.instanceRef;
@@ -562,6 +593,10 @@ const PixiChartV2 = (props) => {
 						if (newOptions.visualizationMode && instance.setVisualizationMode) {
 							console.log("[updateIndicatorOptions] Calling setVisualizationMode with:", newOptions.visualizationMode);
 							instance.setVisualizationMode(newOptions.visualizationMode);
+						}
+
+						if (instance.setOptions) {
+							instance.setOptions(newOptions);
 						}
 
 						// Update color scheme if changed
@@ -598,6 +633,14 @@ const PixiChartV2 = (props) => {
 	const depthSignalsIndicator = indicators.find((ind) => ind.id === "depthSignals");
 	const superTrendIndicator = indicators.find((ind) => ind.id === "superTrend");
 	const movingAverageIndicator = indicators.find((ind) => ind.id === "movingAverages");
+	const priceLevelsIndicator = indicators.find((ind) => ind.id === "priceLevels");
+	const fibonacciIndicator = indicators.find((ind) => ind.id === "fibonacci");
+	const trendlinesIndicator = indicators.find((ind) => ind.id === "trendlines");
+	const zigZagIndicator = indicators.find((ind) => ind.id === "zigZag");
+	const extremaAnalysisDataKey = useMemo(
+		() => [symbol.value, timeframe, getExtremaAnalysisDataKey(ohlcData)].join("|"),
+		[symbol.value, timeframe, ohlcData],
+	);
 
 	// Debug: Log indicators on mount
 	useEffect(() => {
@@ -685,6 +728,47 @@ const PixiChartV2 = (props) => {
 		},
 		setIndicators,
 		dependencies: [movingAverageIndicator?.options?.periods?.join("-") || ""],
+	});
+
+	const createExtremaInstance = useCallback((indicator) => {
+		return (pixiData) => {
+			if (!pixiData?.ohlcDatas || pixiData.ohlcDatas.length === 0) {
+				return null;
+			}
+			return new DrawExtremaAnalysis(pixiData, indicator.createMode, indicator.options, 2);
+		};
+	}, []);
+
+	useIndicator({
+		indicator: priceLevelsIndicator,
+		pixiDataRef,
+		createInstance: createExtremaInstance(priceLevelsIndicator || {}),
+		setIndicators,
+		dependencies: [extremaAnalysisDataKey],
+	});
+
+	useIndicator({
+		indicator: fibonacciIndicator,
+		pixiDataRef,
+		createInstance: createExtremaInstance(fibonacciIndicator || {}),
+		setIndicators,
+		dependencies: [extremaAnalysisDataKey],
+	});
+
+	useIndicator({
+		indicator: trendlinesIndicator,
+		pixiDataRef,
+		createInstance: createExtremaInstance(trendlinesIndicator || {}),
+		setIndicators,
+		dependencies: [extremaAnalysisDataKey],
+	});
+
+	useIndicator({
+		indicator: zigZagIndicator,
+		pixiDataRef,
+		createInstance: createExtremaInstance(zigZagIndicator || {}),
+		setIndicators,
+		dependencies: [extremaAnalysisDataKey],
 	});
 
 	//function to get Data
@@ -816,6 +900,11 @@ const PixiChartV2 = (props) => {
 		}
 	}, [fetchHistoricalWindow, hydrateBarsWithDepthSummaries, symbol.value, timeframe]);
 
+	// Liquidity data is expensive for the server to compute/serve, so only request it
+	// for the low timeframes where it's actually useful (1m/5m). Larger timeframes were
+	// causing the server to crash from the volume of liquidity data requested.
+	const isLiquidityTimeframe = timeframe === "1m" || timeframe === "5m";
+
 	// Use the liquidity data hook for fetching and caching
 	useLiquidityData({
 		liquidityHeatmapIndicator,
@@ -825,14 +914,15 @@ const PixiChartV2 = (props) => {
 		Socket,
 		indicatorsRef,
 		fetchLiveDataAndUpdate, // Pass for OHLC bar fetching when needed
+		enabled: isLiquidityTimeframe,
 	});
 
-	// Use the liquidity ratios hook for real-time ratio data (always enabled)
+	// Use the liquidity ratios hook for real-time ratio data
 	useLiquidityRatios({
 		symbol: symbol.value,
 		Socket,
 		pixiDataRef,
-		enabled: true, // Always enabled
+		enabled: isLiquidityTimeframe,
 		timeframe,
 		ohlcData,
 	});
@@ -1215,75 +1305,95 @@ const PixiChartV2 = (props) => {
 		];
 	}, []);
 
-	return (
-		<div>
-			<div className="row g-0 align-items-center">
-				<div className="col-auto">
-					<IndicatorsBtns
-						indicators={indicators}
-						toggleIndicator={toggleIndicator}
-						timeframe={timeframe}
-						updateIndicatorOptions={updateIndicatorOptions}
+	const hasParentToolbarControls =
+		props.plantStatusControl ||
+		props.symbolButtonsControl ||
+		props.symbolSelectControl ||
+		props.breadthToggleControl ||
+		props.orderFlowSoundControl;
+	const toolbarClassName = hasParentToolbarControls
+		? props.toolbarPortalTarget
+			? "platform-toolbar"
+			: "row g-0 align-items-center platform-toolbar"
+		: "row g-0 align-items-center";
+
+	const toolbar = (
+		<div className={toolbarClassName}>
+			{props.plantStatusControl && (
+				<>
+					<div className="toolbar-group plant-status-toolbar">{props.plantStatusControl}</div>
+					<div className="toolbar-divider" />
+				</>
+			)}
+			{props.symbolButtonsControl && <div className="toolbar-group">{props.symbolButtonsControl}</div>}
+			{props.symbolSelectControl && <div className="toolbar-group">{props.symbolSelectControl}</div>}
+			{(props.symbolButtonsControl || props.symbolSelectControl) && <div className="toolbar-divider" />}
+			<div className={hasParentToolbarControls ? "toolbar-group" : "col-auto"}>
+				<IndicatorsBtns
+					indicators={indicators}
+					toggleIndicator={toggleIndicator}
+					timeframe={timeframe}
+					updateIndicatorOptions={updateIndicatorOptions}
+				/>
+			</div>
+			{props.withTimeFrameBtns && (
+				<div className={hasParentToolbarControls ? "toolbar-group" : "col-auto"}>
+					<TimeFrameBtns
+						barType={barType}
+						barTypePeriod={barTypePeriod}
+						setBarType={setBarType}
+						setBarTypePeriod={setBarTypePeriod}
 					/>
 				</div>
-				{props.withTimeFrameBtns && (
-					<div className="col-auto">
-						<TimeFrameBtns
-							barType={barType}
-							barTypePeriod={barTypePeriod}
-							setBarType={setBarType}
-							setBarTypePeriod={setBarTypePeriod}
-						/>
+			)}
+			{props.withSymbolBtns && (
+				<>
+					<div className={hasParentToolbarControls ? "toolbar-group" : "col-auto"}>
+						<SymbolBtns symbolOptions={symbolOptions} symbol={symbol} setSymbol={setSymbol} />
 					</div>
-				)}
-				{props.withSymbolBtns && (
-					<>
-						<div className="col-auto">
-							<SymbolBtns symbolOptions={symbolOptions} symbol={symbol} setSymbol={setSymbol} />
-						</div>
-						<div className="col-auto">
-							<Select value={symbol} setValue={setSymbol} options={symbolOptions} />
-						</div>
-					</>
-				)}
-				{/* Date Range Toggle */}
-				<div className="col-auto" style={{ position: "relative" }}>
-					<button
-						onClick={() => setShowDateRange((v) => !v)}
-						title="Load Date Range"
+					<div className={hasParentToolbarControls ? "toolbar-group" : "col-auto"}>
+						<Select value={symbol} setValue={setSymbol} options={symbolOptions} />
+					</div>
+				</>
+			)}
+			{/* Date Range Toggle */}
+			<div className={hasParentToolbarControls ? "toolbar-group" : "col-auto"} style={{ position: "relative" }}>
+				<button
+					onClick={() => setShowDateRange((v) => !v)}
+					title="Load Date Range"
+					style={{
+						background: showDateRange ? "steelblue" : "#333",
+						border: "1px solid #555",
+						borderRadius: "4px",
+						color: "#fff",
+						cursor: "pointer",
+						padding: "4px 8px",
+						display: "flex",
+						alignItems: "center",
+						gap: "4px",
+						fontSize: "12px",
+					}}
+				>
+					<MdDateRange size={16} />
+				</button>
+				{showDateRange && (
+					<div
 						style={{
-							background: showDateRange ? "steelblue" : "#333",
+							position: "absolute",
+							top: "100%",
+							left: 0,
+							zIndex: 10000,
+							background: "#222",
 							border: "1px solid #555",
 							borderRadius: "4px",
-							color: "#fff",
-							cursor: "pointer",
-							padding: "4px 8px",
+							padding: "8px",
 							display: "flex",
-							alignItems: "center",
-							gap: "4px",
-							fontSize: "12px",
+							flexDirection: "column",
+							gap: "6px",
+							minWidth: "240px",
+							boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
 						}}
 					>
-						<MdDateRange size={16} />
-					</button>
-					{showDateRange && (
-						<div
-							style={{
-								position: "absolute",
-								top: "100%",
-								left: 0,
-								zIndex: 10000,
-								background: "#222",
-								border: "1px solid #555",
-								borderRadius: "4px",
-								padding: "8px",
-								display: "flex",
-								flexDirection: "column",
-								gap: "6px",
-								minWidth: "240px",
-								boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
-							}}
-						>
 							<label style={{ color: "#aaa", fontSize: "11px" }}>
 								Start Date
 								<input
@@ -1359,7 +1469,24 @@ const PixiChartV2 = (props) => {
 						</div>
 					)}
 				</div>
+				{props.breadthToggleControl && (
+					<>
+						<div className="toolbar-divider" />
+						<div className="toolbar-group">{props.breadthToggleControl}</div>
+					</>
+				)}
+				{props.orderFlowSoundControl && (
+					<>
+						<div className="toolbar-divider" />
+						<div className="toolbar-group">{props.orderFlowSoundControl}</div>
+					</>
+				)}
 			</div>
+	);
+
+	return (
+		<div>
+			{props.toolbarPortalTarget ? createPortal(toolbar, props.toolbarPortalTarget) : toolbar}
 			<GenericPixiChart
 				name="PixiChartV2"
 				key={`${symbol.value}-${timeframe}`}
@@ -1378,6 +1505,8 @@ const PixiChartV2 = (props) => {
 				isLoading={isLoading}
 				sendOrder={sendFuturesOrder}
 				margin={{ top: 50, right: 50, left: 0, bottom: 40 }}
+				barSizeMs={timeframeToMs(timeframe)}
+				barLabel="end"
 			/>
 
 			{/* Symbol-filtered orders list */}

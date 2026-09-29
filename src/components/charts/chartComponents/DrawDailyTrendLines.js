@@ -14,7 +14,7 @@ export default class DrawDailyTrendLines {
     cleanup() {
         if (this.gfx) {
             this.gfx.clear();
-            this.pixiDataRef.current.removeFromLayer(this.layer, this.gfx);
+            this.pixiDataRef?.current?.removeFromLayer?.(this.layer, this.gfx);
             this.gfx.destroy();
             this.gfx = null;
         }

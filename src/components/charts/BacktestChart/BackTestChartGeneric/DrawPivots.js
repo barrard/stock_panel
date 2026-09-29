@@ -21,7 +21,7 @@ export default class DrawPivots {
 
     cleanup() {
         if (this.pivotsGfx) {
-            this.pixiDataRef.current.removeFromLayer(this.layer, this.pivotsGfx);
+            this.pixiDataRef?.current?.removeFromLayer?.(this.layer, this.pivotsGfx);
             this.pivotsGfx.destroy({ children: true });
             this.pivotsGfx = null;
         }

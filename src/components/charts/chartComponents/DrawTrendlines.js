@@ -71,7 +71,7 @@ export default class DrawTrendlines {
     }
 
     destroy() {
-        this.pixiDataRef.current.removeFromLayer(2, this.gfx);
+        this.pixiDataRef?.current?.removeFromLayer?.(2, this.gfx);
         this.gfx.destroy();
     }
 }

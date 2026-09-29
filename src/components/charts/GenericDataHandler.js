@@ -25,6 +25,13 @@ export default class GenericDataHandler {
         lowerIndicators = [],
         name = "unnamed chart",
         sendOrder = null,
+        // Length of one bar in ms. Only set it for time-based bars - tick and volume
+        // bars have no fixed duration, and leaving it null keeps the legacy behaviour
+        // where the caller owns bar boundaries.
+        barSizeMs = null,
+        // Which edge of the interval the feed puts in `datetime`. Schwab labels a bar
+        // by its start, rithmic by its close.
+        barLabel = "start",
     }) {
         this.name = name;
         this.lowerIndicators = lowerIndicators;
@@ -45,6 +52,12 @@ export default class GenericDataHandler {
         this.tickSize = tickSize;
         this.indicatorHeight = 50;
         this.currentBar = null;
+        this.drawSuspended = false;
+        this.drawPending = false;
+
+        this.barSizeMs = Number.isFinite(barSizeMs) && barSizeMs > 0 ? barSizeMs : null;
+        this.barLabel = barLabel === "end" ? "end" : "start";
+        this.stampAllBarBounds();
 
         this.customDrawFns = {};
 
@@ -242,9 +255,72 @@ export default class GenericDataHandler {
         }
     }
 
+    /**
+     * `datetime` alone does not say what stretch of time a bar covers - Schwab labels
+     * a bar by the minute it opens, rithmic by the minute it closes. These helpers
+     * translate either convention into an explicit half-open interval [barStart,
+     * barEnd), which is what the tick handling below actually reasons about.
+     *
+     * barStart/barEnd are derived on the client and deliberately never sent anywhere;
+     * nothing persists them.
+     */
+    barBoundsForBar(bar) {
+        if (!this.barSizeMs || !bar) return null;
+        const datetime = Number(bar.datetime);
+        if (!Number.isFinite(datetime)) return null;
+
+        return this.barLabel === "end"
+            ? { barStart: datetime - this.barSizeMs, barEnd: datetime }
+            : { barStart: datetime, barEnd: datetime + this.barSizeMs };
+    }
+
+    /**
+     * Bounds of the bar that a tick at `time` belongs to.
+     *
+     * A close-labeled feed hands us closing edges, so a timestamp landing exactly on a
+     * boundary names the interval that just ended and should fall in the bar before it.
+     * Snapping with floor puts it in the next bar instead - which is wrong, but it is
+     * what OHLC_Compiler._bucketEnd does on the server, and a temporary bar that
+     * disagrees with the completed bar coming to replace it is worse than a shared
+     * one-second skew.
+     */
+    barBoundsForTime(time) {
+        if (!this.barSizeMs || !Number.isFinite(time)) return null;
+
+        const barStart = Math.floor(time / this.barSizeMs) * this.barSizeMs;
+        return { barStart, barEnd: barStart + this.barSizeMs };
+    }
+
+    /** The `datetime` this feed would label a bucket starting at `barStart` with. */
+    barDatetimeFor(barStart) {
+        return this.barLabel === "end" ? barStart + this.barSizeMs : barStart;
+    }
+
+    stampBarBounds(bar) {
+        const bounds = this.barBoundsForBar(bar);
+        if (bounds) {
+            bar.barStart = bounds.barStart;
+            bar.barEnd = bounds.barEnd;
+        }
+        return bar;
+    }
+
+    stampAllBarBounds() {
+        if (!this.barSizeMs || !Array.isArray(this.ohlcDatas)) return;
+        for (const bar of this.ohlcDatas) this.stampBarBounds(bar);
+    }
+
+    /** Start of the bar's interval, falling back to its label if it was never stamped. */
+    barStartOf(bar) {
+        if (!bar) return null;
+        if (Number.isFinite(bar.barStart)) return bar.barStart;
+        return this.barBoundsForBar(bar)?.barStart ?? null;
+    }
+
     // Add a new complete bar (appends to end)
     // Use this for historical data or when you know there's no temporary bar
     setNewBar(bar) {
+        this.stampBarBounds(bar);
         const lastBar = this.ohlcDatas.slice(-1)[0];
         const lastSlicedData = this.slicedData.slice(-1)[0];
         let shouldAddToSlicedData = false;
@@ -300,13 +376,27 @@ export default class GenericDataHandler {
         //     lastBarInData: this.ohlcDatas[this.ohlcDatas.length - 1],
         // });
 
-        if (this.currentBar) {
+        this.stampBarBounds(completeBar);
+
+        // A completed bar can arrive after the next one has already opened. Replacing
+        // blindly would then overwrite the bar now filling with the one before it, so
+        // when bar bounds are known, only replace the temporary bar that this bar
+        // actually completes.
+        const replacesCurrentBar =
+            this.currentBar && (!this.barSizeMs || this.barStartOf(this.currentBar) === this.barStartOf(completeBar));
+
+        if (replacesCurrentBar) {
             // Replace the temporary bar with the complete bar
             // console.log(`[GenericDataHandler ${this.name}] Replacing temporary bar with complete bar`);
             this.ohlcDatas[this.ohlcDatas.length - 1] = { ...this.currentBar, ...completeBar };
 
             // Clear the temporary bar flag
             this.currentBar = null;
+        } else if (this.barSizeMs && this.mergeBarInPlace(completeBar)) {
+            // It completes a bar further back, which mergeBarInPlace has now filled in.
+            this.calculateVolumeMovingAverage();
+            this.draw();
+            return;
         } else {
             // No temporary bar exists, just append
             console.log(`[GenericDataHandler ${this.name}] No temporary bar, appending complete bar`);
@@ -341,6 +431,76 @@ export default class GenericDataHandler {
 
         // console.log(`[GenericDataHandler ${this.name}] Complete bar set, preparing for new temporary bar`);
         this.draw();
+    }
+
+    /**
+     * Fold `bar` into the bar already holding its slot, if there is one, and report
+     * whether it landed. The target is usually the last bar, but a completed bar can
+     * arrive a few seconds after the next one has opened, so scan back a little.
+     * Anything older than that is stale and is left for the caller to reject.
+     */
+    mergeBarInPlace(bar, { adoptAsCurrent = false } = {}) {
+        const bars = this.ohlcDatas;
+        const lastIndex = bars.length - 1;
+        if (lastIndex < 0) return false;
+
+        const scanFloor = Math.max(0, lastIndex - 3);
+
+        for (let i = lastIndex; i >= scanFloor; i--) {
+            if (bars[i].datetime !== bar.datetime) continue;
+
+            // Mutate in place so anything already holding a reference to this bar
+            // (slicedData, indicator caches) sees the update.
+            Object.assign(bars[i], bar);
+            this.stampBarBounds(bars[i]);
+            if (adoptAsCurrent && i === lastIndex) this.currentBar = bars[i];
+            else if (this.currentBar === bars[i]) this.currentBar = null;
+            return true;
+        }
+
+        return false;
+    }
+
+    // Upsert a bar by datetime. The target is usually the last bar, but a completed
+    // bar can land just after the next one has opened, so scan back a little. Keeps
+    // the last bar as `currentBar` so ticks keep accumulating into it. Use this when
+    // the caller owns bar boundaries - e.g. folding 1m bars into a 5m chart - and
+    // re-sends the same bar as it fills.
+    upsertBar(bar) {
+        if (!bar || !Number.isFinite(bar.datetime)) return;
+
+        const bars = this.ohlcDatas;
+        const lastIndex = bars.length - 1;
+        if (lastIndex < 0) return;
+
+        if (this.mergeBarInPlace(bar, { adoptAsCurrent: true })) {
+            this.calculateVolumeMovingAverage();
+            this.draw();
+            return;
+        }
+
+        // Not on the chart: append only if it opens a newer slot, never out of order
+        if (bar.datetime <= bars[lastIndex].datetime) return;
+
+        // setNewBar treats a symbol-less previous bar as "this came from rithmic" and
+        // takes a different slicedData path. Vendor pricehistory candles carry no
+        // symbol, so label it before appending to keep the branch consistent.
+        if (!bars[lastIndex].symbol) bars[lastIndex].symbol = this.symbol;
+
+        this.setNewBar(bar);
+        // setNewBar clears currentBar; the freshly opened bar is still filling.
+        this.currentBar = this.ohlcDatas[this.ohlcDatas.length - 1];
+    }
+
+    // Escape hatches for charts with no bar grid (tick/volume bars), where only the
+    // caller knows where a bar ends. Time-based charts set barSizeMs instead and let
+    // newTick work the boundaries out for itself.
+    closeCurrentBar() {
+        this.currentBar = null;
+    }
+
+    adoptLastBar() {
+        this.currentBar = this.ohlcDatas[this.ohlcDatas.length - 1] || null;
     }
 
     // Efficiently update sessions when a single new bar is added
@@ -382,6 +542,26 @@ export default class GenericDataHandler {
         const volume = tick.volume?.low || tick.volume || 0;
         const lastPrice = tick.lastPrice || tick.close || tick.last;
 
+        // Which bar this tick belongs in. Null for tick/volume bars, where only the
+        // caller knows where a bar ends - those keep extending whatever bar is open.
+        const bounds = this.barBoundsForTime(Number(tick.datetime));
+        if (bounds) {
+            // The clock has crossed into the next bar: stop filling the old one.
+            if (this.currentBar && this.barStartOf(this.currentBar) !== bounds.barStart) {
+                this.currentBar = null;
+            }
+            // Resume filling a bar that is already on the chart and still open - a
+            // partial bucket from the initial payload, say - rather than duplicating it.
+            if (!this.currentBar) {
+                const lastBar = this.ohlcDatas[this.ohlcDatas.length - 1];
+                const lastBarStart = this.barStartOf(lastBar);
+                if (lastBar && lastBarStart === bounds.barStart) this.currentBar = lastBar;
+                // A tick for a bar the chart has already moved past would otherwise open
+                // a second bar behind the last one. Drop it rather than corrupt the order.
+                else if (Number.isFinite(lastBarStart) && bounds.barStart < lastBarStart) return;
+            }
+        }
+
         // Create temporary bar if it doesn't exist
         if (!this.currentBar) {
             const lastCompleteBar = this.ohlcDatas[this.ohlcDatas.length - 1];
@@ -392,10 +572,15 @@ export default class GenericDataHandler {
             //     tickPrice: lastPrice,
             // });
 
+            // A tick timestamp is an instant, not a bar label - snapping it to the grid
+            // is what stops a close-labeled feed from opening a bar that collides with
+            // the one that just completed.
+            const datetime = bounds ? this.barDatetimeFor(bounds.barStart) : tick.datetime || Date.now();
+
             // Create a new temporary bar
             this.currentBar = {
-                datetime: tick.datetime || Date.now(),
-                timestamp: tick.timestamp || Date.now(),
+                datetime,
+                timestamp: bounds ? datetime : tick.timestamp || Date.now(),
                 open: basePrice,
                 high: Math.max(basePrice, lastPrice),
                 low: Math.min(basePrice, lastPrice),
@@ -409,6 +594,7 @@ export default class GenericDataHandler {
                 ...(tick.numTrades && { numTrades: 0 }),
             };
 
+            this.stampBarBounds(this.currentBar);
             this.ohlcDatas.push(this.currentBar);
             this.sliceEnd++;
         }
@@ -436,8 +622,14 @@ export default class GenericDataHandler {
             lastBar.numTrades += tick.numTrades;
         }
 
-        lastBar.datetime = tick.datetime || Date.now();
-        // lastBar.timestamp = tick.timestamp || Date.now();
+        // Without a bar grid the tick timestamp is the only label available, so the bar
+        // walks forward with it. With one, the bar keeps the label of the slot it
+        // occupies - dragging that label forward is what let a finished bucket get
+        // relabeled as the next one and then overwritten by it.
+        if (!bounds) {
+            lastBar.datetime = tick.datetime || Date.now();
+            // lastBar.timestamp = tick.timestamp || Date.now();
+        }
 
         // Incremental domain update
         if (lastBar.high > this.slicedHighest) {
@@ -746,6 +938,7 @@ export default class GenericDataHandler {
                     extentFields: indicator.extentFields || null,
                     extentValueProvider: indicator.extentValueProvider || null,
                     disableCache: indicator.disableCache || false,
+                    canGoNegative: indicator.canGoNegative || false,
                 });
             });
         }
@@ -1984,7 +2177,23 @@ export default class GenericDataHandler {
         }
     }
 
+    setDrawingSuspended(suspended) {
+        const shouldSuspend = Boolean(suspended);
+        if (shouldSuspend === this.drawSuspended) return;
+
+        this.drawSuspended = shouldSuspend;
+        if (!shouldSuspend && this.drawPending) {
+            this.drawPending = false;
+            this.draw();
+        }
+    }
+
     draw() {
+        if (this.drawSuspended) {
+            this.drawPending = true;
+            return;
+        }
+
         const drawStart = performance.now();
         let totalLoops = 0;
 
@@ -2044,7 +2253,11 @@ export default class GenericDataHandler {
 
         Object.keys(this.customDrawFns).forEach((name) => {
             const drawFn = this.customDrawFns[name];
-            drawFn();
+            try {
+                drawFn();
+            } catch (error) {
+                console.warn(`[GenericDataHandler] custom draw function failed: ${name}`, error);
+            }
         });
 
         // if (this.isDrawOrders) {
@@ -2113,6 +2326,7 @@ export default class GenericDataHandler {
         const hadData = previousLength > 0;
 
         this.ohlcDatas = newData || [];
+        this.stampAllBarBounds();
         const newLength = this.ohlcDatas.length;
 
         this.slicedHighestIdx = null; // Invalidate cache

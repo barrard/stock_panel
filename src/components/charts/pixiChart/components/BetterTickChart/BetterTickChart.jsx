@@ -12,9 +12,273 @@ import { LiquidityHeatmap, liquidityHeatMapConfig } from "../indicatorDrawFuncti
 import DrawOrdersV2 from "../DrawOrdersV2";
 import DrawDepthSignals from "../DrawDepthSignals";
 import DrawSuperTrend from "../../../drawFunctions/DrawSuperTrend";
+import DrawExtremaAnalysis from "../../../drawFunctions/DrawExtremaAnalysis";
+import { createDefaultExtremaIndicators, EXTREMA_INDICATOR_IDS } from "../../../drawFunctions/extremaAnalysisConfig";
+import { saveIndicatorOptions } from "../../../drawFunctions/indicatorOptionsStorage";
 import { sendFuturesOrder } from "../sendFuturesOrder";
 import { createDualHistogramDrawFn } from "../drawFns";
+import DrawBetterTickMarkers from "./DrawBetterTickMarkers";
 // import { liquidityHeatMapConfig } from "../indicatorConfigs";
+
+const BETTER_VOLUME_COLORS = {
+    pro: 0xffb74d,
+    am: 0xfff176,
+    climaxChurn: 0xff4dff,
+    highChurn: 0x42a5f5,
+    lowVolume: 0xfdd835,
+    climaxDown: 0xffffff,
+    climaxUp: 0xff5252,
+    default: 0x78909c,
+};
+
+const PRO_VOL_PER_ORDER_MIN = 2;
+const AM_VOL_PER_ORDER_MAX = 1.1;
+
+const getBetterVolumeColor = (bar = {}) => {
+    if (bar.volumePro) return BETTER_VOLUME_COLORS.pro;
+    if (bar.volumeAm) return BETTER_VOLUME_COLORS.am;
+    if (bar.volumeClimaxChurnBar) return BETTER_VOLUME_COLORS.climaxChurn;
+    if (bar.highVolumeChurnBar) return BETTER_VOLUME_COLORS.highChurn;
+    if (bar.lowVolumeBar || bar.lowVolumeChurnBar) return BETTER_VOLUME_COLORS.lowVolume;
+    if (bar.volumeClimaxDownBar) return BETTER_VOLUME_COLORS.climaxDown;
+    if (bar.volumeClimaxUpBar) return BETTER_VOLUME_COLORS.climaxUp;
+    return BETTER_VOLUME_COLORS.default;
+};
+
+const getBarDelta = (bar = {}) => {
+    const apiDelta = Number(bar.delta);
+    if (Number.isFinite(apiDelta)) return apiDelta;
+
+    const askVolume = Number(bar.askVolume);
+    const bidVolume = Number(bar.bidVolume);
+    if (Number.isFinite(askVolume) && Number.isFinite(bidVolume)) {
+        return askVolume - bidVolume;
+    }
+
+    const normalizedDelta = Number(bar.barDelta);
+    return Number.isFinite(normalizedDelta) ? normalizedDelta : null;
+};
+
+const buildBetterTickMarkers = (bar = {}, { avgTradeSize = null, betterMomentumHist = null, barDelta = null } = {}) => {
+    const markers = [];
+    const isBuyingBar = Number(barDelta) >= 0;
+    const high = Number(bar.high);
+    const low = Number(bar.low);
+    const close = Number(bar.close);
+    const hasHigh = Number.isFinite(high);
+    const hasLow = Number.isFinite(low);
+    const fallbackPrice = Number.isFinite(close) ? close : null;
+
+    const buyPrice = hasLow ? low : fallbackPrice;
+    const sellPrice = hasHigh ? high : fallbackPrice;
+    const proRun = Number(bar.volumeProRun);
+    const amRun = Number(bar.volumeAmRun);
+    const showProMarker = bar.volumeProExtreme || proRun >= 3;
+    const showAmMarker = bar.volumeAmExtreme || amRun >= 3;
+
+    if (showProMarker && Number.isFinite(avgTradeSize)) {
+        markers.push({
+            type: "pro",
+            label: "PRO",
+            compactLabel: "",
+            direction: isBuyingBar ? 1 : -1,
+            price: isBuyingBar ? buyPrice : sellPrice,
+            color: 0xffb74d,
+            shape: "diamond",
+            size: 6,
+            tooltipLines: [
+                "PRO high avg trade size",
+                `Avg trade: ${avgTradeSize.toFixed(2)}`,
+                Number.isFinite(proRun) ? `Run: ${proRun}` : null,
+                bar.volumeProRelativeExtreme ? "Rolling extreme: yes" : null,
+                `Volume: ${Number(bar.volume || 0).toFixed(0)}`,
+                `Delta: ${Number(barDelta || 0).toFixed(0)}`,
+            ].filter(Boolean),
+        });
+    }
+
+    if (showAmMarker && Number.isFinite(avgTradeSize)) {
+        markers.push({
+            type: "am",
+            label: "AM",
+            compactLabel: "",
+            direction: isBuyingBar ? 1 : -1,
+            price: isBuyingBar ? buyPrice : sellPrice,
+            color: 0xfff176,
+            shape: "square",
+            size: 5,
+            tooltipLines: [
+                "AM low avg trade size",
+                `Avg trade: ${avgTradeSize.toFixed(2)}`,
+                Number.isFinite(amRun) ? `Run: ${amRun}` : null,
+                bar.volumeAmRelativeExtreme ? "Rolling extreme: yes" : null,
+                `Volume: ${Number(bar.volume || 0).toFixed(0)}`,
+                `Delta: ${Number(barDelta || 0).toFixed(0)}`,
+            ].filter(Boolean),
+        });
+    }
+
+    const buyExhaustion = bar.momentumExhaustionBuy || (bar.buyingExhaustion && Number(betterMomentumHist) > 0);
+    const sellExhaustion = bar.momentumExhaustionSell || (bar.sellingExhaustion && Number(betterMomentumHist) < 0);
+
+    if (buyExhaustion) {
+        markers.push({
+            type: "buyExhaustion",
+            label: "BX",
+            direction: 1,
+            price: buyPrice,
+            color: 0x26c6da,
+            size: 7,
+            tooltipLines: [
+                "Buy exhaustion",
+                `Momentum hist: ${Number(betterMomentumHist || 0).toFixed(4)}`,
+                `Delta: ${Number(barDelta || 0).toFixed(0)}`,
+                `Close location: ${Number(bar.closeLocation || 0).toFixed(2)}`,
+            ],
+        });
+    }
+
+    if (sellExhaustion) {
+        markers.push({
+            type: "sellExhaustion",
+            label: "SX",
+            direction: -1,
+            price: sellPrice,
+            color: 0xef5350,
+            size: 7,
+            tooltipLines: [
+                "Sell exhaustion",
+                `Momentum hist: ${Number(betterMomentumHist || 0).toFixed(4)}`,
+                `Delta: ${Number(barDelta || 0).toFixed(0)}`,
+                `Close location: ${Number(bar.closeLocation || 0).toFixed(2)}`,
+            ],
+        });
+    }
+
+    return markers.filter((marker) => Number.isFinite(Number(marker.price)));
+};
+
+const normalizeBetterTickBars = (bars = [], { startingCumulativeDelta = 0, startingProRun = 0, startingAmRun = 0 } = {}) => {
+    let cumulativeDelta = Number(startingCumulativeDelta);
+    if (!Number.isFinite(cumulativeDelta)) {
+        cumulativeDelta = 0;
+    }
+    let proRun = Number(startingProRun);
+    if (!Number.isFinite(proRun)) {
+        proRun = 0;
+    }
+    let amRun = Number(startingAmRun);
+    if (!Number.isFinite(amRun)) {
+        amRun = 0;
+    }
+
+    return bars.map((bar) => {
+        const rawAvgTradeSize = Number(bar.avgTradeSize ?? bar.volPerOrder);
+        const volume = Number(bar.volume);
+        const tickCount = Number(bar.tickCount);
+        const avgTradeSize =
+            Number.isFinite(rawAvgTradeSize) || !Number.isFinite(volume) || !Number.isFinite(tickCount) || tickCount <= 0
+                ? rawAvgTradeSize
+                : volume / tickCount;
+        const betterMomentumHist = Number(bar.betterMomentumHist);
+        const barDelta = getBarDelta(bar);
+        if (Number.isFinite(barDelta)) {
+            cumulativeDelta += barDelta;
+        }
+        const isPro = Boolean(bar.volumePro) || avgTradeSize >= PRO_VOL_PER_ORDER_MIN;
+        const isAm = Boolean(bar.volumeAm) || avgTradeSize <= AM_VOL_PER_ORDER_MAX;
+        proRun = isPro ? proRun + 1 : 0;
+        amRun = isAm ? amRun + 1 : 0;
+
+        const normalizedBar = {
+            ...bar,
+            volumePro: isPro || undefined,
+            volumeAm: isAm || undefined,
+            timestamp: bar.timestamp ?? bar.datetime,
+            barDelta: Number.isFinite(barDelta) ? barDelta : null,
+            cumulativeDelta,
+            avgTradeSize: Number.isFinite(avgTradeSize) ? avgTradeSize : null,
+            volPerOrder: Number.isFinite(avgTradeSize) ? avgTradeSize : null,
+            betterProSize: isPro && Number.isFinite(avgTradeSize) ? avgTradeSize : null,
+            betterAmSize: isAm && Number.isFinite(avgTradeSize) ? -avgTradeSize : null,
+            volumeProRun: proRun,
+            volumeAmRun: amRun,
+            betterMomentumHist: Number.isFinite(betterMomentumHist) ? betterMomentumHist : null,
+            betterMomentumPositive: Number.isFinite(betterMomentumHist) && betterMomentumHist > 0 ? betterMomentumHist : null,
+            betterMomentumNegative: Number.isFinite(betterMomentumHist) && betterMomentumHist < 0 ? betterMomentumHist : null,
+        };
+        normalizedBar.betterTickMarkers = buildBetterTickMarkers(normalizedBar, {
+            avgTradeSize,
+            betterMomentumHist,
+            barDelta,
+        });
+        return normalizedBar;
+    });
+};
+
+const createBetterVolumeDrawFn = () => {
+    return (indicator) => {
+        const { chart } = indicator;
+        if (!chart?.slicedData?.length || !indicator?.gfx) return;
+
+        try {
+            if (!indicator.gfx?._geometry) return;
+            indicator.gfx.clear();
+        } catch (err) {
+            console.log("CLEAR() Error?");
+            console.log(err);
+            return err;
+        }
+
+        const dataLength = chart.slicedData.length;
+        const candleWidth = (chart.width - (chart.margin.left + chart.margin.right)) / dataLength;
+        const halfWidth = candleWidth / 2;
+        const candleMargin = candleWidth * 0.1;
+        const doubleMargin = candleMargin * 2;
+        const strokeWidth = candleWidth * 0.1;
+        const halfStrokeWidth = strokeWidth / 2;
+        const bottom = indicator.scale(0);
+
+        chart.slicedData.forEach((bar, i) => {
+            const volume = Number(bar.volume);
+            if (!Number.isFinite(volume)) return;
+
+            const x = chart.xScale(i);
+            const top = indicator.scale(volume);
+            const height = Math.max(1, bottom - top - strokeWidth);
+            indicator.gfx.beginFill(getBetterVolumeColor(bar), 0.9);
+            indicator.gfx.drawRect(x + candleMargin - halfWidth, top + halfStrokeWidth, candleWidth - doubleMargin, height);
+            indicator.gfx.endFill();
+        });
+    };
+};
+
+const getBarTimestamp = (bar) => {
+    const timestamp = Number(bar?.timestamp ?? bar?.datetime);
+    return Number.isFinite(timestamp) ? timestamp : null;
+};
+
+const getExtremaAnalysisDataKey = (bars = []) => {
+    if (!bars.length) return "empty";
+
+    const firstBar = bars[0];
+    const completedIndex = Math.max(0, bars.length - 2);
+    const completedBar = bars[completedIndex];
+
+    return [
+        bars.length,
+        getBarTimestamp(firstBar),
+        firstBar?.open,
+        firstBar?.high,
+        firstBar?.low,
+        firstBar?.close,
+        getBarTimestamp(completedBar),
+        completedBar?.open,
+        completedBar?.high,
+        completedBar?.low,
+        completedBar?.close,
+    ].join(":");
+};
 
 const BetterTickChart = (props) => {
     const {
@@ -49,6 +313,7 @@ const BetterTickChart = (props) => {
     const rawDataRef = useRef([]); // Display bars returned from server using the active join value
     const liveJoinBufferRef = useRef([]); // Raw 100-tick bars collected until they complete the next joined bar
     const depthSignalsDrawRef = useRef(null);
+    const betterTickMarkersDrawRef = useRef(null);
     const pendingDepthSignalsRef = useRef([]);
     const seenDepthSignalKeysRef = useRef(new Set());
 
@@ -82,6 +347,7 @@ const BetterTickChart = (props) => {
             drawFunctionKey: "drawAll",
             instanceRef: null,
         },
+        ...createDefaultExtremaIndicators(),
     ]);
 
     // Use custom hook for indicator toggling
@@ -98,6 +364,10 @@ const BetterTickChart = (props) => {
                         options: { ...ind.options, ...newOptions },
                     };
 
+                    if (EXTREMA_INDICATOR_IDS.includes(indicatorId)) {
+                        saveIndicatorOptions(indicatorId, updatedIndicator.options);
+                    }
+
                     // If the indicator is enabled and has an instance, update it
                     if (updatedIndicator.enabled && updatedIndicator.instanceRef) {
                         const instance = updatedIndicator.instanceRef;
@@ -105,6 +375,10 @@ const BetterTickChart = (props) => {
                         // Update visualization mode if changed (for liquidity heatmap)
                         if (newOptions.visualizationMode && instance.setVisualizationMode) {
                             instance.setVisualizationMode(newOptions.visualizationMode);
+                        }
+
+                        if (instance.setOptions) {
+                            instance.setOptions(newOptions);
                         }
 
                         // Update color scheme if changed
@@ -132,6 +406,14 @@ const BetterTickChart = (props) => {
     const ordersIndicator = indicators.find((ind) => ind.id === "orders");
     const depthSignalsIndicator = indicators.find((ind) => ind.id === "depthSignals");
     const superTrendIndicator = indicators.find((ind) => ind.id === "superTrend");
+    const priceLevelsIndicator = indicators.find((ind) => ind.id === "priceLevels");
+    const fibonacciIndicator = indicators.find((ind) => ind.id === "fibonacci");
+    const trendlinesIndicator = indicators.find((ind) => ind.id === "trendlines");
+    const zigZagIndicator = indicators.find((ind) => ind.id === "zigZag");
+    const extremaAnalysisDataKey = useMemo(
+        () => [fullSymbol, join, getExtremaAnalysisDataKey(candleData)].join("|"),
+        [fullSymbol, join, candleData]
+    );
 
     // Keep a ref to indicators to avoid stale closures in socket handlers
     const indicatorsRef = useRef(indicators);
@@ -227,6 +509,47 @@ const BetterTickChart = (props) => {
         dependencies: [candleData],
     });
 
+    const createExtremaInstance = useCallback((indicator) => {
+        return (pixiData) => {
+            if (!pixiData?.ohlcDatas || pixiData.ohlcDatas.length === 0) {
+                return null;
+            }
+            return new DrawExtremaAnalysis(pixiData, indicator.createMode, indicator.options, 2);
+        };
+    }, []);
+
+    useIndicator({
+        indicator: priceLevelsIndicator,
+        pixiDataRef,
+        createInstance: createExtremaInstance(priceLevelsIndicator || {}),
+        setIndicators,
+        dependencies: [extremaAnalysisDataKey],
+    });
+
+    useIndicator({
+        indicator: fibonacciIndicator,
+        pixiDataRef,
+        createInstance: createExtremaInstance(fibonacciIndicator || {}),
+        setIndicators,
+        dependencies: [extremaAnalysisDataKey],
+    });
+
+    useIndicator({
+        indicator: trendlinesIndicator,
+        pixiDataRef,
+        createInstance: createExtremaInstance(trendlinesIndicator || {}),
+        setIndicators,
+        dependencies: [extremaAnalysisDataKey],
+    });
+
+    useIndicator({
+        indicator: zigZagIndicator,
+        pixiDataRef,
+        createInstance: createExtremaInstance(zigZagIndicator || {}),
+        setIndicators,
+        dependencies: [extremaAnalysisDataKey],
+    });
+
     useEffect(() => {
         const ordersInstance = ordersIndicator?.instanceRef;
         if (!ordersInstance || !ordersIndicator?.enabled) return;
@@ -237,6 +560,29 @@ const BetterTickChart = (props) => {
         });
         ordersInstance.draw(ordersFromParent || {});
     }, [ordersIndicator?.enabled, ordersIndicator?.instanceRef, ordersFromParent, fullSymbol]);
+
+    const hasCandleData = candleData.length > 0;
+
+    useEffect(() => {
+        if (!pixiDataRef.current || !hasCandleData) return;
+
+        const pixiData = pixiDataRef.current;
+        if (betterTickMarkersDrawRef.current?.chart !== pixiData) {
+            betterTickMarkersDrawRef.current?.cleanup?.();
+            betterTickMarkersDrawRef.current = new DrawBetterTickMarkers(pixiData);
+            pixiData.registerDrawFn("betterTickMarkers", betterTickMarkersDrawRef.current.draw.bind(betterTickMarkersDrawRef.current));
+        }
+
+        pixiData.draw?.();
+
+        return () => {
+            pixiData.unregisterDrawFn("betterTickMarkers");
+            if (betterTickMarkersDrawRef.current?.chart === pixiData) {
+                betterTickMarkersDrawRef.current.cleanup?.();
+                betterTickMarkersDrawRef.current = null;
+            }
+        };
+    }, [hasCandleData, symbol, join]);
 
     useEffect(() => {
         if (!pixiDataRef.current || !candleData.length) return;
@@ -305,6 +651,58 @@ const BetterTickChart = (props) => {
     const lowerIndicators = useMemo(() => {
         return [
             {
+                name: "Better Volume",
+                height: 100,
+                type: "volume",
+                accessors: "volume",
+                drawFn: createBetterVolumeDrawFn(),
+                canGoNegative: false,
+            },
+            {
+                name: "Cumulative Delta",
+                height: 70,
+                type: "line",
+                accessors: "cumulativeDelta",
+                lineColor: 0x26c6da,
+                canGoNegative: true,
+            },
+            {
+                name: "Avg Trade Size",
+                height: 70,
+                type: "line",
+                accessors: "avgTradeSize",
+                lineColor: 0xffb74d,
+                canGoNegative: false,
+            },
+            {
+                name: "Pro/Am",
+                height: 70,
+                type: "volume",
+                accessors: "betterProSize",
+                extentFields: ["betterProSize", "betterAmSize"],
+                drawFn: createDualHistogramDrawFn({
+                    positiveField: "betterProSize",
+                    negativeField: "betterAmSize",
+                    positiveColor: 0xffb74d,
+                    negativeColor: 0xfff176,
+                }),
+                canGoNegative: true,
+            },
+            {
+                name: "Better Momentum",
+                height: 80,
+                type: "volume",
+                accessors: "betterMomentumHist",
+                extentFields: ["betterMomentumPositive", "betterMomentumNegative"],
+                drawFn: createDualHistogramDrawFn({
+                    positiveField: "betterMomentumPositive",
+                    negativeField: "betterMomentumNegative",
+                    positiveColor: 0x26c6da,
+                    negativeColor: 0xef5350,
+                }),
+                canGoNegative: true,
+            },
+            {
                 name: "Uber Near Cancellation",
                 height: 90,
                 type: "volume",
@@ -352,6 +750,10 @@ const BetterTickChart = (props) => {
             low: Math.min(...barsToJoin.map((b) => b.low)),
             close: barsToJoin[barsToJoin.length - 1].close,
             volume: barsToJoin.reduce((sum, b) => sum + (b.volume || 0), 0),
+            askVolume: barsToJoin.reduce((sum, b) => sum + (b.askVolume || 0), 0),
+            bidVolume: barsToJoin.reduce((sum, b) => sum + (b.bidVolume || 0), 0),
+            delta: barsToJoin.reduce((sum, b) => sum + (getBarDelta(b) || 0), 0),
+            tickCount: barsToJoin.reduce((sum, b) => sum + (b.tickCount || 0), 0),
             datetime: barsToJoin[barsToJoin.length - 1].datetime,
             timestamp: barsToJoin[barsToJoin.length - 1].timestamp || barsToJoin[barsToJoin.length - 1].datetime,
             symbol: barsToJoin[0].symbol,
@@ -383,9 +785,10 @@ const BetterTickChart = (props) => {
     );
 
     const syncServerBarsToState = useCallback((bars = []) => {
-        rawDataRef.current = bars;
+        const normalizedBars = normalizeBetterTickBars(bars);
+        rawDataRef.current = normalizedBars;
         liveJoinBufferRef.current = [];
-        setCandleData(bars);
+        setCandleData(normalizedBars);
     }, []);
 
     const fetchData = useCallback(async (opts = {}) => {
@@ -503,17 +906,8 @@ const BetterTickChart = (props) => {
 
                 const existingTimestamps = new Set(rawDataRef.current.map((bar) => bar?.timestamp || bar?.datetime));
                 const uniqueOlderData = olderData.filter((bar) => !existingTimestamps.has(bar?.timestamp || bar?.datetime));
-                const mergedServerBars = mergeBarsByTimestamp([...olderData, ...rawDataRef.current]);
+                const mergedServerBars = normalizeBetterTickBars(mergeBarsByTimestamp([...uniqueOlderData, ...rawDataRef.current]));
                 rawDataRef.current = mergedServerBars;
-
-                // Update the data handler - same as old version
-                if (pixiDataRef.current && uniqueOlderData.length) {
-                    pixiDataRef.current.sliceStart += uniqueOlderData.length;
-                    pixiDataRef.current.sliceEnd += uniqueOlderData.length;
-                    pixiDataRef.current.ohlcDatas = uniqueOlderData.concat(pixiDataRef.current.ohlcDatas);
-                    pixiDataRef.current.draw();
-                }
-
                 setCandleData(mergedServerBars);
             } else {
                 console.log("[BetterTickChart] No more historical data available");
@@ -589,21 +983,33 @@ const BetterTickChart = (props) => {
             }
 
             if (join === 1) {
-                rawDataRef.current = [...rawDataRef.current, data];
+                const previousBar = rawDataRef.current[rawDataRef.current.length - 1] || {};
+                const normalizedBar = normalizeBetterTickBars([data], {
+                    startingCumulativeDelta: previousBar.cumulativeDelta || 0,
+                    startingProRun: previousBar.volumeProRun || 0,
+                    startingAmRun: previousBar.volumeAmRun || 0,
+                })[0];
+                rawDataRef.current = [...rawDataRef.current, normalizedBar];
                 // No combining - use the complete 100-tick bar directly
-                pixiDataRef.current.setCompleteBar(data);
-                pixiDataRef.current.updateCurrentPriceLabel(data.close);
+                pixiDataRef.current.setCompleteBar(normalizedBar);
+                pixiDataRef.current.updateCurrentPriceLabel(normalizedBar.close);
             } else {
                 liveJoinBufferRef.current = [...liveJoinBufferRef.current, data];
                 const inProgressBar = buildCombinedBar(liveJoinBufferRef.current);
                 if (!inProgressBar) return;
 
                 if (liveJoinBufferRef.current.length >= join) {
-                    console.log("[BetterTickChart] Completed joined live bar", inProgressBar);
-                    rawDataRef.current = [...rawDataRef.current, inProgressBar];
+                    const previousBar = rawDataRef.current[rawDataRef.current.length - 1] || {};
+                    const normalizedBar = normalizeBetterTickBars([inProgressBar], {
+                        startingCumulativeDelta: previousBar.cumulativeDelta || 0,
+                        startingProRun: previousBar.volumeProRun || 0,
+                        startingAmRun: previousBar.volumeAmRun || 0,
+                    })[0];
+                    console.log("[BetterTickChart] Completed joined live bar", normalizedBar);
+                    rawDataRef.current = [...rawDataRef.current, normalizedBar];
                     liveJoinBufferRef.current = [];
-                    pixiDataRef.current.setCompleteBar(inProgressBar);
-                    pixiDataRef.current.updateCurrentPriceLabel(inProgressBar.close);
+                    pixiDataRef.current.setCompleteBar(normalizedBar);
+                    pixiDataRef.current.updateCurrentPriceLabel(normalizedBar.close);
                 } else {
                     console.log("[BetterTickChart] Updating joined live bar", inProgressBar);
                     pixiDataRef.current.newTick({
@@ -772,7 +1178,7 @@ const BetterTickChart = (props) => {
                     exchange={exchange}
                     sendOrder={sendFuturesOrder}
                     options={{
-                        withoutVolume: false,
+                        withoutVolume: true,
                         chartType: "OHLC",
                         axisFontSizes: {
                             x: 12,
