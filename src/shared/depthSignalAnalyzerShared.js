@@ -2,7 +2,10 @@ const CHURN_REGIME = { insufficient: 0, normal: 1, elevated: 2, extreme: 3 };
 
 const DEFAULT_TUNING_OPTIONS = {
 	// Alert gates
-	depthAlertMinDepthEvents: 25,
+	depthAlertMinDepthEvents: 25, // floor; the ratio below does the real gating
+	depthAlertMinDepthRatio: 2, // depth events vs median of recent windows
+	depthBaselineWindows: 30, // ~5 min of 10s windows
+	depthBaselineMinWindows: 6, // no depth alerts until we have ~1 min of baseline
 	depthAlertMinChurnRatio: 3,
 	depthAlertMinWallDriftTicks: 20,
 	// Cumulative
@@ -83,7 +86,10 @@ const TUNING_GROUPS = [
 	{
 		id: "gates",
 		label: "Alert Gates",
-		keys: ["depthAlertMinDepthEvents", "depthAlertMinChurnRatio", "depthAlertMinWallDriftTicks"],
+		keys: [
+			"depthAlertMinDepthEvents", "depthAlertMinDepthRatio", "depthBaselineWindows", "depthBaselineMinWindows",
+			"depthAlertMinChurnRatio", "depthAlertMinWallDriftTicks",
+		],
 	},
 ];
 
@@ -110,6 +116,9 @@ const TUNING_FIELD_META = {
 	scoreBothSidesDrainingThreshold: { label: "Both Draining Thr", min: -50, max: 0, step: 1 },
 	scoreBothSidesDrainingMultiplier: { label: "Both Draining Mult", min: 0, max: 1, step: 0.05 },
 	depthAlertMinDepthEvents: { label: "Min Depth Events", min: 0, max: 200, step: 1 },
+	depthAlertMinDepthRatio: { label: "Min Depth Ratio", min: 1, max: 10, step: 0.1 },
+	depthBaselineWindows: { label: "Depth Baseline Windows", min: 3, max: 120, step: 1 },
+	depthBaselineMinWindows: { label: "Depth Baseline Min", min: 1, max: 60, step: 1 },
 	depthAlertMinChurnRatio: { label: "Min Churn Ratio", min: 0, max: 10, step: 0.1 },
 	depthAlertMinWallDriftTicks: { label: "Min Wall Drift", min: 0, max: 100, step: 1 },
 };
@@ -155,6 +164,7 @@ class DepthSignalAnalyzer {
 				consecutive: 0,
 				lastContinuationTime: 0,
 				lastSwingTime: 0,
+				depthHistory: [],
 				results: [],
 			});
 		}
@@ -184,7 +194,7 @@ class DepthSignalAnalyzer {
 	ingest(record) {
 		const normalized = this.normalizeRecord(record);
 		const state = this.getState(normalized.baseSymbol);
-		const alertContext = this.buildAlertContext(normalized);
+		const alertContext = this.buildAlertContext(normalized, state);
 		const narrative = this.buildDepthNarrative(normalized);
 		const windowScore = this.scoreDepthWindow(normalized);
 		this.updateCumulative(state, windowScore);
@@ -286,15 +296,30 @@ class DepthSignalAnalyzer {
 		};
 	}
 
-	buildAlertContext(record) {
+	// Depth is compared to this symbol's own recent baseline, since raw counts differ by ~100x between symbols/sessions
+	updateDepthBaseline(state, depthEventCount) {
+		const history = state.depthHistory;
+		const sorted = [...history].sort((a, b) => a - b);
+		const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
+		const ratio = median > 0 ? depthEventCount / median : 0;
+		const ready = history.length >= this.options.depthBaselineMinWindows;
+		history.push(depthEventCount);
+		if (history.length > this.options.depthBaselineWindows) history.splice(0, history.length - this.options.depthBaselineWindows);
+		return { ratio, ready };
+	}
+
+	buildAlertContext(record, state) {
 		const o = this.options;
 		const reasons = [];
-		if (record.depthEventCount >= o.depthAlertMinDepthEvents) reasons.push(`depth=${record.depthEventCount}`);
+		const { ratio: depthEventRatio, ready } = this.updateDepthBaseline(state, record.depthEventCount);
+		if (ready && record.depthEventCount >= o.depthAlertMinDepthEvents && depthEventRatio >= o.depthAlertMinDepthRatio) {
+			reasons.push(`depth=${record.depthEventCount}(${depthEventRatio.toFixed(1)}x)`);
+		}
 		if (record.quoteChurnRatio >= o.depthAlertMinChurnRatio) reasons.push(`churn=${record.quoteChurnRatio.toFixed(2)}`);
 		if (Math.abs(record.wallDriftTowardPrice) >= o.depthAlertMinWallDriftTicks) {
 			reasons.push(`drift=${record.wallDriftTowardPrice.toFixed(1)}t`);
 		}
-		return { alert: reasons.length > 0, reasons };
+		return { alert: reasons.length > 0, reasons, depthEventRatio };
 	}
 
 	colorize(color, text) {
@@ -506,7 +531,7 @@ class DepthSignalAnalyzer {
 			const tradeFmt = `trade=${record.tradeCount}(${record.tradeCountRatio.toFixed(1)}x)`;
 			const buyFmt = `buy:${record.buyNet >= 0 ? "+" : ""}${record.buyNet}`;
 			const sellFmt = `sell:${record.sellNet >= 0 ? "+" : ""}${record.sellNet}`;
-			logs.push(`ALERT [${record.frontMonth}] ${record.windowSeconds.toFixed(1)}s | ${alertContext.reasons.join(", ")} | ${tradeFmt} ${buyFmt} ${sellFmt} | move=${record.summary.moveCount} drift=${driftFmt} repl=${record.replenishmentRatio.toFixed(2)}`);
+			logs.push(`ALERT [${record.frontMonth}] ${record.timestampLabel || new Date().toLocaleTimeString()} ${record.windowSeconds.toFixed(1)}s | ${alertContext.reasons.join(", ")} | ${tradeFmt} ${buyFmt} ${sellFmt} | move=${record.summary.moveCount} drift=${driftFmt} repl=${record.replenishmentRatio.toFixed(2)}`);
 		}
 
 		if (alertContext.alert || narrative !== "balanced" || record.depthEventCount > 0 || record.tradeCount > 0) {

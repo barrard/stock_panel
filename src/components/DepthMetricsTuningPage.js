@@ -207,6 +207,9 @@ const mergeDepthRowsIntoBars = (bars = [], depthRows = [], timeframeMs = 10_000)
 const OMIT_TUNING_KEYS = new Set(["enableAnsi", "cacheLimit"]);
 const NON_SIGNAL_COUNT_KEYS = new Set([
 	"depthAlertMinDepthEvents",
+	"depthAlertMinDepthRatio",
+	"depthBaselineWindows",
+	"depthBaselineMinWindows",
 	"depthAlertMinChurnRatio",
 	"depthAlertMinWallDriftTicks",
 	"severityWindowStrongThreshold",
