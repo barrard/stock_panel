@@ -6,8 +6,13 @@ const DEFAULT_TUNING_OPTIONS = {
 	depthAlertMinDepthRatio: 2, // depth events vs median of recent windows
 	depthBaselineWindows: 30, // ~5 min of 10s windows
 	depthBaselineMinWindows: 6, // no depth alerts until we have ~1 min of baseline
-	depthAlertMinChurnRatio: 3,
-	depthAlertMinWallDriftTicks: 20,
+	// Churn and drift are also relative to the symbol's own recent median (same baseline windows as depth).
+	// Fixed thresholds fired on 92-100% of windows; these were picked by replaying 3 days of depthmetrics (~5-15% alert rate).
+	depthAlertChurnBaselineRatio: 3, // churn vs median churn
+	depthAlertMinChurnRatio: 1, // floor: at least 1 move per trade
+	depthAlertChurnMinTrades: 5, // churn = moves/trades is meaningless on a handful of trades
+	depthAlertDriftBaselineRatio: 3, // |drift| vs median |drift|
+	depthAlertMinWallDriftTicks: 8, // floor: at least one order crossing the whole near band
 	// Cumulative
 	decay: 0.82,
 	historySize: 12,
@@ -88,7 +93,8 @@ const TUNING_GROUPS = [
 		label: "Alert Gates",
 		keys: [
 			"depthAlertMinDepthEvents", "depthAlertMinDepthRatio", "depthBaselineWindows", "depthBaselineMinWindows",
-			"depthAlertMinChurnRatio", "depthAlertMinWallDriftTicks",
+			"depthAlertChurnBaselineRatio", "depthAlertMinChurnRatio", "depthAlertChurnMinTrades",
+			"depthAlertDriftBaselineRatio", "depthAlertMinWallDriftTicks",
 		],
 	},
 ];
@@ -119,7 +125,10 @@ const TUNING_FIELD_META = {
 	depthAlertMinDepthRatio: { label: "Min Depth Ratio", min: 1, max: 10, step: 0.1 },
 	depthBaselineWindows: { label: "Depth Baseline Windows", min: 3, max: 120, step: 1 },
 	depthBaselineMinWindows: { label: "Depth Baseline Min", min: 1, max: 60, step: 1 },
+	depthAlertChurnBaselineRatio: { label: "Churn vs Baseline", min: 1, max: 10, step: 0.1 },
 	depthAlertMinChurnRatio: { label: "Min Churn Ratio", min: 0, max: 10, step: 0.1 },
+	depthAlertChurnMinTrades: { label: "Churn Min Trades", min: 0, max: 50, step: 1 },
+	depthAlertDriftBaselineRatio: { label: "Drift vs Baseline", min: 1, max: 10, step: 0.1 },
 	depthAlertMinWallDriftTicks: { label: "Min Wall Drift", min: 0, max: 100, step: 1 },
 };
 
@@ -165,6 +174,8 @@ class DepthSignalAnalyzer {
 				lastContinuationTime: 0,
 				lastSwingTime: 0,
 				depthHistory: [],
+				churnHistory: [],
+				driftHistory: [],
 				results: [],
 			});
 		}
@@ -250,12 +261,18 @@ class DepthSignalAnalyzer {
 		summary.buyRetreating = summary.buyRetreating ?? record.buyRetreating ?? 0;
 		summary.sellRetreating = summary.sellRetreating ?? record.sellRetreating ?? 0;
 		summary.tradeCount = summary.tradeCount ?? record.tradeCount ?? 0;
+		summary.newCount = summary.newCount ?? record.newCount ?? 0;
+		summary.increaseCount = summary.increaseCount ?? record.increaseCount ?? 0;
+		summary.decreaseCount = summary.decreaseCount ?? record.decreaseCount ?? 0;
 
 		// Ensure timingMetrics exists for scoring (constructed from top-level fields for DB replay)
 		if (!summary.timingMetrics) {
 			const tm = record.timingMetrics || {};
 			summary.timingMetrics = {
-				liveAgedNearDelta: Number(tm.liveAgedNearDelta ?? record.liveAgedNearDelta) || 0,
+				// liveAgedNearDelta isn't stored since v2 docs; derive it from the sides
+				liveAgedNearDelta:
+					Number(tm.liveAgedNearDelta ?? record.liveAgedNearDelta) ||
+					(Number(tm.liveAgedBuyNear ?? record.liveAgedBuyNear) || 0) - (Number(tm.liveAgedSellNear ?? record.liveAgedSellNear) || 0),
 				liveAgedBuyNear: Number(tm.liveAgedBuyNear ?? record.liveAgedBuyNear) || 0,
 				liveAgedSellNear: Number(tm.liveAgedSellNear ?? record.liveAgedSellNear) || 0,
 				persistBuyNear: Number(tm.persistBuyNear ?? record.persistBuyNear) || 0,
@@ -278,13 +295,18 @@ class DepthSignalAnalyzer {
 			windowSeconds: Number(record.windowSeconds ?? record.windowSec ?? 10),
 			lastPrice: record.lastPrice,
 			depthEventCount: record.depthEventCount ?? 0,
-			quoteChurnRatio: record.quoteChurnRatio ?? record.churn ?? 0,
+			// churn/replenishment aren't stored since v2 docs; derived from the counts (same formulas as MarketDataManager)
+			quoteChurnRatio:
+				record.quoteChurnRatio ?? record.churn ?? (summary.tradeCount > 0 ? summary.moveCount / summary.tradeCount : summary.moveCount),
 			wallDriftTowardPrice: record.wallDriftTowardPrice ?? record.drift ?? 0,
 			tradeCount: record.tradeCount ?? summary.tradeCount ?? 0,
 			tradeCountRatio: record.tradeCountRatio ?? 0,
 			buyNet: record.buyNet ?? 0,
 			sellNet: record.sellNet ?? 0,
-			replenishmentRatio: record.replenishmentRatio ?? record.repl ?? 0,
+			replenishmentRatio:
+				record.replenishmentRatio ??
+				record.repl ??
+				(summary.newCount + summary.increaseCount) / Math.max(1, summary.cancelCount + summary.decreaseCount),
 			churnRegime: normalizeChurnRegime(record.churnRegime),
 			context: {
 				tickSize: context.tickSize ?? 0,
@@ -296,16 +318,24 @@ class DepthSignalAnalyzer {
 		};
 	}
 
-	// Depth is compared to this symbol's own recent baseline, since raw counts differ by ~100x between symbols/sessions
-	updateDepthBaseline(state, depthEventCount) {
-		const history = state.depthHistory;
+	// Metrics are compared to this symbol's own recent baseline (rolling median), since raw values differ by ~100x
+	// between symbols/sessions. Ratio is computed before the value joins the history, so a spike isn't its own baseline.
+	// minMedian keeps a near-zero median (quiet book) from turning tiny values into huge ratios.
+	updateBaseline(history, value, { minMedian = 0, record = true } = {}) {
 		const sorted = [...history].sort((a, b) => a - b);
 		const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
-		const ratio = median > 0 ? depthEventCount / median : 0;
+		const base = Math.max(median, minMedian);
+		const ratio = base > 0 ? value / base : 0;
 		const ready = history.length >= this.options.depthBaselineMinWindows;
-		history.push(depthEventCount);
-		if (history.length > this.options.depthBaselineWindows) history.splice(0, history.length - this.options.depthBaselineWindows);
+		if (record) {
+			history.push(value);
+			if (history.length > this.options.depthBaselineWindows) history.splice(0, history.length - this.options.depthBaselineWindows);
+		}
 		return { ratio, ready };
+	}
+
+	updateDepthBaseline(state, depthEventCount) {
+		return this.updateBaseline(state.depthHistory, depthEventCount);
 	}
 
 	buildAlertContext(record, state) {
@@ -315,11 +345,20 @@ class DepthSignalAnalyzer {
 		if (ready && record.depthEventCount >= o.depthAlertMinDepthEvents && depthEventRatio >= o.depthAlertMinDepthRatio) {
 			reasons.push(`depth=${record.depthEventCount}(${depthEventRatio.toFixed(1)}x)`);
 		}
-		if (record.quoteChurnRatio >= o.depthAlertMinChurnRatio) reasons.push(`churn=${record.quoteChurnRatio.toFixed(2)}`);
-		if (Math.abs(record.wallDriftTowardPrice) >= o.depthAlertMinWallDriftTicks) {
-			reasons.push(`drift=${record.wallDriftTowardPrice.toFixed(1)}t`);
+
+		const churnCounts = record.tradeCount >= o.depthAlertChurnMinTrades;
+		const churn = this.updateBaseline(state.churnHistory, record.quoteChurnRatio, { minMedian: 0.25, record: churnCounts });
+		const churnBaselineRatio = churnCounts ? churn.ratio : 0;
+		if (churn.ready && churnCounts && record.quoteChurnRatio >= o.depthAlertMinChurnRatio && churnBaselineRatio >= o.depthAlertChurnBaselineRatio) {
+			reasons.push(`churn=${record.quoteChurnRatio.toFixed(2)}(${churnBaselineRatio.toFixed(1)}x)`);
 		}
-		return { alert: reasons.length > 0, reasons, depthEventRatio };
+
+		const absDrift = Math.abs(record.wallDriftTowardPrice);
+		const drift = this.updateBaseline(state.driftHistory, absDrift, { minMedian: 1 });
+		if (drift.ready && absDrift >= o.depthAlertMinWallDriftTicks && drift.ratio >= o.depthAlertDriftBaselineRatio) {
+			reasons.push(`drift=${record.wallDriftTowardPrice.toFixed(1)}t(${drift.ratio.toFixed(1)}x)`);
+		}
+		return { alert: reasons.length > 0, reasons, depthEventRatio, churnBaselineRatio, driftBaselineRatio: drift.ratio };
 	}
 
 	colorize(color, text) {

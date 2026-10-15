@@ -442,6 +442,7 @@ export default function PixiChart({ Socket }) {
 			}
 
 			if (!orderFlowSoundSettings.depthFlowEnabled) return;
+			if (!meetsSelectedStrength) return;
 			playDepthFlowCue({ type, strength: normalizedStrength });
 		},
 		[
@@ -1585,6 +1586,7 @@ export default function PixiChart({ Socket }) {
 			</button>
 		),
 		orderFlowSoundControl,
+		depthCueMinStrength: orderFlowSoundSettings.minStrength,
 	};
 
 	useEffect(() => {

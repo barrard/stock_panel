@@ -6,6 +6,7 @@ import API from "../../API";
 import { LiquidityHeatmap, liquidityHeatMapConfig } from "./components/indicatorDrawFunctions";
 import DrawOrdersV2 from "./components/DrawOrdersV2";
 import DrawDepthSignals from "./components/DrawDepthSignals";
+import DrawDepthCues from "./components/DrawDepthCues";
 import DrawSuperTrend from "../drawFunctions/DrawSuperTrend";
 import DrawMovingAverages from "../drawFunctions/DrawMovingAverages";
 import DrawExtremaAnalysis from "../drawFunctions/DrawExtremaAnalysis";
@@ -411,6 +412,8 @@ const PixiChartV2 = (props) => {
 	const isLoadingRef = useRef(true);
 	const depthSignalsRef = useRef(null);
 	const pendingDepthSignalsRef = useRef([]);
+	const depthCuesRef = useRef(null);
+	const pendingDepthCuesRef = useRef([]);
 	const depthSummaryEventsRef = useRef([]);
 	const depthSummaryAggregationRef = useRef(new Map());
 
@@ -533,6 +536,12 @@ const PixiChartV2 = (props) => {
 			instanceRef: null,
 		},
 		{
+			id: "depthCues",
+			name: "Depth Cues",
+			enabled: true,
+			instanceRef: null,
+		},
+		{
 			id: "superTrend",
 			name: "Super Trend",
 			enabled: false,
@@ -631,6 +640,7 @@ const PixiChartV2 = (props) => {
 	const liquidityHeatmapIndicator = indicators.find((ind) => ind.id === "liquidityHeatmap");
 	const ordersIndicator = indicators.find((ind) => ind.id === "orders");
 	const depthSignalsIndicator = indicators.find((ind) => ind.id === "depthSignals");
+	const depthCuesIndicator = indicators.find((ind) => ind.id === "depthCues");
 	const superTrendIndicator = indicators.find((ind) => ind.id === "superTrend");
 	const movingAverageIndicator = indicators.find((ind) => ind.id === "movingAverages");
 	const priceLevelsIndicator = indicators.find((ind) => ind.id === "priceLevels");
@@ -961,6 +971,45 @@ const PixiChartV2 = (props) => {
 		};
 	}, [symbol.value, timeframe, isLoading, depthSignalsIndicator?.enabled]);
 
+	// Real-time depth cues (250ms server cues) as markers at the price they fired
+	const depthCueMinStrength = props.depthCueMinStrength ?? 1;
+	useEffect(() => {
+		const pixiData = pixiDataRef.current;
+		if (!pixiData) return;
+		if (!depthCuesIndicator?.enabled) {
+			pixiData.unregisterDrawFn("depthCues");
+			depthCuesRef.current?.cleanup?.();
+			depthCuesRef.current = null;
+			pixiData.draw();
+			return;
+		}
+		if (depthCuesRef.current?.chart === pixiData) {
+			depthCuesRef.current.setCues(pendingDepthCuesRef.current);
+			pixiData.draw();
+			return;
+		}
+
+		depthCuesRef.current?.cleanup?.();
+		const depthCues = new DrawDepthCues(pixiData, { minStrength: depthCueMinStrength });
+		depthCuesRef.current = depthCues;
+		depthCues.setCues(pendingDepthCuesRef.current);
+		pixiData.registerDrawFn("depthCues", depthCues.draw.bind(depthCues));
+		pixiData.draw();
+
+		return () => {
+			pixiData.unregisterDrawFn("depthCues");
+			if (depthCuesRef.current === depthCues) {
+				depthCuesRef.current = null;
+			}
+			depthCues.cleanup();
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [symbol.value, timeframe, isLoading, depthCuesIndicator?.enabled]);
+
+	useEffect(() => {
+		depthCuesRef.current?.setMinStrength(depthCueMinStrength);
+	}, [depthCueMinStrength]);
+
 	// Update timeframe state when barType or barTypePeriod changes
 	useEffect(() => {
 		const newTimeframe = barTypeToTimeframe({
@@ -1108,12 +1157,22 @@ const PixiChartV2 = (props) => {
 		};
 		Socket.on(depthSignalEvent, handleDepthSignal);
 
+		const depthCueEvent = `depthFlowMarker-${symbol.value}`;
+		const handleDepthCue = (cue) => {
+			const pending = pendingDepthCuesRef.current;
+			pending.push(cue);
+			if (pending.length > 300) pending.splice(0, pending.length - 300);
+			depthCuesRef.current?.pushCue(cue);
+		};
+		Socket.on(depthCueEvent, handleDepthCue);
+
 		return () => {
 			Socket.off("lastTrade", handleLastTradeVwap);
 			Socket.off(liveBarNew, handleLiveBarNew);
 			Socket.off(liveBarUpdate, handleLiveBarUpdate);
 			Socket.off(depthSummaryEvent, handleDepthSummary);
 			Socket.off(depthSignalEvent, handleDepthSignal);
+			Socket.off(depthCueEvent, handleDepthCue);
 			Socket.unsubscribeDepthSummary(symbol.value);
 		};
 	}, [
@@ -1129,6 +1188,7 @@ const PixiChartV2 = (props) => {
 
 	useEffect(() => {
 		pendingDepthSignalsRef.current = [];
+		pendingDepthCuesRef.current = [];
 	}, [symbol.value, timeframe]);
 
 	// Filter orders by current symbol

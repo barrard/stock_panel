@@ -74,6 +74,29 @@ const createLineWithZeroDrawFn = (yField, lineColor, zeroField = "depthZeroLine"
 	};
 };
 
+// v2 docs don't store values that can be derived from the raw counts
+const getLiveAgedNearDelta = (row = {}) => {
+	const tm = row.timingMetrics || {};
+	const stored = tm.liveAgedNearDelta ?? row.liveAgedNearDelta;
+	if (stored !== undefined && stored !== null) return Number(stored) || 0;
+	return (Number(tm.liveAgedBuyNear ?? row.liveAgedBuyNear) || 0) - (Number(tm.liveAgedSellNear ?? row.liveAgedSellNear) || 0);
+};
+
+// persist/flash deltas were never stored, only the sides
+const getSideDelta = (row = {}, deltaKey, buyKey, sellKey) => {
+	const tm = row.timingMetrics || {};
+	const stored = tm[deltaKey] ?? row[deltaKey];
+	if (stored !== undefined && stored !== null) return Number(stored) || 0;
+	return (Number(tm[buyKey] ?? row[buyKey]) || 0) - (Number(tm[sellKey] ?? row[sellKey]) || 0);
+};
+
+const getReplenishmentRatio = (row = {}) => {
+	if (row.replenishmentRatio !== undefined && row.replenishmentRatio !== null) return Number(row.replenishmentRatio) || 0;
+	const added = (Number(row.newCount) || 0) + (Number(row.increaseCount) || 0);
+	const removed = (Number(row.cancelCount) || 0) + (Number(row.decreaseCount) || 0);
+	return added / Math.max(1, removed);
+};
+
 const buildDepthSignalPayload = (row = {}) => {
 	const timestamp = toTimestamp(row.snapshotTimestamp ?? row.createdAt);
 	const direction = Number(row.signalDirection) || (Number(row.windowScore) > 0 ? 1 : Number(row.windowScore) < 0 ? -1 : 0);
@@ -107,19 +130,17 @@ const buildReplayRows = (rows = [], tickSize) => {
 			const recentWindows = rows.slice(Math.max(0, index - 6), index);
 			const currentPrice = Number(row.lastPrice) || 0;
 			const previousPrice = Number(previousWindow?.lastPrice) || currentPrice;
-			const timingMetrics = row.timingMetrics || {};
 
 			return {
 				...row,
 				timestamp: toTimestamp(row.snapshotTimestamp ?? row.createdAt),
-				liveAgedNearDelta: Number(timingMetrics.liveAgedNearDelta ?? row.liveAgedNearDelta) || 0,
-				persistNearDelta: Number(timingMetrics.persistNearDelta ?? row.persistNearDelta) || 0,
+				liveAgedNearDelta: getLiveAgedNearDelta(row),
+				persistNearDelta: getSideDelta(row, "persistNearDelta", "persistBuyNear", "persistSellNear"),
 				context: {
 					previousWindow: previousWindow
 						? {
 								...previousWindow,
-								liveAgedNearDelta:
-									Number(previousWindow?.timingMetrics?.liveAgedNearDelta ?? previousWindow?.liveAgedNearDelta) || 0,
+								liveAgedNearDelta: getLiveAgedNearDelta(previousWindow),
 								windowScore: Number(previousWindow?.windowScore) || 0,
 						  }
 						: null,
@@ -178,18 +199,17 @@ const mergeDepthRowsIntoBars = (bars = [], depthRows = [], timeframeMs = 10_000)
 			};
 		}
 
-		const timingMetrics = row.timingMetrics || {};
 		return {
 			...bar,
 			depthWindowScore: Number(row.windowScore) || 0,
 			depthZeroLine: 0,
 			depthCumulative: Number(row.cumulative) || 0,
 			depthTradeCountRatio: Number(row.tradeCountRatio) || 0,
-			depthReplenishmentRatio: Number(row.replenishmentRatio) || 0,
+			depthReplenishmentRatio: getReplenishmentRatio(row),
 			depthWallDriftTowardPrice: Number(row.wallDriftTowardPrice) || 0,
-			depthLiveAgedNearDelta: Number(timingMetrics.liveAgedNearDelta ?? row.liveAgedNearDelta) || 0,
-			depthPersistNearDelta: Number(timingMetrics.persistNearDelta ?? row.persistNearDelta) || 0,
-			depthFlashNearDelta: Number(timingMetrics.flashNearDelta ?? row.flashNearDelta) || 0,
+			depthLiveAgedNearDelta: getLiveAgedNearDelta(row),
+			depthPersistNearDelta: getSideDelta(row, "persistNearDelta", "persistBuyNear", "persistSellNear"),
+			depthFlashNearDelta: getSideDelta(row, "flashNearDelta", "flashBuyNear", "flashSellNear"),
 			depthBuyNet: Number(row.buyNet) || 0,
 			depthSellNetNegative: -(Number(row.sellNet) || 0),
 			depthBuyAbsorbCount: Number(row.buyAbsorbCount) || 0,
@@ -210,7 +230,10 @@ const NON_SIGNAL_COUNT_KEYS = new Set([
 	"depthAlertMinDepthRatio",
 	"depthBaselineWindows",
 	"depthBaselineMinWindows",
+	"depthAlertChurnBaselineRatio",
 	"depthAlertMinChurnRatio",
+	"depthAlertChurnMinTrades",
+	"depthAlertDriftBaselineRatio",
 	"depthAlertMinWallDriftTicks",
 	"severityWindowStrongThreshold",
 	"severityWindowVeryStrongThreshold",
