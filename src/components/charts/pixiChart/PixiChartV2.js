@@ -5,13 +5,14 @@ import GenericPixiChart from "../GenericPixiChart";
 import API from "../../API";
 import { LiquidityHeatmap, liquidityHeatMapConfig } from "./components/indicatorDrawFunctions";
 import DrawOrdersV2 from "./components/DrawOrdersV2";
-import DrawDepthSignals from "./components/DrawDepthSignals";
-import DrawDepthCues from "./components/DrawDepthCues";
+import DrawDepthSignals, { DEFAULT_DEPTH_SIGNAL_OPTIONS, DEPTH_SIGNAL_OPTION_FIELDS } from "./components/DrawDepthSignals";
+import DrawDepthCues, { MAX_DEPTH_CUES } from "./components/DrawDepthCues";
+import { useDepthCueHistory } from "../hooks/useDepthCueHistory";
 import DrawSuperTrend from "../drawFunctions/DrawSuperTrend";
 import DrawMovingAverages from "../drawFunctions/DrawMovingAverages";
 import DrawExtremaAnalysis from "../drawFunctions/DrawExtremaAnalysis";
 import { createDefaultExtremaIndicators, EXTREMA_INDICATOR_IDS } from "../drawFunctions/extremaAnalysisConfig";
-import { saveIndicatorOptions } from "../drawFunctions/indicatorOptionsStorage";
+import { loadSavedIndicatorOptions, saveIndicatorOptions } from "../drawFunctions/indicatorOptionsStorage";
 import IndicatorsBtns from "./components/IndicatorsBtns";
 import SymbolBtns from "./components/SymbolBtns";
 import TimeFrameBtns from "./components/TimeFrameBtns";
@@ -23,8 +24,9 @@ import { useIndicator } from "../hooks/useIndicator";
 import { useToggleIndicator } from "../hooks/useToggleIndicator";
 import { useLiquidityData } from "../hooks/useLiquidityData";
 import { useLiquidityRatios } from "../hooks/useLiquidityRatios";
+import { useDepthSummaryBars } from "../hooks/useDepthSummaryBars";
 import { TICKS } from "../../../indicators/indicatorHelpers/TICKS";
-import { drawLine, drawIndicatorCandlestick, createHistogramDrawFn, createDualHistogramDrawFn } from "./components/drawFns";
+import { buildDepthLowerIndicators, createCandlesWithMovingAverageDrawFn } from "./components/depthLowerIndicators";
 import handleTimeRangeChange from "./components/handleTimeRangeChange";
 import { areRelatedFuturesSymbols } from "./components/futuresSymbolFamily";
 // import { liquidityHeatMapConfig } from "./components/indicatorConfigs";
@@ -33,66 +35,8 @@ import { areRelatedFuturesSymbols } from "./components/futuresSymbolFamily";
 // import TimeframeSelector from "./spyOptionsComponents/TimeframeSelector";
 // import IndicatorSelector from "../../../reusableChartComponents/IndicatorSelector";
 const ticks = TICKS();
-const LIQUIDITY_MA_LINE_COLOR = 0xffd966;
 const ACTUAL_CANDLE_DELTA_LINE_FIELD = "__actualCandleDeltaCumulative";
 const ACTUAL_CANDLE_DELTA_LINE_COLOR = 0x4fc3f7;
-const BID_CANDLE_COLORS = {
-	up: 0x66ff66,
-	down: 0x1b5e20,
-	ma: 0x00b050,
-};
-const ASK_CANDLE_COLORS = {
-	up: 0xff9999,
-	down: 0xaa1f1f,
-	ma: 0xcc3333,
-};
-const BID_ASK_SIZE_RATIO_CONFIGS = [
-	{
-		id: "bid",
-		openField: "bidSizeOrderRatioOpen",
-		highField: "bidSizeOrderRatioHigh",
-		lowField: "bidSizeOrderRatioLow",
-		closeField: "bidSizeOrderRatioClose",
-		maField: "bidSizeOrderRatioMA20",
-		upColor: BID_CANDLE_COLORS.up,
-		downColor: BID_CANDLE_COLORS.down,
-		maColor: BID_CANDLE_COLORS.ma,
-	},
-	{
-		id: "ask",
-		openField: "askSizeOrderRatioOpen",
-		highField: "askSizeOrderRatioHigh",
-		lowField: "askSizeOrderRatioLow",
-		closeField: "askSizeOrderRatioClose",
-		maField: "askSizeOrderRatioMA20",
-		upColor: ASK_CANDLE_COLORS.up,
-		downColor: ASK_CANDLE_COLORS.down,
-		maColor: ASK_CANDLE_COLORS.ma,
-	},
-];
-
-const NEAR_FULL_RATIO_CONFIGS = [
-	{
-		id: "near",
-		openField: "nearPriceRatioOpen",
-		highField: "nearPriceRatioHigh",
-		lowField: "nearPriceRatioLow",
-		closeField: "nearPriceRatioClose",
-		maField: "nearPriceRatioMA20",
-		upColor: 0x00aa00,
-		downColor: 0xaa0000,
-	},
-	{
-		id: "fullBook",
-		openField: "fullBookRatioOpen",
-		highField: "fullBookRatioHigh",
-		lowField: "fullBookRatioLow",
-		closeField: "fullBookRatioClose",
-		maField: "fullBookRatioMA20",
-		upColor: 0x0088ff,
-		downColor: 0xff6600,
-	},
-];
 
 const getBarSideVolumeValue = (volumeData) => {
 	if (volumeData === undefined || volumeData === null) {
@@ -158,103 +102,6 @@ const getActualCandleDeltaExtentValues = ({ data = [] } = {}) => {
 	return values;
 };
 
-const createCandlesWithMovingAverageDrawFn = ({
-	openField,
-	highField,
-	lowField,
-	closeField,
-	upColor,
-	downColor,
-	maField,
-	maColor = LIQUIDITY_MA_LINE_COLOR,
-	maLineWidth = 2,
-	overlayLines = [],
-}) => {
-	return (opts) => {
-		const { chartData, data } = opts;
-
-		// Debug logging for Uber Near Above Cancellation indicator so we can inspect incoming values
-		if (chartData?.name === "Uber Near Cancellation") {
-			const now = Date.now();
-			if (!chartData.__lastUberNearAboveLog || now - chartData.__lastUberNearAboveLog > 2000) {
-				chartData.__lastUberNearAboveLog = now;
-				const sampleBar = Array.isArray(data) ? data[data.length - 1] : undefined;
-				console.log("[PixiChartV2] Uber Near Above Cancellation data", {
-					totalBars: data?.length ?? 0,
-					lastTimestamp: sampleBar?.datetime || sampleBar?.timestamp,
-					open: sampleBar?.[openField],
-					high: sampleBar?.[highField],
-					low: sampleBar?.[lowField],
-					close: sampleBar?.[closeField],
-					sampleBar,
-				});
-			}
-		}
-
-		drawIndicatorCandlestick({
-			...opts,
-			openField,
-			highField,
-			lowField,
-			closeField,
-			upColor,
-			downColor,
-		});
-
-		drawLine({
-			...opts,
-			lineColor: maColor,
-			lineWidth: maLineWidth,
-			yField: maField,
-			skipClear: true,
-		});
-
-		overlayLines.forEach((overlayLine) => {
-			if (!overlayLine?.yField || typeof overlayLine.dataBuilder !== "function") {
-				return;
-			}
-
-			drawLine({
-				...opts,
-				data: overlayLine.dataBuilder(data, { ...opts, chartData }),
-				lineColor: overlayLine.lineColor ?? 0xffffff,
-				lineWidth: overlayLine.lineWidth ?? 2,
-				yField: overlayLine.yField,
-				skipClear: true,
-			});
-		});
-	};
-};
-
-const createMultiCandlesWithMovingAverageDrawFn = (configs = []) => {
-	return (opts) => {
-		if (!Array.isArray(configs) || configs.length === 0) return;
-
-		configs.forEach((config, index) => {
-			drawIndicatorCandlestick({
-				...opts,
-				openField: config.openField,
-				highField: config.highField,
-				lowField: config.lowField,
-				closeField: config.closeField,
-				upColor: config.upColor,
-				downColor: config.downColor,
-				skipClear: index !== 0,
-			});
-
-			if (config.maField) {
-				drawLine({
-					...opts,
-					lineColor: config.maColor || LIQUIDITY_MA_LINE_COLOR,
-					lineWidth: config.maLineWidth ?? 2,
-					yField: config.maField,
-					skipClear: true,
-				});
-			}
-		});
-	};
-};
-
 const getSymbolConfig = (symbolValue = "ES") => {
 	const option = symbolOptions.find((item) => item.value === symbolValue);
 	return {
@@ -289,11 +136,6 @@ const timeframeToMs = (timeframe) => {
 	return amount * unitMs;
 };
 
-const toFiniteNumber = (value) => {
-	const parsed = Number(value);
-	return Number.isFinite(parsed) ? parsed : null;
-};
-
 const getBarTimestamp = (bar) => {
 	const timestamp = Number(bar?.timestamp ?? bar?.datetime);
 	return Number.isFinite(timestamp) ? timestamp : null;
@@ -321,87 +163,6 @@ const getExtremaAnalysisDataKey = (bars = []) => {
 	].join(":");
 };
 
-const buildDepthBarKey = (timestamp, timeframeMs) => {
-	if (!Number.isFinite(timestamp) || !Number.isFinite(timeframeMs) || timeframeMs <= 0) return null;
-	return Math.floor(timestamp / timeframeMs) * timeframeMs;
-};
-
-const findBarByDepthKey = (bars = [], timestamp, timeframeMs) => {
-	if (!Array.isArray(bars) || !bars.length) return null;
-	const targetKey = buildDepthBarKey(timestamp, timeframeMs);
-	if (targetKey === null) return null;
-
-	for (let index = bars.length - 1; index >= 0; index -= 1) {
-		const bar = bars[index];
-		const barKey = buildDepthBarKey(getBarTimestamp(bar), timeframeMs);
-		if (barKey === targetKey) {
-			return bar;
-		}
-	}
-
-	return null;
-};
-
-const aggregateDepthSummariesByBar = (summaries = [], timeframeMs) => {
-	const aggregated = new Map();
-	if (!Array.isArray(summaries) || !summaries.length || !Number.isFinite(timeframeMs) || timeframeMs <= 0) {
-		return aggregated;
-	}
-
-	summaries.forEach((summary) => {
-		const timestamp = toFiniteNumber(summary?.timestamp);
-		const barKey = buildDepthBarKey(timestamp, timeframeMs);
-		if (barKey === null) return;
-
-		const existing = aggregated.get(barKey) || {
-			depthSignalWindowScore: 0,
-			depthSignalZero: 0,
-			latestTimestamp: Number.NEGATIVE_INFINITY,
-		};
-
-		const nextAggregate = { ...existing };
-		const windowScore = toFiniteNumber(summary?.windowScore);
-		if (windowScore !== null) {
-			nextAggregate.depthSignalWindowScore += windowScore;
-		}
-
-		if (timestamp >= nextAggregate.latestTimestamp) {
-			const cumulative = toFiniteNumber(summary?.signalCumulative);
-			const direction = toFiniteNumber(summary?.signalDirection);
-			const consecutive = toFiniteNumber(summary?.signalConsecutive);
-
-			nextAggregate.latestTimestamp = timestamp;
-			if (cumulative !== null) nextAggregate.depthSignalCumulative = cumulative;
-			if (direction !== null) nextAggregate.depthSignalDirection = direction;
-			if (consecutive !== null) nextAggregate.depthSignalConsecutive = consecutive;
-		}
-
-		aggregated.set(barKey, nextAggregate);
-	});
-
-	return aggregated;
-};
-
-const mergeDepthAggregateIntoBar = (bar, depthAggregate, timeframeMs) => {
-	if (!bar || !Number.isFinite(timeframeMs) || timeframeMs <= 0) return bar;
-
-	const timestamp = getBarTimestamp(bar);
-	const barKey = buildDepthBarKey(timestamp, timeframeMs);
-	if (barKey === null) return bar;
-
-	const aggregate = depthAggregate.get(barKey);
-	if (!aggregate) return bar;
-
-	return {
-		...bar,
-		...(aggregate.depthSignalCumulative !== undefined && { depthSignalCumulative: aggregate.depthSignalCumulative }),
-		...(aggregate.depthSignalWindowScore !== undefined && { depthSignalWindowScore: aggregate.depthSignalWindowScore }),
-		...(aggregate.depthSignalDirection !== undefined && { depthSignalDirection: aggregate.depthSignalDirection }),
-		...(aggregate.depthSignalConsecutive !== undefined && { depthSignalConsecutive: aggregate.depthSignalConsecutive }),
-		depthSignalZero: 0,
-	};
-};
-
 const PixiChartV2 = (props) => {
 	const { Socket, height = 500, orders: ordersFromParent = {}, fullSymbol } = props;
 
@@ -414,8 +175,6 @@ const PixiChartV2 = (props) => {
 	const pendingDepthSignalsRef = useRef([]);
 	const depthCuesRef = useRef(null);
 	const pendingDepthCuesRef = useRef([]);
-	const depthSummaryEventsRef = useRef([]);
-	const depthSummaryAggregationRef = useRef(new Map());
 
 	//most charts handle timeframe with barType and barTypePeriod
 	// barType 1 = seconds, 2 = minutes, 3 = hours, 4 = days
@@ -451,73 +210,10 @@ const PixiChartV2 = (props) => {
 	// the symbol of the chart
 	const [symbol, setSymbol] = useState(() => getSymbolConfig(props.symbol || "ES"));
 
-	const rebuildDepthSummaryAggregation = useCallback(() => {
-		depthSummaryAggregationRef.current = aggregateDepthSummariesByBar(depthSummaryEventsRef.current, depthTimeframeMs);
-	}, [depthTimeframeMs]);
-
-	const hydrateBarsWithDepthSummaries = useCallback(
-		(bars = []) => {
-			if (!Array.isArray(bars) || !bars.length) return Array.isArray(bars) ? bars : [];
-			const depthAggregate = depthSummaryAggregationRef.current;
-			if (!depthAggregate?.size || !Number.isFinite(depthTimeframeMs) || depthTimeframeMs <= 0) return bars;
-
-			return bars.map((bar) => mergeDepthAggregateIntoBar(bar, depthAggregate, depthTimeframeMs));
-		},
-		[depthTimeframeMs],
-	);
-
-	const applyDepthSummaryToBarInPlace = useCallback(
-		(bar) => {
-			if (!bar || !Number.isFinite(depthTimeframeMs) || depthTimeframeMs <= 0) return false;
-
-			const timestamp = getBarTimestamp(bar);
-			const barKey = buildDepthBarKey(timestamp, depthTimeframeMs);
-			if (barKey === null) return false;
-
-			const aggregate = depthSummaryAggregationRef.current.get(barKey);
-			if (!aggregate) return false;
-
-			let changed = false;
-			const assignIfDifferent = (field, value) => {
-				if (value === undefined || bar[field] === value) return;
-				bar[field] = value;
-				changed = true;
-			};
-
-			assignIfDifferent("depthSignalCumulative", aggregate.depthSignalCumulative);
-			assignIfDifferent("depthSignalWindowScore", aggregate.depthSignalWindowScore);
-			assignIfDifferent("depthSignalDirection", aggregate.depthSignalDirection);
-			assignIfDifferent("depthSignalConsecutive", aggregate.depthSignalConsecutive);
-			assignIfDifferent("depthSignalZero", 0);
-
-			return changed;
-		},
-		[depthTimeframeMs],
-	);
-
-	const applyDepthSummariesToLiveBars = useCallback(() => {
-		const bars = pixiDataRef.current?.ohlcDatas;
-		if (!Array.isArray(bars) || !bars.length) return;
-
-		const changed = [bars[bars.length - 2], bars[bars.length - 1]].some((bar) => applyDepthSummaryToBarInPlace(bar));
-		if (changed) {
-			pixiDataRef.current?.draw();
-		}
-	}, [applyDepthSummaryToBarInPlace]);
-
 	useEffect(() => {
 		if (!props.symbol || props.symbol === symbol.value) return;
 		setSymbol(getSymbolConfig(props.symbol));
 	}, [props.symbol, symbol.value]);
-
-	useEffect(() => {
-		depthSummaryEventsRef.current = [];
-		depthSummaryAggregationRef.current = new Map();
-	}, [symbol.value]);
-
-	useEffect(() => {
-		rebuildDepthSummaryAggregation();
-	}, [rebuildDepthSummaryAggregation]);
 
 	//controls various indicators
 	const [indicators, setIndicators] = useState([
@@ -534,6 +230,11 @@ const PixiChartV2 = (props) => {
 			name: "Depth Signals",
 			enabled: true,
 			instanceRef: null,
+			options: {
+				...DEFAULT_DEPTH_SIGNAL_OPTIONS,
+				...loadSavedIndicatorOptions("depthSignals"),
+				fields: DEPTH_SIGNAL_OPTION_FIELDS,
+			},
 		},
 		{
 			id: "depthCues",
@@ -589,7 +290,7 @@ const PixiChartV2 = (props) => {
 						options: { ...ind.options, ...newOptions },
 					};
 
-					if (EXTREMA_INDICATOR_IDS.includes(indicatorId)) {
+					if (EXTREMA_INDICATOR_IDS.includes(indicatorId) || indicatorId === "depthSignals") {
 						saveIndicatorOptions(indicatorId, updatedIndicator.options);
 					}
 
@@ -798,7 +499,7 @@ const PixiChartV2 = (props) => {
 
 				if (replaceData) {
 					// Replace data completely (for timeframe changes)
-					setOhlcData(hydrateBarsWithDepthSummaries(liveData));
+					setOhlcData(liveData);
 					console.log(`[PixiChartV2] Replaced data with ${liveData.length} bars`);
 				} else {
 					// Use functional update to avoid dependency on ohlcData
@@ -807,7 +508,7 @@ const PixiChartV2 = (props) => {
 							(a, b) => a.datetime - b.datetime,
 						);
 						console.log(`[PixiChartV2] Merged to ${result.length} total bars`);
-						return hydrateBarsWithDepthSummaries(result);
+						return result;
 					});
 				}
 			} catch (error) {
@@ -816,7 +517,7 @@ const PixiChartV2 = (props) => {
 				setIsLoading(false);
 			}
 		},
-		[hydrateBarsWithDepthSummaries, symbol.value, timeframe], // Removed ohlcData - use functional update instead
+		[symbol.value, timeframe], // Removed ohlcData - use functional update instead
 	);
 
 	const fetchHistoricalWindow = useCallback(
@@ -897,7 +598,7 @@ const PixiChartV2 = (props) => {
 					const deduped = Array.from(new Map(merged.map((bar) => [bar.datetime, bar])).values()).sort(
 						(a, b) => a.datetime - b.datetime,
 					);
-					return hydrateBarsWithDepthSummaries(deduped);
+					return deduped;
 				});
 			} else {
 				console.log("[PixiChartV2] No additional historical data returned after multiple attempts.");
@@ -908,7 +609,7 @@ const PixiChartV2 = (props) => {
 			loadingMoreRef.current = false;
 			setIsLoading(false);
 		}
-	}, [fetchHistoricalWindow, hydrateBarsWithDepthSummaries, symbol.value, timeframe]);
+	}, [fetchHistoricalWindow, symbol.value, timeframe]);
 
 	// Liquidity data is expensive for the server to compute/serve, so only request it
 	// for the low timeframes where it's actually useful (1m/5m). Larger timeframes were
@@ -937,6 +638,30 @@ const PixiChartV2 = (props) => {
 		ohlcData,
 	});
 
+	// Depth Cumulative panel: every live depthWindow, and history rolled up per bar by the server. Bars here are
+	// labelled by their close (barLabel="end"), so a bar opened one bar size before its datetime.
+	const getDepthBarStart = useCallback(
+		(bar) => {
+			const start = Number(bar?.datetime) - depthTimeframeMs;
+			return Number.isFinite(start) ? start : null;
+		},
+		[depthTimeframeMs],
+	);
+	const { applyToBars: applyDepthSummaries } = useDepthSummaryBars({
+		symbol: symbol.value,
+		Socket,
+		pixiDataRef,
+		ohlcData,
+		enabled: Number.isFinite(depthTimeframeMs) && depthTimeframeMs > 0,
+		bucketMs: depthTimeframeMs,
+		getBarStart: getDepthBarStart,
+	});
+	// The bar just completed and the one opening; a merge from two bars back is a couple of binary searches
+	const applyDepthSummariesToLiveBars = useCallback(() => {
+		const bars = pixiDataRef.current?.ohlcDatas;
+		if (bars?.length) applyDepthSummaries(bars.length - 2);
+	}, [applyDepthSummaries]);
+
 	useEffect(() => {
 		const pixiData = pixiDataRef.current;
 		if (!pixiData) return;
@@ -956,7 +681,7 @@ const PixiChartV2 = (props) => {
 
 		depthSignalsRef.current?.cleanup?.();
 
-		const depthSignals = new DrawDepthSignals(pixiData);
+		const depthSignals = new DrawDepthSignals(pixiData, { filters: depthSignalsIndicator.options });
 		depthSignalsRef.current = depthSignals;
 		depthSignals.setSignals(pendingDepthSignalsRef.current);
 		pixiData.registerDrawFn("depthSignals", depthSignals.draw.bind(depthSignals));
@@ -970,6 +695,20 @@ const PixiChartV2 = (props) => {
 			depthSignals.cleanup();
 		};
 	}, [symbol.value, timeframe, isLoading, depthSignalsIndicator?.enabled]);
+
+	useEffect(() => {
+		depthSignalsRef.current?.setOptions(depthSignalsIndicator?.options);
+	}, [depthSignalsIndicator?.options]);
+
+	// Saved cues for the loaded bars; live ones arrive on depthFlowMarker-{symbol} below
+	useDepthCueHistory({
+		symbol: symbol.value,
+		resetKey: `${symbol.value}:${timeframe}`,
+		ohlcData,
+		pendingRef: pendingDepthCuesRef,
+		drawRef: depthCuesRef,
+		getBarStart: getDepthBarStart,
+	});
 
 	// Real-time depth cues (250ms server cues) as markers at the price they fired
 	const depthCueMinStrength = props.depthCueMinStrength ?? 1;
@@ -1066,15 +805,15 @@ const PixiChartV2 = (props) => {
 				setIsLoading,
 				setOhlcData: (dataOrUpdater) => {
 					if (typeof dataOrUpdater === "function") {
-						setOhlcData((prevOhlcData) => hydrateBarsWithDepthSummaries(dataOrUpdater(prevOhlcData)));
+						setOhlcData((prevOhlcData) => dataOrUpdater(prevOhlcData));
 						return;
 					}
 
-					setOhlcData(hydrateBarsWithDepthSummaries(dataOrUpdater));
+					setOhlcData(dataOrUpdater);
 				},
 			});
 		},
-		[barType, barTypePeriod, hydrateBarsWithDepthSummaries, symbol, setIsLoading, setOhlcData],
+		[barType, barTypePeriod, symbol, setIsLoading, setOhlcData],
 	);
 
 	const handleDateRangeSubmit = useCallback(() => {
@@ -1091,6 +830,16 @@ const PixiChartV2 = (props) => {
 		}
 		setShowDateRange(false);
 	}, [drStartTime, drEndTime, drNumDays, drUseNumDays, handleChartTimeRangeChange]);
+
+	// Server rooms for the live data below (kept apart so the main effect's other deps don't churn subscriptions)
+	useEffect(() => {
+		const releases = [
+			Socket.subscribe("lastTrade", { symbol: symbol.value }),
+			Socket.subscribe("bars", { symbol: symbol.value, tf: timeframe }),
+			Socket.subscribe("bars", { symbol: symbol.value, tf: "1s" }),
+		];
+		return () => releases.forEach((release) => release());
+	}, [Socket, symbol.value, timeframe]);
 
 	//main on load to get data
 	useEffect(() => {
@@ -1131,18 +880,7 @@ const PixiChartV2 = (props) => {
 
 		Socket.on(liveBarUpdate, handleLiveBarUpdate);
 
-		const depthSummaryEvent = `depthSummary-${symbol.value}`;
-		const handleDepthSummary = (summary) => {
-			const timestamp = toFiniteNumber(summary?.timestamp) ?? Date.now();
-			depthSummaryEventsRef.current = [...depthSummaryEventsRef.current.slice(-499), { ...summary, timestamp }];
-			rebuildDepthSummaryAggregation();
-
-			const targetBar = findBarByDepthKey(pixiDataRef.current?.ohlcDatas, timestamp, depthTimeframeMs);
-			if (applyDepthSummaryToBarInPlace(targetBar)) {
-				pixiDataRef.current?.draw();
-			}
-		};
-		Socket.on(depthSummaryEvent, handleDepthSummary);
+		// depthTradeSignal / depthFlowMarker are published to the depthSummary room
 		Socket.subscribeDepthSummary(symbol.value);
 
 		const depthSignalEvent = `depthTradeSignal-${symbol.value}`;
@@ -1161,7 +899,7 @@ const PixiChartV2 = (props) => {
 		const handleDepthCue = (cue) => {
 			const pending = pendingDepthCuesRef.current;
 			pending.push(cue);
-			if (pending.length > 300) pending.splice(0, pending.length - 300);
+			if (pending.length > MAX_DEPTH_CUES) pending.splice(0, pending.length - MAX_DEPTH_CUES);
 			depthCuesRef.current?.pushCue(cue);
 		};
 		Socket.on(depthCueEvent, handleDepthCue);
@@ -1170,7 +908,6 @@ const PixiChartV2 = (props) => {
 			Socket.off("lastTrade", handleLastTradeVwap);
 			Socket.off(liveBarNew, handleLiveBarNew);
 			Socket.off(liveBarUpdate, handleLiveBarUpdate);
-			Socket.off(depthSummaryEvent, handleDepthSummary);
 			Socket.off(depthSignalEvent, handleDepthSignal);
 			Socket.off(depthCueEvent, handleDepthCue);
 			Socket.unsubscribeDepthSummary(symbol.value);
@@ -1180,10 +917,7 @@ const PixiChartV2 = (props) => {
 		timeframe,
 		Socket,
 		applyDepthSummariesToLiveBars,
-		applyDepthSummaryToBarInPlace,
-		depthTimeframeMs,
 		fetchLiveDataAndUpdate,
-		rebuildDepthSummaryAggregation,
 	]); // Socket intentionally omitted to prevent re-registrations
 
 	useEffect(() => {
@@ -1242,126 +976,7 @@ const PixiChartV2 = (props) => {
 				extentValueProvider: getActualCandleDeltaExtentValues,
 				disableCache: true,
 			},
-			{
-				name: "Near vs Full Book Ratio",
-				height: 120,
-				type: "candlestick",
-				accessors: "nearPriceRatioClose",
-				candlestickSets: NEAR_FULL_RATIO_CONFIGS,
-				drawFn: createMultiCandlesWithMovingAverageDrawFn(NEAR_FULL_RATIO_CONFIGS),
-				canGoNegative: false,
-			},
-			{
-				name: "Bid/Ask Order Ratio",
-				height: 100,
-				type: "candlestick",
-				accessors: "bidOrderToAskOrderRatioClose",
-				drawFn: createCandlesWithMovingAverageDrawFn({
-					openField: "bidOrderToAskOrderRatioOpen",
-					highField: "bidOrderToAskOrderRatioHigh",
-					lowField: "bidOrderToAskOrderRatioLow",
-					closeField: "bidOrderToAskOrderRatioClose",
-					upColor: 0x00ffaa, // Cyan-green
-					downColor: 0xff00aa, // Magenta
-					maField: "bidOrderToAskOrderRatioMA20",
-				}),
-				canGoNegative: false,
-			},
-			{
-				name: "Bid/Ask Size Order Ratio",
-				height: 120,
-				type: "candlestick",
-				accessors: "bidSizeOrderRatioClose",
-				candlestickSets: BID_ASK_SIZE_RATIO_CONFIGS,
-				drawFn: createMultiCandlesWithMovingAverageDrawFn(BID_ASK_SIZE_RATIO_CONFIGS),
-				canGoNegative: false,
-			},
-			{
-				name: "Depth Cumulative",
-				height: 90,
-				type: "line",
-				accessors: "depthSignalCumulative",
-				lineColor: 0xfdd835,
-				canGoNegative: true,
-			},
-			{
-				name: "Uber Near Cancellation",
-				height: 100,
-				type: "volume",
-				accessors: "uberNearAbovePriceCancellationCountClose",
-				extentFields: ["uberNearAbovePriceCancellationCountClose", "uberNearBelowPriceCancellationCountNegative"],
-				drawFn: createDualHistogramDrawFn({
-					positiveField: "uberNearAbovePriceCancellationCountClose",
-					negativeField: "uberNearBelowPriceCancellationCountNegative",
-					positiveColor: 0x00c853,
-					negativeColor: 0xd50000,
-					positiveMAField: "uberNearAbovePriceCancellationCountMA20",
-					negativeMAField: "uberNearBelowPriceCancellationCountMA20",
-					positiveMAColor: 0xc5ffb7,
-					negativeMAColor: 0xffcdd2,
-				}),
-				canGoNegative: true,
-			},
-			{
-				name: "Near Price Cancellation",
-				height: 90,
-				type: "volume",
-				accessors: "nearAbovePriceCancellationCountClose",
-				extentFields: ["nearAbovePriceCancellationCountClose", "nearBelowPriceCancellationCountNegative"],
-				drawFn: createDualHistogramDrawFn({
-					positiveField: "nearAbovePriceCancellationCountClose",
-					negativeField: "nearBelowPriceCancellationCountNegative",
-					positiveColor: 0x66ff66,
-					negativeColor: 0xff6666,
-					positiveMAField: "nearAbovePriceCancellationCountMA20",
-					negativeMAField: "nearBelowPriceCancellationCountMA20",
-					positiveMAColor: 0xd4ffd4,
-					negativeMAColor: 0xffd6d6,
-				}),
-				canGoNegative: true,
-			},
-			{
-				name: "Far Price Cancellation",
-				height: 90,
-				type: "volume",
-				accessors: "farAbovePriceCancellationCountClose",
-				extentFields: ["farAbovePriceCancellationCountClose", "farBelowPriceCancellationCountNegative"],
-				drawFn: createDualHistogramDrawFn({
-					positiveField: "farAbovePriceCancellationCountClose",
-					negativeField: "farBelowPriceCancellationCountNegative",
-					positiveColor: 0x00bcd4,
-					negativeColor: 0xff7043,
-					positiveMAField: "farAbovePriceCancellationCountMA20",
-					negativeMAField: "farBelowPriceCancellationCountMA20",
-					positiveMAColor: 0xb2ebf2,
-					negativeMAColor: 0xffccbc,
-				}),
-				canGoNegative: true,
-			},
-			{
-				name: "Majah Chasah",
-				height: 90,
-				type: "volume",
-				accessors: "majahChasahClose",
-				drawFn: createHistogramDrawFn({
-					barColor: 0x00ffaa,
-					maField: "majahChasahMA20",
-					maColor: 0x88ffee,
-				}),
-				canGoNegative: false,
-			},
-			{
-				name: "Majah Runnah",
-				height: 90,
-				type: "volume",
-				accessors: "majahRunnahClose",
-				drawFn: createHistogramDrawFn({
-					barColor: 0x66ff66,
-					maField: "majahRunnahMA20",
-					maColor: 0xbbffbb,
-				}),
-				canGoNegative: false,
-			},
+			...buildDepthLowerIndicators(),
 		];
 	}, []);
 

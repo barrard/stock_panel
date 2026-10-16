@@ -14,6 +14,7 @@ export default class Indicator {
         type,
         lineColor = 0x3b82f6,
         canGoNegative = false,
+        centerZero = false,
         lines = null,
         candlestickSets = null,
         extentFields = null,
@@ -31,6 +32,9 @@ export default class Indicator {
         this.type = type;
         this.lineColor = lineColor;
         this.canGoNegative = canGoNegative;
+        // Symmetric y-domain around 0 (dual histograms): positive bars grow up from the
+        // middle, negative bars grow down, even if only one side has visible values.
+        this.centerZero = centerZero;
 
         // Multi-line support
         this.lines = lines; // Array of line configs: [{ name, lineColor, lineKey, xKey }]
@@ -117,6 +121,14 @@ export default class Indicator {
         this.chart.height += this.height;
         this.chart.drawCrossHair();
 
+        // Clip indicator bars to this pane so a bad domain can't bleed into the main chart
+        this.gfxMask = new Graphics();
+        this.gfxMask.beginFill(0xffffff);
+        this.gfxMask.drawRect(0, 0, width - (left + right), this.height);
+        this.gfxMask.endFill();
+        this.gfx.mask = this.gfxMask;
+
+        this.container.addChild(this.gfxMask);
         this.container.addChild(this.gfx);
         this.container.addChild(this.borderGfx);
         this.container.addChild(this.yAxis.tickLinesGfx);
@@ -272,6 +284,15 @@ export default class Indicator {
         // Clear graphics for redraw
         this.gfx?.clear();
 
+        // Keep the clip mask in sync with the current pane size
+        if (this.gfxMask) {
+            const { width, margin } = this.chart;
+            this.gfxMask.clear();
+            this.gfxMask.beginFill(0xffffff);
+            this.gfxMask.drawRect(0, 0, width - (margin.left + margin.right), this.height);
+            this.gfxMask.endFill();
+        }
+
         let lowest, highest;
 
         // Multi-line indicator
@@ -403,6 +424,12 @@ export default class Indicator {
                 // Keep lowest as is
             } else {
                 lowest = Math.min(0, lowest);
+            }
+
+            if (this.centerZero) {
+                const maxAbs = Math.max(Math.abs(lowest), Math.abs(highest)) || 1;
+                lowest = -maxAbs;
+                highest = maxAbs;
             }
 
             this.scale.domain([lowest, highest]);

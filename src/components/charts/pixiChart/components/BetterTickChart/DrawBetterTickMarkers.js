@@ -40,9 +40,15 @@ export default class DrawBetterTickMarkers {
         this.labelContainer = new Container();
         this.hoverHitboxPadding = options.hoverHitboxPadding ?? 8;
         this.clusterGapPx = options.clusterGapPx ?? 18;
+        this.hiddenTypes = new Set(options.hiddenTypes || []); // marker types not drawn (e.g. "pro", "am")
 
         this.chart.addToLayer(this.layer, this.graphics);
         this.chart.addToLayer(this.layer, this.labelContainer);
+    }
+
+    setHiddenTypes(types = []) {
+        this.hiddenTypes = new Set(types);
+        this.draw();
     }
 
     safeClearGraphics() {
@@ -201,6 +207,7 @@ export default class DrawBetterTickMarkers {
             if (!Number.isFinite(x)) return;
 
             bar.betterTickMarkers.forEach((marker) => {
+                if (this.hiddenTypes.has(marker.type)) return;
                 const price = Number(marker.price);
                 if (!Number.isFinite(price)) return;
 

@@ -1,10 +1,12 @@
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { findVisibleBarIndex } from "./barTimeLookup";
 
 // Real-time depth cues (server DepthFlowSonifier, 250ms) drawn at the price they fired.
 // Bullish cues (bid support, ask pulled) sit below price, bearish (ask pressure, bid pulled) above.
-// Support = filled dot, pull = ring. Size grows with level (L1-L3).
+// Support = filled diamond, pull = outlined diamond (depth signals use circles, so the two read apart). Size grows with level (L1-L3).
 
-const DEFAULT_MAX_CUES = 300;
+// History comes from saved cues (useDepthCueHistory), ~10 a minute, so this holds about a day and a half
+export const MAX_DEPTH_CUES = 20000;
 
 const CUE_STYLE = {
 	depth_bid_support: { label: "Bid support", direction: 1, color: 0x00c853, filled: true },
@@ -32,7 +34,7 @@ function normalizeCue(cue = {}) {
 export default class DrawDepthCues {
 	constructor(chart, options = {}) {
 		this.chart = chart;
-		this.maxCues = options.maxCues ?? DEFAULT_MAX_CUES;
+		this.maxCues = options.maxCues ?? MAX_DEPTH_CUES;
 		this.minStrength = options.minStrength ?? 1;
 		this.cues = [];
 		this.graphics = new Graphics();
@@ -69,29 +71,12 @@ export default class DrawDepthCues {
 		this.labelContainer?.removeChildren().forEach((child) => child.destroy?.());
 	}
 
-	// Last bar starting at or before the cue (data is time-sorted)
-	findBarIndex(timestamp, data) {
-		let lo = 0;
-		let hi = data.length - 1;
-		let found = -1;
-		while (lo <= hi) {
-			const mid = (lo + hi) >> 1;
-			const barTimestamp = data[mid]?.timestamp ?? data[mid]?.datetime;
-			if (barTimestamp <= timestamp) {
-				found = mid;
-				lo = mid + 1;
-			} else {
-				hi = mid - 1;
-			}
-		}
-		return found;
-	}
-
 	drawTooltip(marker) {
 		const { cue } = marker;
 		const ratio = Number.isFinite(Number(cue.ratio)) ? ` (${Number(cue.ratio).toFixed(1)}x normal)` : "";
+		const count = marker.count > 1 ? `\n${marker.count} cues in this bar` : "";
 		const text = new Text(
-			`${cue.style.label} L${cue.strength}${ratio}\n@ ${cue.price}\n${new Date(cue.timestamp).toLocaleTimeString()}`,
+			`${cue.style.label} L${cue.strength}${ratio}\n@ ${cue.price}\n${new Date(cue.timestamp).toLocaleTimeString()}${count}`,
 			TOOLTIP_STYLE,
 		);
 		const padding = 6;
@@ -119,17 +104,26 @@ export default class DrawDepthCues {
 		}
 		this.clearLabels();
 
-		const { slicedData, xScale, priceScale, mainChartContainerHeight } = this.chart;
-		const firstTimestamp = slicedData[0]?.timestamp ?? slicedData[0]?.datetime;
-		const stackOffsets = new Map();
-		const markers = [];
-
+		const { xScale, priceScale, mainChartContainerHeight } = this.chart;
+		// One marker per bar and cue type: a joined tick bar can collect dozens of cues, and stacking each one pushed
+		// them off the chart. The marker shows the strongest level, at the price that level fired.
+		const groups = new Map();
 		for (const cue of this.cues) {
 			if (cue.strength < this.minStrength) continue;
-			if (Number.isFinite(firstTimestamp) && cue.timestamp < firstTimestamp) continue;
-			const index = this.findBarIndex(cue.timestamp, slicedData);
+			const index = findVisibleBarIndex(this.chart, cue.timestamp);
 			if (index < 0) continue;
+			const key = `${index}:${cue.type}`;
+			const group = groups.get(key);
+			if (!group) groups.set(key, { index, cue, count: 1 });
+			else {
+				group.count += 1;
+				if (cue.strength >= group.cue.strength) group.cue = cue;
+			}
+		}
 
+		const stackOffsets = new Map();
+		const markers = [];
+		for (const { index, cue, count } of groups.values()) {
 			const x = xScale(index);
 			const y = priceScale(cue.price);
 			if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
@@ -139,21 +133,22 @@ export default class DrawDepthCues {
 			const stackKey = `${index}:${direction}`;
 			const stackCount = stackOffsets.get(stackKey) || 0;
 			stackOffsets.set(stackKey, stackCount + 1);
-			const offset = 8 + stackCount * (radius * 2 + 2);
+			const offset = 8 + stackCount * 14;
 			const markerY =
 				direction > 0 ? Math.min(mainChartContainerHeight - radius, y + offset) : Math.max(radius, y - offset);
 
 			const alpha = 0.45 + cue.strength * 0.18;
+			const diamond = [x, markerY - radius, x + radius, markerY, x, markerY + radius, x - radius, markerY];
 			if (filled) {
 				this.graphics.lineStyle(0);
 				this.graphics.beginFill(color, alpha);
-				this.graphics.drawCircle(x, markerY, radius);
+				this.graphics.drawPolygon(diamond);
 				this.graphics.endFill();
 			} else {
 				this.graphics.lineStyle(1.5, color, alpha);
-				this.graphics.drawCircle(x, markerY, radius);
+				this.graphics.drawPolygon([...diamond, diamond[0], diamond[1]]);
 			}
-			markers.push({ x, y: markerY, radius, cue });
+			markers.push({ x, y: markerY, radius, cue, count });
 		}
 
 		if (!this.chart.crosshair || !Number.isFinite(this.chart.mouseX) || !Number.isFinite(this.chart.mouseY)) return;

@@ -114,6 +114,179 @@ const updateMovingAveragesForLatestBar = (bars) => {
     });
 };
 
+// Counts the server sends per liquidity window (RequestMarketDataUpdate resets them every LIQUIDITY_WINDOW_MS), so a
+// bar's value is the sum of the windows credited to it. Below-price counts also get a negative copy for the dual
+// histograms.
+const COUNT_FIELDS = [
+    { key: "uberNearAbovePriceCancellationCount" },
+    { key: "uberNearBelowPriceCancellationCount", negative: true },
+    { key: "nearAbovePriceCancellationCount" },
+    { key: "nearBelowPriceCancellationCount", negative: true },
+    { key: "farAbovePriceCancellationCount" },
+    { key: "farBelowPriceCancellationCount", negative: true },
+    { key: "majahChasah" },
+    { key: "majahRunnah" },
+];
+const LIQUIDITY_WINDOW_MS = 2000; // TD_service_lite services/rapi/util/liquidityWindow.js
+const MAX_CARRY_BACK_BARS = 50;
+const MAX_UNRESOLVED_WINDOWS = 10;
+
+const createCountWindowState = () => ({ unresolved: [], lastWindow: null, carried: new WeakSet() });
+
+const setCountField = (bar, { key, negative }, value) => {
+    bar[key] = value;
+    bar[`${key}Close`] = value;
+    if (negative) bar[`${key}Negative`] = toNegativeValue(value);
+};
+
+const hasCounts = (bar) => toNumericValue(bar?.majahChasah) !== null || toNumericValue(bar?.uberNearAbovePriceCancellationCount) !== null;
+
+// When bars[index] opened. Time bars from the handler's bar grid. A completed tick bar is labelled by its first trade
+// (firstDatetime on joined bars); the one still filling was opened by the client on the next price update, so the
+// previous bar's last trade (endTime) marks its start more closely.
+const barOpenTime = (handler, bars, index) => {
+    const bar = bars[index];
+    const bounds = handler.barBoundsForBar?.(bar);
+    if (bounds) return bounds.barStart;
+    if (bar === handler.currentBar) return toNumericValue(bars[index - 1]?.endTime) ?? toNumericValue(bar.timestamp);
+    return toNumericValue(bar.firstDatetime ?? bar.datetime);
+};
+
+const barCloseTime = (handler, bar) => {
+    const bounds = handler.barBoundsForBar?.(bar);
+    if (bounds) return bounds.barEnd;
+    return toNumericValue(bar.endTime);
+};
+
+// Index of the bar holding `midpoint`, or -1 while that bar hasn't opened yet (the last bar has closed and the next
+// one isn't on the chart)
+const findWindowBarIndex = (handler, bars, midpoint) => {
+    const last = bars.length - 1;
+    const lastIsOpen = handler.currentBar === bars[last];
+    if (!lastIsOpen) {
+        const closeTime = barCloseTime(handler, bars[last]);
+        if (closeTime === null || midpoint >= closeTime) return -1;
+    }
+    for (let i = last, n = 0; i >= 0 && n <= MAX_CARRY_BACK_BARS; i--, n++) {
+        const openTime = barOpenTime(handler, bars, i);
+        if (openTime !== null && openTime <= midpoint) return i;
+    }
+    return last; // clocks disagree: the newest bar is the best guess
+};
+
+/**
+ * Credits live count windows to the bar holding each window's midpoint, the same rule the server uses for history.
+ * A window that closes just after a bar ends therefore counts toward that bar when most of it happened there, and a
+ * bar that has only just opened isn't handed a window that mostly belongs to the one before it.
+ * The first window a bar gets builds on what it already holds (the partial sum from history for a bar still open
+ * after a reload). Bars that end up with no window of their own (tick bars shorter than a window) take the counts of
+ * the window before, the carry-forward /API/tickbar-liquidity applies to history.
+ * Returns true when a bar other than the last one changed, so the caller recalculates every moving average.
+ */
+const accumulateCountWindow = (handler, liquidityData, state) => {
+    const counts = {};
+    COUNT_FIELDS.forEach(({ key }) => {
+        const value = toNumericValue(liquidityData[key]);
+        if (value !== null) counts[key] = value;
+    });
+    if (!Object.keys(counts).length) return false;
+
+    // Servers before the midpoint change sent no window times: assume it just closed
+    const windowEnd = toNumericValue(liquidityData.timestamp) ?? Date.now();
+    const windowStart = toNumericValue(liquidityData.windowStart) ?? windowEnd - LIQUIDITY_WINDOW_MS;
+    state.unresolved.push({ midpoint: (windowStart + windowEnd) / 2, counts });
+
+    const bars = handler.ohlcDatas;
+    let changedEarlierBar = false;
+    while (state.unresolved.length && bars?.length) {
+        const { midpoint, counts: windowCounts } = state.unresolved[0];
+        const index = findWindowBarIndex(handler, bars, midpoint);
+        if (index < 0) break;
+        state.unresolved.shift();
+
+        const bar = bars[index];
+        if (state.lastWindow) {
+            for (let i = index - 1, n = 0; i >= 0 && n < MAX_CARRY_BACK_BARS && !hasCounts(bars[i]); i--, n++) {
+                COUNT_FIELDS.forEach((field) => {
+                    if (state.lastWindow[field.key] !== undefined) setCountField(bars[i], field, state.lastWindow[field.key]);
+                });
+                state.carried.add(bars[i]);
+                changedEarlierBar = true;
+            }
+        }
+
+        // A carried-forward value is a stand-in; the bar's own window replaces it
+        const base = state.carried.has(bar) ? null : bar;
+        state.carried.delete(bar);
+        COUNT_FIELDS.forEach((field) => {
+            if (windowCounts[field.key] === undefined) return;
+            setCountField(bar, field, (toNumericValue(base?.[field.key]) ?? 0) + windowCounts[field.key]);
+        });
+        state.lastWindow = windowCounts;
+        if (index !== bars.length - 1) changedEarlierBar = true;
+    }
+
+    // The next bar never opened (feed stopped): don't hold windows forever
+    if (state.unresolved.length > MAX_UNRESOLVED_WINDOWS) state.unresolved.splice(0, state.unresolved.length - MAX_UNRESOLVED_WINDOWS);
+    return changedEarlierBar;
+};
+
+// Book ratio OHLC from a compiled liquidity bucket (`${key}_open/_high/_low/_close`); time and tick buckets share it
+const mapLiquidityRatioOHLC = (bar) => ({
+    // Near Price Ratio OHLC (nearPriceBidSizeToAskSizeRatioMA from server)
+    nearPriceBidSizeToAskSizeRatioMA: bar.nearPriceBidSizeToAskSizeRatioMA_close,
+    nearPriceRatioOpen: bar.nearPriceBidSizeToAskSizeRatioMA_open,
+    nearPriceRatioHigh: bar.nearPriceBidSizeToAskSizeRatioMA_high,
+    nearPriceRatioLow: bar.nearPriceBidSizeToAskSizeRatioMA_low,
+    nearPriceRatioClose: bar.nearPriceBidSizeToAskSizeRatioMA_close,
+
+    // Full Book Ratio OHLC (bidSizeToAskSizeRatioMA from server)
+    bidSizeToAskSizeRatioMA: bar.bidSizeToAskSizeRatioMA_close,
+    fullBookRatioOpen: bar.bidSizeToAskSizeRatioMA_open,
+    fullBookRatioHigh: bar.bidSizeToAskSizeRatioMA_high,
+    fullBookRatioLow: bar.bidSizeToAskSizeRatioMA_low,
+    fullBookRatioClose: bar.bidSizeToAskSizeRatioMA_close,
+
+    // Other ratio fields with OHLC
+    bidSizeToAskSizeRatio: bar.bidSizeToAskSizeRatio_close,
+    nearPriceBidSizeToAskSizeRatio: bar.nearPriceBidSizeToAskSizeRatio_close,
+
+    // bidOrderToAskOrderRatio OHLC
+    bidOrderToAskOrderRatio: bar.bidOrderToAskOrderRatio_close,
+    bidOrderToAskOrderRatioOpen: bar.bidOrderToAskOrderRatio_open,
+    bidOrderToAskOrderRatioHigh: bar.bidOrderToAskOrderRatio_high,
+    bidOrderToAskOrderRatioLow: bar.bidOrderToAskOrderRatio_low,
+    bidOrderToAskOrderRatioClose: bar.bidOrderToAskOrderRatio_close,
+
+    // runningOrderDepthCount OHLC
+    runningOrderDepthCount: bar.runningOrderDepthCount_close,
+    runningOrderDepthCountOpen: bar.runningOrderDepthCount_open,
+    runningOrderDepthCountHigh: bar.runningOrderDepthCount_high,
+    runningOrderDepthCountLow: bar.runningOrderDepthCount_low,
+    runningOrderDepthCountClose: bar.runningOrderDepthCount_close,
+
+    // runningOrderDepthNearPriceCount OHLC
+    runningOrderDepthNearPriceCount: bar.runningOrderDepthNearPriceCount_close,
+    runningOrderDepthNearPriceCountOpen: bar.runningOrderDepthNearPriceCount_open,
+    runningOrderDepthNearPriceCountHigh: bar.runningOrderDepthNearPriceCount_high,
+    runningOrderDepthNearPriceCountLow: bar.runningOrderDepthNearPriceCount_low,
+    runningOrderDepthNearPriceCountClose: bar.runningOrderDepthNearPriceCount_close,
+
+    // bidSizeOrderRatio OHLC
+    bidSizeOrderRatio: bar.bidSizeOrderRatio_close,
+    bidSizeOrderRatioOpen: bar.bidSizeOrderRatio_open,
+    bidSizeOrderRatioHigh: bar.bidSizeOrderRatio_high,
+    bidSizeOrderRatioLow: bar.bidSizeOrderRatio_low,
+    bidSizeOrderRatioClose: bar.bidSizeOrderRatio_close,
+
+    // askSizeOrderRatio OHLC
+    askSizeOrderRatio: bar.askSizeOrderRatio_close,
+    askSizeOrderRatioOpen: bar.askSizeOrderRatio_open,
+    askSizeOrderRatioHigh: bar.askSizeOrderRatio_high,
+    askSizeOrderRatioLow: bar.askSizeOrderRatio_low,
+    askSizeOrderRatioClose: bar.askSizeOrderRatio_close,
+});
+
 const mapCompiledLiquidityMetrics = (bar) => {
     const datetime = bar.datetime || bar.createdAt || bar.timestamp;
     if (!datetime) return null;
@@ -126,58 +299,7 @@ const mapCompiledLiquidityMetrics = (bar) => {
         deltaLow: bar.delta_low,
         deltaClose: bar.delta_close,
 
-        // Near Price Ratio OHLC (nearPriceBidSizeToAskSizeRatioMA from server)
-        nearPriceBidSizeToAskSizeRatioMA: bar.nearPriceBidSizeToAskSizeRatioMA_close,
-        nearPriceRatioOpen: bar.nearPriceBidSizeToAskSizeRatioMA_open,
-        nearPriceRatioHigh: bar.nearPriceBidSizeToAskSizeRatioMA_high,
-        nearPriceRatioLow: bar.nearPriceBidSizeToAskSizeRatioMA_low,
-        nearPriceRatioClose: bar.nearPriceBidSizeToAskSizeRatioMA_close,
-
-        // Full Book Ratio OHLC (bidSizeToAskSizeRatioMA from server)
-        bidSizeToAskSizeRatioMA: bar.bidSizeToAskSizeRatioMA_close,
-        fullBookRatioOpen: bar.bidSizeToAskSizeRatioMA_open,
-        fullBookRatioHigh: bar.bidSizeToAskSizeRatioMA_high,
-        fullBookRatioLow: bar.bidSizeToAskSizeRatioMA_low,
-        fullBookRatioClose: bar.bidSizeToAskSizeRatioMA_close,
-
-        // Other ratio fields with OHLC
-        bidSizeToAskSizeRatio: bar.bidSizeToAskSizeRatio_close,
-        nearPriceBidSizeToAskSizeRatio: bar.nearPriceBidSizeToAskSizeRatio_close,
-
-        // bidOrderToAskOrderRatio OHLC
-        bidOrderToAskOrderRatio: bar.bidOrderToAskOrderRatio_close,
-        bidOrderToAskOrderRatioOpen: bar.bidOrderToAskOrderRatio_open,
-        bidOrderToAskOrderRatioHigh: bar.bidOrderToAskOrderRatio_high,
-        bidOrderToAskOrderRatioLow: bar.bidOrderToAskOrderRatio_low,
-        bidOrderToAskOrderRatioClose: bar.bidOrderToAskOrderRatio_close,
-
-        // runningOrderDepthCount OHLC
-        runningOrderDepthCount: bar.runningOrderDepthCount_close,
-        runningOrderDepthCountOpen: bar.runningOrderDepthCount_open,
-        runningOrderDepthCountHigh: bar.runningOrderDepthCount_high,
-        runningOrderDepthCountLow: bar.runningOrderDepthCount_low,
-        runningOrderDepthCountClose: bar.runningOrderDepthCount_close,
-
-        // runningOrderDepthNearPriceCount OHLC
-        runningOrderDepthNearPriceCount: bar.runningOrderDepthNearPriceCount_close,
-        runningOrderDepthNearPriceCountOpen: bar.runningOrderDepthNearPriceCount_open,
-        runningOrderDepthNearPriceCountHigh: bar.runningOrderDepthNearPriceCount_high,
-        runningOrderDepthNearPriceCountLow: bar.runningOrderDepthNearPriceCount_low,
-        runningOrderDepthNearPriceCountClose: bar.runningOrderDepthNearPriceCount_close,
-
-        // bidSizeOrderRatio OHLC
-        bidSizeOrderRatio: bar.bidSizeOrderRatio_close,
-        bidSizeOrderRatioOpen: bar.bidSizeOrderRatio_open,
-        bidSizeOrderRatioHigh: bar.bidSizeOrderRatio_high,
-        bidSizeOrderRatioLow: bar.bidSizeOrderRatio_low,
-        bidSizeOrderRatioClose: bar.bidSizeOrderRatio_close,
-
-        // askSizeOrderRatio OHLC
-        askSizeOrderRatio: bar.askSizeOrderRatio_close,
-        askSizeOrderRatioOpen: bar.askSizeOrderRatio_open,
-        askSizeOrderRatioHigh: bar.askSizeOrderRatio_high,
-        askSizeOrderRatioLow: bar.askSizeOrderRatio_low,
-        askSizeOrderRatioClose: bar.askSizeOrderRatio_close,
+        ...mapLiquidityRatioOHLC(bar),
 
         // Uber & Majah event totals
         uberNearAbovePriceCancellationCount: bar.uberNearAbovePriceCancellationCount,
@@ -211,6 +333,11 @@ const mapTickLiquidityMetrics = (bar) => {
     const farBelow = toNegativeValue(bar.farBelowPriceCancellationCount);
 
     return {
+        ...mapLiquidityRatioOHLC(bar),
+        majahChasah: bar.majahChasah,
+        majahChasahClose: bar.majahChasah,
+        majahRunnah: bar.majahRunnah,
+        majahRunnahClose: bar.majahRunnah,
         uberNearAbovePriceCancellationCount: bar.uberNearAbovePriceCancellationCount,
         uberNearAbovePriceCancellationCountClose: bar.uberNearAbovePriceCancellationCount,
         uberNearBelowPriceCancellationCount: bar.uberNearBelowPriceCancellationCount,
@@ -266,6 +393,9 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
 
     // Track the earliest timestamp we've seen to detect scrolling left
     const earliestSeenRef = useRef(null);
+
+    // Live count windows (cancellations, majah) being summed into the open bar
+    const countWindowRef = useRef(createCountWindowState());
 
     // Track snapshots for current bar to build OHLC
     const currentBarSnapshotsRef = useRef({
@@ -686,55 +816,14 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
                     lastBar.askSizeOrderRatio = askSizeOrderRatioOHLC.close; // Line fallback
                 }
 
-                if (
-                    liquidityData.uberNearAbovePriceCancellationCount !== undefined &&
-                    liquidityData.uberNearAbovePriceCancellationCount !== null
-                ) {
-                    const total = liquidityData.uberNearAbovePriceCancellationCount;
-                    lastBar.uberNearAbovePriceCancellationCount = total;
-                    lastBar.uberNearAbovePriceCancellationCountClose = total;
-                }
-                if (
-                    liquidityData.uberNearBelowPriceCancellationCount !== undefined &&
-                    liquidityData.uberNearBelowPriceCancellationCount !== null
-                ) {
-                    const total = liquidityData.uberNearBelowPriceCancellationCount;
-                    lastBar.uberNearBelowPriceCancellationCount = total;
-                    lastBar.uberNearBelowPriceCancellationCountClose = total;
-                    lastBar.uberNearBelowPriceCancellationCountNegative = toNegativeValue(total);
-                }
-                if (liquidityData.majahChasah !== undefined && liquidityData.majahChasah !== null) {
-                    lastBar.majahChasah = liquidityData.majahChasah;
-                    lastBar.majahChasahClose = liquidityData.majahChasah;
-                }
-                if (liquidityData.majahRunnah !== undefined && liquidityData.majahRunnah !== null) {
-                    lastBar.majahRunnah = liquidityData.majahRunnah;
-                    lastBar.majahRunnahClose = liquidityData.majahRunnah;
-                }
-                if (liquidityData.nearAbovePriceCancellationCount !== undefined && liquidityData.nearAbovePriceCancellationCount !== null) {
-                    lastBar.nearAbovePriceCancellationCount = liquidityData.nearAbovePriceCancellationCount;
-                    lastBar.nearAbovePriceCancellationCountClose = liquidityData.nearAbovePriceCancellationCount;
-                }
-                if (liquidityData.nearBelowPriceCancellationCount !== undefined && liquidityData.nearBelowPriceCancellationCount !== null) {
-                    lastBar.nearBelowPriceCancellationCount = liquidityData.nearBelowPriceCancellationCount;
-                    lastBar.nearBelowPriceCancellationCountClose = liquidityData.nearBelowPriceCancellationCount;
-                    lastBar.nearBelowPriceCancellationCountNegative = toNegativeValue(liquidityData.nearBelowPriceCancellationCount);
-                }
-                if (liquidityData.farAbovePriceCancellationCount !== undefined && liquidityData.farAbovePriceCancellationCount !== null) {
-                    lastBar.farAbovePriceCancellationCount = liquidityData.farAbovePriceCancellationCount;
-                    lastBar.farAbovePriceCancellationCountClose = liquidityData.farAbovePriceCancellationCount;
-                }
-                if (liquidityData.farBelowPriceCancellationCount !== undefined && liquidityData.farBelowPriceCancellationCount !== null) {
-                    lastBar.farBelowPriceCancellationCount = liquidityData.farBelowPriceCancellationCount;
-                    lastBar.farBelowPriceCancellationCountClose = liquidityData.farBelowPriceCancellationCount;
-                    lastBar.farBelowPriceCancellationCountNegative = toNegativeValue(liquidityData.farBelowPriceCancellationCount);
-                }
+                const changedEarlierBar = accumulateCountWindow(pixiDataRef.current, liquidityData, countWindowRef.current);
 
                 // Store other fields
                 lastBar.bidSizeToAskSizeRatio = liquidityData.bidSizeToAskSizeRatio;
                 lastBar.nearPriceBidSizeToAskSizeRatio = liquidityData.nearPriceBidSizeToAskSizeRatio;
 
-                updateMovingAveragesForLatestBar(pixiDataRef.current.ohlcDatas);
+                if (changedEarlierBar) recalculateMovingAveragesForAllBars(pixiDataRef.current.ohlcDatas);
+                else updateMovingAveragesForLatestBar(pixiDataRef.current.ohlcDatas);
                 // Trigger redraw
                 pixiDataRef.current.draw();
 
@@ -753,6 +842,7 @@ export const useLiquidityRatios = ({ symbol, Socket, pixiDataRef, enabled = true
             }
         };
 
+        countWindowRef.current = createCountWindowState();
         Socket.on(liquidityEventName, handleLiquidityData);
         Socket.subscribeLiquidity(symbol);
 

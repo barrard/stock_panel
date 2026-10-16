@@ -71,6 +71,8 @@ const API = {
 	getTickbarOrderFlow,
 	getLiquidityMetrics,
 	getDepthMetrics,
+	getDepthMetricBuckets,
+	getDepthCues,
 	getTickbarLiquidity,
 	getTicks,
 	getCustomTicks,
@@ -255,7 +257,13 @@ async function getLiquidityMetrics({ start, end, symbol = "ES", timeframe = "1m"
 	return await GET(`/API/getLiquidityMetrics/${start}/${end}/${symbol}/${timeframe}`);
 }
 
-async function getDepthMetrics({ symbol = "ES", start, end, windowSeconds, frontMonth, limit = 5000 }) {
+// Depth windows rolled up per time bar (bucketMs = bar size), for time charts
+async function getDepthMetricBuckets({ symbol = "ES", start, end, bucketMs }) {
+	const params = new URLSearchParams({ symbol, start: String(start), end: String(end), bucketMs: String(bucketMs) });
+	return await GET(`/API/rapi/depth-metrics/buckets?${params.toString()}`);
+}
+
+async function getDepthMetrics({ symbol = "ES", start, end, windowSeconds, frontMonth, limit = 5000, fields }) {
 	if (start === undefined || end === undefined) {
 		throw new Error("getDepthMetrics requires both start and end timestamps");
 	}
@@ -269,8 +277,15 @@ async function getDepthMetrics({ symbol = "ES", start, end, windowSeconds, front
 
 	if (windowSeconds !== undefined) params.append("windowSeconds", String(windowSeconds));
 	if (frontMonth) params.append("frontMonth", frontMonth);
+	if (fields) params.append("fields", Array.isArray(fields) ? fields.join(",") : fields);
 
 	return await GET(`/API/rapi/depth-metrics?${params.toString()}`);
+}
+
+// Saved depth audio cues (chart markers) in [start, end]
+async function getDepthCues({ symbol = "ES", start, end }) {
+	const params = new URLSearchParams({ symbol, start: String(start), end: String(end) });
+	return await GET(`/API/rapi/depth-cues?${params.toString()}`);
 }
 
 async function getTickbarLiquidity({ start, finish, symbol = "ES", join = 1 }) {

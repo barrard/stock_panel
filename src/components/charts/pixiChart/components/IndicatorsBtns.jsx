@@ -5,7 +5,7 @@ import { GiAirZigzag, GiHistogram, GiAmplitude } from "react-icons/gi";
 import { IoIosReorder } from "react-icons/io";
 import { CgReadme } from "react-icons/cg";
 import { AiOutlineTransaction, AiFillCloseCircle } from "react-icons/ai";
-import { MdLayers, MdTrendingUp } from "react-icons/md";
+import { MdLayers, MdTrendingUp, MdGraphicEq, MdSwapVert, MdBubbleChart } from "react-icons/md";
 import styled from "styled-components";
 import Input from "./Input";
 import ColorSchemeEditor from "./ColorSchemeEditor";
@@ -131,6 +131,9 @@ function IndicatorsBtns(props) {
         orderbook: <CgReadme />,
         orders: <AiOutlineTransaction />,
         depthSignals: <MdLayers />,
+        depthCues: <MdGraphicEq />,
+        exhaustionMarkers: <MdSwapVert />,
+        avgTradeMarkers: <MdBubbleChart />,
         pivotLines: <IoIosReorder />,
         superTrend: <MdTrendingUp />,
         priceLevels: <IoIosReorder />,

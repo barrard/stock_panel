@@ -5,6 +5,7 @@ import { withRouter } from "react-router";
 
 import Login_Form from "../components/forms/Login_Form.js";
 import * as user_actions from "../redux/actions/user_actions.js";
+import Socket from "./Socket.js";
 // import {ensure_not_loggedin} from '../components/utils/auth.js'
 
 const { login_success } = user_actions;
@@ -82,6 +83,7 @@ class Login extends React.Component {
                 });
             } else if (json.success) {
                 this.props.dispatch(login_success(json.user));
+                Socket.reauth();
                 this.props.history.push("/commodity/ES");
             }
         } catch (err) {

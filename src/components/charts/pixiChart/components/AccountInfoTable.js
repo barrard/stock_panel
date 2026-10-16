@@ -29,26 +29,32 @@ export default function AccountInfoTable(props = {}) {
             setInstrumentPnLPositionUpdate(message);
         };
 
-        const handleLastTrade = (message) => {
-            if (!message?.symbol) return;
+        // Prices for every symbol come from the 2s marketOverview packet; lastTrade only follows the focused symbol
+        const handleMarketOverview = (packet) => {
+            const symbols = packet?.symbols;
+            if (!symbols) return;
 
-            setLastTradePrices((prevState) => ({
-                ...prevState,
-                [message.symbol]: {
-                    ...(prevState[message.symbol] || lastTradesRef?.current?.[message.symbol] || {}),
-                    ...message,
-                },
-            }));
+            setLastTradePrices((prevState) => {
+                const nextState = { ...prevState };
+                Object.entries(symbols).forEach(([symbol, update]) => {
+                    nextState[symbol] = { ...(prevState[symbol] || lastTradesRef?.current?.[symbol] || {}), ...update };
+                });
+                return nextState;
+            });
         };
 
         Socket.on("accountPnL", handleAccountPnL);
         Socket.on("positionPnL", handlePositionPnL);
-        Socket.on("lastTrade", handleLastTrade);
+        Socket.on("marketOverview", handleMarketOverview);
+        const releaseOverview = Socket.subscribe("marketOverview");
+        const releaseAccount = Socket.subscribe("account"); // accountPnL / positionPnL, allowed users only
 
         return () => {
+            releaseOverview();
+            releaseAccount();
             Socket.off("accountPnL", handleAccountPnL);
             Socket.off("positionPnL", handlePositionPnL);
-            Socket.off("lastTrade", handleLastTrade);
+            Socket.off("marketOverview", handleMarketOverview);
         };
     }, [Socket, lastTradesRef]);
 

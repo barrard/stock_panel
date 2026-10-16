@@ -1,4 +1,5 @@
 import { toastr } from "react-redux-toastr";
+import Socket from "../../components/Socket.js";
 
 export function logout_user(props) {
     return async (dispatch) => {
@@ -12,6 +13,7 @@ export function logout_user(props) {
             dispatch({
                 type: "LOGOUT_USER",
             });
+            Socket.reauth(); // drop the private account channel
             props.history.push("/");
         } catch (err) {
             //TODO display error msg

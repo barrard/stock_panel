@@ -333,8 +333,12 @@ const BackTestChartGeneric = (props) => {
 
         Socket.on(liveBarNewEvent, handleLiveBarNew);
         Socket.on(liveBarUpdateEvent, handleLiveBarUpdate);
+        const releaseBars = Socket.subscribe("bars", { symbol, tf: timeframe });
+        const releaseLiveBar = Socket.subscribe("bars", { symbol, tf: "1s" });
 
         return () => {
+            releaseBars();
+            releaseLiveBar();
             Socket.off(liveBarNewEvent, handleLiveBarNew);
             Socket.off(liveBarUpdateEvent, handleLiveBarUpdate);
         };

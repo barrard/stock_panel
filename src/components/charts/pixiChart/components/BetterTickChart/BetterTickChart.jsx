@@ -8,15 +8,19 @@ import { useToggleIndicator } from "../../../hooks/useToggleIndicator";
 import { useIndicator } from "../../../hooks/useIndicator";
 import { useLiquidityData } from "../../../hooks/useLiquidityData";
 import { useLiquidityRatios } from "../../../hooks/useLiquidityRatios";
+import { useDepthSummaryBars } from "../../../hooks/useDepthSummaryBars";
 import { LiquidityHeatmap, liquidityHeatMapConfig } from "../indicatorDrawFunctions";
 import DrawOrdersV2 from "../DrawOrdersV2";
-import DrawDepthSignals from "../DrawDepthSignals";
+import DrawDepthSignals, { DEFAULT_DEPTH_SIGNAL_OPTIONS, DEPTH_SIGNAL_OPTION_FIELDS } from "../DrawDepthSignals";
+import DrawDepthCues, { MAX_DEPTH_CUES } from "../DrawDepthCues";
+import { useDepthCueHistory } from "../../../hooks/useDepthCueHistory";
 import DrawSuperTrend from "../../../drawFunctions/DrawSuperTrend";
 import DrawExtremaAnalysis from "../../../drawFunctions/DrawExtremaAnalysis";
 import { createDefaultExtremaIndicators, EXTREMA_INDICATOR_IDS } from "../../../drawFunctions/extremaAnalysisConfig";
-import { saveIndicatorOptions } from "../../../drawFunctions/indicatorOptionsStorage";
+import { loadSavedIndicatorOptions, saveIndicatorOptions } from "../../../drawFunctions/indicatorOptionsStorage";
 import { sendFuturesOrder } from "../sendFuturesOrder";
 import { createDualHistogramDrawFn } from "../drawFns";
+import { buildDepthLowerIndicators } from "../depthLowerIndicators";
 import DrawBetterTickMarkers from "./DrawBetterTickMarkers";
 // import { liquidityHeatMapConfig } from "../indicatorConfigs";
 
@@ -32,6 +36,9 @@ const BETTER_VOLUME_COLORS = {
 };
 
 const PRO_VOL_PER_ORDER_MIN = 2;
+// History loads ask for this many bars at the active join (custom-ticks' limit counts 100-tick bars)
+const HISTORY_BARS = 2000;
+const MAX_DEPTH_SIGNALS = 5000; // saved signals are backfilled over the loaded history (roughly 1k per day; join 20 loads ~4 days)
 const AM_VOL_PER_ORDER_MAX = 1.1;
 
 const getBetterVolumeColor = (bar = {}) => {
@@ -311,11 +318,14 @@ const BetterTickChart = (props) => {
     const [isLoading, setIsLoading] = useState(true);
     const [join, setJoin] = useState(1);
     const rawDataRef = useRef([]); // Display bars returned from server using the active join value
-    const liveJoinBufferRef = useRef([]); // Raw 100-tick bars collected until they complete the next joined bar
+    const liveJoinBufferRef = useRef([]); // 100-tick bars of the joined bar still filling (completed ones come from the server)
     const depthSignalsDrawRef = useRef(null);
     const betterTickMarkersDrawRef = useRef(null);
     const pendingDepthSignalsRef = useRef([]);
     const seenDepthSignalKeysRef = useRef(new Set());
+    const depthCuesDrawRef = useRef(null);
+    const pendingDepthCuesRef = useRef([]);
+    const applyDepthSummariesRef = useRef(null);
 
     // Date range picker state
     const [showDateRange, setShowDateRange] = useState(false);
@@ -337,6 +347,30 @@ const BetterTickChart = (props) => {
         {
             id: "depthSignals",
             name: "Depth Signals",
+            enabled: true,
+            instanceRef: null,
+            options: {
+                ...DEFAULT_DEPTH_SIGNAL_OPTIONS,
+                ...loadSavedIndicatorOptions("depthSignals"),
+                fields: DEPTH_SIGNAL_OPTION_FIELDS,
+            },
+        },
+        {
+            id: "depthCues",
+            name: "Depth Cues",
+            enabled: true,
+            instanceRef: null,
+        },
+        // Tick analysis markers (DrawBetterTickMarkers), split so the busier PRO/AM ones can be hidden
+        {
+            id: "exhaustionMarkers",
+            name: "BX/SX Markers",
+            enabled: true,
+            instanceRef: null,
+        },
+        {
+            id: "avgTradeMarkers",
+            name: "PRO/AM Markers",
             enabled: true,
             instanceRef: null,
         },
@@ -364,7 +398,7 @@ const BetterTickChart = (props) => {
                         options: { ...ind.options, ...newOptions },
                     };
 
-                    if (EXTREMA_INDICATOR_IDS.includes(indicatorId)) {
+                    if (EXTREMA_INDICATOR_IDS.includes(indicatorId) || indicatorId === "depthSignals") {
                         saveIndicatorOptions(indicatorId, updatedIndicator.options);
                     }
 
@@ -405,6 +439,16 @@ const BetterTickChart = (props) => {
     const liquidityHeatmapIndicator = indicators.find((ind) => ind.id === "liquidityHeatmap");
     const ordersIndicator = indicators.find((ind) => ind.id === "orders");
     const depthSignalsIndicator = indicators.find((ind) => ind.id === "depthSignals");
+    const depthCuesIndicator = indicators.find((ind) => ind.id === "depthCues");
+    const exhaustionMarkersEnabled = indicators.find((ind) => ind.id === "exhaustionMarkers")?.enabled !== false;
+    const avgTradeMarkersEnabled = indicators.find((ind) => ind.id === "avgTradeMarkers")?.enabled !== false;
+    const hiddenTickMarkerTypes = useMemo(
+        () => [
+            ...(exhaustionMarkersEnabled ? [] : ["buyExhaustion", "sellExhaustion"]),
+            ...(avgTradeMarkersEnabled ? [] : ["pro", "am"]),
+        ],
+        [exhaustionMarkersEnabled, avgTradeMarkersEnabled]
+    );
     const superTrendIndicator = indicators.find((ind) => ind.id === "superTrend");
     const priceLevelsIndicator = indicators.find((ind) => ind.id === "priceLevels");
     const fibonacciIndicator = indicators.find((ind) => ind.id === "fibonacci");
@@ -569,7 +613,7 @@ const BetterTickChart = (props) => {
         const pixiData = pixiDataRef.current;
         if (betterTickMarkersDrawRef.current?.chart !== pixiData) {
             betterTickMarkersDrawRef.current?.cleanup?.();
-            betterTickMarkersDrawRef.current = new DrawBetterTickMarkers(pixiData);
+            betterTickMarkersDrawRef.current = new DrawBetterTickMarkers(pixiData, { hiddenTypes: hiddenTickMarkerTypes });
             pixiData.registerDrawFn("betterTickMarkers", betterTickMarkersDrawRef.current.draw.bind(betterTickMarkersDrawRef.current));
         }
 
@@ -582,7 +626,12 @@ const BetterTickChart = (props) => {
                 betterTickMarkersDrawRef.current = null;
             }
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [hasCandleData, symbol, join]);
+
+    useEffect(() => {
+        betterTickMarkersDrawRef.current?.setHiddenTypes(hiddenTickMarkerTypes);
+    }, [hiddenTickMarkerTypes]);
 
     useEffect(() => {
         if (!pixiDataRef.current || !candleData.length) return;
@@ -604,7 +653,7 @@ const BetterTickChart = (props) => {
 
         depthSignalsDrawRef.current?.cleanup?.();
 
-        const instance = new DrawDepthSignals(pixiData);
+        const instance = new DrawDepthSignals(pixiData, { maxSignals: MAX_DEPTH_SIGNALS, filters: depthSignalsIndicator.options });
         depthSignalsDrawRef.current = instance;
         instance.setSignals(pendingDepthSignalsRef.current);
         pixiData.registerDrawFn("depthSignals", instance.draw.bind(instance));
@@ -620,11 +669,69 @@ const BetterTickChart = (props) => {
     }, [candleData.length, isLoading, symbol, join, depthSignalsIndicator?.enabled]);
 
     useEffect(() => {
+        depthSignalsDrawRef.current?.setOptions(depthSignalsIndicator?.options);
+    }, [depthSignalsIndicator?.options]);
+
+    // Signals are by time, so they survive a join change (the new chart instance is handed them)
+    useEffect(() => {
         pendingDepthSignalsRef.current = [];
         seenDepthSignalKeysRef.current.clear();
         depthSignalsDrawRef.current?.clearSignals?.();
         pixiDataRef.current?.draw?.();
-    }, [symbol, fullSymbol, join]);
+    }, [symbol, fullSymbol]);
+
+    // Real-time depth cues (250ms server cues) as markers at the price they fired, same as PixiChartV2
+    const depthCueMinStrength = props.depthCueMinStrength ?? 1;
+    useEffect(() => {
+        if (!pixiDataRef.current || !candleData.length) return;
+
+        const pixiData = pixiDataRef.current;
+        if (!depthCuesIndicator?.enabled) {
+            pixiData.unregisterDrawFn("depthCues");
+            depthCuesDrawRef.current?.cleanup?.();
+            depthCuesDrawRef.current = null;
+            pixiData.draw?.();
+            return;
+        }
+        if (depthCuesDrawRef.current?.chart === pixiData) {
+            depthCuesDrawRef.current.setCues(pendingDepthCuesRef.current);
+            pixiData.draw?.();
+            return;
+        }
+
+        depthCuesDrawRef.current?.cleanup?.();
+        const instance = new DrawDepthCues(pixiData, { minStrength: depthCueMinStrength });
+        depthCuesDrawRef.current = instance;
+        instance.setCues(pendingDepthCuesRef.current);
+        pixiData.registerDrawFn("depthCues", instance.draw.bind(instance));
+        pixiData.draw?.();
+
+        return () => {
+            pixiData.unregisterDrawFn("depthCues");
+            if (depthCuesDrawRef.current === instance) {
+                depthCuesDrawRef.current = null;
+            }
+            instance.cleanup();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [candleData.length, isLoading, symbol, join, depthCuesIndicator?.enabled]);
+
+    useEffect(() => {
+        depthCuesDrawRef.current?.setMinStrength(depthCueMinStrength);
+    }, [depthCueMinStrength]);
+
+    useEffect(() => {
+        pendingDepthCuesRef.current = [];
+        depthCuesDrawRef.current?.clearCues?.();
+    }, [symbol]);
+
+    // Saved cues for the loaded bars; live ones arrive on depthFlowMarker-{symbol}
+    useDepthCueHistory({
+        symbol,
+        ohlcData: candleData,
+        pendingRef: pendingDepthCuesRef,
+        drawRef: depthCuesDrawRef,
+    });
 
     // Use the liquidity data hook for fetching and caching
     useLiquidityData({
@@ -647,6 +754,47 @@ const BetterTickChart = (props) => {
         ohlcData: candleData,
         join,
     });
+
+    // Saved depth trade signals for loaded history (live ones arrive on depthTradeSignal-{symbol}). The saved row is
+    // stamped a few ms after the live emit, so a signal already received live is matched by direction + cumulative.
+    const handleHistoryDepthSignals = useCallback(
+        (signals = []) => {
+            const pending = pendingDepthSignalsRef.current;
+            const isLiveDuplicate = (signal) =>
+                pending.some(
+                    (held) =>
+                        held.direction === signal.direction &&
+                        Math.abs(held.timestamp - signal.timestamp) < 2000 &&
+                        Math.abs(held.cumulative - signal.cumulative) < 1e-6
+                );
+            const added = [];
+            signals.forEach((signal) => {
+                const normalizedSignal = normalizeDepthSignal(signal);
+                if (!normalizedSignal) return;
+                const signalKey = getDepthSignalKey(normalizedSignal);
+                if (seenDepthSignalKeysRef.current.has(signalKey) || isLiveDuplicate(normalizedSignal)) return;
+                seenDepthSignalKeysRef.current.add(signalKey);
+                added.push(normalizedSignal);
+            });
+            if (!added.length) return;
+
+            pendingDepthSignalsRef.current = [...pending, ...added]
+                .sort((a, b) => a.timestamp - b.timestamp)
+                .slice(-MAX_DEPTH_SIGNALS);
+            depthSignalsDrawRef.current?.setSignals(pendingDepthSignalsRef.current);
+        },
+        [getDepthSignalKey, normalizeDepthSignal]
+    );
+
+    // Depth Cumulative panel: 10s depth windows mapped onto the tick bars by time; also backfills depth signals
+    const { applyToBars: applyDepthSummaries } = useDepthSummaryBars({
+        symbol,
+        Socket,
+        pixiDataRef,
+        ohlcData: candleData,
+        onHistorySignals: handleHistoryDepthSignals,
+    });
+    applyDepthSummariesRef.current = applyDepthSummaries;
 
     const lowerIndicators = useMemo(() => {
         return [
@@ -680,6 +828,7 @@ const BetterTickChart = (props) => {
                 type: "volume",
                 accessors: "betterProSize",
                 extentFields: ["betterProSize", "betterAmSize"],
+                centerZero: true,
                 drawFn: createDualHistogramDrawFn({
                     positiveField: "betterProSize",
                     negativeField: "betterAmSize",
@@ -694,6 +843,7 @@ const BetterTickChart = (props) => {
                 type: "volume",
                 accessors: "betterMomentumHist",
                 extentFields: ["betterMomentumPositive", "betterMomentumNegative"],
+                centerZero: true,
                 drawFn: createDualHistogramDrawFn({
                     positiveField: "betterMomentumPositive",
                     negativeField: "betterMomentumNegative",
@@ -702,45 +852,11 @@ const BetterTickChart = (props) => {
                 }),
                 canGoNegative: true,
             },
-            {
-                name: "Uber Near Cancellation",
-                height: 90,
-                type: "volume",
-                accessors: "uberNearAbovePriceCancellationCountClose",
-                extentFields: ["uberNearAbovePriceCancellationCountClose", "uberNearBelowPriceCancellationCountNegative"],
-                drawFn: createDualHistogramDrawFn({
-                    positiveField: "uberNearAbovePriceCancellationCountClose",
-                    negativeField: "uberNearBelowPriceCancellationCountNegative",
-                    positiveColor: 0x3399ff,
-                    negativeColor: 0xff3366,
-                    positiveMAField: "uberNearAbovePriceCancellationCountMA20",
-                    negativeMAField: "uberNearBelowPriceCancellationCountMA20",
-                    positiveMAColor: 0x99ccff,
-                    negativeMAColor: 0xff99bb,
-                }),
-                canGoNegative: true,
-            },
-            {
-                name: "Near Price Cancellation",
-                height: 90,
-                type: "volume",
-                accessors: "nearAbovePriceCancellationCountClose",
-                extentFields: ["nearAbovePriceCancellationCountClose", "nearBelowPriceCancellationCountNegative"],
-                drawFn: createDualHistogramDrawFn({
-                    positiveField: "nearAbovePriceCancellationCountClose",
-                    negativeField: "nearBelowPriceCancellationCountNegative",
-                    positiveColor: 0x66ff66,
-                    negativeColor: 0xff6666,
-                    positiveMAField: "nearAbovePriceCancellationCountMA20",
-                    negativeMAField: "nearBelowPriceCancellationCountMA20",
-                    positiveMAColor: 0xd4ffd4,
-                    negativeMAColor: 0xffd6d6,
-                }),
-                canGoNegative: true,
-            },
+            ...buildDepthLowerIndicators({ centerZero: true }),
         ];
     }, []);
 
+    // In-progress joined candle only: completed joined bars arrive analyzed from the server (newJoinedTickBar)
     const buildCombinedBar = useCallback((barsToJoin) => {
         if (!barsToJoin?.length) return null;
 
@@ -774,9 +890,9 @@ const BetterTickChart = (props) => {
     const requestHistoricalBars = useCallback(
         async (opts = {}) => {
             const requestOpts = {
-                ...opts,
                 symbol,
                 join,
+                ...opts,
             };
             console.log("[BetterTickChart] Calling API.getCustomTicks with:", requestOpts);
             return await API.getCustomTicks(requestOpts);
@@ -792,7 +908,7 @@ const BetterTickChart = (props) => {
     }, []);
 
     const fetchData = useCallback(async (opts = {}) => {
-        const { symbol, limit = 2000 } = opts;
+        const { symbol, limit = HISTORY_BARS * join } = opts;
         console.log("[BetterTickChart] fetchData called", {
             symbol,
             join,
@@ -820,6 +936,24 @@ const BetterTickChart = (props) => {
 
             syncServerBarsToState(data);
             console.log("[BetterTickChart] State updated from server bars");
+
+            // History stops at the last completed joined bar; fetch the 100-tick bars of the one still filling
+            const lastJoined = data[data.length - 1];
+            if (join > 1 && lastJoined) {
+                const filling = await requestHistoricalBars({ join: 1, start: Math.floor(lastJoined.datetime) + 1, limit: join });
+                liveJoinBufferRef.current = (filling || []).filter((bar) => bar.datetime > lastJoined.datetime);
+                const inProgressBar = buildCombinedBar(liveJoinBufferRef.current);
+                if (inProgressBar && pixiDataRef.current) {
+                    pixiDataRef.current.newTick({
+                        lastPrice: inProgressBar.close,
+                        high: inProgressBar.high,
+                        low: inProgressBar.low,
+                        volume: 0,
+                        datetime: inProgressBar.datetime,
+                        timestamp: inProgressBar.timestamp,
+                    });
+                }
+            }
         } catch (error) {
             console.error("[BetterTickChart] fetchData error:", error);
         } finally {
@@ -829,7 +963,7 @@ const BetterTickChart = (props) => {
             loadingRef.current = false;
             setIsLoading(false);
         }
-    }, [join, requestHistoricalBars, syncServerBarsToState]);
+    }, [join, requestHistoricalBars, syncServerBarsToState, buildCombinedBar]);
 
     // Handler for time range changes from the GenericPixiChart
     const handleTimeRangeChange = useCallback(async ({ startTime, endTime }) => {
@@ -898,7 +1032,7 @@ const BetterTickChart = (props) => {
         try {
             const olderData = await requestHistoricalBars({
                 finish: Math.floor(finishTime),
-                limit: 2000, // Load 2000 older bars
+                limit: HISTORY_BARS * join, // 2000 older bars at this join
             });
 
             if (olderData && olderData.length > 0) {
@@ -930,7 +1064,7 @@ const BetterTickChart = (props) => {
 
         console.log("[BetterTickChart] State cleared, calling fetchData");
         liveJoinBufferRef.current = [];
-        fetchData({ symbol: symbol, limit: 2000 });
+        fetchData({ symbol: symbol });
 
         // Cleanup function - abort the fetch if component unmounts or deps change
         return () => {
@@ -948,18 +1082,9 @@ const BetterTickChart = (props) => {
             hasPixiDataRef: !!pixiDataRef.current,
         });
 
-        // Register with server to receive tick bar updates
-        Socket.emit("requestTickBarUpdate", {
-            symbol: fullSymbol,
-            barTypeSpecifier: 100,
-            exchange: exchange,
-        });
-        console.log("[BetterTickChart] Emitted requestTickBarUpdate", { symbol: fullSymbol, exchange });
-
-        // Listen for new COMPLETE 100-tick bars from server
-        // Server emits: new-100-${fullSymbol}-tickBar (e.g., "new-100-ESZ5-tickBar")
-        const tickBarEvent = `new-100-${fullSymbol}-tickBar`;
-        console.log(`[BetterTickChart] Listening for event: "${tickBarEvent}"`);
+        // Completed, already-analyzed 100-tick bars from the server's TickAnalyzer (same bars /API/custom-ticks returns).
+        // Room tickBars:{symbol}; bar.symbol is the base symbol (e.g. "ES").
+        const tickBarEvent = "newTickBar";
 
         const handleNew100TickBar = (data) => {
             // console.log("[BetterTickChart] handleNew100TickBar called", {
@@ -969,13 +1094,8 @@ const BetterTickChart = (props) => {
             //     hasPixiDataRef: !!pixiDataRef.current,
             // });
 
-            // Check symbol match - data.symbol from server uses FULL symbol (e.g., "ESZ5")
-            if (data.symbol !== fullSymbol) {
-                console.warn(
-                    `[BetterTickChart] ❌ Symbol mismatch - data.symbol="${data.symbol}" !== fullSymbol="${fullSymbol}" - ignoring`
-                );
-                return;
-            }
+            // Legacy-broadcast sockets get every symbol's newTickBar
+            if (`${data.symbol}`.toUpperCase() !== `${symbol}`.toUpperCase()) return;
 
             if (!pixiDataRef.current) {
                 console.warn("[BetterTickChart] ❌ pixiDataRef.current not initialized - ignoring update");
@@ -983,46 +1103,51 @@ const BetterTickChart = (props) => {
             }
 
             if (join === 1) {
-                const previousBar = rawDataRef.current[rawDataRef.current.length - 1] || {};
-                const normalizedBar = normalizeBetterTickBars([data], {
-                    startingCumulativeDelta: previousBar.cumulativeDelta || 0,
-                    startingProRun: previousBar.volumeProRun || 0,
-                    startingAmRun: previousBar.volumeAmRun || 0,
-                })[0];
-                rawDataRef.current = [...rawDataRef.current, normalizedBar];
-                // No combining - use the complete 100-tick bar directly
-                pixiDataRef.current.setCompleteBar(normalizedBar);
-                pixiDataRef.current.updateCurrentPriceLabel(normalizedBar.close);
-            } else {
-                liveJoinBufferRef.current = [...liveJoinBufferRef.current, data];
-                const inProgressBar = buildCombinedBar(liveJoinBufferRef.current);
-                if (!inProgressBar) return;
-
-                if (liveJoinBufferRef.current.length >= join) {
-                    const previousBar = rawDataRef.current[rawDataRef.current.length - 1] || {};
-                    const normalizedBar = normalizeBetterTickBars([inProgressBar], {
-                        startingCumulativeDelta: previousBar.cumulativeDelta || 0,
-                        startingProRun: previousBar.volumeProRun || 0,
-                        startingAmRun: previousBar.volumeAmRun || 0,
-                    })[0];
-                    console.log("[BetterTickChart] Completed joined live bar", normalizedBar);
-                    rawDataRef.current = [...rawDataRef.current, normalizedBar];
-                    liveJoinBufferRef.current = [];
-                    pixiDataRef.current.setCompleteBar(normalizedBar);
-                    pixiDataRef.current.updateCurrentPriceLabel(normalizedBar.close);
-                } else {
-                    console.log("[BetterTickChart] Updating joined live bar", inProgressBar);
-                    pixiDataRef.current.newTick({
-                        lastPrice: inProgressBar.close,
-                        high: inProgressBar.high,
-                        low: inProgressBar.low,
-                        volume: 0, // Already included in combined bar
-                        datetime: inProgressBar.datetime,
-                        timestamp: inProgressBar.timestamp,
-                    });
-                    pixiDataRef.current.updateCurrentPriceLabel(inProgressBar.close);
-                }
+                appendCompletedBar(data);
+                return;
             }
+
+            // Joined view: this 100-tick bar only feeds the candle still filling. The server sends the joined bar it
+            // completes (newJoinedTickBar) just before it, so a bar at or before the last joined bar is already in.
+            const lastBar = rawDataRef.current[rawDataRef.current.length - 1];
+            if (lastBar && data.datetime <= lastBar.datetime) return;
+            liveJoinBufferRef.current = [...liveJoinBufferRef.current, data];
+            const inProgressBar = buildCombinedBar(liveJoinBufferRef.current);
+            if (!inProgressBar) return;
+            pixiDataRef.current.newTick({
+                lastPrice: inProgressBar.close,
+                high: inProgressBar.high,
+                low: inProgressBar.low,
+                volume: 0, // Already included in combined bar
+                datetime: inProgressBar.datetime,
+                timestamp: inProgressBar.timestamp,
+            });
+            pixiDataRef.current.updateCurrentPriceLabel(inProgressBar.close);
+        };
+
+        // Completed bar, already analyzed on the server: only the display fields (cumulative delta, runs, markers)
+        // are added here
+        const appendCompletedBar = (bar) => {
+            const previousBar = rawDataRef.current[rawDataRef.current.length - 1] || {};
+            const normalizedBar = normalizeBetterTickBars([bar], {
+                startingCumulativeDelta: previousBar.cumulativeDelta || 0,
+                startingProRun: previousBar.volumeProRun || 0,
+                startingAmRun: previousBar.volumeAmRun || 0,
+            })[0];
+            rawDataRef.current = [...rawDataRef.current, normalizedBar];
+            pixiDataRef.current.setCompleteBar(normalizedBar);
+            pixiDataRef.current.updateCurrentPriceLabel(normalizedBar.close);
+            const chartBars = pixiDataRef.current.ohlcDatas;
+            if (chartBars?.length) applyDepthSummariesRef.current?.(chartBars.length - 2);
+        };
+
+        // Joined bars from the server's TickBarAggregator (room joinedTickBars:{symbol}:{join}), session-anchored
+        // like /API/custom-ticks?join=
+        const handleNewJoinedTickBar = (data) => {
+            if (`${data.symbol}`.toUpperCase() !== `${symbol}`.toUpperCase() || Number(data.join) !== join) return;
+            if (!pixiDataRef.current) return;
+            liveJoinBufferRef.current = liveJoinBufferRef.current.filter((bar) => bar.datetime > data.datetime);
+            appendCompletedBar(data);
         };
 
         // Listen for 1-second price updates - updates temporary bar
@@ -1053,28 +1178,59 @@ const BetterTickChart = (props) => {
             if (seenDepthSignalKeysRef.current.has(signalKey)) return;
             seenDepthSignalKeysRef.current.add(signalKey);
 
-            pendingDepthSignalsRef.current = [...pendingDepthSignalsRef.current.slice(-99), normalizedSignal];
+            pendingDepthSignalsRef.current = [...pendingDepthSignalsRef.current.slice(-(MAX_DEPTH_SIGNALS - 1)), normalizedSignal];
 
             if (depthSignalsDrawRef.current) {
                 depthSignalsDrawRef.current.pushSignal(normalizedSignal);
             }
         };
 
+        const depthCueEvent = `depthFlowMarker-${symbol}`;
+        const handleDepthCue = (cue) => {
+            const pending = pendingDepthCuesRef.current;
+            pending.push(cue);
+            if (pending.length > MAX_DEPTH_CUES) pending.splice(0, pending.length - MAX_DEPTH_CUES);
+            depthCuesDrawRef.current?.pushCue(cue);
+        };
+
+        // Server rebuilt bars it missed while down (TickAnalyzer.heal): reload history to fill the gap
+        const handleTickBarsHealed = (data) => {
+            if (`${data?.symbol}`.toUpperCase() !== `${symbol}`.toUpperCase()) return;
+            liveJoinBufferRef.current = [];
+            fetchData({ symbol });
+        };
+
         Socket.on(tickBarEvent, handleNew100TickBar);
+        Socket.on("newJoinedTickBar", handleNewJoinedTickBar);
+        Socket.on("tickBarsHealed", handleTickBarsHealed);
         Socket.on(liveBarUpdateEvent, handleLiveBarUpdate);
         depthSignalEvents.forEach((eventName) => Socket.on(eventName, handleDepthSignal));
+        Socket.on(depthCueEvent, handleDepthCue);
+        // Depth signals and cues are published to the depthSummary room
+        const releaseDepthSummary = Socket.subscribe("depthSummary", { symbol });
+        const releaseLiveBar = Socket.subscribe("bars", { symbol, tf: "1s" });
+        const releaseTickBars = Socket.subscribe("tickBars", { symbol });
+        const releaseJoinedTickBars = join > 1 ? Socket.subscribe("joinedTickBars", { symbol, join }) : () => {};
 
         return () => {
             console.log("[BetterTickChart] Cleaning up socket listeners", { tickBarEvent, liveBarUpdateEvent, depthSignalEvents });
+            releaseDepthSummary();
+            releaseLiveBar();
+            releaseTickBars();
+            releaseJoinedTickBars();
+            Socket.off("newJoinedTickBar", handleNewJoinedTickBar);
             Socket.off(tickBarEvent, handleNew100TickBar);
+            Socket.off("tickBarsHealed", handleTickBarsHealed);
             Socket.off(liveBarUpdateEvent, handleLiveBarUpdate);
             depthSignalEvents.forEach((eventName) => Socket.off(eventName, handleDepthSignal));
+            Socket.off(depthCueEvent, handleDepthCue);
         };
-    }, [symbol, fullSymbol, join, Socket, exchange, getDepthSignalKey, normalizeDepthSignal, buildCombinedBar]); // IMPORTANT: Don't include pixiDataRef.current!
+    }, [symbol, fullSymbol, join, Socket, exchange, getDepthSignalKey, normalizeDepthSignal, buildCombinedBar, fetchData]); // IMPORTANT: Don't include pixiDataRef.current!
 
     // Note: Server event patterns
     // Time-based charts: ${timeframe}-${symbol}-LiveBarNew (e.g., "1m-ES-LiveBarNew", "5m-YMZ5-LiveBarNew")
-    // Tick charts: new-100-${fullSymbol}-tickBar (e.g., "new-100-ESZ5-tickBar", "new-100-NQZ5-tickBar")
+    // Tick charts: newTickBar in room tickBars:${symbol} (analyzed self-built 100-tick bars)
+    // Joined tick charts: newJoinedTickBar in room joinedTickBars:${symbol}:${join} (join 5/10/15/20)
     // Live updates: 1s-${fullSymbol}-LiveBarUpdate (e.g., "1s-ESZ5-LiveBarUpdate")
 
     const joinOptions = [1, 5, 10, 15, 20];

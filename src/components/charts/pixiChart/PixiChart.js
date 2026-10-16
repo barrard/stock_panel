@@ -984,6 +984,9 @@ export default function PixiChart({ Socket }) {
 		unsubscribeDepthFlowSound,
 	]);
 
+	// ordersShown, orderCancelled and rapi-message come from the private account channel (allowed users only)
+	useEffect(() => Socket.subscribe("account"), []);
+
 	useEffect(() => {
 		Socket.on("ordersShown", (data) => {
 			setOrders((prevOrders) => {
@@ -1016,6 +1019,9 @@ export default function PixiChart({ Socket }) {
 		if (!pixiData) return;
 		pixiData.longPress = longPress;
 	}, [longPress]);
+
+	// The server only sends lastTrade for subscribed symbols: the focused one here, the overview table uses marketOverview
+	useEffect(() => Socket.subscribe("lastTrade", { symbol: symbol.value }), [Socket, symbol.value]);
 
 	//Fn to handle new data
 	useEffect(() => {
@@ -1148,9 +1154,10 @@ export default function PixiChart({ Socket }) {
 				timeframe="tick"
 				Socket={Socket}
 				orders={ordersForTickChart}
+				depthCueMinStrength={orderFlowSoundSettings.minStrength}
 			/>
 		);
-	}, [Socket, symbol.value, fullSymbolValue, symbolInput.exchange, ordersForTickChart]);
+	}, [Socket, symbol.value, fullSymbolValue, symbolInput.exchange, ordersForTickChart, orderFlowSoundSettings.minStrength]);
 
 	const EmbeddedBacktestChartMemo = useMemo(() => {
 		if (!embeddedBacktestData?.bars?.length) {

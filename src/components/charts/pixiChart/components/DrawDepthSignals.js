@@ -1,6 +1,23 @@
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { findVisibleBarIndex } from "./barTimeLookup";
 
 const DEFAULT_MAX_SIGNALS = 100;
+
+// Right-click options for the Depth Signals indicator (IndicatorsBtns GenericOptions). The server emits two types:
+// swing (regime flip, drawn as a triangle) and continuation (circle, sized by streak and score).
+export const DEFAULT_DEPTH_SIGNAL_OPTIONS = {
+    showSwing: true,
+    showContinuation: true,
+    minScore: 0,
+    minStreak: 0,
+};
+
+export const DEPTH_SIGNAL_OPTION_FIELDS = [
+    { key: "showSwing", label: "Swing signals (triangles)", type: "checkbox" },
+    { key: "showContinuation", label: "Continuation signals (circles)", type: "checkbox" },
+    { key: "minScore", label: "Min window score (|score|, signals fire around 4-5)", type: "number", min: 0, max: 12, step: 0.5 },
+    { key: "minStreak", label: "Min streak (consecutive windows, bigger circles)", type: "number", min: 0, max: 30, step: 1 },
+];
 
 const TOOLTIP_STYLE = new TextStyle({
     fontFamily: "Arial",
@@ -107,6 +124,8 @@ export default class DrawDepthSignals {
         this.sellColor = options.sellColor ?? 0xd50000;
         this.hoverHitboxPadding = options.hoverHitboxPadding ?? 8;
         this.signals = [];
+        this.filters = { ...DEFAULT_DEPTH_SIGNAL_OPTIONS };
+        this.setOptions(options.filters, false);
         this.graphics = new Graphics();
         this.labelContainer = new Container();
 
@@ -119,6 +138,21 @@ export default class DrawDepthSignals {
         this.labelContainer.removeChildren().forEach((child) => {
             child.destroy?.();
         });
+    }
+
+    setOptions(filters = {}, redraw = true) {
+        for (const key of Object.keys(DEFAULT_DEPTH_SIGNAL_OPTIONS)) {
+            if (filters?.[key] !== undefined) this.filters[key] = filters[key];
+        }
+        if (redraw) this.draw();
+    }
+
+    isVisible(signal) {
+        const { showSwing, showContinuation, minScore, minStreak } = this.filters;
+        const type = getSignalType(signal);
+        if (type === "continuation" ? !showContinuation : !showSwing) return false;
+        if (Math.abs(signal.windowScore) < (Number(minScore) || 0)) return false;
+        return signal.consecutive >= (Number(minStreak) || 0);
     }
 
     clearSignals() {
@@ -143,32 +177,7 @@ export default class DrawDepthSignals {
     findSignalIndex(signal, data) {
         if (!Array.isArray(data) || !data.length) return -1;
         if (!signal?.timestamp) return data.length - 1;
-
-        const firstTimestamp = data[0]?.timestamp ?? data[0]?.datetime;
-        const lastTimestamp = data[data.length - 1]?.timestamp ?? data[data.length - 1]?.datetime;
-        if (Number.isFinite(lastTimestamp) && signal.timestamp >= lastTimestamp) {
-            return data.length - 1;
-        }
-        if (Number.isFinite(firstTimestamp) && signal.timestamp < firstTimestamp) {
-            return -1;
-        }
-
-        let matchingIndex = -1;
-
-        for (let index = 0; index < data.length; index += 1) {
-            const bar = data[index];
-            const barTimestamp = bar?.timestamp ?? bar?.datetime;
-            if (!Number.isFinite(barTimestamp)) continue;
-
-            if (barTimestamp <= signal.timestamp) {
-                matchingIndex = index;
-                continue;
-            }
-
-            break;
-        }
-
-        return matchingIndex;
+        return findVisibleBarIndex(this.chart, signal.timestamp);
     }
 
     drawTooltip(marker) {
@@ -266,6 +275,7 @@ export default class DrawDepthSignals {
         const markers = [];
 
         this.signals.forEach((signal) => {
+            if (!this.isVisible(signal)) return;
             const index = this.findSignalIndex(signal, slicedData);
             if (index < 0) return;
 

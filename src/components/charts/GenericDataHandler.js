@@ -939,6 +939,7 @@ export default class GenericDataHandler {
                     extentValueProvider: indicator.extentValueProvider || null,
                     disableCache: indicator.disableCache || false,
                     canGoNegative: indicator.canGoNegative || false,
+                    centerZero: indicator.centerZero || false,
                 });
             });
         }

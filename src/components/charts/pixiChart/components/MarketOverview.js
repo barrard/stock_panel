@@ -71,22 +71,20 @@ const MarketOverview = ({ lastTradesRef, fullSymbols, Socket }) => {
             }));
         };
 
-        const handleLastTrade = (message) => {
-            mergeTradeUpdate(message?.symbol, message);
-        };
-
-        const handleOrderTracker = (orderTrackerCount) => {
-            const sym = orderTrackerCount.symbol;
-            mergeTradeUpdate(sym, orderTrackerCount);
+        // marketOverview: every watched symbol's overview stats in one packet every 2s (snapshot on subscribe)
+        const handleMarketOverview = (packet) => {
+            Object.entries(packet?.symbols || {}).forEach(([symbol, update]) => mergeTradeUpdate(symbol, update));
         };
 
         Socket.on("positionPnL", handlePositionPnL);
-        Socket.on("lastTrade", handleLastTrade);
-        Socket.on("orderTracker", handleOrderTracker);
+        Socket.on("marketOverview", handleMarketOverview);
+        const releaseOverview = Socket.subscribe("marketOverview");
+        const releaseAccount = Socket.subscribe("account"); // positionPnL, allowed users only
 
         return () => {
-            Socket.off("orderTracker", handleOrderTracker);
-            Socket.off("lastTrade", handleLastTrade);
+            releaseOverview();
+            releaseAccount();
+            Socket.off("marketOverview", handleMarketOverview);
             Socket.off("positionPnL", handlePositionPnL);
         };
     }, [Socket, lastTradesRef]);

@@ -72,6 +72,7 @@ class OldBetterTickChart extends React.Component {
     componentDidMount() {
         this.loadChartData();
         this.setupSocketListeners();
+        this.subscribeMarketData(this.state.symbol);
         this.setupDepthSignalListener(this.state.symbol);
     }
     componentDidUpdate(prevProps) {
@@ -82,6 +83,7 @@ class OldBetterTickChart extends React.Component {
         if (params.symbol !== prevParams.symbol) {
             const nextSymbol = params.symbol || "ES";
             this.teardownDepthSignalListener(prevParams.symbol || "ES");
+            this.subscribeMarketData(nextSymbol);
             this.setState(
                 {
                     symbol: nextSymbol,
@@ -183,7 +185,16 @@ class OldBetterTickChart extends React.Component {
         this.depthSignalHandler = null;
     };
 
+    // Server rooms for newTickBar / lastTrade (only subscribed symbols are sent)
+    subscribeMarketData = (symbol) => {
+        (this.marketDataReleases || []).forEach((release) => release());
+        this.marketDataReleases = symbol
+            ? [this.props.Socket.subscribe("tickBars", { symbol }), this.props.Socket.subscribe("lastTrade", { symbol })]
+            : [];
+    };
+
     componentWillUnmount() {
+        this.subscribeMarketData(null);
         this.props.Socket.off("newTickBar");
         this.props.Socket.off("lastTrade");
         this.teardownDepthSignalListener();

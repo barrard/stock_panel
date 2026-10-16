@@ -88,8 +88,10 @@ export default function SpyPanel({ Socket, height = 300 }) {
         Socket.on("spyLevelOne", (d) => {
             setSpyLevelOne(d);
         });
+        const releaseLevelOne = Socket.subscribe("levelOne", { symbol: "SPY" });
 
         return () => {
+            releaseLevelOne();
             Socket.off("spyOptionSnaps");
             Socket.off("spyLevelOne");
         };

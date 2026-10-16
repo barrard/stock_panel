@@ -4,6 +4,7 @@ import {toastr} from 'react-redux-toastr'
 import { Link, withRouter } from "react-router-dom";
 
 import * as user_actions from '../redux/actions/user_actions.js'
+import Socket from "./Socket.js";
 import Signup_form from "../components/forms/Signup_Form.js";
 // import {ensure_not_loggedin} from '../components/utils/auth.js'
 
@@ -85,6 +86,7 @@ class Signup extends React.Component {
         //TODO notify login
         //Push page?
         this.props.dispatch(login_success(json.user));
+        Socket.reauth();
         this.props.history.push(`/commodity/ES`)
   
         toastr.success('New User', `You are being logged in as ${this.state.email}`)
